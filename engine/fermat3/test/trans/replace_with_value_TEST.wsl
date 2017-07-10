@@ -1,0 +1,243 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Replace With Value'",
+	    (FILL Statements J := 0; J := J+1 ENDFILL),
+	    <2>,
+	    TR_Replace_With_Value,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 2nd test of `Replace With Value'",
+	    (FILL Statements J := 0; J := J+1 ENDFILL),
+	    <2, 1, 2, 1>,
+	    TR_Replace_With_Value,
+	    < >,
+	    (FILL Statements J := 0; J := 0+1 ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Replace With Value'",
+	    (FILL Statements J := J+1; K := J ENDFILL),
+	    <2, 1, 2>,
+	    TR_Replace_With_Value,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 4th test of `Replace With Value'",
+	    (FILL Statements A := (2-J)/4; J := J+1; K := A ENDFILL),
+	    <3, 1, 2>,
+	    TR_Replace_With_Value,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 5th test of `Replace With Value'",
+	    (FILL Statements A := (2-J)/4; P := J+1; K := A ENDFILL),
+	    <3, 1, 2>,
+	    TR_Replace_With_Value,
+	    < >,
+	    (FILL Statements A := (2-J)/4; P := J+1; K := (2-J)/4 ENDFILL));
+
+
+@Test_Trans(" 6th test of `Replace With Value'",
+	    (FILL Statements A := 4;
+			     IF A = Q
+				THEN B := 3; SKIP; X := A FI ENDFILL),
+	    <2, 1, 2, 3, 1, 2>,
+	    TR_Replace_With_Value,
+	    < >,
+	    (FILL Statements A := 4;
+			     IF A = Q
+				THEN B := 3; SKIP; X := 4 FI ENDFILL));
+
+
+@Test_Trans(" 7th test of `Replace With Value'",
+	    (FILL Statements A := 4;
+			     IF A > Q
+				THEN A := 0
+			     ELSIF A = Q
+				THEN B := 3; SKIP; X := A FI ENDFILL),
+	    <2, 2, 2, 3, 1, 2>,
+	    TR_Replace_With_Value,
+	    < >,
+	    (FILL Statements A := 4;
+			     IF A > Q
+				THEN A := 0
+			     ELSIF A = Q
+				THEN B := 3; SKIP; X := 4 FI ENDFILL));
+
+
+@Test_Trans(" 8th test of `Replace With Value'",
+	    (FILL Statements A := 4;
+			     WHILE X < 10 DO Q := A; X := X + 1 OD ENDFILL),
+	    <2, 2, 1, 1, 2>,
+	    TR_Replace_With_Value,
+	    < >,
+	    (FILL Statements A:=4;
+			     WHILE X < 10 DO Q := 4; X := X + 1 OD ENDFILL));
+
+
+@Test_Trans(" 9th test of `Replace With Value'",
+	    (FILL Statements A := (P*Q);
+			     IF Q <> 1
+				THEN IF Q <> 2
+					THEN IF Q <> 3
+						THEN X := A FI FI FI ENDFILL),
+	    <2, 1, 2, 1, 1, 2, 1, 1, 2, 1, 1, 2>,
+	    TR_Replace_With_Value,
+	    < >,
+	    (FILL Statements A := (P*Q);
+			     IF Q <> 1
+				THEN IF Q <> 2
+					THEN IF Q <> 3
+						THEN X := (P*Q) FI FI FI ENDFILL));
+
+
+@Test_Trans("10th test of `Replace With Value'",
+	    (FILL Statements {J=0}; J := J+1 ENDFILL),
+	    <2, 1, 2, 1>,
+	    TR_Replace_With_Value,
+	    < >,
+	    (FILL Statements {J=0}; J := 0+1 ENDFILL));
+
+
+@Test_Trans("11th test of `Replace With Value'",
+	    (FILL Statements {0=J}; J := J+1 ENDFILL),
+	    <2, 1, 2, 1>,
+	    TR_Replace_With_Value,
+	    < >,
+	    (FILL Statements {0=J}; J := 0+1 ENDFILL));
+
+
+@Test_Trans("12th test of `Replace With Value'",
+	    (FILL Statements {J=0}; !XP dr_who (); J := J+1 ENDFILL),
+	    <2, 1, 2, 1>,
+	    TR_Replace_With_Value,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("13th test of `Replace With Value'",
+	    (FILL Statements X := 9;
+			     ACTIONS A_1 :
+				A_1 == Q := 3;
+				       CALL A_2 .
+				A_2 == IF A<B THEN CALL A_3
+					      ELSE CALL A_4 FI .
+				B_2 == CALL B_6 .
+				A_3 == C := (A*X);
+				       A := C;
+				       CALL A_2 .
+				B_3 == CALL B_2 .
+				A_4 == IF X <> 10 THEN CALL A_5
+						  ELSE CALL A_6 FI .
+				A_5 == Q := 0;
+				       CALL A_7 .
+				A_6 == Q := J + X;
+				       CALL A_7 .
+				B_6 == CALL B_3 .
+				A_7 == CALL Z . ENDACTIONS ENDFILL),
+	    <2, 2, 8, 2, 1, 1, 2, 2>,
+	    TR_Replace_With_Value,
+	    < >,
+	    (FILL Statements X := 9;
+			     ACTIONS A_1 :
+				A_1 == Q := 3;
+				       CALL A_2 .
+				A_2 == IF A<B THEN CALL A_3
+					      ELSE CALL A_4 FI .
+				B_2 == CALL B_6 .
+				A_3 == C := (A*X);
+				       A := C;
+				       CALL A_2 .
+				B_3 == CALL B_2 .
+				A_4 == IF X <> 10 THEN CALL A_5
+						  ELSE CALL A_6 FI .
+				A_5 == Q := 0;
+				       CALL A_7 .
+				A_6 == Q := J + 9;
+				       CALL A_7 .
+				B_6 == CALL B_3 .
+				A_7 == CALL Z . ENDACTIONS ENDFILL));
+
+
+@Test_Trans("14th test of `Replace With Value'",
+	    (FILL Statements X := 9;
+			     ACTIONS A_1 :
+				A_1 == Q := 3;
+				       CALL A_2 .
+				A_2 == IF A<B THEN CALL A_3
+					      ELSE CALL A_4 FI .
+				B_2 == CALL B_6 .
+				A_3 == X := (X-A);
+				       C := (A*X);
+				       X := (X+A);
+				       A := C;
+				       CALL A_2 .
+				B_3 == CALL B_2 .
+				A_4 == IF X <> 10 THEN CALL A_5
+						  ELSE CALL A_6 FI .
+				A_5 == Q := 0;
+				       CALL A_7 .
+				A_6 == X := 2;
+				       CALL A_7 .
+				B_6 == CALL B_3 .
+				A_7 == Q := J + X;
+				       CALL Z . ENDACTIONS ENDFILL),
+	    <2, 2, 10, 2, 1, 1, 2, 2>,
+	    TR_Replace_With_Value,
+	    < >,
+	    "Fail");
+
+@Test_Trans("15th test of `Replace With Value'",
+	    (FILL Statements r1 := FOO + 1;
+                             FOO := r1;
+                             IF r1 = r7 THEN cc := 0 FI ENDFILL),
+	    <3, 1, 1, 1>,
+	    TR_Replace_With_Value,
+	    < >,
+	    "Fail");
+
+@Test_Trans("16th test of `Replace With Value'",
+	    (FILL Statements r1 := FOO + 1;
+                             BAR := r1;
+                             IF r1 = r7 THEN cc := 0 FI ENDFILL),
+	    <3, 1, 1, 1>,
+	    TR_Replace_With_Value,
+	    < >,
+	    (FILL Statements r1 := FOO + 1;
+                             BAR := r1;
+                             IF FOO + 1 = r7 THEN cc := 0 FI ENDFILL));
+
+@Test_Trans("17th test of `Replace With Value'",
+	    (FILL Statements r1 := a[!XF address_of(a[FOO].BAR) + r6, 2] + 1;
+                             a[!XF address_of(a[FOO].BAR) + r6, 2] := r1;
+                             IF r1 = r7
+                               THEN cc := 0 FI ENDFILL),
+	    <3, 1, 1, 1>,
+	    TR_Replace_With_Value,
+	    < >,
+	    "Fail");
+
+
+SKIP
+

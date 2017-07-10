@@ -1,0 +1,150 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+MW_PROC @Rename_Defns_Test() ==
+  IF T_Where NOTIN @Stat_Types(@I)                    
+    THEN @Fail("No WHERE clauses in selected item.")
+    ELSE VAR < Defn_Count := @Count_Proc_Defns(@I) >:
+	 FOR name IN @Hash_Keys(Defn_Count) DO
+	   IF Defn_Count.(name) > 1 THEN @Pass FI OD ENDVAR;
+	 IF NOT @Passed? THEN @Fail("No renaming is necessary") FI FI .;
+
+
+C:" Count how many times each proc is defined (to see if renaming is necessary) ";
+C:" Rename the procs, computing and discarding the Orig_Name table. ";
+
+MW_PROC @Rename_Defns_Code(Data) ==
+  VAR < Defn_Count := @Count_Proc_Defns(@I), Orig_Name := HASH_TABLE >:
+  @Rename_Procs(Defn_Count VAR Orig_Name) ENDVAR .;
+
+
+MW_FUNCT @Count_Proc_Defns(I) ==
+  VAR < Defn_Count := HASH_TABLE >:
+  @RP_Count_Proc_Defns(I, < >);
+  (Defn_Count) .;
+
+
+MW_PROC @RP_Count_Proc_Defns(I, stack) ==
+  IF @ST(I) = T_Proc_Call AND NOT @RP_In_Set_List?(@V(I^1), stack)
+    THEN @Inc_Hash(@V(I^1), Defn_Count)
+  ELSIF @ST(I) = T_Where
+    THEN VAR < local := < > >:
+	 FOR defn IN @Cs(I^2) DO
+	   IF @ST(defn) = T_Proc
+	     THEN @Inc_Hash(@V(defn^1), Defn_Count);
+		  local := <@V(defn^1)> ++ local FI OD;
+	 stack := <@Make_Set(local)> ++ stack;
+	 @RP_Count_Proc_Defns(I^1, stack);
+	 @RP_Count_Proc_Defns(I^2, stack) ENDVAR
+  ELSIF @Cs?(I) AND @Has_Statements_Type?(@GT(I))
+    THEN FOR comp IN @Cs(I) DO
+	   @RP_Count_Proc_Defns(comp, stack) OD FI .;
+
+
+
+C:" Rename the procs and proc calls which clash: ie Defn_Count.(name) > 1 ";
+C:" Any global (ie non-local) calls get to keep their original names. ";
+C:" Fill in the Orig_Name table to map the new name to the original T_Name item. ";
+
+MW_PROC @Rename_Procs(Defn_Count VAR Orig_Name) ==
+  VAR < Curr_Name := < >, tab := HASH_TABLE >:
+  C:" The initial table in the Curr_Name stack is for global proc calls, ";
+  C:" so we record the current name (as an item): ";
+  FOR name IN @Hash_Keys(Defn_Count) DO
+    IF Defn_Count.(name) > 1
+      THEN tab.(name) := @Make(T_Name, name, < >);
+	   Defn_Count.(name) := 1 FI OD;
+  Curr_Name := <tab>;
+  @Edit;
+  @RP_Rename_Procs;
+  @End_Edit ENDVAR .;
+
+
+C:" Uses Curr_Name stack and Defn_Count to generate a new name as needed. ";
+C:" Updates Orig_Name table to map new name to old. ";
+
+MW_PROC @RP_Rename_Procs() ==
+  IF (@ST(@I) = T_Proc_Call OR @ST(@I) = T_Proc)
+       AND NOT EMPTY?(@RP_Get_Name(@V(@I^1), Curr_Name))
+    THEN @Down; @Paste_Over(@RP_Get_Name(@V(@I), Curr_Name)); @Up FI;
+  IF @ST(@I) = T_Where
+    THEN C:" Stack a new set of name items for the duration of this WHERE clause ";
+	 VAR < tab := HASH_TABLE, name := < > >:
+	 FOR defn IN @Cs(@I^2) DO
+	   IF @ST(defn) = T_Proc AND NOT EMPTY?(Defn_Count.(@V(defn^1)))
+	     THEN name := @V(defn^1);
+		  tab.(name) := @RP_New_Name(Defn_Count.(name), name);
+		  Orig_Name.(@V(tab.(name))) := defn^1;
+		  Defn_Count.(name) := Defn_Count.(name) + 1 FI OD;
+	 Curr_Name := <tab> ++ Curr_Name ENDVAR;
+	 @Down;
+	 @RP_Rename_Procs;
+	 @Right;
+	 @RP_Rename_Procs;
+	 @Up;
+	 Curr_Name := TAIL(Curr_Name)
+  ELSIF @Cs?(@I) AND @Has_Statements_Type?(@GT(@I))
+    THEN @Edit;
+	 @Down;
+	 DO @RP_Rename_Procs;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up;
+	 @End_Edit FI .;
+
+
+C:" If the proposed new name is in the Defn_Count table, then it is already in use, ";
+C:" so keep modifying it until we get an unused name. ";
+
+MW_FUNCT @RP_New_Name(count, name) ==
+  VAR < new := @Make_Name(@N_String(name) ++ "__" ++ @String(count)) >:
+  WHILE NOT EMPTY?(Defn_Count.(new)) DO
+    new := @Make_Name("_" ++ @N_String(new)) OD
+  (@Make(T_Name, new, < >)).;
+
+
+MW_FUNCT @RP_Get_Name(name, stack) ==
+  VAR < R := < > >:
+  IF NOT EMPTY?(stack)
+    THEN VAR < tab := HEAD(stack) >:
+	 R := tab.(name);
+	 IF EMPTY?(R)
+	   THEN R := @RP_Get_Name(name, TAIL(stack)) FI ENDVAR FI;
+  (R) .;
+
+
+
+MW_BFUNCT @RP_In_Set_List?(name, L) == : SKIP;
+  (NOT EMPTY?(L) AND (name IN HEAD(L) OR @RP_In_Set_List?(name, TAIL(L)))) .;
+
+
+
+MW_PROC @Restore_Names(Orig_Name) ==
+  FOREACH Statement DO
+    IF @ST(@I) = T_Proc_Call AND NOT EMPTY?(Orig_Name.(@V(@I^1)))
+      THEN @Down; @Paste_Over(Orig_Name.(@V(@I)))
+    ELSIF @ST(@I) = T_Where
+      THEN @Down_Last; @Down;
+	   DO IF @ST(@I) = T_Proc AND NOT EMPTY?(Orig_Name.(@V(@I^1)))
+		THEN @Down; @Paste_Over(Orig_Name.(@V(@I))); @Up FI;
+	      IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD .;
+
+
+SKIP

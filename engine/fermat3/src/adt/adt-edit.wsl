@@ -1,0 +1,65 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+MW_PROC @Edit() ==
+  adt_Edit_Program_Stack := <adt_Program> ++ adt_Edit_Program_Stack;
+  adt_Edit_Posn_Stack := IF adt_Posn_n > 0
+			 THEN <<adt_Posn_n> ++ adt_Posn> ++ adt_Edit_Posn_Stack
+			 ELSE << >> ++ adt_Edit_Posn_Stack FI;
+  adt_Edit_To_Stack := <0> ++ adt_Edit_To_Stack;
+  adt_Program := adt_Item;
+  @Goto(< >) .;
+
+
+MW_PROC @Edit_Parent() ==
+  adt_Edit_Program_Stack := <adt_Program> ++ adt_Edit_Program_Stack;
+  adt_Edit_Posn_Stack := <adt_Posn> ++ adt_Edit_Posn_Stack;
+  adt_Edit_To_Stack := <adt_Posn_n> ++ adt_Edit_To_Stack;
+  adt_Program := HEAD(adt_Path_Items);
+  @Goto(<adt_Posn_n>) .;
+
+
+MW_PROC @End_Edit() ==
+  VAR < New := adt_Program, To := HEAD(adt_Edit_To_Stack) >:
+  adt_Program := HEAD(adt_Edit_Program_Stack);
+  @Goto(REVERSE(HEAD(adt_Edit_Posn_Stack)));
+  adt_Edit_Program_Stack := TAIL(adt_Edit_Program_Stack);
+  adt_Edit_Posn_Stack := TAIL(adt_Edit_Posn_Stack);
+  adt_Edit_To_Stack := TAIL(adt_Edit_To_Stack);
+  IF EMPTY?(New)
+    THEN @Clever_Delete
+    ELSE IF @GT(@I) = T_Statement AND @GT(New) = T_Statements
+	   THEN @Splice_Over(@Cs(New))
+	 ELSIF NOT !XC eq?(New, @I)
+	   THEN @Paste_Over(New) FI;
+	 IF To > 0 AND To <= @Size(@I)
+	   THEN @Down_To(To) FI FI ENDVAR .;
+
+
+MW_PROC @Undo_Edit() ==
+  adt_Program := HEAD(adt_Edit_Program_Stack);
+  @Goto(REVERSE(HEAD(adt_Edit_Posn_Stack)));
+  adt_Edit_Program_Stack := TAIL(adt_Edit_Program_Stack);
+  adt_Edit_Posn_Stack := TAIL(adt_Edit_Posn_Stack);
+  adt_Edit_To_Stack := TAIL(adt_Edit_To_Stack) .;
+
+
+
+SKIP

@@ -1,0 +1,45 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Delete_All_Comments_Test () ==
+  IF T_Comment IN @Stat_Types(@I)
+    THEN @Pass
+    ELSE @Fail("The selected item did not include a `COMMENT' statement.") FI .;
+
+
+MW_PROC @Delete_All_Comments_Code(Data) ==
+  C:" Data=y deletes FermaT comments also ";
+  IF Data = "y" OR Data = "Y"
+    THEN FOREACH Statement DO
+           IF @ST(@I) = T_Comment THEN @Delete FI OD
+  ELSIF Data = "f" OR Data = "F"
+    THEN FOREACH Statement DO
+           IF @ST(@I) = T_Comment AND @Starts_With?(@V(@I), "<FermaT>")
+             THEN @Delete  FI OD
+    ELSE FOREACH Statement DO
+           IF @ST(@I) = T_Comment AND NOT @Starts_With?(@V(@I), "<FermaT>")
+             THEN @Delete  FI OD FI .;
+
+
+SKIP
+
+
+

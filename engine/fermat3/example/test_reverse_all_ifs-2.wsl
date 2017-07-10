@@ -1,0 +1,2 @@
+IF x <> 0 THEN y := 2 ELSE y := 1 FI;
+IF s <> 0 THEN t := 2 ELSE s := x * (y + z) FI

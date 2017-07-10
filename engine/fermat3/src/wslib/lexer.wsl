@@ -1,0 +1,349 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" ********************** ";
+C:"  The Lexical Analyser  ";
+C:" ********************** ";
+
+C:" The value returned is the pair <token_type, token_value>.   ";
+C:" If the token type does not have an associated value, < > is ";
+C:" returned in token_value";
+
+C:" A function @yy_next() must be provided, which returns the next  ";
+C:" character in the input stream on each invocation. This function ";
+C:" should strip out newlines, and return the string ``eof'' when   ";
+C:" end-of-file is reached. It should also count lines in the       ";
+C:" variable yy_lineno (used in error reporting).                   ";
+C:"                                                                 ";
+C:" Three lookup tables are used: these are provided externally     ";
+C:" (by the parser):                                                ";
+C:" 1. Key_Table    - a hash table resolving strings to language    ";
+C:"                   keywords                                      ";
+C:" 2. Single_Chars - a list of single-character terminal symbols   ";
+C:" 3. Char_Table   - a hash table mapping the above single-char    ";
+C:"                   terminals to the corresponding lexical token  ";
+
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  The following two functions are the interface to the lexer. @yy_lex()        ";
+C:"  returns the current lexical token and calls @yy_crank() to get the next one  ";
+C:"  from the input stream. @yy_look() returns the current token but does not     ";
+C:"  wind on the lexer - the input stream is not read, and a subsequent call to   ";
+C:"  @yy_lex() or @yy_look() will return the same token.                          ";
+C:"-------------------------------------------------------------------------------";
+
+MW_PROC @yy_lex() ==
+  token1 := yy_sym;
+  token2 := yy_value;
+  @yy_crank();
+@yy_PRINT("@yy_lex symbol = ", yy_sym, " value = ", yy_value) .;
+
+MW_PROC @yy_lex_debug() ==
+  token1 := yy_sym;
+  token2 := yy_value;
+yy_value := "";
+  @yy_crank();
+PRINT("@yy_lex symbol = ", token1, " value = ", token2, " (", yy_sym, " ", yy_value, ")");
+@yy_PRINT("@yy_lex symbol = ", yy_sym, " value = ", yy_value) .;
+
+MW_FUNCT @yy_look() == :
+ SKIP;
+ ( <yy_sym, yy_value> ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  The following routine gets the next complete token from the input stream.    ";
+C:"  The (numerical value corresponding to the) token is left in yy_sym, and      ";
+C:"  the associated value (if any) is left in yy_value.                           ";
+C:"-------------------------------------------------------------------------------"; 
+
+MW_PROC  @yy_crank() ==  
+   C:" Gobble up whitespace between tokens "; 
+   WHILE NOT EMPTY?(Whitespace.(yy_ch)) DO yy_ch := @yy_next() OD ;
+
+   IF NOT EMPTY?(Single_Chars.(yy_ch)) THEN yy_sym := Char_Table.(yy_ch);
+				 yy_ch  := @yy_next()
+   ELSIF yy_ch = "=" THEN 
+		  yy_ch := @yy_next();
+		  IF yy_ch = "=" THEN yy_sym := S_DEFINE;
+				      yy_ch := @yy_next()
+				   ELSE yy_sym := S_EQUAL FI
+   ELSIF yy_ch = ":" THEN 
+		     yy_ch := @yy_next();
+		     IF yy_ch = "="
+		       THEN yy_sym := S_BECOMES;
+		            yy_ch := @yy_next()
+                     ELSIF yy_ch = ":"
+		       THEN yy_sym := S_COLONCOLON;
+			    yy_ch := @yy_next()
+		       ELSE yy_sym := S_COLON FI
+   ELSIF yy_ch = "." THEN yy_ch := @yy_next();
+			  IF    yy_ch = "." THEN yy_sym := S_DOTDOT; 
+						 yy_ch := @yy_next()
+			  ELSIF NOT EMPTY?(Whitespace.(yy_ch)) OR yy_ch = "eof"  THEN 
+						 yy_sym := S_DOTSPACE;
+						 yy_ch := @yy_next()
+			   ELSE yy_sym := S_FULLSTOP FI
+   ELSIF yy_ch = "+" THEN 
+		     yy_ch := @yy_next();
+		     IF yy_ch = "+" THEN yy_sym := S_CONCAT;
+					  yy_ch := @yy_next()
+				     ELSE yy_sym := S_PLUS FI
+   ELSIF yy_ch = "-" THEN 
+		     yy_ch := @yy_next();
+		     IF yy_ch = ">" THEN yy_sym := S_ARROW;
+					  yy_ch := @yy_next()
+				     ELSE yy_sym := S_MINUS FI
+   ELSIF yy_ch = "*" THEN 
+		     yy_ch := @yy_next();
+		     IF yy_ch = "*" THEN yy_sym := S_EXPONENT;
+					  yy_ch := @yy_next()
+				     ELSE yy_sym := S_TIMES FI
+   ELSIF yy_ch = "[" THEN  
+		     yy_ch := @yy_next(); 
+		     IF yy_ch = "]" THEN yy_sym := S_BOX; 
+					  yy_ch := @yy_next()  
+				     ELSE yy_sym := S_LBRACKET FI 
+   ELSIF yy_ch = "<" THEN
+		     yy_ch := @yy_next();
+		     IF yy_ch = ">"    THEN yy_sym := S_NEQ;
+					    yy_ch := @yy_next()
+				       ELSIF yy_ch = "=" THEN yy_sym := S_LEQ;
+					      yy_ch := @yy_next()
+					ELSE yy_sym := S_LANGLE FI
+   ELSIF yy_ch = ">" THEN
+		     yy_ch := @yy_next();
+		     IF yy_ch = "=" THEN yy_sym := S_GEQ;
+					  yy_ch := @yy_next()
+		      ELSE yy_sym := S_RANGLE FI
+   ELSIF yy_ch = "!" THEN yy_ch := @yy_next();
+			  @yy_external_call()
+   ELSIF yy_ch = "~" THEN yy_ch := @yy_next();
+			  @yy_pattern()
+   ELSIF yy_ch = "@" THEN yy_ch := @yy_next();
+                          IF yy_ch = "[" THEN yy_sym := S_MEM; 
+					      yy_ch := @yy_next()
+                                         ELSE yy_sym := S_AT;
+			                      @yy_mw_name() FI
+   ELSIF yy_ch = "C" THEN C:" 2-character peek-ahead to differentiate comment and assign";
+		     VAR <c := @yy_next()>:
+		      IF c = ":" THEN IF @yy_peek() = "="
+					THEN C:" C:= ... ";
+					     yy_sym := S_IDENTIFIER;
+					     yy_value := "C"
+					 ELSE yy_sym := S_COMMENT FI;
+				      yy_ch := c 
+				 ELSIF NOT EMPTY?(Special_Or_White.(c))
+				   THEN yy_sym := S_IDENTIFIER;
+					yy_value := "C";
+					yy_ch := c
+				    ELSE yy_ch := yy_ch ++ c;
+					@yy_Ident(1) FI ENDVAR
+   ELSIF yy_ch = "/" THEN   yy_ch := @yy_next(); 
+			    IF yy_ch = Backslash 
+			     THEN yy_sym := S_INTERSECT;
+				   yy_ch := @yy_next()
+			     ELSE yy_sym := S_SLASH FI
+   ELSIF yy_ch = Backslash THEN yy_ch := @yy_next();
+			  IF yy_ch = "/"  THEN yy_sym := S_UNION;
+						yy_ch := @yy_next()
+					   ELSE yy_sym := S_BACKSLASH FI
+   ELSIF yy_ch = Quote THEN @yy_String()
+   ELSIF NOT EMPTY?(Digits.(yy_ch)) THEN @yy_Number()
+   ELSIF yy_ch = "'" THEN yy_ch := @yy_next();
+                          yy_sym := S_PRIME
+     ELSE @yy_Ident(1) FI.;
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:" Proc to scan !? or !X? ";
+C:"-------------------------------------------------------------------------------";
+MW_PROC @yy_external_call() ==
+   IF yy_ch = "P" THEN C:" !P";       
+      yy_sym := S_PLINK_P
+   ELSIF yy_ch = "X" THEN
+      yy_ch := @yy_next();
+      IF    yy_ch = "P" THEN yy_sym := S_PLINK_XP
+      ELSIF yy_ch = "F" THEN yy_sym := S_PLINK_XF
+      ELSIF yy_ch = "C" THEN yy_sym := S_PLINK_XC
+       ELSE yy_sym := S_INVALID; yy_value := "!X"++yy_ch FI
+    ELSE yy_sym := S_INVALID; yy_value := "!X"++yy_ch FI;
+   yy_ch := @yy_next() .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:" Proc. to scan for ~?, ~+ or ~* ";
+C:" ~?=var, ~*=var, ~?(expn) and ~*(expn) are the new interpolation types ";
+C:"-------------------------------------------------------------------------------";
+
+MW_PROC @yy_pattern() ==
+ yy_value := "";
+ IF yy_ch = "?"
+   THEN IF @yy_peek() = "("
+          THEN yy_sym := S_INT_ONE
+        ELSIF @yy_peek() = "="
+	  THEN C:" step over the = ";
+	       yy_ch := @yy_next;
+	       yy_sym := S_VAR_ONE
+	  ELSE yy_sym := S_PAT_ONE FI
+ ELSIF yy_ch = "+"
+   THEN yy_sym := S_PAT_MANY
+ ELSIF yy_ch = "*"
+   THEN IF @yy_peek() = "("
+          THEN yy_sym := S_INT_ANY
+        ELSIF @yy_peek() = "="
+	  THEN C:" step over the = ";
+	       yy_ch := @yy_next;
+	       yy_sym := S_VAR_ANY
+	  ELSE yy_sym := S_PAT_ANY FI
+   ELSE yy_sym := S_INVALID;
+        yy_value := "~"++yy_ch FI;
+ yy_ch := @yy_next() .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:" Proc. to scan a mw_proc, mw_funct or mw_bfunct name (following a `@')         ";
+C:"-------------------------------------------------------------------------------";
+
+MW_PROC @yy_mw_name() ==
+   WHILE NOT EMPTY?(Whitespace.(yy_ch)) DO yy_ch := @yy_next() OD;
+   IF yy_ch = "~"
+     THEN C:" @~?foo is an S_AT_PAT_ONE lexeme ";
+          yy_ch := @yy_next;
+	  IF yy_ch <> "?"
+	    THEN yy_sym := S_INVALID
+	    ELSE yy_sym := S_AT_PAT_ONE FI FI;
+   @yy_Ident(0) .;
+
+C:"-------------------------------------------------------------------------------";
+C:" Scan an identifier  ";
+C:" (in fact, the default for anything not recognised as something else)";
+C:" We look up whatever we find in the hash table Key_Table afterwards, ";
+C:" to see if it is a reserved word";
+C:"-------------------------------------------------------------------------------";
+
+MW_PROC @yy_Ident(resolve_keyword) ==  
+   yy_value := yy_ch;
+   yy_ch := @yy_next();
+   C:" Gobble up characters until we reach a special, a space or EOF ";
+   WHILE EMPTY?(Special_Or_White.(yy_ch)) DO
+      yy_value :=  yy_value ++ yy_ch;
+      yy_ch := @yy_next() OD;
+
+   IF resolve_keyword = 1 THEN
+      C:" Look up the assembled `identifier' to see if it is a reserved word";
+      yy_sym := Key_Table.(yy_value);
+      IF yy_sym <> < > THEN yy_value := < > 
+	ELSE yy_sym := S_IDENTIFIER FI FI .;
+
+C:"-------------------------------------------------------------------------------";
+C:" Scan a number ";
+C:"-------------------------------------------------------------------------------";
+
+
+
+MW_PROC @yy_Number() ==
+ VAR <div:=1, str := yy_ch, exponent := 0, exp_sgn := 1 >:
+   yy_ch := @yy_next();
+   WHILE NOT EMPTY?(Digits.(yy_ch)) DO
+       str := str ++ yy_ch;
+       yy_ch := @yy_next() OD;
+   yy_value := @String_To_Num(str);
+   str := "";
+   IF yy_ch = "."  AND @yy_peek() <> "." THEN
+      yy_ch := @yy_next();
+      WHILE NOT EMPTY?(Digits.(yy_ch)) DO
+	  str := str ++ yy_ch;
+	  div := div * 10;
+	  yy_ch := @yy_next OD;
+      yy_value := yy_value + @String_To_Num(str)/div FI;
+   IF yy_ch = "e" THEN
+      yy_ch := @yy_next();
+      IF yy_ch = "-" THEN yy_ch := @yy_next;
+			  exp_sgn := -1
+      ELSIF yy_ch = "+" THEN yy_ch := @yy_next() FI;
+      str := "";      
+      WHILE NOT EMPTY?(Digits.(yy_ch)) DO
+	 str := str ++ yy_ch;
+	 yy_ch := @yy_next() OD;
+      exponent := @String_To_Num(str);
+      IF exponent <> 0 THEN 
+	 exponent := exponent * exp_sgn;
+	 yy_value := yy_value * (10**exponent) FI FI;
+
+   yy_sym := S_NUMBER ENDVAR .;
+
+C:"-------------------------------------------------------------------------------"; 
+C:"  Scan a string                                                                ";
+C:"-------------------------------------------------------------------------------";
+
+MW_PROC @yy_String() ==
+   yy_ch := @yy_next();
+   yy_value := "";
+   WHILE yy_ch <> Quote AND yy_ch <> "eof" DO
+      IF yy_ch = Backslash
+        THEN yy_ch := @yy_next();
+	     C:" Code here to process backslashed characters " FI;
+      yy_value := yy_value ++ yy_ch; 
+      yy_ch := @yy_next() OD; 
+   IF yy_ch = "eof"
+    THEN PRINT("EOF while reading string ", yy_value) 
+    ELSE yy_ch := @yy_next() FI; 
+   yy_sym := S_STRING; SKIP .; 
+   
+C:"-------------------------------------------------------------------------------";
+
+
+C:"-------------------------------------------------------------------------------";
+C:"   The main input routine - returns the next character from the input file.    ";
+C:"   A count of lines is kept in yy_lineno. The string `eol' is returned at      ";
+C:"   end-of-line. The current line is held in yy_line. The string ``eof'' is     ";
+C:"   returned when end-of-file is encountered (this condition is detected by     ";
+C:"   an external Lisp routine). The last input line must be terminated by a      ";
+C:"   newline because of the behaviour of the underlying lisp readline function   ";
+C:"-------------------------------------------------------------------------------";
+
+
+
+MW_FUNCT @yy_next() ==
+  VAR < c := @Read_Char(Input_Port) >:
+  IF @EOF?(c)
+    THEN c := "eof"
+  ELSIF @EOL?(c)
+    THEN c := Newline; yy_lineno := yy_lineno + 1
+    ELSE c := @String(c) FI;
+  (c) .;
+	 
+
+MW_FUNCT @yy_peek() ==
+  VAR < c := @Peek_Char(Input_Port) >:
+  IF @EOF?(c)
+    THEN c := "eof"
+    ELSE c := @String(c) FI;
+  (c) .;
+
+
+
+SKIP
+

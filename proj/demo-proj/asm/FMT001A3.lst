@@ -1,0 +1,351 @@
+  Page    1                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+  ESD NAME     TYPE ADDRESS LENGTH
+ 0002 FMT001A3  SD   000000 000378
+ 0003 MF370EFO  ER                
+ 0004 MF370EFC  ER                
+ 0005 FMT001A4  ER                
+ Page    2                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+    LOC DATA               ADR1   ADR2   LINE LABEL    OP       OPERANDS
+                                            1 *********************************************************************
+                                            2 *  FMT001A3  TEST PROGRAM - CALLED FUNCTION                         *
+                                            3 *********************************************************************
+                                            4 *
+                                            5 *        PRINT NOGEN                                                   
+ 000000                                     6          REGEQU
+ 000000                       00000000      7+R0       EQU   0
+ 000000                       00000001      8+R1       EQU   1
+ 000000                       00000002      9+R2       EQU   2
+ 000000                       00000003     10+R3       EQU   3
+ 000000                       00000004     11+R4       EQU   4
+ 000000                       00000005     12+R5       EQU   5
+ 000000                       00000006     13+R6       EQU   6
+ 000000                       00000007     14+R7       EQU   7
+ 000000                       00000008     15+R8       EQU   8
+ 000000                       00000009     16+R9       EQU   9
+ 000000                       0000000A     17+R10      EQU   10
+ 000000                       0000000B     18+R11      EQU   11
+ 000000                       0000000C     19+R12      EQU   12
+ 000000                       0000000D     20+R13      EQU   13
+ 000000                       0000000E     21+R14      EQU   14
+ 000000                       0000000F     22+R15      EQU   15
+ 000000                                    23 FMT001A3 CSECT
+ 000000                                    24          RMODE 24
+ 000000 90ECD00C                00000C     25          STM   R14,R12,12(R13) 
+ 000004 183F                               26          LR    R3,R15 
+ 000006                                    27          USING FMT001A3,R3 
+ 000006 50D03128                000128     28          ST    R13,WSAVE+4 
+ 00000A 41E03124                000124     29          LA    R14,WSAVE 
+ 00000E 50ED0008                000008     30          ST    R14,8(R13) 
+ 000012 41D03124                000124     31          LA    R13,WSAVE 
+                                           32 *
+ 000016                                    33          OPEN  (PRINT2,(OUTPUT)) 
+ 000016 0700                               34+         CNOP  0,4
+ 000018 45103020                000020     35+         BAL   1,*+8
+ 00001C 8F                                 36+         DC    AL1(143)
+ 00001D 000314                             37+         DC    AL3(PRINT2)
+ 000020 41000000                000000     38+         LA    0,0
+ 000024 0700                               39+         CNOP  2,4                 DSH2
+ 000026 58F03030                000030     40+         L     15,*+10             DSH2
+ 00002A 41E03034                000034     41+         LA    14,*+10             DSH2
+ 00002E 07FF                               42+         BR    15                  DSH2
+ 000030 00000000                           43+         DC    V(MF370EFO)         DSH2
+ 000034                                    44          DXPUT WREP1 
+ 000034 D20D31713211     000171 000211     45+         MVC   WPRT(L'WREP1),WREP1 
+ 00003A                                    47+         DC    0H'0'
+ 00003A 41103314                000314     49+         LA    1,PRINT2       * MVS VERSION                           
+ 00003E 41003171                000171     51+         LA    0,WPRT       * MVS VERSION                           
+ 000042 58F01040                000040     52+         L     15,64(0,1)  GET MF370EFO QSAM VECTOR TABLE ADDRESS
+ 000046 45EF0004                000004     53+         BAL   14,4(15)    GET=+0, PUT=+4, PUTX=+8, PUTX OUT=+12
+ 00004A D24F317131C1     000171 0001C1     54+         MVC   WPRT,WSPACES 
+ 000050                                    55          DXPUT WREP2 
+ 000050 D2003171321F     000171 00021F     56+         MVC   WPRT(L'WREP2),WREP2 
+ 000056                                    58+         DC    0H'0'
+ 000056 41103314                000314     60+         LA    1,PRINT2       * MVS VERSION                           
+ Page    3                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+    LOC DATA               ADR1   ADR2   LINE LABEL    OP       OPERANDS
+ 00005A 41003171                000171     62+         LA    0,WPRT       * MVS VERSION                           
+ 00005E 58F01040                000040     63+         L     15,64(0,1)  GET MF370EFO QSAM VECTOR TABLE ADDRESS
+ 000062 45EF0004                000004     64+         BAL   14,4(15)    GET=+0, PUT=+4, PUTX=+8, PUTX OUT=+12
+ 000066 D24F317131C1     000171 0001C1     65+         MVC   WPRT,WSPACES 
+ 00006C                                    66          DXPUT WREP3 
+ 00006C D21331713220     000171 000220     67+         MVC   WPRT(L'WREP3),WREP3 
+ 000072                                    69+         DC    0H'0'
+ 000072 41103314                000314     71+         LA    1,PRINT2       * MVS VERSION                           
+ 000076 41003171                000171     73+         LA    0,WPRT       * MVS VERSION                           
+ 00007A 58F01040                000040     74+         L     15,64(0,1)  GET MF370EFO QSAM VECTOR TABLE ADDRESS
+ 00007E 45EF0004                000004     75+         BAL   14,4(15)    GET=+0, PUT=+4, PUTX=+8, PUTX OUT=+12
+ 000082 D24F317131C1     000171 0001C1     76+         MVC   WPRT,WSPACES 
+ 000088 D2053234330C     000234 00030C     77          MVC   WXDAT1,=C'AAAAAA' 
+ 00008E D205323C3306     00023C 000306     78          MVC   WXDAT2,=C'BBBBBB' 
+ 000094 D20532443300     000244 000300     79          MVC   WXDAT3,=C'CCCCCC' 
+ 00009A D205324C32FA     00024C 0002FA     80          MVC   WXDAT4,=C'DDDDDD' 
+ 0000A0 D205325432F4     000254 0002F4     81          MVC   WXDAT5,=C'EEEEEE' 
+ 0000A6 D205325C32EE     00025C 0002EE     82          MVC   WXDAT6,=C'FFFFFF' 
+ 0000AC D205326432E8     000264 0002E8     83          MVC   WXDAT7,=C'GGGGGG' 
+ 0000B2 D205326C32E2     00026C 0002E2     84          MVC   WXDAT8,=C'HHHHHH' 
+ 0000B8                                    85          DXPUT WREP4 
+ 0000B8 D24F31713234     000171 000234     86+         MVC   WPRT(L'WREP4),WREP4 
+ 0000BE                                    88+         DC    0H'0'
+ 0000BE 41103314                000314     90+         LA    1,PRINT2       * MVS VERSION                           
+ 0000C2 41003171                000171     92+         LA    0,WPRT       * MVS VERSION                           
+ 0000C6 58F01040                000040     93+         L     15,64(0,1)  GET MF370EFO QSAM VECTOR TABLE ADDRESS
+ 0000CA 45EF0004                000004     94+         BAL   14,4(15)    GET=+0, PUT=+4, PUTX=+8, PUTX OUT=+12
+ 0000CE D24F317131C1     000171 0001C1     95+         MVC   WPRT,WSPACES 
+ 0000D4 F843316C3274     00016C 000274     96          ZAP   WTOTAL,WYAMT1 
+ 0000DA FA43316C327B     00016C 00027B     97          AP    WTOTAL,WYAMT2 
+ 0000E0 FC42316C3278     00016C 000278     98          MP    WTOTAL,WYRATE 
+ 0000E6 FD41316C32E0     00016C 0002E0     99          DP    WTOTAL,=P'100' 
+ 0000EC                                   100          CLOSE PRINT2 
+ 0000EC                                   101+         CNOP  0,4
+ 0000EC 451030F4                0000F4    102+         BAL   1,*+8
+ 0000F0 80                                103+         DC    AL1(128)
+ 0000F1 000314                            104+         DC    AL3(PRINT2)
+ 0000F4 41000000                000000    105+         LA    0,0
+ 0000F8 0700                              106+         CNOP  2,4                 DSH2
+ 0000FA 58F03104                000104    107+         L     15,*+10             DSH2
+ 0000FE 41E03108                000108    108+         LA    14,*+10             DSH2
+ 000102 07FF                              109+         BR    15                  DSH2
+ 000104 00000000                          110+         DC    V(MF370EFC)         DSH2
+                                          111 *
+ 000108                                   112          CALL  FMT001A4 
+ 000108                                   113+         DS    0H
+ 000108                                   114+         CNOP  0,4
+ 000108 45F03110                000110    115+         BAL   15,*+8
+ 00010C 00000000                          116+         DC    V(FMT001A4)
+ 000110 58FF0000                000000    117+         L     15,0(15)
+ 000114 05EF                              118+         BALR  14,15
+                                          119 *
+ 000116 58D03128                000128    120          L     R13,WSAVE+4 
+ 00011A 98ECD00C                00000C    121          LM    R14,R12,12(R13) 
+ 00011E 1FFF                              122          SLR   R15,R15 
+ Page    4                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+    LOC DATA               ADR1   ADR2   LINE LABEL    OP       OPERANDS
+ 000120 07FE                              123          BR    R14 
+                                          124 *
+ 000124                                   125 WSAVE    DS    18F 
+ 00016C 000000000C                        126 WTOTAL   DC    PL5'0'
+ 000171 4040404040404040                  127 WPRT     DC    CL80' ' 
+ 0001C1 4040404040404040                  128 WSPACES  DC    CL80' ' 
+ 000211 D9C5D7D6D9E340C8                  129 WREP1    DC    CL14'REPORT HEADING' 
+ 00021F 40                                130 WREP2    DC    CL1' ' 
+ 000220 C6C9D9E2E340D3C9                  131 WREP3    DC    CL20'FIRST LINE OF REPORT' 
+ 000234 4040404040404040                  132 WREP4    DC    CL80' ' 
+ 000234                                   133          ORG   WREP4 
+ 000234                                   134          COPY  FMT001W1
+ 000234                                   135 WXDAT1   DS    CL6                  DATE 1
+ 00023A                                   136          DS    CL2
+ 00023C                                   137 WXENT2   DS    0CL8                 ENTRY A 
+ 00023C                                   138 WXDAT2   DS    CL6                  DATE 2
+ 000242                                   139          DS    CL2
+ 000244                                   140 WXDAT3   DS    CL6                  DATE 3
+ 00024A                                   141          DS    CL2
+ 00024C                                   142 WXDAT4   DS    CL6                  DATE 4
+ 000252                                   143          DS    CL2
+ 000254                                   144 WXDAT5   DS    CL6
+ 00025A                                   145          DS    CL2
+ 00025C                                   146 WXDAT6   DS    CL6
+ 000262                                   147          DS    CL2
+ 000264                                   148 WXDAT7   DS    CL6
+ 00026A                                   149          DS    CL2
+ 00026C                                   150 WXDAT8   DS    CL6
+ 000272                                   151          DS    CL2
+ 000274                                   152 WYAMT1   DS    PL4                  INTEREST
+ 000278                                   153 WYRATE   DS    PL3                  INTEREST RATE
+ 00027B                                   154 WYAMT2   DS    PL4                  AMOUNT
+ 000284                                   155          ORG
+ 000284                                   156 WDATA    DMAC  WK,WJ,WL
+ 000284                       00000284    157+WDATA    EQU   *
+ 000284 0000000C                          158+WKTOT1   DC    PL4'0'                 AMOUNT
+ 000288 0000000C                          159+WKTOT2   DC    PL4'0'                 RATE
+ 00028C 0000000C                          160+WKTOT3   DC    PL4'0'                 CREDIT
+ 000290 0000000C                          161+WKTOT4   DC    PL4'0'                 AMOUNT
+ 000294 0000000C                          162+WKTOT5   DC    PL4'0'
+ 000298 0000000C                          164+WJTOT1   DC    PL4'0'                 AMOUNT
+ 00029C 0000000C                          165+WJTOT2   DC    PL4'0'                 RATE
+ 0002A0 0000000C                          166+WJTOT3   DC    PL4'0'                 CREDIT
+ 0002A4 0000000C                          167+WJTOT4   DC    PL4'0'                 AMOUNT
+ 0002A8 0000000C                          168+WJTOT5   DC    PL4'0'
+ 0002AC 0000000C                          170+WLTOT1   DC    PL4'0'                 AMOUNT
+ 0002B0 0000000C                          171+WLTOT2   DC    PL4'0'                 RATE
+ 0002B4 0000000C                          172+WLTOT3   DC    PL4'0'                 CREDIT
+ 0002B8 0000000C                          173+WLTOT4   DC    PL4'0'                 AMOUNT
+ 0002BC 0000000C                          174+WLTOT5   DC    PL4'0'
+ 0002C0 0000000C                          175 WNEW1    DC    PL4'0'
+ 0002C4 9999999C                          176 WNEW9    DC    PL4'9999999'
+ 0002C8                                   177          DMAC02 KK
+ 0002C8 0000000C                          178+KKTOT1   DC    PL4'0'                 AMOUNT
+ 0002CC 0000000C                          179+KKTOT2   DC    PL4'0'                 RATE
+ Page    5                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+    LOC DATA               ADR1   ADR2   LINE LABEL    OP       OPERANDS
+ 0002D0 0000000C                          180+KKTOT3   DC    PL4'0'                 CREDIT
+ 0002D4 0000000C                          181+KKTOT4   DC    PL4'0'                 AMOUNT
+ 0002D8 0000000C                          182+KKTOT5   DC    PL4'0'
+ 0002DC 0C                                183 WKG      DC    P'0'
+                                          184 *
+ 0002DD 000000                            185 
+ 0002E0                                   185          LTORG
+ 0002E0 100C                              185                =P'100' 
+ 0002E2 C8C8C8C8C8C8                      185                =C'HHHHHH' 
+ 0002E8 C7C7C7C7C7C7                      185                =C'GGGGGG' 
+ 0002EE C6C6C6C6C6C6                      185                =C'FFFFFF' 
+ 0002F4 C5C5C5C5C5C5                      185                =C'EEEEEE' 
+ 0002FA C4C4C4C4C4C4                      185                =C'DDDDDD' 
+ 000300 C3C3C3C3C3C3                      185                =C'CCCCCC' 
+ 000306 C2C2C2C2C2C2                      185                =C'BBBBBB' 
+ 00030C C1C1C1C1C1C1                      185                =C'AAAAAA' 
+                                          186 *
+ 000312                                   187 PRINT2   DCB   DDNAME=PRINT2,DSORG=PS,MACRF=PM 
+ 000314                                   188+PRINT2   DS    0F
+ 000314 0000000000000000                  189+         DC    BL12'0'                 * FDAD, DVTBL       DSH5
+ 000320 00000000                          190+         DC    A(0)                * DCBE IF ANY       DSH5
+ 000324 00000000                          191+         DC    A(0)                    * KEYLE,DEVT,TRBAL
+                                          192+*
+ 000328 00                                193+         DC    AL1(0)             * BUFNO
+ 000329 000001                            194+         DC    AL3(1)             * BUFCB
+ 00032C 0000                              195+         DC    AL2(0)              * BUFL
+ 00032E 4000                              196+         DC    BL2'0100000000000000'            * DSORG
+                                          197+*
+ 000330 00000001                          198+         DC    A(1)                    * IOBAD
+                                          199+*                        FOUNDATION EXTENSION
+ 000334 00                                200+         DC    BL1'00000000'           * BFTEK,BFLN,HIARCHY
+ 000335 000001                            201+         DC    AL3(1)             * EODAD
+ 000338 C0                                202+         DC    BL1'11000000'            * RECFM
+ 000339 000000                            203+         DC    AL3(0)             * EXLST
+                                          204+*                        FOUNDATION BLOCK
+ 00033C D7D9C9D5E3F24040                  205+         DC    CL8'PRINT2'                * DDNAME
+ 000344 02                                206+         DC    BL1'00000010'           * OFLGS
+ 000345 00                                207+         DC    BL1'00000000'           * IFLG
+ 000346 0050                              208+         DC    BL2'0000000001010000'            * MACRF
+                                          209+*                        BSAM-BPAM-QSAM INTERFACE
+ 000348 00                                210+         DC    BL1'00000000'            * OPTCD
+ 000349 000001                            211+         DC    FL3'1'                  * CHECK, GERR, PERR
+ 00034C 00000001                          212+         DC    A(1)               * SYNAD
+ 000350 0000                              213+         DC    H'0'                    * CIND1, CIND2
+ 000352 0000                              214+         DC    AL2(0)           * BLKSIZE
+ 000354 00000000                          215+         DC    F'0'                    * WCPO, WCPL, OFFSR, OFFSW
+ 000358 00000001                          216+         DC    A(1)                    * IOBA
+ 00035C 00                                217+         DC    FL1'0'                  * NCP
+ 00035D 000001                            218+         DC    FL3'1'                  * EOBR, EOBAD
+                                          219+*                        QSAM INTERFACE
+ 000360 00000001                          220+         DC    A(1)                    * RECAD
+ 000364 0000                              221+         DC    H'0'                    * QSWS
+ 000366 0000                              222+         DC    AL2(0)             * LRECL
+ 000368 00                                223+         DC    BL1'00000000'           * EROPT
+ 000369 000001                            224+         DC    FL3'1'                  * CNTRL
+ Page    6                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+    LOC DATA               ADR1   ADR2   LINE LABEL    OP       OPERANDS
+ 00036C 00000000                          225+         DC    F'0'                    * PRECL
+ 000370 00000001                          226+         DC    A(1)                    * EOB
+                                          227 *
+ 000000                                   228          END
+ Page    7                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+ SEG   ADDRESS  LENGTH SIGN  RLD
+ 0002  00001D   03     +    0002
+ 0002  000030   04     +    0003
+ 0002  0000F1   03     +    0002
+ 0002  000104   04     +    0004
+ 0002  00010C   04     +    0005
+ Page    8                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+ SYMBOL       VALUE LENGTH TYPE  EID   DEF  XREF
+ $$CSECT   00000000 000000  CST 0001     7(3/3)
+ FMT001A3  00000000 000378  CST 0002    23(1/13) 27(1/17)
+ FMT001A4  00000000 000001  EXT 0005       116(8/159)
+ KKTOT1    000002C8 000004  REL 0002   178(11/3)
+ KKTOT2    000002CC 000004  REL 0002   179(11/4)
+ KKTOT3    000002D0 000004  REL 0002   180(11/5)
+ KKTOT4    000002D4 000004  REL 0002   181(11/6)
+ KKTOT5    000002D8 000004  REL 0002   182(11/7)
+ MF370EFC  00000000 000001  EXT 0004       110(7/272)
+ MF370EFO  00000000 000001  EXT 0003       43(4/299)
+ PRINT2    00000314 000004  REL 0002   188(12/384) 37(4/186) 49(6/50) 60(6/50) 71(6/50) 90(6/50)
+ PRINT2    00000314 000004  REL 0002   188 104(7/155) 187(1/68)
+ R0        00000000 000001  ABS 0000     7(3/3)
+ R1        00000001 000001  ABS 0000     8(3/4)
+ R10       0000000A 000001  ABS 0000    17(3/13)
+ R11       0000000B 000001  ABS 0000    18(3/14)
+ R12       0000000C 000001  ABS 0000    19(3/15) 25(1/15) 121(1/45)
+ R13       0000000D 000001  ABS 0000    20(3/16) 25(1/15) 28(1/18) 30(1/20) 31(1/21) 120(1/44)
+ R13       0000000D 000001  ABS 0000    20 121(1/45)
+ R14       0000000E 000001  ABS 0000    21(3/17) 25(1/15) 29(1/19) 30(1/20) 121(1/45) 123(1/47)
+ R15       0000000F 000001  ABS 0000    22(3/18) 26(1/16) 122(1/46)
+ R2        00000002 000001  ABS 0000     9(3/5)
+ R3        00000003 000001  ABS 0000    10(3/6) 26(1/16) 27(1/17)
+ R4        00000004 000001  ABS 0000    11(3/7)
+ R5        00000005 000001  ABS 0000    12(3/8)
+ R6        00000006 000001  ABS 0000    13(3/9)
+ R7        00000007 000001  ABS 0000    14(3/10)
+ R8        00000008 000001  ABS 0000    15(3/11)
+ R9        00000009 000001  ABS 0000    16(3/12)
+ WDATA     00000284 000001  REL 0002   157(9/3) 156(1/60)
+ WJTOT1    00000298 000004  REL 0002   164(10/3)
+ WJTOT2    0000029C 000004  REL 0002   165(10/4)
+ WJTOT3    000002A0 000004  REL 0002   166(10/5)
+ WJTOT4    000002A4 000004  REL 0002   167(10/6)
+ WJTOT5    000002A8 000004  REL 0002   168(10/7)
+ WKG       000002DC 000001  REL 0002   183(1/64)
+ WKTOT1    00000284 000004  REL 0002   158(9/4)
+ WKTOT2    00000288 000004  REL 0002   159(9/5)
+ WKTOT3    0000028C 000004  REL 0002   160(9/6)
+ WKTOT4    00000290 000004  REL 0002   161(9/7)
+ WKTOT5    00000294 000004  REL 0002   162(9/8)
+ WLTOT1    000002AC 000004  REL 0002   170(11/3)
+ WLTOT2    000002B0 000004  REL 0002   171(11/4)
+ WLTOT3    000002B4 000004  REL 0002   172(11/5)
+ WLTOT4    000002B8 000004  REL 0002   173(11/6)
+ WLTOT5    000002BC 000004  REL 0002   174(11/7)
+ WNEW1     000002C0 000004  REL 0002   175(1/61)
+ WNEW9     000002C4 000004  REL 0002   176(1/62)
+ WPRT      00000171 000050  REL 0002   127(1/51) 45(1/7) 51(6/50) 54(1/9) 56(1/7) 62(6/50) 65(1/9)
+ WPRT      00000171 000050  REL 0002   127 67(1/7) 73(6/50) 76(1/9) 86(1/7) 92(6/50) 95(1/9)
+ WREP1     00000211 00000E  REL 0002   129(1/53) 45(1/7)
+ WREP2     0000021F 000001  REL 0002   130(1/54) 56(1/7)
+ WREP3     00000220 000014  REL 0002   131(1/55) 67(1/7)
+ WREP4     00000234 000050  REL 0002   132(1/56) 86(1/7) 133(1/57)
+ WSAVE     00000124 000004  REL 0002   125(1/49) 28(1/18) 29(1/19) 31(1/21) 120(1/44)
+ Page    9                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+ SYMBOL       VALUE LENGTH TYPE  EID   DEF  XREF
+ WSPACES   000001C1 000050  REL 0002   128(1/52) 54(1/9) 65(1/9) 76(1/9) 95(1/9)
+ WTOTAL    0000016C 000005  REL 0002   126(1/50) 96(1/36) 97(1/37) 98(1/38) 99(1/39)
+ WXDAT1    00000234 000006  REL 0002   135(2/1) 77(1/27)
+ WXDAT2    0000023C 000006  REL 0002   138(2/4) 78(1/28)
+ WXDAT3    00000244 000006  REL 0002   140(2/6) 79(1/29)
+ WXDAT4    0000024C 000006  REL 0002   142(2/8) 80(1/30)
+ WXDAT5    00000254 000006  REL 0002   144(2/10) 81(1/31)
+ WXDAT6    0000025C 000006  REL 0002   146(2/12) 82(1/32)
+ WXDAT7    00000264 000006  REL 0002   148(2/14) 83(1/33)
+ WXDAT8    0000026C 000006  REL 0002   150(2/16) 84(1/34)
+ WXENT2    0000023C 000008  REL 0002   137(2/3)
+ WYAMT1    00000274 000004  REL 0002   152(2/18) 96(1/36)
+ WYAMT2    0000027B 000004  REL 0002   154(2/20) 97(1/37)
+ WYRATE    00000278 000003  REL 0002   153(2/19) 98(1/38)
+ Page   10                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+ LITERAL      VALUE LENGTH TYPE  EID   DEF  XREF
+ =C'AAAAAA'
+           0000030C 000006  REL 0002   185(1/66) 77(1/27)
+ =C'BBBBBB'
+           00000306 000006  REL 0002   185(1/66) 78(1/28)
+ =C'CCCCCC'
+           00000300 000006  REL 0002   185(1/66) 79(1/29)
+ =C'DDDDDD'
+           000002FA 000006  REL 0002   185(1/66) 80(1/30)
+ =C'EEEEEE'
+           000002F4 000006  REL 0002   185(1/66) 81(1/31)
+ =C'FFFFFF'
+           000002EE 000006  REL 0002   185(1/66) 82(1/32)
+ =C'GGGGGG'
+           000002E8 000006  REL 0002   185(1/66) 83(1/33)
+ =C'HHHHHH'
+           000002E2 000006  REL 0002   185(1/66) 84(1/34)
+ =P'100'   000002E0 000002  REL 0002   185(1/66) 99(1/39)
+ 
+MM370ASM      0 errors found - end of processing

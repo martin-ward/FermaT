@@ -1,0 +1,142 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Rename_Defns'",
+	    (FILL Statements
+
+Inc(foo VAR foo);
+BEGIN
+  sum := 0;
+  BEGIN
+    Inc(sum VAR sum);
+  WHERE
+    PROC Inc(z VAR z) == z := z + 1 END
+  END;
+  Inc(sum VAR sum);
+  PRINT("sum = ", sum)
+WHERE
+  PROC Inc(z VAR z) ==
+    BEGIN
+      Inc(sum VAR sum);
+    WHERE
+      PROC Inc(z VAR z) == z := z + 1 END
+    END;
+    z := z + 1 END
+  PROC A(foo VAR foo) == Inc(foo VAR foo) END
+END;
+Inc(foo VAR foo);
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Rename_Defns,
+	    < >,
+	    (FILL Statements
+
+Inc(foo VAR foo);
+BEGIN
+  sum := 0;
+  BEGIN
+    Inc__2(sum VAR sum)
+  WHERE
+    PROC Inc__2(z VAR z) == z := z + 1 END
+  END;
+  Inc__1(sum VAR sum);
+  PRINT("sum = ", sum)
+WHERE
+  PROC Inc__1(z VAR z) ==
+    BEGIN
+      Inc__3(sum VAR sum)
+    WHERE
+      PROC Inc__3(z VAR z) == z := z + 1 END
+    END;
+    z := z + 1 END
+  PROC A__1(foo VAR foo) == Inc__1(foo VAR foo) END
+END;
+Inc(foo VAR foo);
+SKIP
+
+ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Rename_Defns'",
+	    (FILL Statements
+
+Inc(foo VAR foo);
+BEGIN
+  sum := 0;
+  BEGIN
+    Inc(sum VAR sum);
+  WHERE
+    PROC Inc(z VAR z) == z := z + 1 END
+  END;
+  Inc(sum VAR sum);
+  PRINT("sum = ", sum)
+WHERE
+  PROC Inc(z VAR z) ==
+    BEGIN
+      Inc(sum VAR sum);
+      Inc__3(sum VAR sum);
+    WHERE
+      PROC Inc(z VAR z) == z := z + 1 END
+    END;
+    z := z + 1 END
+  PROC A(foo VAR foo) == Inc(foo VAR foo) END
+END;
+Inc(foo VAR foo);
+Inc__2(foo VAR foo);
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Rename_Defns,
+	    < >,
+	    (FILL Statements
+
+Inc(foo VAR foo);
+BEGIN
+  sum := 0;
+  BEGIN
+    _Inc__2(sum VAR sum)
+  WHERE
+    PROC _Inc__2(z VAR z) == z := z + 1 END
+  END;
+  Inc__1(sum VAR sum);
+  PRINT("sum = ", sum)
+WHERE
+  PROC Inc__1(z VAR z) ==
+    BEGIN
+      _Inc__3(sum VAR sum); Inc__3(sum VAR sum)
+    WHERE
+      PROC _Inc__3(z VAR z) == z := z + 1 END
+    END;
+    z := z + 1 END
+  PROC A__1(foo VAR foo) == Inc__1(foo VAR foo) END
+END;
+Inc(foo VAR foo);
+Inc__2(foo VAR foo);
+SKIP
+
+ENDFILL));
+
+
+
+SKIP
+

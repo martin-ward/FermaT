@@ -1,0 +1,471 @@
+
+VAR < file := "002-simplify: ", fail := < >, n := "",
+      a := < >, b := < > >: 
+
+PRINT("Testing Maths Simplifier...");
+
+n := "001";
+a := @Simplify_Cond(FILL Condition ABS(x) <> 0 ENDFILL);
+b := FILL Condition x <> 0 ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "002";
+a := @Simplify_Cond(FILL Condition x+1 <= y+z AND x+1 <> y+z ENDFILL);
+b := FILL Condition x + 1 < y + z ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE @PP_Item(a, 80, "");
+       PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "003";
+a := @Simplify_Cond(FILL Condition x < y OR x <= y ENDFILL);
+b := FILL Condition x <= y ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "004";
+a := @Simplify_Cond(FILL Condition EVEN?(x) AND ODD?(x) ENDFILL);
+b := FILL Condition FALSE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "005";
+a := @Simplify_Cond(FILL Condition EVEN?(x) OR ODD?(x) ENDFILL);
+b := FILL Condition TRUE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "006";
+a := @Simplify_Cond(FILL Condition "foo" = "foo" ENDFILL);
+b := FILL Condition TRUE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "007";
+a := @Simplify_Cond(FILL Condition "foo" <> "foo" ENDFILL);
+b := FILL Condition FALSE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "008";
+a := @Simplify_Cond(FILL Condition "foo" = "bar" ENDFILL);
+b := FILL Condition FALSE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "009";
+a := @Simplify_Cond(FILL Condition "foo" <> "bar" ENDFILL);
+b := FILL Condition TRUE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "010";
+a := @Simplify_Expn(FILL Expression <1, 2, 3, 4> \ <1, 3> \ <4> ENDFILL);
+b := FILL Expression <2> ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "011";
+a := @Simplify_Cond(FILL Condition NOT(x=y AND NOT(y=z))
+				     OR NOT(x<0)
+				     OR NOT(w>0)
+				     OR v>0 ENDFILL);
+b := FILL Condition x <> y OR y = z OR v > 0 OR w <= 0 OR x >= 0 ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "012";
+C:" Second simplify is to flatten the nesting introduced by the parser: ";
+a := @Simplify_Expn(FILL Expression (a+b+0+c+0+4+a+3+a+b) ENDFILL);
+b := @Simplify_Expn(FILL Expression 3 * a + 2 * b + c + 7 ENDFILL);
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "013";
+a := @Simplify_Expn(FILL Expression MAX(a, b, 0, c, 0, 4, a, 3, a, b) ENDFILL);
+b := FILL Expression MAX(a, b, c, 4) ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "014";
+a := @Simplify_Expn(FILL Expression (a1+a2) * (b1+b2) * (c1+c2) * (d1+d2) ENDFILL);
+b := FILL Expression (a1 + a2) * (b1 + b2) * (c1 + c2) * (d1 + d2) ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "015";
+a := @Simplify_Cond(FILL Condition (a1=0 OR a2=0)
+				     AND (b1=0 OR b2=0)
+				     AND (c1=0 OR c2=0)
+				     AND (d1=0 OR d2=0) ENDFILL);
+b := FILL Condition (a1 = 0 OR a2 = 0)
+		      AND (b1 = 0 OR b2 = 0)
+		      AND (c1 = 0 OR c2 = 0)
+		      AND (d1 = 0 OR d2 = 0) ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "016";
+a := @Simplify_Cond(FILL Condition (-x) + y < 0 ENDFILL);
+b := FILL Condition x > y ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "017";
+a := @Simplify_Cond(FILL Condition ABS(x) <> 0 ENDFILL);
+b := FILL Condition x <> 0 ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "018";
+a := @Simplify_Cond(FILL Condition a[x] + b[y] = a[x] + c[z] ENDFILL);
+b := FILL Condition b[y] = c[z] ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "019";
+a := @Simplify_Expn(FILL Condition x < y AND NOT(x < y) ENDFILL);
+b := FILL Condition FALSE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "020";
+a := @Simplify_Expn(FILL Expression a + (-a) + b ENDFILL);
+b := FILL Expression b ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "021";
+a := @Simplify_Expn(FILL Expression a + (-a) ENDFILL);
+b := FILL Expression 0 ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "022";
+a := @Simplify_Expn(FILL Expression (-a) + a ENDFILL);
+b := FILL Expression 0 ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "023";
+a := @Simplify_Expn(FILL Expression b + c + (-c) ENDFILL);
+b := FILL Expression b ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "024";
+a := @Simplify_Expn(FILL Expression a + b + (-a) ENDFILL);
+b := FILL Expression b ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "025";
+a := @Simplify_Expn(FILL Expression INT(x) + (-INT(x)) ENDFILL);
+b := FILL Expression 0 ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "026";
+a := @Simplify_Expn(FILL Expression a - a ENDFILL);
+b := FILL Expression 0 ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "027";
+a := @Simplify_Expn(FILL Expression a * (-a) ENDFILL);
+b := FILL Expression -a ** 2 ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "028";
+a := @Simplify_Expn(FILL Expression b * a * (-b) ENDFILL);
+b := FILL Expression (-b ** 2) * a ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "029";
+a := @Simplify_Expn(FILL Expression a * b + b * y ENDFILL);
+b := FILL Expression (a + y) * b ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "030";
+a := @Simplify_Expn(FILL Expression a*3 + b*b*c + b*d ENDFILL);
+b := FILL Expression b ** 2 * c + 3 * a + b * d ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "031";
+a := @Simplify_Expn(FILL Expression a*3 - b - c + (p*q/r/s) + 9 ENDFILL);
+C:" This simplify is needed due to the @Mth_Flatten bugfix (sigh!): ";
+b := @Simplify_Expn(FILL Expression (9 + 3 * a + (q * p) / (s * r)) - (c + b) ENDFILL);
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "032";
+a := @Simplify_Cond(FILL Condition SGN(x) = 1 ENDFILL);
+b := FILL Condition x > 0 ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "033";
+a := @Simplify_Cond(FILL Condition
+	(x = 1 OR x = 2 OR x = 3 OR x = 4)
+	  AND (x = 1 OR x = 2 OR x = 4) ENDFILL);
+b := FILL Condition
+	(x = 1 OR x = 2 OR x = 4)
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "034";
+a := @Simplify_Cond(FILL Condition
+	(x <> 4 AND x <> 2 AND x <> 1)
+	  OR (x <> 1 AND x <> 3 AND x <> 2 AND x <> 4)
+ENDFILL);
+b := FILL Condition
+	x <> 1 AND x <> 2 AND x <> 4
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "035";
+a := @Simplify_Cond(FILL Condition
+	(a3 = 9 OR a3 = 8)
+	  AND a1 = 4
+	  AND a2 = 7
+	  AND a3 <> 7
+	  AND a3 <> 3
+ENDFILL);
+b := FILL Condition
+	(a3 = 8 OR a3 = 9)
+	  AND a1 = 4
+	  AND a2 = 7
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "036";
+a := @Simplify_Cond(FILL Condition TRUE ENDFILL);
+b := FILL Condition TRUE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "037";
+a := @Simplify_Cond(FILL Condition TRUE ENDFILL);
+b := FILL Condition TRUE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "038";
+a := @Simplify_Cond(FILL Condition TRUE ENDFILL);
+b := FILL Condition TRUE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "039";
+a := @Simplify_Cond(FILL Condition TRUE ENDFILL);
+b := FILL Condition TRUE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "040";
+a := @Simplify_Cond(FILL Condition x + 1 > 101 AND x < 100 ENDFILL);
+b := FILL Condition FALSE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "041";
+a := @Simplify(FILL Condition 
+        ((income - 28000) * rate40 + 28000 * rate23 + tax
+                           <> tax_out
+                     AND (income * rate23 + tax <> tax_out OR income > 28000)
+                OR income * rate23 + tax <> tax_out AND income <= 28000
+              )
+          AND income = 100 ENDFILL, 20);
+b := FILL Condition tax_out <> 100 * rate23 + tax AND income = 100 ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE @PP_Item(a, 80, "");
+       @PP_Item(b, 80, "");
+       PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "042";
+a :=  @Simplify(FILL Condition 
+	(income > 16800 AND age >= 65 OR tax <> tax_p)
+	  AND (tax <> tax_p OR age < 65 OR income <= 16800) ENDFILL, 20);
+b := FILL Condition tax <> tax_p ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "043";
+a := @Simplify_Using(FILL Condition income <= 28000 ENDFILL,
+                     FILL Condition income = 100 ENDFILL,
+                     20);
+b := FILL Condition TRUE ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "044";
+a := @Simplify_Expn(FILL Expression HEAD(<foo>) ENDFILL);
+b := FILL Expression foo ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "045";
+a := @Simplify_Expn(FILL Expression HEAD(<foo, bar>) ENDFILL);
+b := FILL Expression foo ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "046";
+a := @Simplify_Expn(FILL Expression HEAD(<foo, bar> ++ baz) ENDFILL);
+b := FILL Expression foo ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "047";
+a := @Simplify_Expn(FILL Expression TAIL(<foo, bar> ++ baz) ENDFILL);
+b := FILL Expression <bar> ++ baz ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "048";
+a := @Simplify_Expn(FILL Expression TAIL(<foo> ++ baz) ENDFILL);
+b := FILL Expression baz ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "049";
+a := @Simplify_Expn(FILL Expression HEAD(TAIL(<foo, bar> ++ baz)) ENDFILL);
+b := FILL Expression bar ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "050";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "051";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "052";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "053";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "054";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "055";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "056";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "057";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "058";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "059";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "060";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+
+

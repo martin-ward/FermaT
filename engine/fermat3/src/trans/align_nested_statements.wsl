@@ -1,0 +1,115 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Note: it is often better to move the guarded forwards to the end of the Cond
+before aligning. Consider this example:
+
+IF B1 THEN IF B2 THEN S1 ELSE S2 FI
+      ELSE S3 FI
+
+becomes
+
+IF B1 AND B2 THEN S1
+ELSIF B1 THEN S2
+  ELSE S3 FI
+
+which duplicates the test B1.
+
+But
+
+IF NOT B1 THEN S3
+ELSIF B2 THEN S1
+ELSE S2 FI
+
+does not duplicate any tests! ";
+
+
+C:" Quick fix hack added: don't process if the inner IF statement ";
+C:" has more than N branches. This seems to be a good tradeoff between ";
+C:" performance and getting a good looking result. ";
+C:" See LPSI1 for an example. ";
+
+MW_PROC @Align_Nested_Statements_Test () ==
+  IF @GT(@I) <> T_Guarded
+    THEN @Fail("The current item is not a guarded clause.")
+    ELSE C:" Check for zero or more comments followed by a COND: ";
+	 @Down_Last; @Down; C:" to first statement of first guard ";
+	 DO IF @ST(@I) = T_Cond AND @Size(@I) <= 60 THEN @Pass; EXIT(1) FI;
+	    IF @ST(@I) = T_Comment AND @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 IF NOT @Passed?
+	   THEN @Fail("The first statement in the clause is not an `If'.") FI FI .;
+
+
+MW_PROC @Align_Nested_Statements_Code (Data) ==
+  VAR < B := @I^1, comments := < >, rest := < >, new := < >, AS := @AS_Type >:
+  C:" Move the guarded down to the end and then align: ";
+  @Edit;
+  C: "Get the rest of the statements in the guard to merge the into the initial 'If'.";
+  @Down_Last; @Down; C:" to first statement ";
+  WHILE @ST(@I) = T_Comment DO
+    comments := <@I> ++ comments;
+    @Delete OD;
+  IF @ST(@I) <> T_Cond THEN PRINT("ERROR in Align_Nested_Statements!!!") FI;
+  @Up;
+  comments := REVERSE(comments);
+  rest := TAIL(@Cs(@I));
+  C: "Move down to the first guard.";
+  @Down; @Down;
+  IF FALSE AND NOT EMPTY?(comments)
+    THEN @Down_Last; @Down; @Splice_Before(comments); @Up; @Up FI;
+  VAR < D := @Make(T_False, < >, < >) >:
+  DO C: "For each guard, change the condition and add the extra statements.";
+     @Down;
+     IF @Spec_Type(@I) = T_True
+       THEN @Paste_Over(B)
+     ELSIF @Spec_Type(B) = T_True
+       THEN SKIP
+       ELSE @Paste_Over(@And(@I, B)) FI;
+     IF NOT EMPTY?(rest) AND NOT @Gen_Improper?(@Parent^2, AS)
+       THEN @Right;
+	    @Down_Last;
+	    IF @ST(@I) = T_Skip THEN @Splice_Over(rest) ELSE @Splice_After(rest) FI;
+	    @Up FI;
+     @Up;
+     IF @ST(@I^1) = T_False OR @Implies?(@I^1, D)
+       THEN @Delete; IF @Posn_n > @Size(@Parent) THEN EXIT(1) FI
+     ELSIF @ST(@I^1) = T_True OR @Implies?(B, D)
+       THEN @Down; @Paste_Over(@Make(T_True, < >, < >)); @Up;
+	    @Delete_Rest; EXIT(1)
+       ELSE D := @Or(D, @I^1);
+	    IF @Right? THEN @Right ELSE EXIT(1) FI FI OD ENDVAR;
+  new := @Cs(@Parent);
+  @Undo_Edit;
+  @Splice_Over(new);
+  C:" Insert the comments at the end of the previous guarded ";
+  C:" or at the start of the first new guarded ";
+  IF NOT EMPTY?(comments)
+    THEN IF @Left?
+           THEN @Left;
+	        @Down_Last; @Down_Last;
+		IF @Gen_Improper?(@I, @AS_Type)
+		  THEN @Splice_Before(comments)
+		  ELSE @Splice_After(comments) FI;
+		@Up; @Up;
+		@Right
+           ELSE @Down_Last; @Down;
+	        @Splice_Before(comments);
+		@Up; @Up FI FI ENDVAR .
+

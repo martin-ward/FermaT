@@ -1,0 +1,283 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Absorb_Left_Test () ==
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF @GT(@I) <> T_Statement
+    THEN @Fail("The selected item is not a Statement.")
+  ELSIF NOT @Left?
+    THEN @Fail("There is no statement to the left of this one.")
+  ELSIF @ST(@I) = T_Assignment
+    THEN @Absorb_Left_Test_Assignment
+  ELSIF @ST(@I) = T_For
+    THEN @Absorb_Left_Test_For
+  ELSIF @ST(@I) = T_Var
+    THEN @Absorb_Left_Test_Var
+  ELSIF @ST(@I) = T_Where
+    THEN @Absorb_Left_Test_Where
+  ELSIF @ST(@I) = T_While
+    THEN @Absorb_Left_Test_While
+  ELSIF @ST(@I) = T_Cond OR @ST(@I) = T_D_If
+    THEN @Absorb_Left_Test_Cond
+  ELSIF @ST(@I) = T_Floop
+    THEN @Absorb_Left_Test_Floop
+    ELSE @Fail("The selected statement must be of a suitable type.") FI .;
+
+
+C: "-----------------------------------------------------------------------";
+
+MW_PROC @Absorb_Left_Test_Assignment() ==
+  VAR < C1 := < >, C2 := < >, Assns := < >, New := < >, U := < >, V := < > >:
+  @Left;
+  IF @ST(@I) <> T_Assignment 
+    THEN @Fail("Can only absorb another assignment into an assignment")
+    ELSE C:"Basically, we 'do' the transformation, then see if it ";
+         C:" produced something invalid";
+
+         C:" First, replace any variables in the second statement ";
+         C:" with the values assigned to them by the first ";
+         C1 := @Components(@I);
+	 U := @Elts_Assigned(@I);
+         @Right;
+	 V := @Elts_Assigned(@I);
+         IF @Elt_Clash_List?(U, V \ U)
+	   THEN @Fail("Second assignment updates part of first")
+           ELSE @Edit;
+                @Absorb_Left_Fix_Vars(C1);
+
+                C:" Now, merge in any assignments from the first statement ";
+                C:" to variables which are not overwritten by the second ";
+                V := @Elts_Assigned(@I);
+                FOR I IN C1 DO 
+                  IF NOT SUBSET?(@Elts_Assigned(I^1), V)
+                    THEN IF @Elt_Clash_List?(@Elts_Assigned(I^1), V)
+                           THEN @Fail("The two assignments clash") FI;
+                         New := <I> ++ New FI OD;
+                @Down_Last;
+                IF NOT EMPTY?(New) THEN @Splice_After(New) FI;
+                @Up;
+                C:" Now, see if this resulted in variables being ";
+                C:" effectively set and used simultaneously ";            
+                C2 := @Components(@I);        C:" The individual Assign's ";
+                Assns := @Elts_Assigned(@I);  C:" The assigned variables ";
+                FOR I IN C2 DO
+                  U := @Elts_Used(I);
+                  V := @Elts_Assigned(I);
+                  IF NOT EMPTY?(Assns /\ (U\V)) 
+                    THEN @Fail("Variable would be simultaneously used and assigned") FI OD;
+                IF NOT @Failed? THEN @Pass FI;
+                @Undo_Edit FI FI ENDVAR .;
+
+
+  
+
+MW_PROC @Absorb_Left_Test_For() ==
+  @Left;
+  IF NOT @Is_Proper?
+    THEN @Fail("Cannot absorb a non-proper statement into a simple statement")
+  ELSIF NOT EMPTY?(@Assigned(@I) /\ @Used(@I))
+       OR NOT EMPTY?(@Stat_Types(@I) /\ Call_Types_Set)
+    THEN @Fail("A statement cannot be absorbed into a `For' if it could assign to variables it uses.")
+    ELSE C: "The thing being assigned is OK, but is it compatible with the loop?";
+         C: "Before we go on, we need to note what variables are used in it or its parameters.";
+         VAR < V := @Variables(@I) >:
+         @Right;
+         IF @ST(@I) = T_For
+           THEN VAR < L := @V(@I^1), E1 := @I^2, E2 := @I^3, E3 := @I^4, S := @Cs(@I^5) >:
+                 C: "Check that the loop doesn't use the same variables as the other statement...";
+                 C: "...and check that the loop will be executed at least once.";
+                 IF NOT EMPTY?(V /\ @Variables(@I)) OR MEMBER?(L, V)
+                    THEN @Fail("The loop used the same variables as the other statement.")
+                 ELSIF NOT ((@True?((FILL Condition ~?E3 > 0 ENDFILL)) AND
+                             @True?((FILL Condition ~?E2 >= ~?E1 ENDFILL))) OR
+                            (@True?((FILL Condition ~?E3 < 0 ENDFILL)) AND
+                             @True?((FILL Condition ~?E2 <= ~?E1 ENDFILL))))
+                    THEN @Fail("The loop won't definitely execute.")
+                    ELSE @Pass FI ENDVAR FI ENDVAR FI .;
+
+
+MW_PROC @Absorb_Left_Test_Var () ==
+  C: "Check that the statement to be absorbed doesn't use any of the local variables.";
+  VAR < Local := @Assigned(@I^1), V := @Variables(@I^1) > :
+  @Left;
+  IF NOT @Is_Proper?
+    THEN @Fail("Cannot absorb a non-proper statement into a simple statement")
+  ELSIF @ST(@I) = T_Proc_Call
+    THEN VAR < vars := Local, posn := @Posn >:
+         WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+	 IF @ST(@I) = T_Where THEN vars := @Variables(@I) FI;
+	 @Goto(posn);
+	 IF NOT EMPTY?(Local /\ vars)
+	   THEN @Fail("The proc call being absorbed could use some of the local variables.")
+	   ELSE @Pass FI ENDVAR
+  ELSIF NOT EMPTY?(Local /\ @Variables(@I))
+       OR NOT EMPTY?(@Stat_Types(@I) /\ Call_Types_Set)
+     THEN @Fail("The statement being absorbed could use some of the local variables.")
+  ELSIF (@ST(@I) <> T_Assignment) AND NOT EMPTY?(V /\ @Assigned(@I))
+     THEN @Fail("Some of the assigning variables are changed by the statement being absorbed.")
+     ELSE @Pass FI ENDVAR .;
+
+
+MW_PROC @Absorb_Left_Test_Where () ==
+  C: "Check that the statement to be absorbed doesn't use any of the definitions.";
+  VAR < D := @Make_Set(MAP("@V1", @Cs(@I^2))) >:
+  @Left;
+  IF NOT EMPTY?(D /\ @Make_Set(MAP("HEAD", @Proc_Calls(@I))
+                                   ++ MAP("HEAD", @Funct_Calls(@I))))
+     THEN @Fail("The statement being absorbed uses some of the definitions.")
+     ELSE @Pass FI ENDVAR .;
+
+
+MW_PROC @Absorb_Left_Test_While () ==
+  @Left;
+  IF NOT @Is_Proper?
+    THEN @Fail("Cannot absorb a non-proper statement into a simple statement")
+  ELSIF NOT EMPTY?(@Assigned(@I) /\ @Used(@I))
+       OR NOT EMPTY?(@Stat_Types(@I) /\ Call_Types_Set)
+    THEN @Fail("A statement cannot be absorbed into a `While' if it could assign to variables it uses.")
+    ELSE C: "The thing being assigned is OK, but is it compatible with the loop?";
+         C: "Before we go on, we need to note what variables are used in it.";
+         VAR <V := @Variables(@I), A := @Assigned(@I), B := < >> :
+             @Right;
+             B := @I^1;
+             C: "Check that the loop doesn't use the same variables as the other statement.";
+             C: "Now check that the loop will be executed at least once.";
+             C: "This is done by looking for an assertion before the loop.";
+             IF NOT EMPTY?(V /\ @Variables(@I))
+                THEN @Fail("The loop used the same variables as the other statement.")
+             ELSIF @Posn_n <= 2 OR @ST(@Parent^(@Posn_n - 2)) <> T_Assert
+                THEN @Fail("There is no assertion before the loop.")
+                ELSE @Left;
+                     @Left;
+                     C: "The assertion my imply that the loop executes at least once.";
+                     IF NOT @Implies?(@I^1, B)
+                        THEN @Fail("The assertion does not imply that the loop executes.")
+                     ELSIF NOT EMPTY?(A /\ @Variables(@I))
+                        THEN @Fail("The assertion could be changed by the statement being absorbed.")
+                        ELSE @Pass FI FI ENDVAR FI .;
+
+
+MW_PROC @Absorb_Left_Test_Cond () ==
+  @Left;
+  IF @ST(@I) = T_Assignment
+     THEN @Pass
+  ELSIF NOT EMPTY?(@Stat_Types(@I)
+             /\ Call_Types_Set)
+     THEN @Fail("The statement may affect the conditions.")
+     ELSE VAR < A := @Assigned(@I)> :
+          @Right;
+          @Down;
+          DO IF NOT EMPTY?(@Variables(@I^1) /\ A)
+                THEN @Fail("The variables in the statement affect the conditions."); EXIT(1)
+             ELSIF @Right?
+                THEN @Right
+                ELSE @Pass; EXIT(1) FI OD ENDVAR FI .;
+
+
+MW_PROC @Absorb_Left_Test_Floop() ==
+  VAR < I := @Increment(@Parent^(@Posn_n - 1), @AS_Type, 1, 1) >:
+  IF LENGTH(I) = 1 AND @Equal?(LAST(@Cs(@I^1)), HEAD(I))
+    THEN @Pass
+    ELSE @Fail("The statement to the left doesn't match the end of the body.") FI ENDVAR .;
+
+
+C: "-----------------------------------------------------------------------";
+
+
+MW_PROC @Absorb_Left_Code (Data) ==
+  IF (@GT(@I) = T_Assign) AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  VAR < C := < > > :
+  IF @ST(@I) = T_Assignment
+    THEN @Absorb_Left_Code_Assignment
+  ELSIF MEMBER?(@ST(@I), <T_For, T_While>)
+    THEN @Left; @Cut; @Down_Last; @Down; @Paste_Before(@Buffer); @Up; @Up
+  ELSIF @ST(@I) = T_Where
+    THEN @Left; @Cut; @Down; @Down; @Paste_Before(@Buffer); @Up; @Up
+  ELSIF @ST(@I) = T_Var
+    THEN @Left;
+	 IF @ST(@I) = T_Assignment THEN C := @Cs(@I) FI;
+	 @Cut; @Down_Last; @Down; @Paste_Before(@Buffer); @Up; @Left;
+	 IF NOT EMPTY?(C) THEN @Absorb_Left_Fix_Vars(C) FI;
+	 @Up
+  ELSIF @ST(@I) = T_Floop
+    THEN @Left;
+         @Delete;
+	 @Down;
+	 @Down;
+	 C:" Paste before cutting in case there is only one statement! "; 
+	 @Paste_Before(LAST(@Cs(@Parent)));
+	 @To_Last;
+	 @Delete;
+	 @Up;
+	 @Up	 
+    ELSE C: "We have a `Cond' or `D_If' statement which is preceded by an assignment.";
+	 @Left;
+	 IF @ST(@I) = T_Assignment THEN C := @Cs(@I) FI;
+	 @Cut; @Down;
+	 DO @Down_Last; @Down;
+	    C:" Check for two assignments to the same variable ";
+	    C:" and attempt to merge them if possible. ";
+	    IF @ST(@Buffer) = T_Assignment AND @ST(@I) = T_Assignment
+	         AND @Size(@Buffer) = 1 AND @Size(@I) = 1
+		 AND @Equal?(@Buffer^1^1, @I^1^1)
+	      THEN @Paste_Before(@Buffer);
+	           IF @Trans?(TR_Absorb_Right)
+		     THEN @Trans(TR_Absorb_Right, "") FI
+	      ELSE @Paste_Before(@Buffer) FI;
+	    @Up; @Left;
+	    IF NOT EMPTY?(C) THEN @Absorb_Left_Fix_Vars(C) FI;
+	    @Up;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	    @Up FI ENDVAR .;
+
+
+C: "-----------------------------------------------------------------------";
+
+
+
+MW_PROC @Absorb_Left_Fix_Vars(assigns) ==
+  FOREACH Expression DO
+    FOR assign IN assigns DO
+      IF @LR_Equal?(@I, assign^1) THEN @Paste_Over(assign^2) FI OD OD;
+  FOREACH Expression DO
+    IF @Cs?(@I) THEN @Paste_Over(@Simplify_Expn(@I)) FI OD .;
+
+
+
+MW_PROC @Absorb_Left_Code_Assignment () ==
+  VAR < C1 := < >, V := < >, New := < > >:
+  @Left;
+  C1 := @Cs(@I);
+  @Right;
+  @Absorb_Left_Fix_Vars(C1);
+  V := @Assigned(@I);
+  FOR I IN C1 DO
+    IF @Value(I^1) NOTIN V
+      THEN New := <I> ++ New FI OD;
+  @Down_Last;
+  IF NOT EMPTY?(New) THEN @Splice_After(New) FI;
+  @Up; @Left; @Delete ENDVAR .;
+
+
+
+SKIP
+
+

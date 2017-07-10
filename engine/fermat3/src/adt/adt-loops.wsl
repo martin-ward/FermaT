@@ -1,0 +1,696 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Complete rewrite of adt-procs.wsl ";
+
+C:" @Foreach_Statement(body, Depth, AS, simple) ";
+C:" @Foreach_Non_Action_Statement ";
+C:" @Foreach_Stats ";
+C:" @Foreach_Terminal ";
+C:" @Foreach_Terminal_Stats ";
+C:" @Foreach_Cond ";
+C:" @Foreach_Expn ";
+C:" @Foreach_Lvalue ";
+C:" @Foreach_Variable ";
+C:" @Foreach_Global_Var ";
+
+C:" Plus the @Ateach_ equivalent functions. ";
+
+C:" Record which generic types can have statements as components: ";
+Has_Statements := ARRAY(1999, 0);
+FOR type IN <T_Statement, T_Definition, T_Guarded, T_Action,
+	     T_Statements, T_Definitions, T_Actions, T_Guarded> DO
+  Has_Statements[type] := 1 OD;
+
+
+MW_BFUNCT @Has_Statements_Type?(type) == : SKIP;
+  (Has_Statements[type] = 1) .;
+
+
+MW_PROC @Foreach_Statement(body, Depth, AS, simple) ==
+  @Foreach_Gen_S(body, Depth, AS, simple, T_Statement, 0, 0) .;
+
+
+MW_PROC @Foreach_Non_Action_Statement(body, Depth, AS, simple) ==
+   @Foreach_Gen_S(body, Depth, AS, simple, T_Statement, 0, 1) .;
+
+
+MW_PROC @Foreach_Stats(body, Depth, AS, simple) ==
+  @Foreach_Gen_S(body, Depth, AS, simple, T_Statements, 0, 0) .;
+
+
+MW_PROC @Foreach_Terminal(body, Depth, AS, simple) ==
+  @Foreach_Gen_S(body, Depth, AS, simple, T_Statement, 1, 0) .;
+
+
+MW_PROC @Foreach_Terminal_Stats(body, Depth, AS, simple) ==
+  @Foreach_Gen_S(body, Depth, AS, simple, T_Statements, 1, 0) .;
+
+
+MW_PROC @Foreach_Gen_S(body, Depth, AS, simple, req_GT, term, N_AS) ==
+  VAR < orig := @I, new := < > >:
+  @Edit;
+  new := @Foreach_S(@I, 0, body, Depth, AS, simple, req_GT, term, N_AS);
+  @Undo_Edit;
+  IF EMPTY?(new)
+    THEN @Clever_Delete
+  ELSIF @GT(orig) = T_Statement AND @GT(new) = T_Statements
+    THEN IF @Size(new) > 1
+	   THEN IF @Up?
+		  THEN @Splice_Over(@Cs(new))
+		  ELSE C:" Convert program to a statement sequence ";
+		       @Paste_Over(new) FI
+	 ELSIF NOT !XC eq?(orig, new^1)
+	   THEN @Paste_Over(new^1) FI 
+  ELSIF NOT !XC eq?(orig, new)
+    THEN @Paste_Over(new) FI ENDVAR .;
+
+
+C:" A generic foreach for statements and statement sequences: ";
+C:" First process the components, rebuild I if any component has changed, ";
+C:" then call the body, if all the conditions are met. ";
+C:" If I is a statement, then may return a statement sequence. ";
+C:" Return the empty list if the item is deleted ";
+C:" Note: @Foreach is called inside an @Edit, so is allowed to clobber @Program  ";
+
+C:" req_tv is the `required terminal value', the minimum terminal value ";
+C:" which will cause termination of the whole program. It increases with Depth ";
+C:" and is zero for the last statement in a terminal statement sequence ";
+C:" at depth zero, but one for all other statements. ";
+
+MW_FUNCT @Foreach_S(I, req_tv, body, Depth, AS, simple, req_GT, term, N_AS) ==
+  VAR < R := I, ST := @ST(I), GT := @GT(I) >:
+  IF @Has_Statements_Type?(GT)
+    THEN C:" Process any components: ";
+	 VAR < Comps := @Components(I), old := < >, newL := < >, new := < >, changed := 0,
+	       sub_AS := AS >:
+	 IF ST = T_Floop THEN Depth := Depth + 1; req_tv := req_tv + 1 FI;
+	 IF ST = T_A_S THEN sub_AS := @System_Type(I) FI;
+	 C:" If simple = 1, don't process components of simple statements: ";
+	 IF simple = 1 AND @Simple?(I)
+	   THEN Comps := < >
+	 ELSIF @Ifmatch_Type?(ST) OR @Fill_Type?(ST)
+	   THEN C:" Skip first component of IFMATCH or FILL: ";
+		newL := <HEAD(Comps)>; Comps := TAIL(Comps) FI;
+	 WHILE NOT EMPTY?(Comps) DO
+	   old := HEAD(Comps);
+	   Comps := TAIL(Comps);
+	   IF N_AS = 1 AND @ST(old) = T_A_S
+	     THEN newL := <old> ++ newL
+	   ELSIF term = 1 AND NOT @May_Term?(old, req_tv, sub_AS,
+					     IF EMPTY?(Comps) THEN 1 ELSE 0 FI)
+	     THEN newL := <old> ++ newL
+	     ELSE IF req_tv = 0 AND GT = T_Statements AND NOT EMPTY?(Comps)
+		    THEN C:" Need an EXIT for termination of this statement: ";
+			 new := @Foreach_S(old, 1, body, Depth, sub_AS,
+					   simple, req_GT, term, N_AS)
+		    ELSE new := @Foreach_S(old, req_tv, body, Depth, sub_AS,
+					   simple, req_GT, term, N_AS) FI;
+		 C:" Check if the component has changed: ";
+		  IF EMPTY?(new)
+		    THEN changed := 1
+		  ELSIF GT = T_Statements AND @GT(new) = T_Statements
+		    THEN C:" We passed a statement, but got a statement sequence: ";
+			 IF @Size(new) > 1 OR NOT !XC eq?(old, new^1)
+			   THEN changed := 1;
+				newL := REVERSE(@Cs(new)) ++ newL
+			   ELSE newL := <old> ++ newL FI
+		  ELSIF NOT !XC eq?(old, new)
+		    THEN changed := 1;
+			 newL := <new> ++ newL
+		    ELSE newL := <old> ++ newL FI FI OD;
+	 IF ST = T_Floop THEN Depth := Depth - 1; req_tv := req_tv + 1 FI;
+	 C:" Rebuild the item if any components have changed. ";
+	 C:" (Since there are components, there is no value to worry about): ";
+	 C:" Note that @Fix_Item may have to convert a statement to a stat seq: ";
+	 IF changed = 1 THEN I := @Fix_Item(@Make(ST, < >, REVERSE(newL))) FI;
+	 C:" Process this item if all the conditions are met: ";
+	 IF EMPTY?(I)
+	   THEN R := < >
+	 ELSIF @GT(I) <> req_GT OR (simple = 1 AND NOT @Simple?(I))
+	   THEN R := I
+	 ELSIF term = 1 AND NOT @Will_Term?(I, req_tv, AS)
+	   THEN R := I
+	   ELSE IF @GT(I) = T_Statement
+		  THEN @New_Program(@Make(T_Statements, < >, <I>)); @Down
+		  ELSE @New_Program(I) FI;
+		!XP apply(body, <Depth, AS>);
+		R := @Fix_Item(@Program) FI ENDVAR FI;
+  (R) .;
+
+
+
+MW_PROC @Foreach_Cond(body, Depth, AS, simple) ==
+  VAR < orig := @I, new := < > >:
+  @Edit;
+  new := @Foreach_Gen(@I, body, Depth, AS, T_Condition);
+  @Undo_Edit;
+  IF NOT !XC eq?(orig, new)
+    THEN @Paste_Over(new) FI ENDVAR .;
+
+
+MW_PROC @Foreach_Expn(body, Depth, AS, simple) ==
+  VAR < orig := @I, new := < > >:
+  @Edit;
+  new := @Foreach_Gen(@I, body, Depth, AS, T_Expression);
+  @Undo_Edit;
+  IF NOT !XC eq?(orig, new)
+    THEN @Paste_Over(new) FI ENDVAR .;
+
+MW_PROC @Foreach_Lvalue(body, Depth, AS, simple) ==
+  VAR < orig := @I, new := < > >:
+  @Edit;
+  new := @Foreach_Gen(@I, body, Depth, AS, T_Lvalue);
+  @Undo_Edit;
+  IF NOT !XC eq?(orig, new)
+    THEN @Paste_Over(new) FI ENDVAR .;
+
+
+C:" A generic foreach for all other types apart from variables. ";
+
+MW_FUNCT @Foreach_Gen(I, body, Depth, AS, req_GT) ==
+  VAR < R := I, ST := @ST(I), GT := @GT(I) >:
+  IF req_GT = T_Condition AND GT = T_Expression
+    THEN C:" An Expression cannot have a condition as a component "
+    ELSE VAR < Comps := @Components(I), old := < >, newL := < >, new := < >,
+               changed := 0 >:
+	 IF @Ifmatch_Type?(ST) OR @Fill_Type?(ST)
+	   THEN newL := <HEAD(Comps)>; Comps := TAIL(Comps) FI;
+	 WHILE NOT EMPTY?(Comps) DO
+	   old := HEAD(Comps);
+	   Comps := TAIL(Comps);
+	   new := @Foreach_Gen(old, body, Depth, AS, req_GT);
+	   IF EMPTY?(new)
+	     THEN changed := 1
+	   ELSIF NOT !XC eq?(old, new)
+	     THEN changed := 1;
+		  newL := <new> ++ newL
+	     ELSE newL := <old> ++ newL FI OD;
+	 C:" Rebuild the item if any components have changed. ";
+	 IF changed = 1 THEN I := @Make(ST, < >, REVERSE(newL)) FI;
+	 C:" Process this item if all the conditions are met: ";
+	 IF @GT(I) <> req_GT
+	   THEN R := I
+	   ELSE @New_Program(I);
+		!XP apply(body, <Depth, AS>);
+		R := @Program FI ENDVAR FI;
+  (R) .;
+
+
+
+
+MW_PROC @Foreach_Variable(body, Depth, AS, simple) ==
+  VAR < orig := @I, new := < > >:
+  @Edit;
+  new := @Foreach_Vars(@I, body, Depth, AS, 0, 0, < >);
+  @Undo_Edit;
+  IF NOT !XC eq?(orig, new)
+    THEN @Paste_Over(new) FI ENDVAR .;
+
+
+MW_PROC @Foreach_Global_Var(body, Depth, AS, simple) ==
+  VAR < orig := @I, new := < > >:
+  @Edit;
+  new := @Foreach_Vars(@I, body, Depth, AS, 0, 1, < >);
+  @Undo_Edit;
+  IF NOT !XC eq?(orig, new)
+    THEN @Paste_Over(new) FI ENDVAR .;
+
+
+
+C:" A generic foreach for variables: ";
+
+MW_FUNCT @Foreach_Vars(I, body, Depth, AS, parent, global, vars) ==
+  VAR < R := I, ST := @ST(I), GT := @GT(I) >:
+  VAR < Comps := @Components(I), old := < >, newL := < >, new := < >, changed := 0 >:
+  IF @Ifmatch_Type?(ST) OR @Fill_Type?(ST)
+    THEN newL := <HEAD(Comps)>; Comps := TAIL(Comps) FI;
+  WHILE NOT EMPTY?(Comps) DO
+    old := HEAD(Comps);
+    Comps := TAIL(Comps);
+    IF global = 1
+      THEN IF (ST = T_For OR ST = T_For_In) AND EMPTY?(Comps)
+	     THEN vars := vars \/ <@V(I^1)>
+	   ELSIF ST= T_Proc OR ST = T_Funct OR ST = T_BFunct
+	     THEN vars := vars \/ @Assigned(I^2) \/ @Assigned(I^3)
+	   ELSIF ST = T_Var AND EMPTY?(Comps)
+	     THEN vars := vars \/ @Assigned(I^1) FI FI;
+    C:" In the assignments of a VAR, only process the expressions, if global = 1 ";
+    C:" Don't process the first component of a FOR if global = 1 ";
+    C:" Don't process formal parameters in proc/funct definitions. ";
+    IF global = 1 AND parent = T_Var AND GT = T_Assigns
+      THEN new := @Foreach_Vars(old^2, body, Depth, AS, ST, global, vars);
+	   IF !XC eq?(old^2, new)
+	     THEN new := old
+	     ELSE new := @Make(T_Assign, < >, <old^1, new>) FI
+    ELSIF global = 1 AND (ST = T_For OR ST = T_For_In) AND @GT(old) = T_Lvalue
+      THEN new := old
+      ELSE new := @Foreach_Vars(old, body, Depth, AS, ST, global, vars) FI;
+    IF EMPTY?(new)
+      THEN changed := 1
+    ELSIF NOT !XC eq?(old, new)
+      THEN changed := 1;
+	   newL := <new> ++ newL
+      ELSE newL := <old> ++ newL FI OD;
+  C:" Rebuild the item if any components have changed. ";
+  IF changed = 1 THEN I := @Make(ST, < >, REVERSE(newL)) FI;
+  C:" Process this item if all the conditions are met: ";
+  IF ST <> T_Variable AND ST <> T_Var_Lvalue
+    THEN R := I
+  ELSIF global = 1 AND @V(I) IN vars
+    THEN R := I
+    ELSE @New_Program(I);
+	 !XP apply(body, <Depth, AS>);
+	 R := @Program;
+	 C:" Fix Lvalues which were replaced by variables: ";
+	 IF @ST(I) = T_Variable AND @ST(R) = T_Var_Lvalue
+	      OR @ST(I) = T_Var_Lvalue AND @ST(R) = T_Variable
+	   THEN R := @Make(@ST(I), @V(R), < >) FI FI ENDVAR;
+  (R) .;
+
+
+
+C:" Check the syntax of the (edited) item and repair or delete it as necessary: ";
+
+MW_FUNCT @Fix_Item(I) ==
+  VAR < R := I, ST := IF EMPTY?(I) THEN < > ELSE @ST(I) FI >:
+  IF EMPTY?(I)
+    THEN SKIP
+  ELSIF ST = T_Statements
+    THEN C:" Fix each component (if any): ";
+	 VAR < new := < >, newL := < >, comp := < >, changed := 0 >:
+	 FOR comp IN @Cs(I) DO
+	   new := @Fix_Item(comp);
+	   IF EMPTY?(new)
+	     THEN changed := 1
+	     ELSE IF NOT !XC eq?(new, comp) THEN changed := 1 FI;
+		  IF @GT(new) = T_Statements
+		    THEN newL := REVERSE(@Cs(new)) ++ newL
+		    ELSE newL := <new> ++ newL FI FI OD;
+	 IF EMPTY?(newL)
+	   THEN R := < >
+	 ELSIF changed = 1
+	   THEN R := @Make(T_Statements, < >, REVERSE(newL)) FI ENDVAR
+  ELSIF ST = T_Cond
+    THEN R := @Fix_Cond_Item(I)
+  ELSIF ST = T_D_If OR ST = T_D_Do
+    THEN R := @Fix_Dijkstra_Item(I)
+  ELSIF ST = T_Guarded
+    THEN C:" Fix these in the enclosing statement ";
+  ELSIF (NOT @List_Type?(ST) AND @Size(I) <> LENGTH(@Syntax(ST)))
+	  OR @List_Type?(ST) AND NOT @Cs?(I)
+    THEN IF ST = T_Where
+	   THEN IF NOT @Cs?(I)
+		  THEN R := < >
+		ELSIF @GT(I^1) = T_Statements
+		  THEN R := I^1
+		  ELSE R := < > FI
+	 ELSIF ST = T_While
+	   THEN R := @Make(T_Assert, < >, <@Not(I^1)>)
+	 ELSIF ST = T_D_If OR ST = T_Floop
+	   THEN R := @Make(T_Abort, < >, < >)
+	 ELSIF ST = T_Join
+	   THEN R := I^1
+	 ELSIF LENGTH(@Syntax(ST)) = @Size(I) + 1
+	   THEN IF ST = T_For OR ST = T_For_In OR ST = T_Var
+		  THEN R := @Skip
+		ELSIF LAST(@Syntax(ST)) = T_Statements
+		  THEN C:" eg IFMATCH or MW_PROC: ";
+		       R := @Make(ST, < >, @Cs(I) ++ <@Skips>)
+                ELSIF ST = T_MW_Funct OR ST = T_MW_BFunct
+		        OR ST = T_Funct OR ST = T_BFunct
+		  THEN R := @Make(ST, < >, BUTLAST(@Cs(I)) ++ <@Skips, LAST(@Cs(I))>)
+		  ELSE R := < > FI
+	   ELSE R := < > FI FI;
+  (R) .;
+
+
+
+
+adt_Dummy_Guarded := @Make(T_Guarded, < >,
+			   <@Make(T_True, < >, < >),
+			    @Make(T_Statements, < >, <@Make(T_Skip, < >, < >)>)>);
+
+MW_FUNCT @Fix_Cond_Item(I) ==
+  VAR < R := I >:
+  IF NOT @Cs?(I)
+    THEN R := < >
+    ELSE C:" Look for empty or short guards: ";
+	 VAR < guard := < >, found := 0, last := < > >:
+	 FOR guard IN @Cs(I) DO
+	   last := guard;
+	   IF NOT @Cs?(guard)
+	     THEN found := 1
+	   ELSIF @Any_Pattern_Type?(@ST(guard))
+	     THEN SKIP
+	   ELSIF @Size(guard) = 1
+	     THEN found := 1
+	   ELSIF NOT @Cs?(guard^2)
+	     THEN found := 1 FI OD;
+	 IF found = 1
+	   THEN R := @Fix_Cond_Guards(@Cs(I))
+	   ELSE IF NOT @Any_Pattern_Type?(@ST(last)) AND @ST(last^1) <> T_True
+		  THEN R := @Make(T_Cond, < >, @Cs(I) ++ <adt_Dummy_Guarded>)
+		ELSIF NOT @Any_Pattern_Type?(@ST(I^1)) AND @Size(I) = 1
+		  THEN C:" The ELSIF clause is the only one left: ";
+		       R := I^1^2;
+		       IF @Size(R) = 1 AND @ST(R^1) = T_Skip
+			 THEN R := < > FI FI FI ENDVAR FI;
+  (R) .;
+	 
+
+
+C:" Some of these guards need to be deleted, ";
+C:" so later guards may need their conditions fixing: ";
+
+MW_FUNCT @Fix_Cond_Guards(guards) ==
+  VAR < newL := < >, B := < >, guard := < >, R := < >, size := LENGTH(guards) >:
+  FOR guard IN guards DO
+    IF NOT @Cs?(guard)
+      THEN SKIP
+    ELSIF @Any_Pattern_Type?(@ST(guard))
+      THEN newL := <guard> ++ newL
+    ELSIF @Size(guard) = 1 OR NOT @Cs?(guard^2)
+      THEN C:" Delete this guard and start/continue computing B: ";
+           IF size >= 100
+	     THEN newl := <@Make(T_Guarded, < >, <guard^1, @Skips>)> ++ newL
+	   ELSIF EMPTY?(B)
+	     THEN B := @Not(guard^1)
+	     ELSE B := @And(@Not(guard^1), B) FI
+    ELSIF NOT EMPTY?(B)
+      THEN C:" Fix this guard and continue computing B: ";
+	   newL := <@Make(T_Guarded, < >, <@And(B, guard^1), guard^2>)> ++ newL
+      ELSE newL := <guard> ++ newL FI OD;
+  IF EMPTY?(newL)
+    THEN R := < >
+  ELSIF LENGTH(newL) = 1 AND NOT @Any_Pattern_Type?(@ST(HEAD(newL)))
+	  AND @ST(HEAD(newL)^1) = T_True
+    THEN C:" The ELSIF clause is the only one left: ";
+	 R := HEAD(newL)^2
+  ELSIF NOT @Any_Pattern_Type?(@ST(HEAD(newL))) AND @ST(HEAD(newL)^1) <> T_True
+    THEN R := @Make(T_Cond, < >, REVERSE(<adt_Dummy_Guarded> ++ newL))
+    ELSE R := @Make(T_Cond, < >, REVERSE(newL)) FI;
+  (R) .;
+
+
+
+
+MW_FUNCT @Fix_Dijkstra_Item(I) ==
+  VAR < R := I >:
+  IF NOT @Cs?(I)
+    THEN R := < >
+    ELSE C:" Look for empty or short guards: ";
+	 VAR < guard := < >, found := 0, new := < > >:
+	 FOR guard IN @Cs(I) DO
+	   IF NOT @Cs?(guard)
+	     THEN found := 1
+	   ELSIF @Any_Pattern_Type?(@ST(guard))
+	     THEN SKIP
+	   ELSIF @Size(guard) = 1 OR NOT @Cs?(guard^2)
+	     THEN found := 1 FI OD;
+	 IF found = 1
+	   THEN FOR guard IN @Cs(I) DO
+		  IF NOT @Cs?(guard)
+		    THEN SKIP
+		  ELSIF @Any_Pattern_Type?(@ST(guard))
+		    THEN new := <guard> ++ new
+		  ELSIF @Size(guard) = 1 OR NOT @Cs?(guard^2)
+		    THEN new := <@Make(T_Guarded, < >, <guard^1, @Skips>)> ++ new
+		    ELSE new := <guard> ++ new FI OD;
+		IF EMPTY?(new)
+		  THEN R := < >
+		  ELSE R := @Make(@ST(I), < >, REVERSE(new)) FI FI ENDVAR FI;
+  (R) .;
+	 
+
+
+C:" Return TRUE if there is a possibility that the given item may ";
+C:" terminate the program, given the required tv. ";
+C:" last = 1 if the item is the last component of its parent. ";
+
+MW_BFUNCT @May_Term?(I, req_tv, AS, last) ==
+  VAR < tvs := @Gen_TVs(I, AS), OK := 0>:
+  IF req_tv = 0 AND @GT(I) = T_Statement AND last = 0
+    THEN req_tv := 1 FI;
+  WHILE NOT EMPTY?(tvs) AND OK = 0 DO
+    IF HEAD(tvs) >= req_tv
+      THEN OK := 1
+      ELSE tvs := TAIL(tvs) FI OD;
+  (OK = 1) .;
+
+
+MW_BFUNCT @Will_Term?(I, req_tv, AS) ==
+  VAR < tvs := @Gen_TVs(I, AS), OK := 1>:
+  IF req_tv = 0 AND @GT(I) = T_Statement AND NOT EMPTY?(Comps)
+    THEN req_tv := 1 FI;
+  WHILE NOT EMPTY?(tvs) AND OK = 1 DO
+    IF NOT (HEAD(tvs) >= req_tv)
+      THEN OK := 0
+      ELSE tvs := TAIL(tvs) FI OD;
+  (OK = 1) .;
+
+
+adt_Skip_Statement := @Make(T_Skip, < >, < >);
+adt_Skip_Statements := @Make(T_Statements, < >, <adt_Skip_Statement>);
+
+MW_FUNCT @Skip() == : SKIP; (adt_Skip_Statement) .;
+
+MW_FUNCT @Skips() == : SKIP; (adt_Skip_Statements) .;
+
+MW_BFUNCT @Skip?(Item) == :
+  SKIP;
+  (@ST(Item) = T_Skip OR (@ST(Item) = T_Exit AND @V(Item) = 0)) .;
+
+
+
+
+C:" ATEACH functions: ";
+
+
+C:" @Foreach_Statement(body, Depth, AS, simple) ";
+C:" @Foreach_Non_Action_Statement ";
+C:" @Foreach_Stats ";
+C:" @Foreach_Terminal ";
+C:" @Foreach_Terminal_Stats ";
+C:" @Foreach_Cond ";
+C:" @Foreach_Expn ";
+C:" @Foreach_Lvalue ";
+C:" @Foreach_Variable ";
+C:" @Foreach_Global_Var ";
+
+
+
+MW_PROC @Ateach_Statement(body, Depth, AS, simple) ==
+  VAR < Orig_P := @Posn >:
+  @Reset_Pass_Status;
+  @Ateach_S(body, 0, Depth, AS, simple, LENGTH(Orig_P), T_Statement, 0, 0);
+  IF @Valid_Posn?(@Program, Orig_P) THEN @Goto(Orig_P) FI ENDVAR .;
+
+
+MW_PROC @Ateach_Non_Action_Statement(body, Depth, AS, simple) ==
+  VAR < Orig_P := @Posn >:
+  @Reset_Pass_Status;
+  @Ateach_S(body, 0, Depth, AS, simple, LENGTH(Orig_P), T_Statement, 0, 1);
+  IF @Valid_Posn?(@Program, Orig_P) THEN @Goto(Orig_P) FI ENDVAR .;
+
+
+MW_PROC @Ateach_Stats(body, Depth, AS, simple) ==
+  VAR < Orig_P := @Posn >:
+  @Reset_Pass_Status;
+  @Ateach_S(body, 0, Depth, AS, simple, LENGTH(Orig_P), T_Statements, 0, 0);
+  IF @Valid_Posn?(@Program, Orig_P) THEN @Goto(Orig_P) FI ENDVAR .;
+
+
+MW_PROC @Ateach_Terminal(body, Depth, AS, simple) ==
+  VAR < Orig_P := @Posn >:
+  @Reset_Pass_Status;
+  @Ateach_S(body, 0, Depth, AS, simple, LENGTH(Orig_P), T_Statement, 1, 0);
+  IF @Valid_Posn?(@Program, Orig_P) THEN @Goto(Orig_P) FI ENDVAR .;
+
+
+MW_PROC @Ateach_Terminal_Stats(body, Depth, AS, simple) ==
+  VAR < Orig_P := @Posn >:
+  @Reset_Pass_Status;
+  @Ateach_S(body, 0, Depth, AS, simple, LENGTH(Orig_P), T_Statements, 1, 0);
+  IF @Valid_Posn?(@Program, Orig_P) THEN @Goto(Orig_P) FI ENDVAR .;
+
+
+C:" A generic ATEACH for statements and statement sequences: ";
+
+C:" FIXME: Replace LENGTH(adt_Path_Items) by a new ADT function @Posn_Len ";
+
+C:" NOTE: It is the user's responsibility to take care when editing or moving ";
+C:" inside an ATEACH loop: infinite loops are possible and expensive to guard against. ";
+C:" However, the user may need to @Clever_Delete, in which case he or she ";
+C:" cannot avoid moving up. So we check for moving up past the original top. ";
+
+MW_PROC @Ateach_S(body, req_tv, Depth, AS, simple, Top, req_GT, term, N_AS) ==
+  C:" First check if we need to execute the body on @I: ";
+  IF @GT(@I) <> req_GT
+    THEN SKIP
+  ELSIF simple = 1 AND NOT @Simple?(@I)
+    THEN SKIP
+  ELSIF term = 1 AND NOT @Will_Term?(@I, req_tv, AS)
+    THEN SKIP
+    ELSE !XP apply(body, <Depth, AS>) FI;
+  C:" Next check if we need to look at the components of @I: ";
+  IF @Passed? OR @Failed? OR EMPTY?(@I)
+    THEN SKIP
+  ELSIF LENGTH(adt_Path_Items) < Top
+    THEN C:" We have moved out of the top "
+  ELSIF NOT @Has_Statements_Type?(@GT(@I)) OR NOT @Cs?(@I)
+    THEN SKIP
+    ELSE IF @ST(@I) = T_Floop THEN Depth := Depth + 1; req_tv := req_tv + 1 FI;
+	 IF @ST(@I) = T_A_S THEN AS := @System_Type(@I) FI;
+	 IF @Ifmatch_Type?(@ST(@I))
+	   THEN @Down_To(2)
+	 ELSIF @Fill_Type?(@ST(@I))
+	   THEN SKIP
+	   ELSE @Down FI;
+	 DO IF N_AS = 1 AND @ST(@I) = T_A_S
+	      THEN SKIP
+	    ELSIF term = 1 AND NOT @May_Term?(@I, req_tv, AS, IF @Right? THEN 0 ELSE 1 FI)
+	      THEN SKIP
+	      ELSE IF req_tv = 0 AND @GT(@I) = T_Statement AND @Right?
+		     THEN @Ateach_S(body, 1, Depth, AS,
+				    simple, Top, req_GT, term, N_AS)
+		     ELSE @Ateach_S(body, req_tv, Depth, AS,
+				    simple, Top, req_GT, term, N_AS) FI;
+		   IF LENGTH(adt_Path_Items) <= Top
+		     THEN C:" We have moved up ";
+			  EXIT(1) FI FI;
+	    IF @Right?
+	      THEN @Right
+	      ELSE @Up; EXIT(1) FI OD FI .;
+
+
+
+
+MW_PROC @Ateach_Expn(body, Depth, AS, simple) ==
+  VAR < Orig_P := @Posn >:
+  @Reset_Pass_Status;
+  @Ateach_Gen(body, Depth, AS, LENGTH(Orig_P), T_Expression);
+  IF @Valid_Posn?(@Program, Orig_P) THEN @Goto(Orig_P) FI ENDVAR .;
+
+
+MW_PROC @Ateach_Cond(body, Depth, AS, simple) ==
+  VAR < Orig_P := @Posn >:
+  @Reset_Pass_Status;
+  @Ateach_Gen(body, Depth, AS, LENGTH(Orig_P), T_Condition);
+  IF @Valid_Posn?(@Program, Orig_P) THEN @Goto(Orig_P) FI ENDVAR .;
+
+
+MW_PROC @Ateach_Lvalue(body, Depth, AS, simple) ==
+  VAR < Orig_P := @Posn >:
+  @Reset_Pass_Status;
+  @Ateach_Gen(body, Depth, AS, LENGTH(Orig_P), T_Lvalue);
+  IF @Valid_Posn?(@Program, Orig_P) THEN @Goto(Orig_P) FI ENDVAR .;
+
+
+MW_PROC @Ateach_Gen(body, Depth, AS, Top, req_GT) ==
+  IF @GT(@I) <> req_GT
+    THEN SKIP
+    ELSE !XP apply(body, <Depth, AS>) FI;
+  IF @Passed? OR @Failed? OR EMPTY?(@I)
+    THEN SKIP
+  ELSIF req_GT = T_Condition AND @GT(@I) = T_Expression
+    THEN SKIP
+  ELSIF LENGTH(adt_Path_Items) < Top
+    THEN C:" We have moved out of the top "
+  ELSIF NOT @Cs?(@I)
+    THEN SKIP
+    ELSE IF @ST(@I) = T_Floop THEN Depth := Depth + 1 FI;
+	 IF @ST(@I) = T_A_S THEN AS := @System_Type(@I) FI;
+	 IF @Ifmatch_Type?(@ST(@I))
+	   THEN @Down_To(2)
+         ELSIF @Fill_Type?(@ST(@I))
+	   THEN SKIP
+	   ELSE @Down FI;
+	 DO @Ateach_Gen(body, Depth, AS, Top, req_GT);
+	    IF LENGTH(adt_Path_Items) <= Top
+	      THEN C:" We have moved up ";
+		   EXIT(1) FI;
+	    IF @Right?
+	      THEN @Right
+	      ELSE @Up; EXIT(1) FI OD FI .;
+
+
+
+MW_PROC @Ateach_Variable(body, Depth, AS, simple) ==
+  VAR < Orig_P := @Posn >:
+  @Reset_Pass_Status;
+  @Ateach_Var(body, Depth, AS, LENGTH(Orig_P), 0, 0, < >);
+  IF @Valid_Posn?(@Program, Orig_P) THEN @Goto(Orig_P) FI ENDVAR .;
+
+
+MW_PROC @Ateach_Global_Var(body, Depth, AS, simple) ==
+  VAR < Orig_P := @Posn >:
+  @Reset_Pass_Status;
+  @Ateach_Var(body, Depth, AS, LENGTH(Orig_P), 0, 1, < >);
+  IF @Valid_Posn?(@Program, Orig_P) THEN @Goto(Orig_P) FI ENDVAR .;
+
+
+MW_PROC @Ateach_Var(body, Depth, AS, Top, parent, global, vars) ==
+  IF @ST(@I) <> T_Variable AND @ST(@I) = T_Var_Lvalue
+    THEN SKIP
+  ELSIF global = 1 AND @V(@I) IN vars
+    THEN SKIP
+    ELSE !XP apply(body, <Depth, AS>) FI;
+  IF @Passed? OR @Failed? OR EMPTY?(@I)
+    THEN SKIP
+  ELSIF LENGTH(adt_Path_Items) < Top
+    THEN C:" We have moved out of the top "
+  ELSIF NOT @Cs?(@I)
+    THEN SKIP
+    ELSE VAR < ST := @ST(@I), GT := @GT(@I) >:
+	 IF ST = T_Floop THEN Depth := Depth + 1 FI;
+	 IF ST = T_A_S THEN AS := @System_Type(@I) FI;
+	 IF @Ifmatch_Type?(@ST(@I))
+	   THEN @Down_To(2)
+	 ELSIF @Fill_Type?(@ST(@I))
+	   THEN SKIP
+	   ELSE @Down FI;
+	 DO IF global = 1
+	      THEN IF ST = T_For AND NOT @Right?
+		     THEN vars := vars \/ <@V(@I^1)>
+		   ELSIF ST = T_Var AND NOT @Right?
+		     THEN vars := vars \/ @Assigned(@I^1) FI FI;
+	    C:" In the assignments of a VAR, only process the expressions, if global = 1 ";
+	    C:" Don't process the first component of a FOR if global = 1 ";
+	    IF global = 1 AND parent = T_Var AND GT = T_Assigns
+	      THEN @Down_To(2);
+		   @Ateach_Var(body, Depth, AS, Top, ST, global, vars);
+		   IF LENGTH(adt_Path_Items) > Top THEN @Up FI
+	   ELSIF global = 1 AND ST = T_For AND @GT(@I) = T_Lvalue
+	      THEN SKIP
+	      ELSE @Ateach_Var(body, Depth, AS, Top, ST, global, vars) FI;
+	    IF LENGTH(adt_Path_Items) <= Top
+	      THEN C:" We have moved up ";
+		   EXIT(1) FI;
+	    IF @Right?
+	      THEN @Right
+	      ELSE @Up; EXIT(1) FI OD ENDVAR FI .;
+
+
+
+
+
+
+C: " ---------------------------------------------------------------------------  "

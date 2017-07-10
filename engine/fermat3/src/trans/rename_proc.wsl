@@ -1,0 +1,66 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+MW_PROC @Rename_Proc_Test() ==
+  IF @ST(@I) <> T_Proc
+    THEN @Fail("Not a procedure")
+    ELSE @Pass FI .;
+
+MW_PROC @Rename_Proc_Code(Data) ==
+  VAR < calls := < >, orig_posn := @Posn, new_name := @Make_Name(Data), old_name := @V(@I^1),
+	w_store := < > >:
+  C:" Move up to where clause ";
+  WHILE @ST(@I) <> T_Where AND @Up? DO @Up OD;
+  C:"Store any nested where clauses & replace with X_Proc_Call";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Where
+      THEN w_store := w_store ++ <@I>;
+	   @Paste_Over(@Make(T_X_Proc_Call, < >,
+			     <@Name(-LENGTH(w_store)), @Make(T_Expressions, < >, < >)>)) FI OD;
+  C:" Restore the top where clause: ";
+  @Paste_Over(w_store[-@V(@I^1)]);
+  calls := @Make_Set(MAP("HEAD", @Proc_Calls(@Item)));
+  C:" Store proc names and check against new name for a clash ";
+  IF @Spec_Type(@Item) = T_Where 
+    THEN calls := calls \/ @Make_Set(MAP("@V1", @Cs(@I^2))) FI;
+  IF new_name IN calls
+    THEN @Notice("The procedure name is already in use")
+    ELSE @Goto(orig_posn);
+	 C:"Paste over new proc name";
+	 @Down; @Paste_Over(@Name(new_name)); @Up;
+	 WHILE @ST(@I) <> T_Where AND @Up? DO @Up OD; 
+	 C:"Check for calls to proc and replace with call to new proc name";
+	 FOREACH Statement DO 
+	   IF @ST(@I) = T_Proc_Call AND @V(@I^1) = old_name
+	     THEN @Down; @Paste_Over(@Name(new_name)); @Up FI OD FI;
+  @RC_Restore_Wheres(w_store);
+  @Goto(orig_posn) ENDVAR .;
+
+MW_PROC @RC_Restore_Wheres(w_store) ==
+  C:"Replace X_Proc_Call with correct where clause from w_store ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_X_Proc_Call AND NUMBER?(@V(@I^1)) AND @V(@I^1) < 0
+      THEN @Paste_Over(w_store[-@V(@I^1)]);
+	   @RC_Restore_Wheres(w_store) FI OD .;
+
+
+
+SKIP

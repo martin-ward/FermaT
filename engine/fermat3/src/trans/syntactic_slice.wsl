@@ -1,0 +1,410 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Syntactic_Slice_Test() ==
+  IF @GT(@I) <> T_Statements
+    THEN @Fail("Syntactic_Slice can only slice a statement sequence")
+    ELSE @Pass FI .;
+
+C:" Preprocess: paste SKIP over any statement sequences ";
+C:" with empty terminal values (eg DO SKIP OD). ";
+C:" This will avoid dying on line 843 of Blocks.pm ";
+
+C:" Compute the basic blocks file ";
+C:" Convert to SSA form via bbtossa ";
+C:" Apply ssa_slice to get a sliced SSA blocks file ";
+C:" Read the sliced blocks ";
+C:" Delete (SKIP) any statements which assign to variables ";
+C:"   which are not needed ";
+
+C:" Data string is of the form var[@posn],... and may include flags -v, -f, -b ";
+
+MW_PROC @Syntactic_Slice_Code(Data) ==
+  VAR < block_file := "tmp_ss.bb", ssa_file := "tmp_ss.ssa",
+	slice_file := "tmp_ss.sli", blocks := < >,
+	orig_val := HASH_TABLE, orig_var := HASH_TABLE,
+	forward := IF INDEX("-f", Data) >= 0 THEN 1 ELSE 0 FI >:
+
+  C:" Avoid Blocks.pm dying due to blocks which are not linked to END node: ";
+  FOREACH Statements DO
+    IF EMPTY?(@Gen_TVs(@I, ASType))
+      THEN @Paste_Over(@Skips) FI OD;
+
+  IF Data = ""
+    THEN PRINT("No slicing criterion given!")
+    ELSE @Edit;
+         IF @ST(@I) = T_Statements AND @Size(@I) = 1 AND @ST(@I^1) = T_Var
+           THEN @Down; @Down_To(2)
+	 ELSIF @ST(@I) = T_Var
+	   THEN @Down_To(2) FI;
+         @Edit;
+         C:" Record original pars for each proc ";
+	 FOREACH Statement DO
+	   IF @ST(@I) = T_Where AND @Cs?(@I^2)
+	     THEN @Down_Last; @Down;
+		  DO IF @ST(@I) = T_Proc
+		       THEN orig_val.(@V(@I^1)) := @Elements(@I^2);
+			    orig_var.(@V(@I^1)) := @Elements(@I^3) FI;
+		     IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+	 IF T_Where IN @Stat_Types(@I)
+	   THEN PRINT("Converting global variables to parameters...");
+		FOREACH Statement DO
+		  IF @ST(@I) = T_Where
+		    THEN @Trans(TR_Globals_To_Pars, "");
+			 @Trans(TR_Var_Pars_To_Val_Pars, "") FI OD FI;
+	 PRINT("Computing Basic Blocks...");
+	 @Basic_Blocks(@I, block_file);
+	 PRINT("Computing SSA form...");
+	 IF @File_Exists?(ssa_file) THEN @Delete_File(ssa_file) FI;
+	 !XP perlscript("bbtossa", block_file ++ " " ++ ssa_file);
+	 IF NOT @File_Exists?(ssa_file)
+	   THEN PRINT("bbtossa failed to create " ++ ssa_file)
+	   ELSE PRINT("Slicing on " ++ Data ++ "...");
+		IF @File_Exists?(slice_file) THEN @Delete_File(slice_file) FI;
+		!XP perlscript("ssa_slice", ssa_file ++ " " ++ slice_file
+				 ++ " " ++ Quote ++ Data ++ Quote);
+		IF NOT @File_Exists?(slice_file)
+		  THEN PRINT("ssa_slice failed to create " ++ slice_file)
+		  ELSE blocks := @Parse_Basic_Blocks(slice_file);
+                       IF TRUE
+		         THEN @Delete_File(block_file);
+		              @Delete_File(ssa_file);
+                              @Delete_File(slice_file) FI;
+		       @Trim_WSL_From_SSA(blocks, forward);
+		       @Trim_Extra_Pars(orig_val, orig_var) FI FI;
+         @End_Edit;
+	 @End_Edit FI ENDVAR .;
+
+
+C:" Delete the WSL code which does not appear in the (SSA format) blocks list: ";
+C:" Format of a block is: <node, posn, len, succs, type, links, control, phi, assigns> ";
+
+Undefined_Value := @Make(T_Variable, @Make_Name("__UNDEF__"), < >);
+
+MW_PROC @Trim_WSL_From_SSA(blocks, forward) ==
+  VAR < posn := @Posn, entry := HEAD(blocks), block := < >, wanted := < >,
+	name := < >, val_keep := HASH_TABLE, var_keep := HASH_TABLE,
+	distance := @Action_Distances(@I) >:
+  blocks := TAIL(blocks);
+  FOR block IN blocks DO
+    wanted := < >;
+    C:" Process control vars: ";
+    FOR elt IN block[7] DO
+      wanted := wanted \/ <@SSA_Orig_Elt(elt)> OD;
+    C:" Process assignments (we can ignore the phi functions): ";
+    FOR assign IN block[9] DO
+      wanted := wanted \/ <@SSA_Orig_Elt(HEAD(assign))> OD;
+    IF NOT @Valid_Posn?(@Program, block[2])
+      THEN C:" Presumably an enclosing IF or WHILE was deleted "
+      ELSE @Goto(block[2]);
+	   len := block[3];
+	   DO IF len = 1 AND block[5] IN <"IF", "WHILE Header", "FOR Header">
+		THEN C:" Check that there are some control vars ";
+		     IF EMPTY?(block[7]) AND forward = 0
+		       THEN @SS_Delete(distance) FI
+	      ELSIF len = 1 AND block[5] IN <"WHERE Header", "FLOOP Header",
+					     "Save", "Restore", "FOR Init", "FOR Footer">
+		THEN C:" Skip this block "
+	      ELSIF len = 1 AND @Starts_With?(block[5], "ACTION ")
+		THEN C:" No code in the action header node "
+	      ELSIF len = 1 AND @Starts_With?(block[5], "PROC Return ")
+		THEN C:" A return node has var := var assignments ";
+		     C:" Delete unwanted VAR parameters ";
+		     C:" and record the index numbers of the wanted ones ";
+		     name := @Make_Name(SUBSTR(block[5], 12));
+		     var_keep.(name) := @SS_Keep(@Cs(@I), wanted);
+		     @Paste_Over(@Grep_Comps(@I, wanted));
+		     @Up
+	      ELSIF len = 1 AND @Starts_With?(block[5], "PROC Header ")
+		THEN C:" A header node has val := < > assignments ";
+		     C:" Delete unwanted value parameters ";
+		     C:" and record the index numbers of the wanted ones ";
+		     name := @Make_Name(SUBSTR(block[5], 12));
+		     @Down_To(2); C:" value pars ";
+		     val_keep.(name) := @SS_Keep(@Cs(@I), wanted);
+		     @Paste_Over(@Grep_Comps(@I, wanted));
+		     @Up
+	      ELSIF len = 1 AND @Starts_With?(block[5], "PROC CALL 1")
+		THEN SKIP
+	      ELSIF len = 1 AND @Starts_With?(block[5], "PROC CALL 2")
+		THEN SKIP
+	      ELSIF @ST(@I) IN <T_Call, T_Exit, T_Comment>
+		THEN C:" Don't delete CALLs or EXITs or comments here "
+	      ELSIF len = 1 AND block[5] = "VAR Init"
+		THEN C:" If an initialisation is not required, ";
+		     C:" then initialise to undef ";
+		     VAR < new := < > >:
+		     FOR assign IN @Cs(@I) DO
+		       IF @Struct_Elts(assign^1) IN wanted
+			 THEN new := <assign> ++ new
+			 ELSE new := <@Make(T_Assign, < >,
+					    <assign^1, Undefined_Value>)> ++ new FI OD;
+		     @Paste_Over(@Make(T_Assigns, < >, REVERSE(new))) ENDVAR
+	      ELSIF EMPTY?(@Elts_Assigned(@I) /\ wanted)
+		THEN @Paste_Over(@Skip) FI;
+	      IF len = 1 THEN EXIT(1) FI;
+	      @Right;
+	      len := len - 1 OD FI OD;
+  @Goto(< >);
+  C:" Fix up the proc calls by applying the changes made to the declarations: ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Proc_Call
+      THEN name := @V(@I^1);
+	   @Down_To(2);
+	   @Paste_Over(@SS_Filter(@I, val_keep.(name)));
+	   @Right;
+	   @Paste_Over(@SS_Filter(@I, var_keep.(name))) FI OD;
+
+  C:" Final simplifications: ";
+  @Trans(TR_Delete_All_Skips, "");
+
+  C:" Remove unused local variables ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Var AND EMPTY?(Call_Types_Set /\ @Stat_Types(@I^2))
+	 AND NOT EMPTY?(@Assigned(@I^1) \ @Used(@I^2))
+      THEN VAR < new := < >, used := @Used(@I^2) >:
+	   FOR assign IN @Cs(@I^1) DO
+	     IF @V(assign^1) IN used
+	       THEN new := <assign> ++ new FI OD;
+	   IF EMPTY?(new)
+	     THEN @Splice_Over(@Cs(@I^2))
+	     ELSE @Down;
+		  @Paste_Over(@Make(T_Assigns, < >, REVERSE(new)));
+		  @Up FI ENDVAR FI OD;
+
+  C:" Delete uncalled procedures: ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Where AND @Cs?(@I^2)
+      THEN @Down_Last; @Down;
+	   DO IF @Trans?(TR_Delete_Item)
+		THEN @Trans(TR_Delete_Item, "");
+		     IF @GT(@I) <> T_Definition
+		       THEN C:" We deleted the last defn ";
+			    EXIT(1) FI
+	      ELSIF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+
+  C:" Remove unreachable code: ";
+  @Down;
+  DO IF @Is_Improper?
+       THEN @Delete_Rest;
+	    EXIT(1)
+     ELSIF @Right?
+       THEN @Right
+       ELSE EXIT(1) FI OD;
+  @Up;
+  FOREACH Statements DO
+    @Down;
+    DO IF @Is_Improper?
+	 THEN @Delete_Rest;
+	      EXIT(1)
+       ELSIF @Right?
+	 THEN @Right
+	 ELSE EXIT(1) FI OD OD;
+
+  C:" Remove dummy loops: ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Floop
+      THEN IF @Size(@I) = 1 AND @ST(@I^1^1) = T_Floop
+		AND @Gen_Reducible?(@I^1^1, @AS_Type)
+	     THEN @Trans(TR_Double_To_Single_Loop, "") FI;
+	   IF @Is_Dummy?
+	     THEN @Trans(TR_Remove_Dummy_Loop, "") FI FI OD;
+
+  C:" Unfold elementary actions: ";
+  C:" For each elementary action, record it's target, then update all calls. ";
+  C:" Then delete all unreachable actions ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_A_S
+      THEN VAR < target := HASH_TABLE, start := @V(@I^1),
+		 size := @Size(@I^2), name := < >, n := 0,
+		 reached := HASH_TABLE, calls := HASH_TABLE, todo := < >, new := < > >:
+	   FOR action IN @Cs(@I^2) DO
+	     IF @Size(action^2) = 1 AND @ST(action^2^1) = T_Call
+	       THEN target.(@V(action^1)) := @V(action^2^1) FI OD;
+	   C:" Replace targets by final target (with a crude loop check) ";
+	   C:" Doing it in reverse order may be more efficient since actions ";
+	   C:" are more likely to call later ones (which will already be fixed). ";
+	   C:" Technically we should do this in bottom-up order of the call graph. ";
+	   FOR action IN REVERSE(@Cs(@I^2)) DO
+	     name := @V(action^1);
+	     IF NOT EMPTY?(target.(name))
+	       THEN n := 0;
+		    WHILE n < size AND NOT EMPTY?(target.(target.(name))) DO
+		      n := n + 1;
+		      target.(name) := target.(target.(name)) OD FI OD;
+	   IF target.(start) = @Make_Name("Z")
+	     THEN C:" Whole action system is redundant: ";
+		  @Paste_Over(@Skip)
+	     ELSE IF NOT EMPTY?(target.(start))
+		    THEN @Down;
+			 @Paste_Over(@Make(T_Name, target.(start), < >));
+			 @Up FI;
+		  C:" Update the calls: ";
+		  FOREACH NAS DO
+		    IF @ST(@I) = T_Call AND NOT EMPTY?(target.(@V(@I)))
+		      THEN @Paste_Over(@Make(T_Call, target.(@V(@I)), < >)) FI OD;
+		  C:" Delete unreachable actions ";
+		  FOR action IN @Cs(@I^2) DO
+		    calls.(@V(action^1)) := MAP("HEAD", @Calls(action^2)) OD;
+		  reached.(@V(@I^1)) := 1;
+		  todo := <@V(@I^1)>;
+		  WHILE NOT EMPTY?(todo) DO
+		    name := HEAD(todo);
+		    todo := TAIL(todo);
+		    FOR call IN calls.(name) DO
+		      IF EMPTY?(reached.(call))
+			THEN reached.(call) := 1;
+			     todo := <call> ++ todo FI OD OD;
+		   FOR action IN @Cs(@I^2) DO
+		     IF NOT EMPTY?(reached.(@V(action^1)))
+		       THEN new := <action> ++ new FI OD;
+		   @Down_Last;
+		   @Paste_Over(@Make(T_Actions, < >, REVERSE(new)));
+		   @Up FI ENDVAR FI OD;
+
+  @Trans(TR_Delete_All_Skips, "") ENDVAR .;
+
+
+C:" Return a new item of the same type as I with only those components ";
+C:" whose elements are in the wanted set: ";
+
+MW_FUNCT @Grep_Comps(I, wanted) ==
+  VAR < R := < > >:
+  FOR v IN @Cs(I) DO
+    IF @Struct_Elts(v) IN wanted
+      THEN R := <v> ++ R FI OD;
+  (@Make(@ST(I), < >, REVERSE(R))) .;
+
+
+C:" Return a list of 0's and 1's indicating which elements of L are wanted ";
+
+MW_FUNCT @SS_Keep(L, wanted) ==
+  VAR < R := < > >:
+  FOR v IN L DO
+    IF @Struct_Elts(v) IN wanted
+      THEN R := <1> ++ R
+      ELSE R := <0> ++ R FI OD;
+  (REVERSE(R)) .;
+
+
+C:" Filted the components of I using the `keep' bitmask (a list of 0's and 1's) ";
+
+MW_FUNCT @SS_Filter(I, keep) ==
+  VAR < R := < > >:
+  IF NOT EMPTY?(keep)
+    THEN FOR v IN @Cs(I) DO
+	   IF HEAD(keep) = 1 THEN R := <v> ++ R FI;
+	   keep := TAIL(keep) OD FI;
+  (@Make(@ST(I), < >, REVERSE(R))) .;
+
+
+MW_PROC @Trim_Extra_Pars(orig_val, orig_var) ==
+  VAR < name := < >, val_keep := HASH_TABLE, var_keep := HASH_TABLE >:
+  FOREACH Statement DO
+    IF @ST(@I) = T_Where AND @Cs?(@I^2)
+      THEN @Down_Last; @Down;
+	   DO IF @ST(@I) = T_Proc
+		THEN name := @V(@I^1);
+		     @Down_To(2);
+		     val_keep.(name) := @SS_Keep(@Cs(@I), orig_val.(name));
+		     @Paste_Over(@Grep_Comps(@I, orig_val.(name)));
+		     @Right;
+		     var_keep.(name) := @SS_Keep(@Cs(@I), orig_var.(name));
+		     @Paste_Over(@Grep_Comps(@I, orig_var.(name)));
+		     @Up FI;
+	      IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+
+  FOREACH Statement DO
+    IF @ST(@I) = T_Proc_Call
+      THEN name := @V(@I^1);
+	   @Down_To(2);
+	   @Paste_Over(@SS_Filter(@I, val_keep.(name)));
+	   @Right;
+	   @Paste_Over(@SS_Filter(@I, var_keep.(name)));
+	   @Up;
+	   C:" NB: The proc call will have already been deleted if there are no ";
+	   C:" var parameters (including global vars) required " FI OD ENDVAR .;
+
+
+
+C:" Record distance to CALL Z for each action ";
+C:" (this assumes all action systems are regular and action names are unique) ";
+
+MW_FUNCT @Action_Distances(I) ==
+  VAR < dist := HASH_TABLE >:
+  IF T_A_S IN @Stat_Types(I)
+    THEN @Edit;
+	 @Paste_Over(I);
+	 FOREACH Statement DO
+	   IF @ST(@I) = T_A_S
+	     THEN VAR < preds := HASH_TABLE, this_level := < >, next_level := < >,
+			done := HASH_TABLE, d := 0 >:
+		  FOR action IN @Cs(@I^2) DO
+		    FOR pair IN @Calls(action^2) DO
+		      preds.(pair[1]) := <@V(action^1)> \/ preds.(pair[1]) OD OD;
+		  done.(@Make_Name("Z")) := 1;
+		  next_level := <@Make_Name("Z")>;
+		  WHILE NOT EMPTY?(next_level) DO
+		    d := d + 1;
+		    this_level := next_level;
+		    next_level := < >;
+		    FOR name IN this_level DO
+		      IF NOT EMPTY?(dist.(name))
+			THEN ERROR("@Action_Distances:", @N_String(name),
+				   "encountered more than once!!!") FI;
+		      dist.(name) := d;
+		      FOR pred IN preds.(name) DO
+			IF EMPTY?(done.(pred))
+			  THEN done.(pred) := 1;
+			       next_level := <pred> ++ next_level FI OD OD OD ENDVAR FI OD;
+	 @Undo_Edit FI;
+  (dist) .;
+
+
+C:" `Delete' selected statement by pasting over a CALL, EXIT or SKIP as appropriate ";
+MW_PROC @SS_Delete(distance) ==
+  VAR < tvs := @TVs(), types := @Stat_Types(@I) >:
+  IF T_Call IN types
+    THEN @Paste_Over(@Make(T_Call, @Smallest_Call(@I, distance), < >))
+  ELSIF tvs = <0>
+    THEN @Paste_Over(@Skip)
+  ELSIF EMPTY?(tvs)
+    THEN @Paste_Over(@Make(T_Abort, < >, < >))
+    ELSE C:" Find largest TV and paste over an EXIT ";
+	 @Paste_Over(@Make(T_Exit, REDUCE("MAX", tvs), < >)) FI ENDVAR .;
+  
+
+MW_FUNCT @Smallest_Call(I, distance) ==
+  VAR < min_name := < >, min_dist := 999999 >:
+  FOR pair IN @Calls(I) DO
+    IF distance.(pair[1]) < min_dist
+      THEN min_name := pair[1];
+	   min_dist := distance.(pair[1]) FI OD;
+  (min_name) .;
+
+
+SKIP
+
+
+
+
+
+

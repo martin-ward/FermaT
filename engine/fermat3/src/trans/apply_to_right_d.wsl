@@ -1,0 +1,30 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+IF EMPTY?(TR_Apply_To_Right ) THEN TR_Apply_To_Right := @New_TR_Number FI;
+TRs_Name[TR_Apply_To_Right] := "Apply To Right";
+TRs_Proc_Name[TR_Apply_To_Right] := "Apply_To_Right";
+TRs_Test[TR_Apply_To_Right]:=!XF funct(@Apply_To_Right_Test);
+TRs_Code[TR_Apply_To_Right]:=!XF funct(@Apply_To_Right_Code);
+TRs_Keywords[TR_Apply_To_Right] := < "Use/Apply" >;
+TRs_Help[TR_Apply_To_Right] := "This transformation will apply the current program item to the one to its immediate right.  For example, if the current item is an assertion and the next item is an `IF' statement, then the transformation will attempt to simplify the conditions using the assertions.";
+TRs_Prompt[TR_Apply_To_Right] := "";
+TRs_Data_Gen_Type[TR_Apply_To_Right] := ""
+

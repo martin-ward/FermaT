@@ -1,0 +1,175 @@
+#!/usr/bin/perl
+# Convert a FermaT callgraph to the format required for vcg
+# Usage: cgtovcg [-lr] [-from node] input [output]
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+use a2w;
+use VCG;
+use strict;
+
+sub node($);
+sub edge($$$);
+
+$::S_Max_Box_Lines1 	= 8;	# Max number of lines in a label (start)
+$::S_Max_Box_Lines2 	= 2;	# Max number of lines in a label (end)
+$::S_Max_Box_Chars 	= 25;	# Max number of chars/line in a box label
+$::S_Max_Rhomb_Chars 	= 20;	# Max number of chars/line in a rhomb label
+
+read_options();
+
+my ($myname, $Usage, $from, @succslist, @data, $to, $num, %edge, $node,
+    @todo, %mark, $data);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname input [output]\n";
+
+my $orientation = "top_to_bottom";
+if (@ARGV && ($ARGV[0] eq "-lr")) {
+  $orientation = "left_to_right";
+  shift;
+}
+
+my $start = "";
+if (@ARGV && ($ARGV[0] eq "-from")) {
+  shift;
+  $start = shift;
+}
+
+# Check zero to two arguments:
+die $Usage if ($#ARGV > 1);
+
+my ($input, $output);
+
+if (@ARGV) {
+  $input = $ARGV[0];
+  if ($#ARGV > 0) {
+    $output = $ARGV[1];
+  } else {
+    $output = $input;
+    if ($output =~ s/\.cg/\.vg/) {
+      # OK
+    } else {
+      $output .= ".vg";
+    }
+  }
+  open(IN, $input) or die "Can't open input file `$input': $!\n";
+  open(OUT, ">$output") or die "Can't write to output file: `$output': $!\n";
+  select(OUT);
+} else {
+  # Act as a filter:
+  open(IN, "<&STDIN");
+}
+
+
+my $debug = 0;
+my %nodes = ();
+my %done = ();
+my @nodes = ();
+my @edges = ();
+
+
+while (<IN>) {
+  next if (/^#/);
+  next unless (/:/);
+  chop;
+  # If "(" is present, read up to ")":
+  while (/\(/ && !m/\)/) {
+    die "No closing bracket found!\n" if eof();
+    $_ .= " " . <>;
+    chop;
+  }
+  # remove brackets
+  s/\(|\)//g;
+  next unless (s/^\s*(\S*)\s*:(\s+|$)//);
+  $from = "$1";
+  # If there are no no-of-calls items, add default values (1):
+  s/\b(\S+)\b/$1 1/g unless (/\b\d+\b/);
+  @succslist = split;
+  print STDERR "$from -> " . join(",", @succslist) . "\n" if $debug > 2;
+
+  push(@data, [$from]);
+  $done{$from}++;
+  while(@succslist) {
+    $to = shift(@succslist);
+    $nodes{$to}++;
+    $num = shift(@succslist);
+    push(@data, [$from, $to, $num]);
+    $edge{$from}{$to} = $num;
+  }
+}
+
+foreach $node (keys %nodes) {
+  push(@data, [$node]) unless ($done{$node});
+}
+
+
+if ($start ne "") {
+  # Mark all nodes reachable from $start,
+  # then mark all unreachable nodes as done
+  # (so they don't get included);
+  @todo = ($start);
+  while (@todo) {
+    $node = pop(@todo);
+    if (!$mark{$node}) {
+      $mark{$node} = 1;
+      foreach $to (keys %{$edge{$node}}) {
+	push(@todo, $to) unless ($mark{$to});
+      }
+    }
+  }
+}
+
+foreach $data (@data) {
+  next if (($start ne "") && (!$mark{$$data[0]}));
+  if (@$data > 1) {
+    ($from, $to, $num) = @$data;
+    $num = "" if ($num eq "1");
+    edge($from, $to, $num);
+  } else {
+    node($$data[0]);
+  }
+}
+
+print_callgraph("maxdepth", $orientation, \@nodes, \@edges);
+
+exit (0);
+
+
+sub node($) {
+  my ($name) = @_;
+  push(@nodes, ["box", $name, $name, "", "", "", "", ""]);
+}
+
+
+sub edge($$$) {
+  my ($from, $to, $label) = @_;
+  my $class = "";
+  my $thick = "";
+  my $type = "edge";
+  if ($from eq "dispatch") {
+    $class = 2; $thick = 1;
+    $type = "backedge";
+  } elsif ($to eq "dispatch") {
+    $class = 3; $thick = 1;
+  } else {
+    $thick = 2;
+  }
+  push(@edges, [$type, $from, $to, $label, "", $class, "", $thick, ""]);
+}
+
+
+# The nodes list is a list of array refs:
+# [shape, title, label, WSL, comments, code, edge_label, colour]
+#
+# The edges list is also a list of array refs:
+# [type, source, target, label, pri, class, style, thick, colour]
+#
+

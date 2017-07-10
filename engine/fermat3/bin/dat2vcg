@@ -1,0 +1,145 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+# dattovcg [input] [output]
+# Convert a raw or restructured dat file into a VCG call graph
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/\"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+use Repository;
+use VCG;
+use warnings;
+use strict;
+
+sub edge($$$);
+sub node($$$);
+
+use vars qw(@bb @nodes @edges);
+
+$| = 1;
+
+read_options();
+
+my ($myname, $Usage, @succslist, $num);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [input] [output]\n";
+
+my $orientation = "top_to_bottom";
+if (@ARGV && ($ARGV[0] eq "-lr")) {
+  $orientation = "left_to_right";
+  shift;
+}
+
+my ($input, $output);
+
+# Check zero to two arguments:
+shift while (@ARGV && ($ARGV[0] =~ /^-/));
+if (@ARGV == 2) {
+  ($input, $output) = @ARGV;
+} elsif (@ARGV == 1) {
+  $input = $ARGV[0];
+  $output = $input;
+  $output .= ".vg" unless ($output =~ s/\.da./\.vcg/);
+} elsif (@ARGV == 0) {
+  ($input, $output) = ("-", "-");
+} else {
+  die $Usage;
+}
+
+
+$dat = {};
+$comment = read_dat($dat, $input);
+
+if (!defined($$dat{Orig_Sequence})) {
+  print STDERR "No data found in ", ($input || "stdin"), "!\n";
+  exit(0);
+}
+
+@nodes = ();
+@edges = ();
+
+foreach my $name (keys %{$$dat{Op}}) {
+  my $label = "$name\n";
+  foreach my $key (qw(Comment Repeat Type Op Init Full_Length Label_Locn
+		      Orig_Parent Orig_Sequence Off_Dec)) {
+    if (defined($$dat{$key}) && defined($$dat{$key}{$name})) {
+      if ($$dat{$key}{$name} =~ /\s/) {
+	$label .= qq[$key = "$$dat{$key}{$name}"\n];
+      } else {
+	$label .= qq[$key = $$dat{$key}{$name}\n];
+      }
+    }
+  }
+  node($name, $label, "box");
+  next if (defined($$dat{Type}{$name}) && ($$dat{Type}{$name} eq "CSECT"));
+  if (defined($$dat{Child}) && defined($$dat{Child}{$name})) {
+    my $child = $$dat{Child}{$name};
+    edge($name, $child, "edge");
+    while (defined($$dat{Sibling}{$child})) {
+      $child = $$dat{Sibling}{$child};
+      edge($name, $child, "edge");
+    }
+  }
+}
+
+my $saveout;
+local *OUT;
+if ($output ne "-") {
+  open(OUT, ">$output") or die "Can't write to `$output': $!\n";
+  $saveout = select(OUT);
+}
+
+print_callgraph("tree", $orientation, \@nodes, \@edges);
+
+if ($output ne "-") {
+  close(OUT);
+  select($saveout);
+}
+
+
+
+sub node($$$) {
+  my ($title, $contents, $shape) = @_;
+  my $label = make_label($shape, $contents, "");
+  push(@nodes, [$shape, $title, $label, "", "", $contents, "", ""]);
+}
+
+
+sub edge($$$) {
+  my ($from, $to, $type) = @_;
+  $type ||= "edge";
+  my ($col, $pri);
+  if ($type eq "edge") {
+    $col = "";
+    $pri = "";
+  } else {
+    $col = "red";
+    $pri = "0";
+  }
+  push(@edges, [$type, $from, $to, "", $pri, "", "", 2, $col]);
+}
+
+

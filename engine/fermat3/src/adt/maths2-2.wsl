@@ -1,0 +1,3851 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+C:" NB Some of these patterns are only worth doing for an explicit Simplify request: ";
+C:" so maybe check for Budget > 5 (say). ";
+MW_PROC @Mth_Patterns(Budget) ==
+  FOREACH Expression DO VAR < MT_ST := @ST(@I) >:
+    IF @Size(@I) = 1
+      THEN IF MT_ST = 251
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN IFMATCH Expression -(~?x + ~*yy)
+THEN @Paste_Over(FILL Expression -~?x - ~*yy ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 251
+                    THEN IFMATCH Expression -(-~?x)
+THEN @Paste_Over(x)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 226
+                    THEN IFMATCH Expression -(~?x DIV ~?y)
+THEN @Paste_Over(FILL Expression -~?x DIV ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 225
+                    THEN IFMATCH Expression -(~?x MOD ~?y)
+THEN @Paste_Over(FILL Expression -~?x MOD ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 220
+                    THEN IFMATCH Expression -(~?x + ~*yy)
+THEN @Paste_Over(FILL Expression -~?x - ~*yy ENDFILL)
+ELSE SKIP ENDMATCH FI ENDVAR
+           ELSIF MT_ST = 228
+             THEN IFMATCH Expression ABS(~?x)
+                    THEN IF @ST(
+  @Simplify(
+    FILL Condition ~?x >= 0 ENDFILL, Budget - 1))
+                         = T_True
+                      THEN @Paste_Over(x) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ABS(-~?x)
+                    THEN IF @ST(
+  @Simplify(
+    FILL Condition ~?x <= 0 ENDFILL, Budget - 1))
+                         = T_True
+                      THEN @Paste_Over(FILL Expression -~?x ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ABS(-~?x)
+                    THEN @Paste_Over(FILL Expression ABS(~?x) ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ABS(FRAC(~?x))
+                    THEN @Paste_Over(FILL Expression FRAC(ABS(~?x)) ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 231
+             THEN IFMATCH Expression SGN(~?x)
+                    THEN IF @ST(
+  @Simplify(FILL Condition ~?x < 0 ENDFILL, Budget - 1)
+)
+                         = T_True
+                      THEN @Paste_Over(Mth_m1)
+                    ELSIF @ST(
+     @Simplify(FILL Condition ~?x = 0 ENDFILL, Budget - 1)
+   )
+ = T_True
+                      THEN @Paste_Over(Mth_0)
+                    ELSIF @ST(
+     @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+   )
+ = T_True
+                      THEN @Paste_Over(Mth_1) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 240
+             THEN IFMATCH Expression HEAD(<~?x, ~*y>)
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression HEAD(<~?x, ~*y> ++ ~*z)
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 241
+             THEN IFMATCH Expression TAIL(<~?x, ~*y>)
+                    THEN @Paste_Over(@Make(
+        T_Sequence, < >, <@Make(T_Expressions, < >, y)>))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression TAIL(<~?x, ~*y> ++ ~*z)
+                    THEN IF EMPTY?(y)
+                      THEN IF LENGTH(z) > 1
+  THEN @Paste_Over(@Make(T_Concat, < >, z))
+  ELSE @Paste_Over(HEAD(z)) FI
+                      ELSE y := @Make(
+       T_Sequence, < >, <@Make(T_Expressions, < >, y)>);
+@Paste_Over(@Make(T_Concat, < >, <y> ++ z)) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 244
+             THEN IFMATCH Expression LENGTH(<~*x>)
+                    THEN @Paste_Over(@Make(T_Number, LENGTH(x), < >))
+                    ELSE SKIP ENDMATCH FI
+    ELSIF @Size(@I) = 2
+      THEN IF MT_ST = 220
+             THEN IFMATCH Expression -~?x + ~?=x
+                    THEN @Paste_Over(Mth_0)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 222
+             THEN IFMATCH Expression ABS(~?x) * ABS(~?y)
+                    THEN @Paste_Over(FILL Expression ABS(~?x * ~?y) ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression -~?x * ~?=x
+                    THEN @Paste_Over(FILL Expression -(~?x ** 2) ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression 1 / ~?x * ~?=x
+                    THEN @Paste_Over(Mth_1)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 251
+             THEN IFMATCH Expression -(~?x + ~*yy)
+                    THEN @Paste_Over(FILL Expression -~?x - ~*yy ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 223
+             THEN IFMATCH Expression 1 / (1 / ~?x)
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 225
+             THEN IFMATCH Expression ~?x MOD ~?=x
+                    THEN @Paste_Over(Mth_0)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression 0 MOD ~?x
+                    THEN @Paste_Over(Mth_0)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~?x MOD ~?y
+                    THEN IF @ST(
+  @Simplify(
+    FILL Condition ~?x < ~?y ENDFILL, Budget - 1))
+                         = T_True
+                      THEN @Paste_Over(Mth_0) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 220
+             THEN IFMATCH Expression -~?x + ~?=x
+                    THEN @Paste_Over(Mth_0)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 222
+             THEN IFMATCH Expression ABS(~?x) * ABS(~?y)
+                    THEN @Paste_Over(FILL Expression ABS(~?x * ~?y) ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression -~?x * ~?=x
+                    THEN @Paste_Over(FILL Expression -(~?x ** 2) ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression 1 / ~?x * ~?=x
+                    THEN @Paste_Over(Mth_1)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 224
+             THEN IFMATCH Expression ~?x ** 0
+                    THEN @Paste_Over(Mth_1)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~?x ** 1
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression 0 ** ~?x
+                    THEN @Paste_Over(Mth_0)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~?x ** -~?y
+                    THEN @Paste_Over(FILL Expression 1 / ~?x ** ~?y ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 232
+             THEN IFMATCH Expression MAX(~?x, ~?y)
+                    THEN IF @ST(
+  @Simplify(
+    FILL Condition ~?x >= ~?y ENDFILL, Budget - 1))
+                         = T_True
+                      THEN @Paste_Over(x) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression MAX(~?x, ~?y)
+                    THEN IF @ST(
+  @Simplify(
+    FILL Condition ~?y >= ~?x ENDFILL, Budget - 1))
+                         = T_True
+                      THEN @Paste_Over(y) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 233
+             THEN IFMATCH Expression MIN(~?x, ~?y)
+                    THEN IF @ST(
+  @Simplify(
+    FILL Condition ~?x <= ~?y ENDFILL, Budget - 1))
+                         = T_True
+                      THEN @Paste_Over(x) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression MIN(~?x, ~?y)
+                    THEN IF @ST(
+  @Simplify(
+    FILL Condition ~?y <= ~?x ENDFILL, Budget - 1))
+                         = T_True
+                      THEN @Paste_Over(y) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 226
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN IFMATCH Expression (~?z + ~?x * ~?y) DIV ~?=x
+THEN @Paste_Over(FILL Expression ~?y + ~?z DIV ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression (~?x * ~?y + ~?z) DIV ~?=x
+THEN @Paste_Over(FILL Expression ~?y + ~?z DIV ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression (~?z + ~?y * ~?x) DIV ~?=x
+THEN @Paste_Over(FILL Expression ~?y + ~?z DIV ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression (~?y * ~?x + ~?z) DIV ~?=x
+THEN @Paste_Over(FILL Expression ~?y + ~?z DIV ~?x ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Expression ~?x * ~?y DIV ~?z
+THEN IF @ST(y) = T_Number
+     AND @ST(z) = T_Number
+     AND -(@V(y)) = @V(z)
+  THEN @Paste_Over(FILL Expression -~?x ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression ~?y * ~?x DIV ~?=x
+THEN @Paste_Over(y)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression ~?x * ~?y DIV ~?=x
+THEN @Paste_Over(y)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 251
+                    THEN IFMATCH Expression -~?x DIV -~?y
+THEN @Paste_Over(FILL Expression ~?x DIV ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 220
+                    THEN IFMATCH Expression (~?z + ~?x * ~?y) DIV ~?=x
+THEN @Paste_Over(FILL Expression ~?y + ~?z DIV ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression (~?x * ~?y + ~?z) DIV ~?=x
+THEN @Paste_Over(FILL Expression ~?y + ~?z DIV ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression (~?z + ~?y * ~?x) DIV ~?=x
+THEN @Paste_Over(FILL Expression ~?y + ~?z DIV ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression (~?y * ~?x + ~?z) DIV ~?=x
+THEN @Paste_Over(FILL Expression ~?y + ~?z DIV ~?x ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Expression ~?x * ~?y DIV ~?z
+THEN IF @ST(y) = T_Number
+     AND @ST(z) = T_Number
+     AND -(@V(y)) = @V(z)
+  THEN @Paste_Over(FILL Expression -~?x ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression ~?y * ~?x DIV ~?=x
+THEN @Paste_Over(y)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression ~?x * ~?y DIV ~?=x
+THEN @Paste_Over(y)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 205
+                    THEN IFMATCH Expression 0 DIV ~?x
+THEN @Paste_Over(Mth_0)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Expression ~?x DIV ~?=x
+                    THEN @Paste_Over(Mth_1)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~?x DIV 1
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~?x DIV ~?y
+                    THEN IF @ST(
+  @Simplify(
+    FILL Condition ~?x < ~?y ENDFILL, Budget - 1))
+                         = T_True
+                      THEN @Paste_Over(Mth_0) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 240
+             THEN IFMATCH Expression HEAD(<~?x, ~*y>)
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression HEAD(<~?x, ~*y> ++ ~*z)
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 241
+             THEN IFMATCH Expression TAIL(<~?x, ~*y>)
+                    THEN @Paste_Over(@Make(
+        T_Sequence, < >, <@Make(T_Expressions, < >, y)>))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression TAIL(<~?x, ~*y> ++ ~*z)
+                    THEN IF EMPTY?(y)
+                      THEN IF LENGTH(z) > 1
+  THEN @Paste_Over(@Make(T_Concat, < >, z))
+  ELSE @Paste_Over(HEAD(z)) FI
+                      ELSE y := @Make(
+       T_Sequence, < >, <@Make(T_Expressions, < >, y)>);
+@Paste_Over(@Make(T_Concat, < >, <y> ++ z)) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 246
+             THEN IFMATCH Expression < > ++ ~?x
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression <~*x> ++ <~*y>
+                    THEN @Paste_Over(FILL Expression <~*x, ~*y> ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 244
+             THEN IFMATCH Expression LENGTH(<~*x>)
+                    THEN @Paste_Over(@Make(T_Number, LENGTH(x), < >))
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 201
+             THEN IFMATCH Expression !XF srl(2 ** ~?x * ~?y, ~?=x)
+                    THEN @Paste_Over(y)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 202
+             THEN IFMATCH Expression @List_To_String(<~*x>)
+                    THEN VAR < OK := 1 >:
+                    FOR elt IN x DO
+                      IF @ST(elt) <> T_Number OR @V(elt) = 34 OR @V(elt) = 13
+                        THEN OK := 0 FI OD;
+                    IF OK = 1
+                      THEN @Paste_Over(@Make(T_String, @List_To_String(MAP("@V", x)), < >)
+) FI ENDVAR
+                    ELSE SKIP ENDMATCH FI
+      ELSE IF MT_ST = 220
+             THEN IFMATCH Expression ~*y1 + -~?x + ~?=x + ~*y2
+                    THEN @Paste_Over(@Make(T_Plus, < >, <Mth_0> ++ y1 ++ y2))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~*y1 + -~?x + ~?yy + ~?=x + ~*y2
+                    THEN @Paste_Over(@Make(T_Plus, < >, y1 ++ <yy> ++ y2))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression -~?y * 2 + ~*z + ~?=y + ~*w
+                    THEN @Paste_Over(FILL Expression (~*z + ~*w) - ~?y ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 222
+             THEN IFMATCH Expression ~*y1 * -~?x * ~?=x * ~*y2
+                    THEN @Paste_Over(@Make(
+        T_Times,
+        < >,
+        <FILL Expression -(~?x ** 2) ENDFILL> ++ y1 ++ y2))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~*y1 * -~?x * ~?yy * ~?=x * ~*y2
+                    THEN @Paste_Over(@Make(
+        T_Times,
+        < >,
+        <FILL Expression -(~?x ** 2) ENDFILL> ++ y1 ++ <yy>
+          ++ y2))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~?x * ~?y * ~?z
+                    THEN IF @ST(x) = T_Invert AND @Equal?(x^1, z)
+                      THEN @Paste_Over(y) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~*z1 * ~?x * ~?y
+                    THEN IF @ST(y) = T_Invert
+                      THEN IF @ST(x) = T_Number
+     AND @ST(y^1) = T_Number
+     AND @V(y^1) > 0
+     AND @V(y^1) MOD @V(x) = 0
+  THEN y := @Make(T_Number, @V(y^1) DIV @V(x), < >);
+       IF @V(y) = 1
+         THEN @Paste_Over(FILL Expression ~*z1 * 1 ENDFILL)
+         ELSE @Paste_Over(FILL Expression (~*z1 * 1) / ~?y ENDFILL)
+       FI FI FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 251
+             THEN IFMATCH Expression -(~?x + ~*yy)
+                    THEN @Paste_Over(FILL Expression -~?x - ~*yy ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 222
+             THEN IFMATCH Expression ~*y1 * -~?x * ~?=x * ~*y2
+                    THEN @Paste_Over(@Make(
+        T_Times,
+        < >,
+        <FILL Expression -(~?x ** 2) ENDFILL> ++ y1 ++ y2))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~*y1 * -~?x * ~?yy * ~?=x * ~*y2
+                    THEN @Paste_Over(@Make(
+        T_Times,
+        < >,
+        <FILL Expression -(~?x ** 2) ENDFILL> ++ y1 ++ <yy>
+          ++ y2))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~?x * ~?y * ~?z
+                    THEN IF @ST(x) = T_Invert AND @Equal?(x^1, z)
+                      THEN @Paste_Over(y) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~*z1 * ~?x * ~?y
+                    THEN IF @ST(y) = T_Invert
+                      THEN IF @ST(x) = T_Number
+     AND @ST(y^1) = T_Number
+     AND @V(y^1) > 0
+     AND @V(y^1) MOD @V(x) = 0
+  THEN y := @Make(T_Number, @V(y^1) DIV @V(x), < >);
+       IF @V(y) = 1
+         THEN @Paste_Over(FILL Expression ~*z1 * 1 ENDFILL)
+         ELSE @Paste_Over(FILL Expression (~*z1 * 1) / ~?y ENDFILL)
+       FI FI FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 227
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 309
+                    THEN IFMATCH Expression IF FALSE THEN ~?x ELSE ~?y FI
+THEN @Paste_Over(y)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression IF FALSE THEN ~?x ELSE ~?y FI
+THEN @Paste_Over(y)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 308
+                    THEN IFMATCH Expression IF TRUE THEN ~?x ELSE ~?y FI
+THEN @Paste_Over(x)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Expression IF TRUE THEN ~?x ELSE ~?y FI
+THEN @Paste_Over(x)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Expression IF ~?x THEN ~?y ELSE ~?=y FI
+                    THEN @Paste_Over(y)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 220
+             THEN IFMATCH Expression ~*y1 + -~?x + ~?=x + ~*y2
+                    THEN @Paste_Over(@Make(T_Plus, < >, <Mth_0> ++ y1 ++ y2))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression ~*y1 + -~?x + ~?yy + ~?=x + ~*y2
+                    THEN @Paste_Over(@Make(T_Plus, < >, y1 ++ <yy> ++ y2))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression -~?y * 2 + ~*z + ~?=y + ~*w
+                    THEN @Paste_Over(FILL Expression (~*z + ~*w) - ~?y ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 240
+             THEN IFMATCH Expression HEAD(<~?x, ~*y>)
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression HEAD(<~?x, ~*y> ++ ~*z)
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 241
+             THEN IFMATCH Expression TAIL(<~?x, ~*y>)
+                    THEN @Paste_Over(@Make(
+        T_Sequence, < >, <@Make(T_Expressions, < >, y)>))
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Expression TAIL(<~?x, ~*y> ++ ~*z)
+                    THEN IF EMPTY?(y)
+                      THEN IF LENGTH(z) > 1
+  THEN @Paste_Over(@Make(T_Concat, < >, z))
+  ELSE @Paste_Over(HEAD(z)) FI
+                      ELSE y := @Make(
+       T_Sequence, < >, <@Make(T_Expressions, < >, y)>);
+@Paste_Over(@Make(T_Concat, < >, <y> ++ z)) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 246
+             THEN IFMATCH Expression <~*x> ++ <~*y>
+                    THEN @Paste_Over(FILL Expression <~*x, ~*y> ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 244
+             THEN IFMATCH Expression LENGTH(<~*x>)
+                    THEN @Paste_Over(@Make(T_Number, LENGTH(x), < >))
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 202
+             THEN IFMATCH Expression @List_To_String(<~*x>)
+                    THEN VAR < OK := 1 >:
+                    FOR elt IN x DO
+                      IF @ST(elt) <> T_Number OR @V(elt) = 34 OR @V(elt) = 13
+                        THEN OK := 0 FI OD;
+                    IF OK = 1
+                      THEN @Paste_Over(@Make(T_String, @List_To_String(MAP("@V", x)), < >)
+) FI ENDVAR
+                    ELSE SKIP ENDMATCH FI FI ENDVAR OD;
+  FOREACH Condition DO VAR < MT_ST := @ST(@I) >:
+    IF @Size(@I) = 1
+      THEN IF MT_ST = 312
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 301
+                    THEN IFMATCH Condition NOT (!XC fpx_greater_eq(~?x, ~?y))
+THEN @Paste_Over(FILL Condition !XC fpx_less(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_greater_eq(~?x, ~?y))
+THEN @Paste_Over(FILL Condition !XC dec_less(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_greater(~?x, ~?y))
+THEN @Paste_Over(FILL Condition !XC dec_less_eq(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_less_eq(~?x, ~?y))
+THEN @Paste_Over(FILL Condition !XC dec_greater(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_less(~?x, ~?y))
+THEN @Paste_Over(FILL Condition !XC dec_greater_eq(~?x, ~?y) ENDFILL
+)
+ELSE SKIP ENDMATCH FI ENDVAR FI
+    ELSIF @Size(@I) = 2
+      THEN IF MT_ST = 310
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 312
+                    THEN IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y)) AND !XC dec_eq(~?=x, ~?=y)
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y))
+                  AND !XC dec_greater_eq(~?=x, ~?=y)
+THEN @Paste_Over(FILL Condition !XC dec_greater(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y))
+                  AND !XC dec_less(~?=x, ~?=y)
+THEN @Paste_Over(FILL Condition !XC dec_less(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 313
+                    THEN IFMATCH Condition ~?x = ~?y AND ~?=x <> ~?=y
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w
+THEN IF @Mth_Constant?(z)
+     AND @Mth_Constant?(w)
+     AND NOT (@Equal?(z, w))
+  THEN @Paste_Over(Mth_False) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x = ~?z AND ~?=x <> ~?w
+THEN IF @Mth_Constant?(z)
+     AND @Mth_Constant?(w)
+     AND NOT (@Equal?(z, w))
+  THEN @Paste_Over(@Make(T_And, < >, <FILL Condition ~?x = ~?z ENDFILL>)
+       ) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 318
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y <= ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 314
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?y ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x < ~?y AND ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y <= ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?x ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?y ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 316
+                    THEN IFMATCH Condition 0 <= REDUCE("+", ~?x) AND 0 < ~?=x
+THEN @Paste_Over(FILL Condition 0 < ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x <= ~?y AND ~?=y <= ~?=x
+THEN @Paste_Over(FILL Condition ~?x = ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 312
+                    THEN IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y)) AND !XC dec_eq(~?=x, ~?=y)
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y))
+                  AND !XC dec_greater_eq(~?=x, ~?=y)
+THEN @Paste_Over(FILL Condition !XC dec_greater(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y))
+                  AND !XC dec_less(~?=x, ~?=y)
+THEN @Paste_Over(FILL Condition !XC dec_less(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 301
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 318
+THEN IFMATCH Condition !XC fpx_less(~?x, ~?y) AND ~?=x <> ~?=y
+       THEN @Paste_Over(FILL Condition !XC fpx_less(~?x, ~?y) ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 301
+THEN IFMATCH Condition !XC dec_greater_eq(~?x, ~?y)
+                         AND !XC dec_less_eq(~?=x, ~?=y)
+       THEN @Paste_Over(FILL Condition !XC dec_eq(~?x, ~?y) ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_greater_eq(~?x, ~?y)
+                         AND !XC dec_less(~?=x, ~?=y)
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_less_eq(~?x, ~?y)
+                         AND !XC dec_greater(~?=x, ~?=y)
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_less_eq(~?x, ~?y)
+                         AND !XC dec_less(~?=x, ~?=y)
+       THEN @Paste_Over(FILL Condition !XC dec_less(~?x, ~?y) ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 319
+                    THEN IFMATCH Condition EVEN?(~?x) AND ODD?(~?=x)
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 316
+                    THEN IFMATCH Condition 0 <= REDUCE("+", ~?x) AND 0 < ~?=x
+THEN @Paste_Over(FILL Condition 0 < ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x <= ~?y AND ~?=y <= ~?=x
+THEN @Paste_Over(FILL Condition ~?x = ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 314
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?y ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x < ~?y AND ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y <= ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?x ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?y ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 318
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y <= ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 313
+                    THEN IFMATCH Condition ~?x = ~?y AND ~?=x <> ~?=y
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w
+THEN IF @Mth_Constant?(z)
+     AND @Mth_Constant?(w)
+     AND NOT (@Equal?(z, w))
+  THEN @Paste_Over(Mth_False) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x = ~?z AND ~?=x <> ~?w
+THEN IF @Mth_Constant?(z)
+     AND @Mth_Constant?(w)
+     AND NOT (@Equal?(z, w))
+  THEN @Paste_Over(@Make(T_And, < >, <FILL Condition ~?x = ~?z ENDFILL>)
+       ) FI
+ELSE SKIP ENDMATCH FI ENDVAR
+           ELSIF MT_ST = 311
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 310
+                    THEN IFMATCH Condition !XC dec_eq(~?x, ~?y) AND ~?z
+                  OR NOT (!XC dec_eq(~?=x, ~?=y))
+THEN @Paste_Over(FILL Condition ~?z OR NOT (!XC dec_eq(~?x, ~?y))
+             ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*y AND ~?x AND ~*z OR ~?=x
+THEN @Paste_Over(x)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 312
+                    THEN IFMATCH Condition NOT (!XC fpx_less(~?x, ~?y)) OR ~?=x = ~?=y
+THEN @Paste_Over(FILL Condition !XC fpx_greater_eq(~?x, ~?y) ENDFILL
+)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y)) OR !XC dec_eq(~?=x, ~?=y)
+THEN @Paste_Over(Mth_True)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 313
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 318
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <> ~?=y
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 318
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z > ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z > ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z <= ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z <= ~?x ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 314
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x < ~?y OR ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?=x
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 316
+                    THEN IFMATCH Condition ~?x <= ~?y OR ~?z <= ~?=x
+THEN IF @ST(
+         @Simplify(
+           FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+     = T_True
+  THEN @Paste_Over(Mth_True) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 312
+                    THEN IFMATCH Condition NOT (!XC fpx_less(~?x, ~?y)) OR ~?=x = ~?=y
+THEN @Paste_Over(FILL Condition !XC fpx_greater_eq(~?x, ~?y) ENDFILL
+)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y)) OR !XC dec_eq(~?=x, ~?=y)
+THEN @Paste_Over(Mth_True)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 301
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 301
+THEN IFMATCH Condition !XC dec_eq(~?x, ~?y)
+                         OR !XC dec_greater_eq(~?=x, ~?=y)
+       THEN @Paste_Over(FILL Condition !XC dec_greater_eq(~?x, ~?y) ENDFILL
+       )
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_eq(~?x, ~?y) OR !XC dec_less(~?=x, ~?=y)
+       THEN @Paste_Over(FILL Condition !XC dec_less_eq(~?x, ~?y) ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_greater_eq(~?x, ~?y)
+                         OR !XC dec_less(~?=x, ~?=y)
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_less_eq(~?x, ~?y)
+                         OR !XC dec_greater(~?=x, ~?=y)
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 319
+                    THEN IFMATCH Condition EVEN?(~?x) OR ODD?(~?=x)
+THEN @Paste_Over(Mth_True)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 316
+                    THEN IFMATCH Condition ~?x <= ~?y OR ~?z <= ~?=x
+THEN IF @ST(
+         @Simplify(
+           FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+     = T_True
+  THEN @Paste_Over(Mth_True) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 318
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z > ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z > ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z <= ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z <= ~?x ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 314
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x < ~?y OR ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?=x
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 313
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 318
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <> ~?=y
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 310
+                    THEN IFMATCH Condition !XC dec_eq(~?x, ~?y) AND ~?z
+                  OR NOT (!XC dec_eq(~?=x, ~?=y))
+THEN @Paste_Over(FILL Condition ~?z OR NOT (!XC dec_eq(~?x, ~?y))
+             ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*y AND ~?x AND ~*z OR ~?=x
+THEN @Paste_Over(x)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x OR ~*y AND ~?=x AND ~*z
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 313
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~?y = ~?=x + ~?z
+       THEN @Paste_Over(FILL Condition ~?y = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = ~?z + ~?=y
+       THEN @Paste_Over(FILL Condition ~?x = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 251
+THEN IFMATCH Condition -~?y + ~?z = -~?x
+       THEN @Paste_Over(FILL Condition ~?x = ~?y - ~?z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition ~?x + -~?y = 0
+       THEN @Paste_Over(FILL Condition ~?x = ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition -~?y + ~*x = 0
+       THEN @Paste_Over(FILL Condition 0 + ~*x = ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = 0
+       THEN @Paste_Over(FILL Condition ~?x = -~?y ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~?y = ~?=x + ~?z
+       THEN @Paste_Over(FILL Condition ~?y = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = ~?z + ~?=y
+       THEN @Paste_Over(FILL Condition ~?x = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition -~?x + ~?y = ~?z
+THEN IF @ST(z) = T_Number AND @V(z) < 0
+  THEN z := @Make(T_Number, -(@V(z)), < >);
+       @Paste_Over(FILL Condition ~?y + ~?z = ~?x ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + -~?y = ~?z
+THEN IF @ST(z) = T_Number AND @V(z) < 0
+  THEN z := @Make(T_Number, -(@V(z)), < >);
+       @Paste_Over(FILL Condition ~?x + ~?z = ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~?y = ~?z
+THEN IF @ST(y) = T_Number AND @ST(z) = T_Number
+  THEN @Paste_Over(FILL Condition ~?x = ~?z - ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y = ~?z
+THEN IF @ST(y) = T_Number
+     AND @ST(z) = T_Number
+     AND @V(y) <> 0
+  THEN @Paste_Over(FILL Condition ~?x = ~?z / ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y = ~?z
+THEN IF @ST(y) = T_Number
+     AND @ST(z) = T_Number
+     AND @V(y) <> 0
+     AND @V(z) MOD @V(y) = 0
+  THEN @Paste_Over(FILL Condition ~?x = ~?z DIV ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 OR ~?y = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 251
+                    THEN IFMATCH Condition -~?x = -~?y + ~?z
+THEN @Paste_Over(FILL Condition ~?x = ~?y - ~?z ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition -~?x = ~?y
+THEN IF @ST(y) = T_Number
+  THEN y := @Make(T_Number, -(@V(y)), < >);
+       @Paste_Over(FILL Condition ~?x = ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition -~?x = -~?y
+THEN @Paste_Over(FILL Condition ~?x = ~?y ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition -~?x = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 231
+                    THEN IFMATCH Condition SGN(~?x) = -1
+THEN @Paste_Over(FILL Condition ~?x < 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition SGN(~?x) = 1
+THEN @Paste_Over(FILL Condition ~?x > 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition SGN(~?x) = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 228
+                    THEN IFMATCH Condition ABS(~?x) = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 225
+                    THEN IFMATCH Condition ~?x MOD 2 = 1
+THEN @Paste_Over(FILL Condition ODD?(~?x) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x MOD 2 = 0
+THEN @Paste_Over(FILL Condition EVEN?(~?x) ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 223
+                    THEN IFMATCH Condition 1 / ~?x = 0
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 224
+                    THEN IFMATCH Condition ~?x ** ~?y = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y = ~?z
+THEN IF @ST(y) = T_Number
+     AND @ST(z) = T_Number
+     AND @V(y) <> 0
+  THEN @Paste_Over(FILL Condition ~?x = ~?z / ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y = ~?z
+THEN IF @ST(y) = T_Number
+     AND @ST(z) = T_Number
+     AND @V(y) <> 0
+     AND @V(z) MOD @V(y) = 0
+  THEN @Paste_Over(FILL Condition ~?x = ~?z DIV ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 OR ~?y = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~?y = ~?=x + ~?z
+       THEN @Paste_Over(FILL Condition ~?y = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = ~?z + ~?=y
+       THEN @Paste_Over(FILL Condition ~?x = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 251
+THEN IFMATCH Condition -~?y + ~?z = -~?x
+       THEN @Paste_Over(FILL Condition ~?x = ~?y - ~?z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition ~?x + -~?y = 0
+       THEN @Paste_Over(FILL Condition ~?x = ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition -~?y + ~*x = 0
+       THEN @Paste_Over(FILL Condition 0 + ~*x = ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = 0
+       THEN @Paste_Over(FILL Condition ~?x = -~?y ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~?y = ~?=x + ~?z
+       THEN @Paste_Over(FILL Condition ~?y = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = ~?z + ~?=y
+       THEN @Paste_Over(FILL Condition ~?x = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition -~?x + ~?y = ~?z
+THEN IF @ST(z) = T_Number AND @V(z) < 0
+  THEN z := @Make(T_Number, -(@V(z)), < >);
+       @Paste_Over(FILL Condition ~?y + ~?z = ~?x ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + -~?y = ~?z
+THEN IF @ST(z) = T_Number AND @V(z) < 0
+  THEN z := @Make(T_Number, -(@V(z)), < >);
+       @Paste_Over(FILL Condition ~?x + ~?z = ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~?y = ~?z
+THEN IF @ST(y) = T_Number AND @ST(z) = T_Number
+  THEN @Paste_Over(FILL Condition ~?x = ~?z - ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x = ~?=x
+                    THEN @Paste_Over(Mth_True)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 318
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~?y <> ~?=x + ~?z
+       THEN @Paste_Over(FILL Condition ~?y <> ~?z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y <> ~?z + ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <> ~?z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition ~?x + -~?y <> 0
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition -~?y + ~?x <> 0
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition ~?x + ~?y <> ~?z
+THEN IF @ST(y) = T_Number AND @ST(z) = T_Number
+  THEN @Paste_Over(FILL Condition ~?x <> ~?z - ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y <> 0
+THEN @Paste_Over(FILL Condition ~?x <> 0 AND ~?y <> 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 251
+                    THEN IFMATCH Condition -~?x <> 0
+THEN @Paste_Over(FILL Condition ~?x <> 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 228
+                    THEN IFMATCH Condition ABS(~?x) <> 0
+THEN @Paste_Over(FILL Condition ~?x <> 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 225
+                    THEN IFMATCH Condition ~?x MOD 2 <> 1
+THEN @Paste_Over(FILL Condition EVEN?(~?x) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x MOD 2 <> 0
+THEN @Paste_Over(FILL Condition ODD?(~?x) ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 223
+                    THEN IFMATCH Condition 1 / ~?x <> 0
+THEN @Paste_Over(Mth_True)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 224
+                    THEN IFMATCH Condition ~?x ** ~?y <> 0
+THEN @Paste_Over(FILL Condition ~?x <> 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y <> 0
+THEN @Paste_Over(FILL Condition ~?x <> 0 AND ~?y <> 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~?y <> ~?=x + ~?z
+       THEN @Paste_Over(FILL Condition ~?y <> ~?z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y <> ~?z + ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <> ~?z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition ~?x + -~?y <> 0
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition -~?y + ~?x <> 0
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition ~?x + ~?y <> ~?z
+THEN IF @ST(y) = T_Number AND @ST(z) = T_Number
+  THEN @Paste_Over(FILL Condition ~?x <> ~?z - ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x <> ~?=x
+                    THEN @Paste_Over(Mth_False)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 314
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~*y < ~?=x + ~*z
+       THEN @Paste_Over(FILL Condition 0 + ~*y < 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~*x + ~?y < ~*z + ~?=y
+       THEN @Paste_Over(FILL Condition 0 + ~*x < 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition -~?x + ~?y < 0
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + -~?y < 0
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y < 0
+       THEN @Paste_Over(FILL Condition ~?x < -~?y ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition ~*x + ~?y < ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x < 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y < ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y < 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y < ~?z * ~?=y
+THEN IF @ST(
+         @Simplify(FILL Condition ~?y > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y < ~?=x * ~?z
+THEN IF @ST(
+         @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 251
+                    THEN IFMATCH Condition -~?x < -~?y
+THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition -~?x < 0
+THEN @Paste_Over(FILL Condition 0 < ~?x ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 233
+                    THEN IFMATCH Condition MIN(~?x, ~?z) < ~?y
+THEN @Paste_Over(FILL Condition ~?x < ~?y OR ~?z < ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 232
+                    THEN IFMATCH Condition MAX(~?x, ~?z) < ~?y
+THEN @Paste_Over(FILL Condition ~?x < ~?y AND ~?z < ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y < ~?z * ~?=y
+THEN IF @ST(
+         @Simplify(FILL Condition ~?y > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y < ~?=x * ~?z
+THEN IF @ST(
+         @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 228
+                    THEN IFMATCH Condition ABS(~?x) < ~?y
+THEN IF @ST(
+         @Simplify(
+           FILL Condition ~?y <= 0 ENDFILL, Budget - 1))
+     = T_True
+  THEN @Paste_Over(Mth_False) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ABS(~?x) < ~?=x
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ABS(~?x) < 0
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 224
+                    THEN IFMATCH Condition ~?x ** ~?y < 0
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~*y < ~?=x + ~*z
+       THEN @Paste_Over(FILL Condition 0 + ~*y < 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~*x + ~?y < ~*z + ~?=y
+       THEN @Paste_Over(FILL Condition 0 + ~*x < 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition -~?x + ~?y < 0
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + -~?y < 0
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y < 0
+       THEN @Paste_Over(FILL Condition ~?x < -~?y ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition ~*x + ~?y < ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x < 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y < ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y < 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 205
+                    THEN IFMATCH Condition 0 < ABS(~?x)
+THEN @Paste_Over(FILL Condition ~?x <> 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition 0 < ~?x + ~?y
+THEN @Paste_Over(FILL Condition -~?y < ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition 0 < -~?x
+THEN @Paste_Over(FILL Condition ~?x < 0 ENDFILL)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x < ~?=x
+                    THEN @Paste_Over(Mth_False)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < ~?=x + ~*z
+                    THEN @Paste_Over(FILL Condition 0 < 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?y < ~*z + ~?=y
+                    THEN @Paste_Over(FILL Condition 0 < 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < ~?y + ~?z
+                    THEN IF @ST(x) = T_Number AND @ST(z) = T_Number
+                      THEN @Paste_Over(FILL Condition ~?x - ~?z < ~?y ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?z < ~?x * ~?y
+                    THEN IF @ST(y) = T_Number
+                         AND @ST(z) = T_Number
+                         AND @V(y) <> 0
+                         AND @V(z) MOD @V(y) = 0
+                      THEN @Paste_Over(FILL Condition ~?z DIV ~?y < ~?x ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < ~?y * ~?z
+                    THEN IF @ST(z) = T_Invert
+                      THEN VAR < z1 := z^1 >:
+@Paste_Over(FILL Condition ~?x * ~?z1 < ~?y ENDFILL)
+ENDVAR FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < -~?y
+                    THEN IF @ST(x) = T_Number
+                      THEN @Paste_Over(FILL Condition ~?y < -~?x ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < MIN(~?y, ~?z)
+                    THEN @Paste_Over(FILL Condition ~?x < ~?y AND ~?x < ~?z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < MAX(~?y, ~?z)
+                    THEN @Paste_Over(FILL Condition ~?x < ~?y OR ~?x < ~?z ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 316
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~*y <= ~?=x + ~*z
+       THEN @Paste_Over(FILL Condition 0 + ~*y <= 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~*x + ~?y <= ~*z + ~?=y
+       THEN @Paste_Over(FILL Condition 0 + ~*x <= 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition -~?x + ~?y <= 0
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + -~?y <= 0
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition ~?x + ~?y <= ~?z
+THEN IF @ST(y) = T_Number AND @ST(z) = T_Number
+  THEN @Paste_Over(FILL Condition ~?x <= ~?z - ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*x + ~?y <= ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x <= 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y <= ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y <= 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y <= ~?z * ~?=y
+THEN IF @ST(
+         @Simplify(FILL Condition ~?y > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y <= ~?=x * ~?z
+THEN IF @ST(
+         @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 251
+                    THEN IFMATCH Condition -~?x <= -~?y
+THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition -~?x <= 0
+THEN @Paste_Over(FILL Condition 0 <= ~?x ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 233
+                    THEN IFMATCH Condition MIN(~?x, ~?z) <= ~?y
+THEN @Paste_Over(FILL Condition ~?x <= ~?y OR ~?z <= ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 232
+                    THEN IFMATCH Condition MAX(~?x, ~?z) <= ~?y
+THEN @Paste_Over(FILL Condition ~?x <= ~?y AND ~?z <= ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y <= ~?z * ~?=y
+THEN IF @ST(
+         @Simplify(FILL Condition ~?y > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y <= ~?=x * ~?z
+THEN IF @ST(
+         @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 228
+                    THEN IFMATCH Condition ABS(~?x) <= ~?y
+THEN IF @ST(
+         @Simplify(FILL Condition ~?y < 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(Mth_False) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ABS(~?x) <= 0
+THEN @Paste_Over(FILL Condition ~?x = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~*y <= ~?=x + ~*z
+       THEN @Paste_Over(FILL Condition 0 + ~*y <= 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~*x + ~?y <= ~*z + ~?=y
+       THEN @Paste_Over(FILL Condition 0 + ~*x <= 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition -~?x + ~?y <= 0
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + -~?y <= 0
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition ~?x + ~?y <= ~?z
+THEN IF @ST(y) = T_Number AND @ST(z) = T_Number
+  THEN @Paste_Over(FILL Condition ~?x <= ~?z - ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*x + ~?y <= ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x <= 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y <= ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y <= 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 205
+                    THEN IFMATCH Condition 0 <= ABS(~?x)
+THEN @Paste_Over(Mth_True)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition 0 <= -~?x
+THEN @Paste_Over(FILL Condition ~?x <= 0 ENDFILL)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x <= ~?=x
+                    THEN @Paste_Over(Mth_True)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x <= ~?=x + ~*z
+                    THEN @Paste_Over(FILL Condition 0 <= 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?y <= ~*z + ~?=y
+                    THEN @Paste_Over(FILL Condition 0 <= 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x <= ~?y + ~?z
+                    THEN IF @ST(x) = T_Number AND @ST(z) = T_Number
+                      THEN @Paste_Over(FILL Condition ~?x - ~?z <= ~?y ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?z <= ~?x * ~?y
+                    THEN IF @ST(y) = T_Number
+                         AND @ST(z) = T_Number
+                         AND @V(y) <> 0
+                         AND @V(z) MOD @V(y) = 0
+                      THEN @Paste_Over(FILL Condition ~?z DIV ~?y <= ~?x ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x <= MIN(~?y, ~?z)
+                    THEN @Paste_Over(FILL Condition ~?x <= ~?y AND ~?x <= ~?z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x <= MAX(~?y, ~?z)
+                    THEN @Paste_Over(FILL Condition ~?x <= ~?y OR ~?x <= ~?z ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 315
+             THEN IFMATCH Condition ~?x * ~?y > ~?=x * ~?z
+                    THEN IF @ST(
+  @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+)
+                         = T_True
+                      THEN @Paste_Over(FILL Condition ~?y > ~?z ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x * ~?y > ~?z * ~?=y
+                    THEN IF @ST(
+  @Simplify(FILL Condition ~?y > 0 ENDFILL, Budget - 1)
+)
+                         = T_True
+                      THEN @Paste_Over(FILL Condition ~?x > ~?z ENDFILL) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 317
+             THEN IFMATCH Condition ~?x * ~?y >= ~?=x * ~?z
+                    THEN IF @ST(
+  @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+)
+                         = T_True
+                      THEN @Paste_Over(FILL Condition ~?y >= ~?z ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x * ~?y >= ~?z * ~?=y
+                    THEN IF @ST(
+  @Simplify(FILL Condition ~?y > 0 ENDFILL, Budget - 1)
+)
+                         = T_True
+                      THEN @Paste_Over(FILL Condition ~?x >= ~?z ENDFILL) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 313
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~?y = ~?=x + ~?z
+       THEN @Paste_Over(FILL Condition ~?y = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = ~?z + ~?=y
+       THEN @Paste_Over(FILL Condition ~?x = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 251
+THEN IFMATCH Condition -~?y + ~?z = -~?x
+       THEN @Paste_Over(FILL Condition ~?x = ~?y - ~?z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition ~?x + -~?y = 0
+       THEN @Paste_Over(FILL Condition ~?x = ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition -~?y + ~*x = 0
+       THEN @Paste_Over(FILL Condition 0 + ~*x = ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = 0
+       THEN @Paste_Over(FILL Condition ~?x = -~?y ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~?y = ~?=x + ~?z
+       THEN @Paste_Over(FILL Condition ~?y = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = ~?z + ~?=y
+       THEN @Paste_Over(FILL Condition ~?x = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition -~?x + ~?y = ~?z
+THEN IF @ST(z) = T_Number AND @V(z) < 0
+  THEN z := @Make(T_Number, -(@V(z)), < >);
+       @Paste_Over(FILL Condition ~?y + ~?z = ~?x ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + -~?y = ~?z
+THEN IF @ST(z) = T_Number AND @V(z) < 0
+  THEN z := @Make(T_Number, -(@V(z)), < >);
+       @Paste_Over(FILL Condition ~?x + ~?z = ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~?y = ~?z
+THEN IF @ST(y) = T_Number AND @ST(z) = T_Number
+  THEN @Paste_Over(FILL Condition ~?x = ~?z - ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y = ~?z
+THEN IF @ST(y) = T_Number
+     AND @ST(z) = T_Number
+     AND @V(y) <> 0
+  THEN @Paste_Over(FILL Condition ~?x = ~?z / ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y = ~?z
+THEN IF @ST(y) = T_Number
+     AND @ST(z) = T_Number
+     AND @V(y) <> 0
+     AND @V(z) MOD @V(y) = 0
+  THEN @Paste_Over(FILL Condition ~?x = ~?z DIV ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 OR ~?y = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 251
+                    THEN IFMATCH Condition -~?x = -~?y + ~?z
+THEN @Paste_Over(FILL Condition ~?x = ~?y - ~?z ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition -~?x = ~?y
+THEN IF @ST(y) = T_Number
+  THEN y := @Make(T_Number, -(@V(y)), < >);
+       @Paste_Over(FILL Condition ~?x = ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition -~?x = -~?y
+THEN @Paste_Over(FILL Condition ~?x = ~?y ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition -~?x = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 231
+                    THEN IFMATCH Condition SGN(~?x) = -1
+THEN @Paste_Over(FILL Condition ~?x < 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition SGN(~?x) = 1
+THEN @Paste_Over(FILL Condition ~?x > 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition SGN(~?x) = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 228
+                    THEN IFMATCH Condition ABS(~?x) = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 225
+                    THEN IFMATCH Condition ~?x MOD 2 = 1
+THEN @Paste_Over(FILL Condition ODD?(~?x) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x MOD 2 = 0
+THEN @Paste_Over(FILL Condition EVEN?(~?x) ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 223
+                    THEN IFMATCH Condition 1 / ~?x = 0
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 224
+                    THEN IFMATCH Condition ~?x ** ~?y = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y = ~?z
+THEN IF @ST(y) = T_Number
+     AND @ST(z) = T_Number
+     AND @V(y) <> 0
+  THEN @Paste_Over(FILL Condition ~?x = ~?z / ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y = ~?z
+THEN IF @ST(y) = T_Number
+     AND @ST(z) = T_Number
+     AND @V(y) <> 0
+     AND @V(z) MOD @V(y) = 0
+  THEN @Paste_Over(FILL Condition ~?x = ~?z DIV ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y = 0
+THEN @Paste_Over(FILL Condition ~?x = 0 OR ~?y = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~?y = ~?=x + ~?z
+       THEN @Paste_Over(FILL Condition ~?y = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = ~?z + ~?=y
+       THEN @Paste_Over(FILL Condition ~?x = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 251
+THEN IFMATCH Condition -~?y + ~?z = -~?x
+       THEN @Paste_Over(FILL Condition ~?x = ~?y - ~?z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition ~?x + -~?y = 0
+       THEN @Paste_Over(FILL Condition ~?x = ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition -~?y + ~*x = 0
+       THEN @Paste_Over(FILL Condition 0 + ~*x = ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = 0
+       THEN @Paste_Over(FILL Condition ~?x = -~?y ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~?y = ~?=x + ~?z
+       THEN @Paste_Over(FILL Condition ~?y = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y = ~?z + ~?=y
+       THEN @Paste_Over(FILL Condition ~?x = ~?z ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition -~?x + ~?y = ~?z
+THEN IF @ST(z) = T_Number AND @V(z) < 0
+  THEN z := @Make(T_Number, -(@V(z)), < >);
+       @Paste_Over(FILL Condition ~?y + ~?z = ~?x ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + -~?y = ~?z
+THEN IF @ST(z) = T_Number AND @V(z) < 0
+  THEN z := @Make(T_Number, -(@V(z)), < >);
+       @Paste_Over(FILL Condition ~?x + ~?z = ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~?y = ~?z
+THEN IF @ST(y) = T_Number AND @ST(z) = T_Number
+  THEN @Paste_Over(FILL Condition ~?x = ~?z - ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x = ~?=x
+                    THEN @Paste_Over(Mth_True)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 314
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~*y < ~?=x + ~*z
+       THEN @Paste_Over(FILL Condition 0 + ~*y < 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~*x + ~?y < ~*z + ~?=y
+       THEN @Paste_Over(FILL Condition 0 + ~*x < 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition -~?x + ~?y < 0
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + -~?y < 0
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y < 0
+       THEN @Paste_Over(FILL Condition ~?x < -~?y ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition ~*x + ~?y < ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x < 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y < ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y < 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y < ~?z * ~?=y
+THEN IF @ST(
+         @Simplify(FILL Condition ~?y > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y < ~?=x * ~?z
+THEN IF @ST(
+         @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 251
+                    THEN IFMATCH Condition -~?x < -~?y
+THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition -~?x < 0
+THEN @Paste_Over(FILL Condition 0 < ~?x ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 233
+                    THEN IFMATCH Condition MIN(~?x, ~?z) < ~?y
+THEN @Paste_Over(FILL Condition ~?x < ~?y OR ~?z < ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 232
+                    THEN IFMATCH Condition MAX(~?x, ~?z) < ~?y
+THEN @Paste_Over(FILL Condition ~?x < ~?y AND ~?z < ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y < ~?z * ~?=y
+THEN IF @ST(
+         @Simplify(FILL Condition ~?y > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y < ~?=x * ~?z
+THEN IF @ST(
+         @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 228
+                    THEN IFMATCH Condition ABS(~?x) < ~?y
+THEN IF @ST(
+         @Simplify(
+           FILL Condition ~?y <= 0 ENDFILL, Budget - 1))
+     = T_True
+  THEN @Paste_Over(Mth_False) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ABS(~?x) < ~?=x
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ABS(~?x) < 0
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 224
+                    THEN IFMATCH Condition ~?x ** ~?y < 0
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~*y < ~?=x + ~*z
+       THEN @Paste_Over(FILL Condition 0 + ~*y < 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~*x + ~?y < ~*z + ~?=y
+       THEN @Paste_Over(FILL Condition 0 + ~*x < 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition -~?x + ~?y < 0
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + -~?y < 0
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + ~?y < 0
+       THEN @Paste_Over(FILL Condition ~?x < -~?y ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition ~*x + ~?y < ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x < 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y < ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y < 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 205
+                    THEN IFMATCH Condition 0 < ABS(~?x)
+THEN @Paste_Over(FILL Condition ~?x <> 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition 0 < ~?x + ~?y
+THEN @Paste_Over(FILL Condition -~?y < ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition 0 < -~?x
+THEN @Paste_Over(FILL Condition ~?x < 0 ENDFILL)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x < ~?=x
+                    THEN @Paste_Over(Mth_False)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < ~?=x + ~*z
+                    THEN @Paste_Over(FILL Condition 0 < 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?y < ~*z + ~?=y
+                    THEN @Paste_Over(FILL Condition 0 < 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < ~?y + ~?z
+                    THEN IF @ST(x) = T_Number AND @ST(z) = T_Number
+                      THEN @Paste_Over(FILL Condition ~?x - ~?z < ~?y ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?z < ~?x * ~?y
+                    THEN IF @ST(y) = T_Number
+                         AND @ST(z) = T_Number
+                         AND @V(y) <> 0
+                         AND @V(z) MOD @V(y) = 0
+                      THEN @Paste_Over(FILL Condition ~?z DIV ~?y < ~?x ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < ~?y * ~?z
+                    THEN IF @ST(z) = T_Invert
+                      THEN VAR < z1 := z^1 >:
+@Paste_Over(FILL Condition ~?x * ~?z1 < ~?y ENDFILL)
+ENDVAR FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < -~?y
+                    THEN IF @ST(x) = T_Number
+                      THEN @Paste_Over(FILL Condition ~?y < -~?x ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < MIN(~?y, ~?z)
+                    THEN @Paste_Over(FILL Condition ~?x < ~?y AND ~?x < ~?z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x < MAX(~?y, ~?z)
+                    THEN @Paste_Over(FILL Condition ~?x < ~?y OR ~?x < ~?z ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 316
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~*y <= ~?=x + ~*z
+       THEN @Paste_Over(FILL Condition 0 + ~*y <= 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~*x + ~?y <= ~*z + ~?=y
+       THEN @Paste_Over(FILL Condition 0 + ~*x <= 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition -~?x + ~?y <= 0
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + -~?y <= 0
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition ~?x + ~?y <= ~?z
+THEN IF @ST(y) = T_Number AND @ST(z) = T_Number
+  THEN @Paste_Over(FILL Condition ~?x <= ~?z - ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*x + ~?y <= ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x <= 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y <= ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y <= 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y <= ~?z * ~?=y
+THEN IF @ST(
+         @Simplify(FILL Condition ~?y > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y <= ~?=x * ~?z
+THEN IF @ST(
+         @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 251
+                    THEN IFMATCH Condition -~?x <= -~?y
+THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition -~?x <= 0
+THEN @Paste_Over(FILL Condition 0 <= ~?x ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 233
+                    THEN IFMATCH Condition MIN(~?x, ~?z) <= ~?y
+THEN @Paste_Over(FILL Condition ~?x <= ~?y OR ~?z <= ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 232
+                    THEN IFMATCH Condition MAX(~?x, ~?z) <= ~?y
+THEN @Paste_Over(FILL Condition ~?x <= ~?y AND ~?z <= ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 222
+                    THEN IFMATCH Condition ~?x * ~?y <= ~?z * ~?=y
+THEN IF @ST(
+         @Simplify(FILL Condition ~?y > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x * ~?y <= ~?=x * ~?z
+THEN IF @ST(
+         @Simplify(FILL Condition ~?x > 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 228
+                    THEN IFMATCH Condition ABS(~?x) <= ~?y
+THEN IF @ST(
+         @Simplify(FILL Condition ~?y < 0 ENDFILL, Budget - 1)
+       )
+     = T_True
+  THEN @Paste_Over(Mth_False) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ABS(~?x) <= 0
+THEN @Paste_Over(FILL Condition ~?x = 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 220
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 220
+THEN IFMATCH Condition ~?x + ~*y <= ~?=x + ~*z
+       THEN @Paste_Over(FILL Condition 0 + ~*y <= 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~*x + ~?y <= ~*z + ~?=y
+       THEN @Paste_Over(FILL Condition 0 + ~*x <= 0 + ~*z ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 205
+THEN IFMATCH Condition -~?x + ~?y <= 0
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x + -~?y <= 0
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR;
+                         IFMATCH Condition ~?x + ~?y <= ~?z
+THEN IF @ST(y) = T_Number AND @ST(z) = T_Number
+  THEN @Paste_Over(FILL Condition ~?x <= ~?z - ~?y ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*x + ~?y <= ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x <= 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y <= ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y <= 0 ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 205
+                    THEN IFMATCH Condition 0 <= ABS(~?x)
+THEN @Paste_Over(Mth_True)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition 0 <= -~?x
+THEN @Paste_Over(FILL Condition ~?x <= 0 ENDFILL)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x <= ~?=x
+                    THEN @Paste_Over(Mth_True)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x <= ~?=x + ~*z
+                    THEN @Paste_Over(FILL Condition 0 <= 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?y <= ~*z + ~?=y
+                    THEN @Paste_Over(FILL Condition 0 <= 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x <= ~?y + ~?z
+                    THEN IF @ST(x) = T_Number AND @ST(z) = T_Number
+                      THEN @Paste_Over(FILL Condition ~?x - ~?z <= ~?y ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?z <= ~?x * ~?y
+                    THEN IF @ST(y) = T_Number
+                         AND @ST(z) = T_Number
+                         AND @V(y) <> 0
+                         AND @V(z) MOD @V(y) = 0
+                      THEN @Paste_Over(FILL Condition ~?z DIV ~?y <= ~?x ENDFILL) FI
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x <= MIN(~?y, ~?z)
+                    THEN @Paste_Over(FILL Condition ~?x <= ~?y AND ~?x <= ~?z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x <= MAX(~?y, ~?z)
+                    THEN @Paste_Over(FILL Condition ~?x <= ~?y OR ~?x <= ~?z ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 311
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 310
+                    THEN IFMATCH Condition !XC dec_eq(~?x, ~?y) AND ~?z
+                  OR NOT (!XC dec_eq(~?=x, ~?=y))
+THEN @Paste_Over(FILL Condition ~?z OR NOT (!XC dec_eq(~?x, ~?y))
+             ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*y AND ~?x AND ~*z OR ~?=x
+THEN @Paste_Over(x)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 312
+                    THEN IFMATCH Condition NOT (!XC fpx_less(~?x, ~?y)) OR ~?=x = ~?=y
+THEN @Paste_Over(FILL Condition !XC fpx_greater_eq(~?x, ~?y) ENDFILL
+)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y)) OR !XC dec_eq(~?=x, ~?=y)
+THEN @Paste_Over(Mth_True)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 313
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 318
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <> ~?=y
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 318
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z > ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z > ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z <= ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z <= ~?x ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 314
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x < ~?y OR ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?=x
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 316
+                    THEN IFMATCH Condition ~?x <= ~?y OR ~?z <= ~?=x
+THEN IF @ST(
+         @Simplify(
+           FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+     = T_True
+  THEN @Paste_Over(Mth_True) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 312
+                    THEN IFMATCH Condition NOT (!XC fpx_less(~?x, ~?y)) OR ~?=x = ~?=y
+THEN @Paste_Over(FILL Condition !XC fpx_greater_eq(~?x, ~?y) ENDFILL
+)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y)) OR !XC dec_eq(~?=x, ~?=y)
+THEN @Paste_Over(Mth_True)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 301
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 301
+THEN IFMATCH Condition !XC dec_eq(~?x, ~?y)
+                         OR !XC dec_greater_eq(~?=x, ~?=y)
+       THEN @Paste_Over(FILL Condition !XC dec_greater_eq(~?x, ~?y) ENDFILL
+       )
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_eq(~?x, ~?y) OR !XC dec_less(~?=x, ~?=y)
+       THEN @Paste_Over(FILL Condition !XC dec_less_eq(~?x, ~?y) ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_greater_eq(~?x, ~?y)
+                         OR !XC dec_less(~?=x, ~?=y)
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_less_eq(~?x, ~?y)
+                         OR !XC dec_greater(~?=x, ~?=y)
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 319
+                    THEN IFMATCH Condition EVEN?(~?x) OR ODD?(~?=x)
+THEN @Paste_Over(Mth_True)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 316
+                    THEN IFMATCH Condition ~?x <= ~?y OR ~?z <= ~?=x
+THEN IF @ST(
+         @Simplify(
+           FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+     = T_True
+  THEN @Paste_Over(Mth_True) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 318
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z > ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z > ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z <= ~?y ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z <= ~?x ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 314
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x < ~?y OR ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?=y <= ~?=x
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?x <> ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(Mth_True) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 313
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 318
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <> ~?=y
+       THEN @Paste_Over(Mth_True)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x <= ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y <= ~?x ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=x < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y < ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z < ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x > ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x = ~?y OR ~?=x <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?y >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?x ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x <= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?y <= ~?z ENDFILL) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y OR ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x >= ~?z ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?z <= ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 310
+                    THEN IFMATCH Condition !XC dec_eq(~?x, ~?y) AND ~?z
+                  OR NOT (!XC dec_eq(~?=x, ~?=y))
+THEN @Paste_Over(FILL Condition ~?z OR NOT (!XC dec_eq(~?x, ~?y))
+             ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*y AND ~?x AND ~*z OR ~?=x
+THEN @Paste_Over(x)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x OR ~*y AND ~?=x AND ~*z
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 310
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 312
+                    THEN IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y)) AND !XC dec_eq(~?=x, ~?=y)
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y))
+                  AND !XC dec_greater_eq(~?=x, ~?=y)
+THEN @Paste_Over(FILL Condition !XC dec_greater(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y))
+                  AND !XC dec_less(~?=x, ~?=y)
+THEN @Paste_Over(FILL Condition !XC dec_less(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 313
+                    THEN IFMATCH Condition ~?x = ~?y AND ~?=x <> ~?=y
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w
+THEN IF @Mth_Constant?(z)
+     AND @Mth_Constant?(w)
+     AND NOT (@Equal?(z, w))
+  THEN @Paste_Over(Mth_False) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x = ~?z AND ~?=x <> ~?w
+THEN IF @Mth_Constant?(z)
+     AND @Mth_Constant?(w)
+     AND NOT (@Equal?(z, w))
+  THEN @Paste_Over(@Make(T_And, < >, <FILL Condition ~?x = ~?z ENDFILL>)
+       ) FI
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 318
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y <= ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 314
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?y ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x < ~?y AND ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y <= ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?x ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?y ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 316
+                    THEN IFMATCH Condition 0 <= REDUCE("+", ~?x) AND 0 < ~?=x
+THEN @Paste_Over(FILL Condition 0 < ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x <= ~?y AND ~?=y <= ~?=x
+THEN @Paste_Over(FILL Condition ~?x = ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 312
+                    THEN IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y)) AND !XC dec_eq(~?=x, ~?=y)
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y))
+                  AND !XC dec_greater_eq(~?=x, ~?=y)
+THEN @Paste_Over(FILL Condition !XC dec_greater(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition NOT (!XC dec_eq(~?x, ~?y))
+                  AND !XC dec_less(~?=x, ~?=y)
+THEN @Paste_Over(FILL Condition !XC dec_less(~?x, ~?y) ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 301
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 318
+THEN IFMATCH Condition !XC fpx_less(~?x, ~?y) AND ~?=x <> ~?=y
+       THEN @Paste_Over(FILL Condition !XC fpx_less(~?x, ~?y) ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 301
+THEN IFMATCH Condition !XC dec_greater_eq(~?x, ~?y)
+                         AND !XC dec_less_eq(~?=x, ~?=y)
+       THEN @Paste_Over(FILL Condition !XC dec_eq(~?x, ~?y) ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_greater_eq(~?x, ~?y)
+                         AND !XC dec_less(~?=x, ~?=y)
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_less_eq(~?x, ~?y)
+                         AND !XC dec_greater(~?=x, ~?=y)
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition !XC dec_less_eq(~?x, ~?y)
+                         AND !XC dec_less(~?=x, ~?=y)
+       THEN @Paste_Over(FILL Condition !XC dec_less(~?x, ~?y) ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 319
+                    THEN IFMATCH Condition EVEN?(~?x) AND ODD?(~?=x)
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 316
+                    THEN IFMATCH Condition 0 <= REDUCE("+", ~?x) AND 0 < ~?=x
+THEN @Paste_Over(FILL Condition 0 < ~?x ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x <= ~?y AND ~?=y <= ~?=x
+THEN @Paste_Over(FILL Condition ~?x = ~?y ENDFILL)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 314
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?y ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x < ~?y AND ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y <= ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y <= ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z <= ~?=y
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?x ENDFILL, Budget - 1))
+            = T_True
+         THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x < ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?=y < ~?z
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?x < ~?z ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x < ~?y AND ~?z < ~?=x
+       THEN IF @ST(
+                @Simplify(
+                  FILL Condition ~?z < ~?y ENDFILL, Budget - 1))
+            = T_False
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 318
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 316
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x <= ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y <= ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 314
+THEN IFMATCH Condition ~?x <> ~?y AND ~?=x < ~?=y
+       THEN @Paste_Over(FILL Condition ~?x < ~?y ENDFILL)
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x <> ~?y AND ~?=y < ~?=x
+       THEN @Paste_Over(FILL Condition ~?y < ~?x ENDFILL)
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 313
+                    THEN IFMATCH Condition ~?x = ~?y AND ~?=x <> ~?=y
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w
+THEN IF @Mth_Constant?(z)
+     AND @Mth_Constant?(w)
+     AND NOT (@Equal?(z, w))
+  THEN @Paste_Over(Mth_False) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x = ~?z AND ~?=x <> ~?w
+THEN IF @Mth_Constant?(z)
+     AND @Mth_Constant?(w)
+     AND NOT (@Equal?(z, w))
+  THEN @Paste_Over(@Make(T_And, < >, <FILL Condition ~?x = ~?z ENDFILL>)
+       ) FI
+ELSE SKIP ENDMATCH FI ENDVAR FI
+      ELSE IF MT_ST = 310
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 313
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 313
+THEN VAR < MT_ST_n := @ST(@I^3) >:
+     IF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 318
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+          FILL Condition ~?x = ~?z ENDFILL>)) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+               FILL Condition ~?x = ~?z ENDFILL>
+           ++ yy)) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH FI ENDVAR;
+     IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 318
+THEN IFMATCH Condition ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(@Make(
+  T_And, < >, <FILL Condition ~?x = ~?z ENDFILL> ++ yy
+)) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y AND ~?=x <> ~?=y AND ~?z
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 313
+THEN VAR < MT_ST_n := @ST(@I^3) >:
+     IF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 318
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+          FILL Condition ~?x = ~?z ENDFILL>)) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+               FILL Condition ~?x = ~?z ENDFILL>
+           ++ yy)) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH FI ENDVAR;
+     IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 314
+                    THEN IFMATCH Condition REDUCE("+", ~?x) < 0 AND 0 < ~?=x AND ~*yy
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?n1 < ~?x AND ~?n2 < ~?=x AND ~*yy
+THEN IF @ST(n1) = T_Number
+     AND @ST(n2) = T_Number
+     AND @V(n2) > @V(n1)
+  THEN @Paste_Over(FILL Condition ~?n2 < ~?x AND ~*yy ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?y < ~?x AND ~?z < ~?=y AND ~?=x <= ~?=z
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 313
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 313
+THEN VAR < MT_ST_n := @ST(@I^3) >:
+     IF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 318
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+          FILL Condition ~?x = ~?z ENDFILL>)) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+               FILL Condition ~?x = ~?z ENDFILL>
+           ++ yy)) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH FI ENDVAR;
+     IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 318
+THEN IFMATCH Condition ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(@Make(
+  T_And, < >, <FILL Condition ~?x = ~?z ENDFILL> ++ yy
+)) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y AND ~?=x <> ~?=y AND ~?z
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 313
+THEN VAR < MT_ST_n := @ST(@I^3) >:
+     IF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 318
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+          FILL Condition ~?x = ~?z ENDFILL>)) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+               FILL Condition ~?x = ~?z ENDFILL>
+           ++ yy)) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH FI ENDVAR;
+     IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH FI ENDVAR FI ENDVAR;
+                  IFMATCH Condition ~?z AND ~?x = ~?y AND ~?=x <> ~?=y
+                    THEN @Paste_Over(Mth_False)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 311
+             THEN IFMATCH Condition ~*y AND ~?x AND ~*z OR ~?=x
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x OR ~*y AND ~?=x AND ~*z
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?z < ~?x OR ~?=x <= ~?y OR ~?=y <= ~?=z
+                    THEN @Paste_Over(Mth_True)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~*yy OR ~?x = ~?y OR ~?=x < ~?=y
+                    THEN @Paste_Over(FILL Condition ~*yy OR ~?x <= ~?y ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~*yy OR ~?y = ~?x OR ~?=x < ~?=y
+                    THEN @Paste_Over(FILL Condition ~*yy OR ~?x <= ~?y ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x AND ~?y OR ~?=x AND ~?z AND ~?w OR ~?y1 AND ~?=z
+                    THEN IF @ST(@And(y, y1)) = T_False
+                         AND @ST(@Or(y, y1)) = T_True
+                      THEN @Paste_Over(FILL Condition ~?x AND ~?y OR ~?x AND ~?z OR ~?y1 AND ~?z
+             ENDFILL) FI
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 313
+             THEN IFMATCH Condition -~?y + ~*x = 0
+                    THEN @Paste_Over(FILL Condition 0 + ~*x = ~?y ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 314
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN IFMATCH Condition ~*x + ~?y < ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x < 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*x + ~?y < ~*z + ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x < 0 + ~*z ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y < ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y < 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y < ~?=x + ~*z
+THEN @Paste_Over(FILL Condition 0 + ~*y < 0 + ~*z ENDFILL)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x < ~?=x + ~*z
+                    THEN @Paste_Over(FILL Condition 0 < 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?y < ~*z + ~?=y
+                    THEN @Paste_Over(FILL Condition 0 < 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 316
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN IFMATCH Condition ~*x + ~?y <= ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x <= 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*x + ~?y <= ~*z + ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x <= 0 + ~*z ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y <= ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y <= 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y <= ~?=x + ~*z
+THEN @Paste_Over(FILL Condition 0 + ~*y <= 0 + ~*z ENDFILL)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x <= ~?=x + ~*z
+                    THEN @Paste_Over(FILL Condition 0 <= 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?y <= ~*z + ~?=y
+                    THEN @Paste_Over(FILL Condition 0 <= 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 313
+             THEN IFMATCH Condition -~?y + ~*x = 0
+                    THEN @Paste_Over(FILL Condition 0 + ~*x = ~?y ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 314
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 220
+                    THEN IFMATCH Condition ~*x + ~?y < ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x < 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~*x + ~?y < ~*z + ~?=y
+THEN @Paste_Over(FILL Condition 0 + ~*x < 0 + ~*z ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y < ~?=x
+THEN @Paste_Over(FILL Condition 0 + ~*y < 0 ENDFILL)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?x + ~*y < ~?=x + ~*z
+THEN @Paste_Over(FILL Condition 0 + ~*y < 0 + ~*z ENDFILL)
+ELSE SKIP ENDMATCH FI ENDVAR;
+                  IFMATCH Condition ~?x < ~?=x + ~*z
+                    THEN @Paste_Over(FILL Condition 0 < 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?y < ~*z + ~?=y
+                    THEN @Paste_Over(FILL Condition 0 < 0 + ~*z ENDFILL)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 310
+             THEN VAR < MT_ST_n := @ST(@I^1) >:
+                  IF MT_ST_n = 313
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 313
+THEN VAR < MT_ST_n := @ST(@I^3) >:
+     IF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 318
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+          FILL Condition ~?x = ~?z ENDFILL>)) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+               FILL Condition ~?x = ~?z ENDFILL>
+           ++ yy)) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH FI ENDVAR;
+     IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 318
+THEN IFMATCH Condition ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(@Make(
+  T_And, < >, <FILL Condition ~?x = ~?z ENDFILL> ++ yy
+)) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y AND ~?=x <> ~?=y AND ~?z
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 313
+THEN VAR < MT_ST_n := @ST(@I^3) >:
+     IF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 318
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+          FILL Condition ~?x = ~?z ENDFILL>)) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+               FILL Condition ~?x = ~?z ENDFILL>
+           ++ yy)) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH FI ENDVAR;
+     IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH FI ENDVAR
+                  ELSIF MT_ST_n = 314
+                    THEN IFMATCH Condition REDUCE("+", ~?x) < 0 AND 0 < ~?=x AND ~*yy
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?n1 < ~?x AND ~?n2 < ~?=x AND ~*yy
+THEN IF @ST(n1) = T_Number
+     AND @ST(n2) = T_Number
+     AND @V(n2) > @V(n1)
+  THEN @Paste_Over(FILL Condition ~?n2 < ~?x AND ~*yy ENDFILL) FI
+ELSE SKIP ENDMATCH;
+                         IFMATCH Condition ~?y < ~?x AND ~?z < ~?=y AND ~?=x <= ~?=z
+THEN @Paste_Over(Mth_False)
+ELSE SKIP ENDMATCH
+                  ELSIF MT_ST_n = 313
+                    THEN VAR < MT_ST_n := @ST(@I^2) >:
+                         IF MT_ST_n = 313
+THEN VAR < MT_ST_n := @ST(@I^3) >:
+     IF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 318
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+          FILL Condition ~?x = ~?z ENDFILL>)) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+               FILL Condition ~?x = ~?z ENDFILL>
+           ++ yy)) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH FI ENDVAR;
+     IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 318
+THEN IFMATCH Condition ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(@Make(
+  T_And, < >, <FILL Condition ~?x = ~?z ENDFILL> ++ yy
+)) FI
+       ELSE SKIP ENDMATCH;
+     IFMATCH Condition ~?x = ~?y AND ~?=x <> ~?=y AND ~?z
+       THEN @Paste_Over(Mth_False)
+       ELSE SKIP ENDMATCH
+                         ELSIF MT_ST_n = 313
+THEN VAR < MT_ST_n := @ST(@I^3) >:
+     IF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 318
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+          FILL Condition ~?x = ~?z ENDFILL>)) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x <> ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(@Make(
+         T_And,
+         < >,
+         <FILL Condition ~?y1 = ~?y2 ENDFILL,
+               FILL Condition ~?x = ~?z ENDFILL>
+           ++ yy)) FI
+              ELSE SKIP ENDMATCH
+     ELSIF MT_ST_n = 313
+       THEN IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH;
+            IFMATCH Condition ~?y1 = ~?y2 AND ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+              THEN IF @Mth_Constant?(z)
+                   AND @Mth_Constant?(w)
+                   AND NOT (@Equal?(z, w))
+                THEN @Paste_Over(Mth_False) FI
+              ELSE SKIP ENDMATCH FI ENDVAR;
+     IFMATCH Condition ~?x = ~?z AND ~?=x = ~?w AND ~*yy
+       THEN IF @Mth_Constant?(z)
+            AND @Mth_Constant?(w)
+            AND NOT (@Equal?(z, w))
+         THEN @Paste_Over(Mth_False) FI
+       ELSE SKIP ENDMATCH FI ENDVAR FI ENDVAR;
+                  IFMATCH Condition ~?z AND ~?x = ~?y AND ~?=x <> ~?=y
+                    THEN @Paste_Over(Mth_False)
+                    ELSE SKIP ENDMATCH
+           ELSIF MT_ST = 311
+             THEN IFMATCH Condition ~*y AND ~?x AND ~*z OR ~?=x
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x OR ~*y AND ~?=x AND ~*z
+                    THEN @Paste_Over(x)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?z < ~?x OR ~?=x <= ~?y OR ~?=y <= ~?=z
+                    THEN @Paste_Over(Mth_True)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~*yy OR ~?x = ~?y OR ~?=x < ~?=y
+                    THEN @Paste_Over(FILL Condition ~*yy OR ~?x <= ~?y ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~*yy OR ~?y = ~?x OR ~?=x < ~?=y
+                    THEN @Paste_Over(FILL Condition ~*yy OR ~?x <= ~?y ENDFILL)
+                    ELSE SKIP ENDMATCH;
+                  IFMATCH Condition ~?x AND ~?y OR ~?=x AND ~?z AND ~?w OR ~?y1 AND ~?=z
+                    THEN IF @ST(@And(y, y1)) = T_False
+                         AND @ST(@Or(y, y1)) = T_True
+                      THEN @Paste_Over(FILL Condition ~?x AND ~?y OR ~?x AND ~?z OR ~?y1 AND ~?z
+             ENDFILL) FI
+                    ELSE SKIP ENDMATCH FI FI ENDVAR OD END;
+SKIP

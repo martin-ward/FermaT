@@ -1,0 +1,80 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" Move procs to an enclosing WHERE (opposite of Localise_Procs) ";
+
+MW_PROC @Globalise_Procs_Test() ==
+  IF @ST(@I) <> T_Where
+    THEN @Fail("Current item is not a WHERE clause.")
+  ELSIF NOT @Up?
+    THEN @Fail("Current WHERE clause is already as global as possible.")
+  ELSIF @GT(@I) = T_Statement AND @Size(@Parent) = 1 AND @Posn = <1>
+    THEN @Fail("Current WHERE clause is already as global as possible.")
+  ELSIF EMPTY?(@GP_Globalisable_Procs(@Cs(@I^2)))
+    THEN @Fail("The WHERE clause contains no globalisable proc definitions.")
+    ELSE @Pass FI .;
+
+
+MW_PROC @Globalise_Procs_Code(Data) ==
+  VAR < procs := @GP_Globalisable_Procs(@Cs(@I^2)), posn := @Posn, defns := < > >:
+  FOR defn IN @Cs(@I^2) DO
+    IF @V(defn^1) IN procs
+      THEN PRINT("Globalising: ", @N_String(@V(defn^1)));
+           defns := <defn> ++ defns
+      ELSE new := <defn> ++ new FI OD;
+  IF EMPTY?(new)
+    THEN C:" Delete the WHERE ";
+         @Splice_Over(@Cs(@I^1))
+    ELSE C:" Update the defns ";
+         @Down_To(2);
+	 @Paste_Over(@Make(T_Definitions, < >, REVERSE(new)));
+	 @Up FI;
+  C:" Find enclosing WHERE and update it (or create a new one) ";
+  WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+  IF @ST(@I) <> T_Where
+    THEN posn := <1, 1> ++ posn FI;
+  @LP_Add_Defns(defns);
+  C:" Return to the original item: ";
+  @Goto(posn) ENDVAR .;
+
+
+
+MW_FUNCT @GP_Globalisable_Procs(defns) ==
+  VAR < procs := < >, posn := @Posn >:
+  FOR defn IN defns DO
+    IF @ST(defn) = T_Proc THEN procs := <@V(defn^1)> \/ procs FI OD;
+  IF @Up? THEN @Up FI;
+  WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+  IF @ST(@I) = T_Where THEN @Down FI;
+  C:" If a proc is called globally, then the local version cannot be globalised ";
+  C:" (unless we rename it first): ";
+  procs := procs \ @Make_Set(MAP("HEAD", @Proc_Calls(@I)));
+  @Goto(posn);
+  (procs) .;
+
+
+SKIP
+
+
+
+
+
+

@@ -1,0 +1,391 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Exported functions are: ";
+
+C:" @Equal?  @Seq_Equal?  @LR_Equal?  @LR_Seq_Equal? ";
+C:" @Increment ";
+C:" @Syntax_OK? ";
+C:" @Clever_Delete, @Fixup, @Fix_Cond, @Fix_Dijkstra ";
+
+
+C:" Test two WSL items for equality: ";
+
+MW_BFUNCT @Equal?(I1, I2) ==
+  VAR < OK := 1 >:
+  IF !XC eq?(I1, I2) THEN OK := 1
+  ELSIF EMPTY?(I1) OR EMPTY?(I2) THEN OK := 0
+  ELSIF @Equal_Items?(I1, I2)
+    THEN OK := 1
+    ELSE OK := 0 FI;
+  (OK = 1) .;
+
+
+MW_BFUNCT @Equal_Items?(I1, I2) ==
+  VAR < OK := 1 >:
+  IF @ST(I1) <> @ST(I2)
+    THEN OK := 0
+  ELSIF @Has_Value_Type?(@ST(I1))
+    THEN IF @V(I1) <> @V(I2) THEN OK := 0 FI
+  ELSIF @Size(I1) <> @Size(I2)
+    THEN OK := 0
+    ELSE VAR < C1 := @Cs(I1), C2 := @Cs(I2) >:
+	 WHILE OK = 1 AND NOT EMPTY?(C1) DO
+	   IF NOT @Equal_Items?(HEAD(C1), HEAD(C2))
+	     THEN OK := 0
+	     ELSE C1 := TAIL(C1); C2 := TAIL(C2) FI OD ENDVAR FI;
+  (OK = 1) .;
+
+
+C:" Test two sequences of WSL items for equality: ";
+
+MW_BFUNCT @Seq_Equal?(L1, L2) ==
+  VAR < OK := 1 >:
+  IF LENGTH(L1) <> LENGTH(L2)
+    THEN OK := 0
+    ELSE WHILE OK = 1 AND NOT EMPTY?(L1) DO
+	   IF NOT @Equal_Items?(HEAD(L1), HEAD(L2))
+	     THEN OK := 0
+	     ELSE L1 := TAIL(L1); L2 := TAIL(L2) FI OD FI;
+  (OK = 1) .;
+
+
+
+C:" Test two WSL items for equality, where an Lvalue is treated as equal ";
+C:" to the corresponding expression: ";
+
+MW_BFUNCT @LR_Equal?(I1, I2) ==
+  VAR < OK := 1 >:
+  IF @ST(I1) <> @ST(I2)
+       AND NOT (@GT(I1) = T_Lvalue AND @Var_To_Expn_Type(@ST(I1)) = @ST(I2))
+       AND NOT (@GT(I2) = T_Lvalue AND @Var_To_Expn_Type(@ST(I2)) = @ST(I1))
+    THEN OK := 0
+  ELSIF @Has_Value_Type?(@ST(I1))
+    THEN IF @V(I1) <> @V(I2) THEN OK := 0 FI
+  ELSIF @Size(I1) <> @Size(I2)
+    THEN OK := 0
+    ELSE VAR < C1 := @Cs(I1), C2 := @Cs(I2) >:
+	 WHILE OK = 1 AND NOT EMPTY?(C1) DO
+	   IF NOT @LR_Equal?(HEAD(C1), HEAD(C2))
+	     THEN OK := 0
+	     ELSE C1 := TAIL(C1); C2 := TAIL(C2) FI OD ENDVAR FI;
+  (OK = 1) .;
+
+
+MW_BFUNCT @LR_Seq_Equal?(L1, L2) ==
+  VAR < OK := 1 >:
+  IF LENGTH(L1) <> LENGTH(L2)
+    THEN OK := 0
+    ELSE WHILE OK = 1 AND NOT EMPTY?(L1) DO
+	   IF NOT @LR_Equal?(HEAD(L1), HEAD(L2))
+	     THEN OK := 0
+	     ELSE L1 := TAIL(L1); L2 := TAIL(L2) FI OD FI;
+  (OK = 1) .;
+
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The following function increments a piece of WSL code.                       ";
+C: " The four parameters are:                                                     ";
+C: "                                                                              ";
+C: "   * The WSL code to be incremented,                                          ";
+C: "   * The action system type in which the code is contained (or `Rec'),        ";
+C: "   * The amount by which the code is to be incremented (a negative value      ";
+C: "     would be used when *removing* code from a loop),                         ";
+C: "   * The minimum terminal values within the WSL code that need to be          ";
+C: "     incremented.                                                             ";
+C: "                                                                              ";
+C: " If the item was a Statement, then the result is a sequence of statements     ";
+C: " Otherwise, the result is an incremented item of the same type.               ";
+C: "                                                                              ";
+C: " ---------------------------------------------------------------------------  ";
+
+MW_FUNCT @Increment(I, A, inc, tv) ==
+  VAR < R := < > >:
+  IF @ST(I) = T_Exit
+    THEN IF @V(I) >= tv
+	   THEN IF (@V(I) + inc) <= 0
+		  THEN R := <@Make(T_Skip, < >, < >)>
+		  ELSE R := <@Make(T_Exit, @V(I) + inc, < >)> FI
+	   ELSE R := <I> FI
+  ELSIF @ST(I) = T_Skip
+    THEN IF inc > 0 AND tv = 0
+	   THEN R := <@Make(T_Exit, inc, < >)>
+	   ELSE R := <I> FI
+  ELSIF @ST(I) = T_Call AND A = "Reg"
+    THEN R := <I>
+  ELSIF @Simple?(I)
+    THEN IF tv = 0
+	   THEN IF inc <= 0
+		  THEN R := <I, @Make(T_Skip, < >, < >)>
+		  ELSE R := <I, @Make(T_Exit, inc, < >)> FI
+	   ELSE R := <I> FI
+  ELSIF @GT(I) = T_Statements
+    THEN R := @Make(T_Statements, < >, @Increment_List(@Cs(I), A, inc, tv))
+  ELSIF @ST(I) = T_Floop
+    THEN R := <@Make(T_Floop, < >, <@Increment(I^1, A, inc, (tv + 1))>)>
+  ELSIF @Has_Comps_Type?(@ST(I))
+    THEN VAR < comp := < > >:
+	 FOR comp IN @Cs(I) DO
+	   R := <@Increment(comp, A, inc, tv)> ++ R OD;
+	 IF @GT(I) = T_Statement
+	   THEN R := <@Make(@ST(I), < >, REVERSE(R))>
+	   ELSE R := @Make(@ST(I), < >, REVERSE(R)) FI ENDVAR
+    ELSE R := I FI;
+  (R) .;
+
+
+
+MW_FUNCT @Increment_List(L, A, inc, tv) ==
+  VAR < Result := < >, Term_V := tv >:
+  IF tv = 0 AND LENGTH(L) > 1 THEN Term_V := 1 FI;
+  IF EMPTY?(L)
+     THEN SKIP
+  ELSIF @Gen_Improper?(HEAD(L), A)
+     THEN Result := @Increment(HEAD(L), A, inc, Term_V)
+		      ++ TAIL(L)
+     ELSE Result := @Increment(HEAD(L), A, inc, Term_V)
+		      ++ @Increment_List(TAIL(L), A, inc, tv) FI;
+  (Result) .;
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The following function compares two statements to see if the first is equal  ";
+C: " to the second, or if an increment of the first is equal to the second.  The  ";
+C: " procedure @I_Eq updates the variable i, according to whether the argument S  ";
+C: " needs to be incremented before it matches I, where i takes the following     ";
+C: " values:                                                                      ";
+C: "                                                                              ";
+C: "   i >= 0   The statements are equal so far, with the increment set to i,     ";
+C: "   i = -1   No increment has been fixed and no inequality detected,           ";
+C: "   i = -2   An inequality has been detected.                                  ";
+C: " ---------------------------------------------------------------------------  ";
+
+
+MW_BFUNCT @Incremented_Equal?(S, I) ==
+  VAR <i := -1> :
+  @I_Eq(S, I, @AS_Type VAR i);
+  (i >= 0) .;
+
+
+MW_PROC @I_Eq(S, I, A VAR i) ==
+   C: "A sequence of statements may be incremented by appending an  ";
+   C: "`EXIT', or by having a final `SKIP' replaced by an `EXIT'.  ";
+   IF (@ST(S) = T_Statements) AND (@ST(I) = T_Statements)
+      THEN @I_Eq_Stats(@Cs(S), @Cs(I))
+   ELSIF (@ST(S) <> @ST(I)) OR (@Size(S) <> @Size(I))
+      THEN i := -2
+      ELSE IF @Simple?(S) AND @Simple?(I)
+	      THEN IF @ST(S) = T_Exit
+		      THEN IF (i >= 0) AND ((@V(S) + i) = @V(I))
+			      THEN SKIP
+			   ELSIF (i = -1) AND (@V(I) >= @V(S))
+			      THEN i := @V(I) - @V(S)
+			      ELSE i := -2 FI
+		   ELSIF (i > 0) OR NOT @Equal_Items?(S, I)
+		      THEN i := -2 FI
+	      ELSE VAR <S := @Cs(S), I := @Cs(I)> :
+		       WHILE (i <> -2) AND NOT EMPTY?(S) DO
+			     @I_Eq(HEAD(S), HEAD(I), A VAR i);
+			     S := TAIL(S);
+			     I := TAIL(I) OD ENDVAR FI FI .;
+
+
+MW_PROC @I_Eq_Stats(S, I) ==
+   IF EMPTY?(S)
+      THEN IF EMPTY?(I)
+	      THEN IF (i = 0) OR (i = -1) THEN i := 0 ELSE i := -2 FI
+	   ELSIF (i >= 0) AND (LENGTH(I) = 1) AND (@ST(HEAD(I)) = T_Exit) AND (@V(HEAD(I)) = i)
+	      THEN SKIP
+	   ELSIF (i = -1) AND (LENGTH(I) = 1) AND (@ST(HEAD(I)) = T_Exit)
+	      THEN i := @V(HEAD(I))
+	      ELSE i := -2 FI
+   ELSIF EMPTY?(I)
+      THEN i := -2
+      ELSE @I_Eq(HEAD(S), HEAD(I), A VAR i);
+	   IF NOT @Gen_Improper?(HEAD(S), A)
+	      THEN @I_Eq_Stats(TAIL(S), TAIL(I)) FI FI .;
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The following function tests the syntax of a piece of WSL code.              ";
+C: " ---------------------------------------------------------------------------  ";
+
+MW_BFUNCT @Syntax_OK? (Item) == : SKIP;
+  (@S_OK?(Item, < >)) .;
+
+
+MW_BFUNCT @S_OK? (Item, Posn) ==
+  VAR < OK := 1, C := < >, ST := @ST(Item), S := < >, L := 0, i := 1 >:
+  IF @Has_Value_Type?(ST)
+    THEN SKIP
+    ELSE C := @Cs(Item);
+	 S := @Syntax(ST);
+	 IF @List_Type?(ST)
+	   THEN L := 1
+	 ELSIF LENGTH(S) <> LENGTH(C) 
+	   THEN PRINT("Bad length at ", REVERSE(Posn), " Type ", ST);
+		PRINT("Length = ", C, " should be: ", S);
+		OK := 0 FI;
+	 WHILE OK = 1 AND NOT EMPTY?(C) DO
+	   IF @GT(HEAD(C)) <> HEAD(S)
+	     THEN @Print_WSL(Item, "");
+		  PRINT("Bad type at ", REVERSE(<i> ++ Posn));
+		  PRINT("Gen type is: ", @Type_Name(@GT(HEAD(C))),
+			    "(", @GT(HEAD(C)), ")  Should be: ",
+			    @Type_Name(HEAD(S)), "(", HEAD(S), ")");
+                  OK := 0
+	   ELSIF NOT @S_OK?(HEAD(C), <i> ++ Posn) 
+	     THEN OK := 0 FI;
+	   IF L = 0 THEN S := TAIL(S) FI;
+	   C := TAIL(C); i := i + 1 OD FI;
+  (OK = 1) .;
+
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The following function deletes something `cleverly'.  I.e. it removes any    ";
+C: " anomalies after deletion by fixing upwards to restore the syntax.            ";
+C: " ---------------------------------------------------------------------------  ";
+
+
+MW_PROC @Clever_Delete() == @Delete; @Fixup .;
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The following functions are for performing the removal of syntactic          ";
+C: " anomalies.  In particular, `@Fixup' looks for:                               ";
+C: "                                                                              ";
+C: "   * Statements (in particular `COND's) with the wrong number of components,  ";
+C: "   * Empty statement sequences,                                               ";
+C: "   * Procedure definitions with empty definitions,                            ";
+C: "   * `Guardeds' which are the only component of a `COND' statement,           ";
+C: "   * Actions with empty definitions.                                          ";
+C: "                                                                              ";
+C: " ---------------------------------------------------------------------------  ";
+
+
+MW_PROC @Fixup() ==
+  IF @Up?
+    THEN VAR < G := @GT(@Parent), S := @ST(@Parent) >:
+	 D_IF G = T_Statement
+	   -> IF S = T_Cond
+		THEN @Fixup_Cond
+	      ELSIF (NOT @List_Type?(S) AND (@Size(@Parent) <> LENGTH(@Syntax(S))))
+		      OR (NOT @Cs?(@Parent))
+		THEN @Up; @Fixup_Statement(S) FI
+	 [] G = T_Statements
+	   -> IF NOT @Cs?(@Parent)
+		THEN @Up;
+		     IF @Up?
+		       THEN @Clever_Delete
+		       ELSE @Paste_Over(@Skips) FI FI
+	 [] G = T_Definition
+	   -> IF S = T_Proc AND @Size(@Parent) < 4
+		THEN C: "Add a body to the procedure:";
+		     @To_Last; @Paste_After(@Skips); @Right
+              ELSIF (S = T_Funct OR S = T_BFunct) AND @Size(@Parent) < 5
+		THEN C: "Add a body to the function:";
+		     @To_Last; @Paste_Before(@Skips); @Right FI
+	 [] G = T_Definitions
+	   -> IF NOT @Cs?(@Parent)
+		THEN C: "Have just deleted the last definition in a `Where'.";
+		     @Up; @Up; @Splice_Over(@Cs(@I^1)) FI
+	 [] G = T_Guarded
+	   -> IF @Size(@Parent) < 2
+		THEN @Up;
+		     IF @ST(@Parent) = T_Cond
+			THEN C: "AND the negation of this condition with the other conditions.";
+			     VAR <P := @Posn, C := @Not(@I^1)> :
+			     WHILE @Right? DO
+			       @Right; @Down; @Paste_Over(@And(C, @I)); @Up OD;
+			     @Goto(P);
+			     @Clever_Delete ENDVAR
+			ELSE C: "Cannot delete a guard in a `D_If' or `D_Do'.";
+			     @Down; @Paste_After(@Skips); @Up FI FI
+	 [] G = T_Action
+	   -> IF @Size(@Parent) = 1 AND @ST(@Parent^1) = T_Name
+		THEN C: "An action cannot just be deleted since it may be called...";
+		     C: "but checking whether it is called is too `expensive'.";
+		     @To(1);
+		     @Paste_After(@Skips) FI
+	 [] MEMBER?(G, <T_Expression, T_Expressions, T_Condition,
+			T_Lvalue, T_Lvalues, T_Assign, T_Assigns>)
+	    -> SKIP FI ENDVAR;
+	 C:" Move left/up to a valid position, if necessary: ";
+	 WHILE @Up? AND @Posn_n > @Size(@Parent) AND @Left? DO @Left OD;
+	 WHILE @Up? AND @Posn_n > @Size(@Parent) AND @Up? DO @Up OD FI .;
+
+
+MW_PROC @Fixup_Statement(ST) ==
+   IF ST = T_While
+      THEN @Paste_Over(@Make(T_Assert, < >, <@Not(@I^1)>))
+   ELSIF ST = T_D_If OR ST = T_Floop
+      THEN @Paste_Over(FILL Statement ABORT ENDFILL)
+   ELSIF ST = T_Join
+      THEN @Splice_Over(@Cs(@I^1))
+   ELSIF @Ifmatch_Type?(ST) OR ST = T_MW_Proc
+      THEN @Down_Last; @Paste_After(@Skips)
+   ELSIF ST = T_MW_Funct OR ST = T_MW_BFunct
+      THEN @Down_Last; @Paste_Before(@Skips)
+      ELSE @Clever_Delete FI .;
+
+
+MW_PROC @Fixup_Cond() ==
+   IF NOT @Cs?(@Parent)
+      THEN @Up; @Clever_Delete
+      ELSE VAR < p := @Posn_n >:
+	   @Up; @Fix_Cond;
+	   IF @Size(@I) >= p
+	     THEN @Down_To(p)
+	   ELSIF @Down?
+	     THEN @Down FI ENDVAR FI .;
+
+ 
+MW_PROC @Fix_Cond() ==
+  IF NOT @Cs?(@I)
+    THEN @Clever_Delete
+    ELSE VAR < fixed := @Fix_Cond_Item(@I) >:
+	 IF EMPTY?(fixed)
+	   THEN @Clever_Delete
+	 ELSIF @ST(fixed) = T_Statements
+	   THEN @Splice_Over(@Cs(fixed))
+	 ELSIF NOT !XC eq?(fixed, @I)
+	   THEN @Paste_Over(fixed) FI ENDVAR FI .;
+
+
+MW_PROC @Fix_Dijkstra() ==
+  C: "The currently selected item is a `D_IF' or `D_DO' which may need fixing.";
+  IF NOT @Cs?(@I)
+    THEN IF @ST(@I) = T_D_If
+	   THEN @Delete
+	   ELSE @Paste_Over(@Make(T_Abort, < >, < >)) FI
+    ELSE C: "Look at each of the guards to see whether any of them are empty.";
+	 @Down;
+	 DO IF @Size(@I) = 1
+	      THEN @Down; @Paste_After(@Skips); @Up
+	    ELSIF NOT @Cs?(@I^2)
+	      THEN @Down_Last; @Paste_Over(@Skips); @Up FI;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up FI .;
+
+
+
+C: " ---------------------------------------------------------------------------  "

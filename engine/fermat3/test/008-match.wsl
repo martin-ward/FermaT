@@ -1,0 +1,622 @@
+
+VAR < file := "008-match: ", fail := < >, n := "", a := < >, b := < > >:
+
+PRINT("Testing ...");
+
+
+n := "001";
+@New_Program(FILL Statement IF x = 0 THEN y := 1 ELSE y := 2 FI ENDFILL);
+@Print_WSL(@Program, "");
+IFMATCH Statement IF ~?B THEN ~?S1 ELSE ~?S2 FI
+THEN a := S1
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Statement y := 1 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "002";
+@New_Program(FILL Statement IF x = 0 THEN y := 1 ELSE y := 2 FI ENDFILL);
+IFMATCH Statement IF ~?B THEN ~?S1 ELSE ~?S2 FI
+THEN a := S2
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Statement y := 2 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "003";
+@New_Program(FILL Statement < x1 := 1, x2 := 2, x3 := 3 > ENDFILL);
+E := FILL Lvalue x1 ENDFILL;
+IFMATCH Statement <~*A1, ~?(E) := ~?X, ~*A2>
+THEN a := X
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Expression 1 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "004";
+@New_Program(FILL Statement < x1 := 1, x2 := 2, x3 := 3 > ENDFILL);
+E := FILL Lvalue x2 ENDFILL;
+IFMATCH Statement <~*A1, ~?(E) := ~?X, ~*A2>
+THEN a := X
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Expression 2 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "005";
+@New_Program(FILL Statement < x1 := 1, x2 := 2, x3 := 3 > ENDFILL);
+E := FILL Lvalue x3 ENDFILL;
+IFMATCH Statement <~*A1, ~?(E) := ~?X, ~*A2>
+THEN a := X
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Expression 3 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "006";
+@New_Program(FILL Statement
+	DO x := x + 1; IF x = 10 THEN EXIT(1) FI;
+	   x := x + 1; IF x = 10 THEN EXIT(1) FI OD
+ENDFILL);
+IFMATCH Statement DO ~+S; ~*=S OD
+THEN a := @Make(T_Statements, < >, S)
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Statements x := x + 1; IF x = 10 THEN EXIT(1) FI ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "007";
+@New_Program(FILL Statement
+	DO x := x + 1; IF x = 10 THEN EXIT(1) FI;
+	   x := x + 1; IF x = 11 THEN EXIT(1) FI OD
+ENDFILL);
+IFMATCH Statement DO ~+S; ~*=S OD
+THEN a := @Make(T_Statements, < >, S)
+ELSE a := < > ENDMATCH;
+IF EMPTY?(a)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "008";
+@New_Program(FILL Statement
+	!XP foo(bar)
+ENDFILL);
+IFMATCH Statement !XP foo(~?X)
+THEN a := X
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Expression bar ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "009";
+@New_Program(FILL Statements
+	DO x := x + 1; IF x = 10 THEN EXIT(1) FI;
+	   x := x + 1; IF x = 10 THEN EXIT(1) FI OD
+ENDFILL);
+IFMATCH Statements DO ~+S; ~*=S OD
+THEN a := @Make(T_Statements, < >, S)
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Statements x := x + 1; IF x = 10 THEN EXIT(1) FI ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "010";
+@New_Program(FILL Lvalue a[foo] ENDFILL);
+IFMATCH Lvalue ~?v1[~?v2]
+THEN a := v2
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Expression foo ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "011";
+@New_Program(FILL Lvalues foo, bar, baz ENDFILL);
+IFMATCH Lvalues ~?v1, ~?v2, ~?v3
+THEN a := v2
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Lvalue bar ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "012";
+@New_Program(FILL Condition foo + bar > baz ENDFILL);
+IFMATCH Condition ~?v1 + ~?v2 > ~?v3
+THEN a := v2
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Expression bar ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "013";
+@New_Program(FILL Condition @foo? AND foo + bar > baz ENDFILL);
+IFMATCH Condition @foo? AND ~?v1 + ~?v2 > ~?v3
+THEN a := v2
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Expression bar ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "014";
+@New_Program(FILL Definition PROC foo(x) == y := y + x END ENDFILL);
+IFMATCH Definition PROC foo(x) == ~?v1 := ~?=v1 + ~?v2 END
+THEN a := v1
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Lvalue y ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "015";
+@New_Program(FILL Definitions PROC bar(x) == SKIP END,
+                              PROC foo(x) == y := y + x END ENDFILL);
+IFMATCH Definitions ~?d, PROC foo(x) == ~?v1 := ~?=v1 + ~?v2 END
+THEN a := v1
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Lvalue y ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "016";
+@New_Program(FILL Definitions PROC bar(x) == SKIP END
+                              PROC foo(x) == y := y + x END ENDFILL);
+IFMATCH Definitions ~?d, PROC foo(x) == ~?v1 := ~?=v1 + ~?v2 END
+THEN a := v1
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Lvalue y ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "017";
+@New_Program(FILL Assign foo := bar ENDFILL);
+IFMATCH Assign ~?v1 := ~?v2
+THEN a := v2
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Expression bar ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "018";
+@New_Program(FILL Assigns x := 1, foo := bar ENDFILL);
+IFMATCH Assigns ~?a, ~?v1 := ~?v2
+THEN a := v2
+ELSE a := < > ENDMATCH;
+IF @Equal?(a, FILL Expression bar ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "019";
+@New_Program(FILL Action foo == IF x = 1 THEN CALL bar FI END ENDFILL);
+IFMATCH Action foo == ~*S END
+THEN a := S
+ELSE a := < > ENDMATCH;
+IF NOT EMPTY?(a) AND @Equal?(HEAD(a), FILL Statement IF x = 1 THEN CALL bar FI ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "020";
+@New_Program(FILL Guarded x = 0 THEN y := 1 ENDFILL);
+IFMATCH Guarded ~?B THEN ~*S
+THEN a := S
+ELSE a := < > ENDMATCH;
+IF NOT EMPTY?(a) AND @Equal?(HEAD(a), FILL Statement y := 1 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "015";
+@New_Program(FILL Statement FOR i := 1 TO x + 1 STEP 2 DO y := y + i OD ENDFILL);
+IFMATCH Statement FOR ~?L := ~?E1 TO ~?E2 STEP ~?E3 DO ~*S OD
+  THEN IF @Equal?(E2, FILL Expression x + 1 ENDFILL)
+         THEN a := 1
+	 ELSE a := 0 FI
+  ELSE a := 0 ENDMATCH;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "016";
+@New_Program(FILL Statement
+
+DO C:"IS CHAR LESS THAN 0?";
+   C:"<FermaT> 00000341 r15";
+   C:"YES - SKIP TO ERROR";
+   C:"<FermaT> 00000342 NUMCHCKY";
+   IF NUMAREA[NUMAREA_INDEX - 1] < "0"
+        OR NUMAREA[NUMAREA_INDEX - 1] > "9"
+     THEN EXIT(1) FI;
+   C:"INCREMENT POINTER";
+   C:"<FermaT> 00000345 r15";
+   NUMAREA_INDEX := NUMAREA_INDEX + 1;
+   C:"LOOP BACK";
+   C:"<FermaT> 00000346 NUMCHCKA r1";
+   IF NUMAREA_INDEX = 16 THEN EXIT(1) FI OD
+
+ENDFILL);
+
+IFMATCH Statement 
+
+DO ~*S1;
+   IF ~?B1 THEN ~*S2; EXIT(1) FI;
+   ~*S3;
+   ~?var := ~?e1;
+   ~*S4;
+   IF ~?e = ~?=var THEN ~*S5; EXIT(1) FI OD
+
+  THEN PRINT("Matched...");
+       PRINT("S1 = ");
+       @PP_Item(@Make(T_Statements, < >, S1), 80, "");
+       PRINT("S3 = ");
+       @PP_Item(@Make(T_Statements, < >, S3), 80, "");
+       PRINT("S4 = ");
+       @PP_Item(@Make(T_Statements, < >, S4), 80, "");
+       PRINT("var = ");
+       @Print_WSL(var, "");
+       a := var;
+
+       @Paste_Over(FILL Statement
+                         DO ~*S1;
+                            IF ~?B1 THEN ~*S2; EXIT(1) FI;
+                            ~*S3;
+                            ~?var := ~?e1;
+                            ~*S4;
+                            IF ~?var = ~?e THEN ~*S5; EXIT(1) FI OD ENDFILL);
+
+  ELSE a := < > ENDMATCH;
+
+IF EMPTY?(a)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "017";
+@New_Program(FILL Statement
+
+DO NUMAREA_INDEX := NUMAREA_INDEX + 1;
+   C:"LOOP BACK";
+   C:"<FermaT> 00000346 NUMCHCKA r1";
+   IF NUMAREA_INDEX = 16 THEN EXIT(1) FI OD
+
+ENDFILL);
+
+IFMATCH Statement 
+
+DO ~?var := ~?e1;
+   ~*S4;
+   IF ~?e = ~?=var THEN ~*S5; EXIT(1) FI OD
+
+  THEN PRINT("Matched...");
+       PRINT("S4 = ");
+       @PP_Item(@Make(T_Statements, < >, S4), 80, "");
+       PRINT("var = ");
+       @Print_WSL(var, "");
+       a := var
+
+  ELSE a := < > ENDMATCH;
+
+IF EMPTY?(a)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "018";
+@New_Program(FILL Statement
+
+DO C:"IS CHAR LESS THAN 0?";
+   C:"<FermaT> 00000341 r15";
+   C:"YES - SKIP TO ERROR";
+   C:"<FermaT> 00000342 NUMCHCKY";
+   IF NUMAREA[NUMAREA_INDEX - 1] < "0"
+        OR NUMAREA[NUMAREA_INDEX - 1] > "9"
+     THEN EXIT(1) FI;
+   C:"INCREMENT POINTER";
+   C:"<FermaT> 00000345 r15";
+   NUMAREA_INDEX := NUMAREA_INDEX + 1;
+   C:"LOOP BACK";
+   C:"<FermaT> 00000346 NUMCHCKA r1";
+   IF 16 = NUMAREA_INDEX THEN EXIT(1) FI OD
+
+ENDFILL);
+
+IFMATCH Statement 
+
+DO ~*S1;
+   IF ~?B1 THEN ~*S2; EXIT(1) FI;
+   ~*S3;
+   ~?var := ~?e1;
+   ~*S4;
+   IF ~?e = ~?=var THEN ~*S5; EXIT(1) FI OD
+
+  THEN @Paste_Over(FILL Statement
+                         DO ~*S1;
+                            IF ~?B1 THEN ~*S2; EXIT(1) FI;
+                            ~*S3;
+                            ~?var := ~?e1;
+                            ~*S4;
+                            IF ~?var = ~?e THEN ~*S5; EXIT(1) FI OD ENDFILL) ENDMATCH;
+
+
+IFMATCH Statement 
+
+DO ~*S1;
+   IF ~?B1 THEN ~*S2; EXIT(1) FI;
+   ~*S3;
+   ~?var := ~?e1;
+   ~*S4;
+   IF ~?=var = ~?e THEN ~*S5; EXIT(1) FI OD
+
+  THEN a := @Program
+  ELSE a := < > ENDMATCH;
+
+
+IF NOT EMPTY?(a)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+IF FALSE THEN
+
+n := "019";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "020";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "021";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "022";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "023";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "024";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "025";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "026";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "027";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "028";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "029";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "030";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "031";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "032";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "033";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "034";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "035";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "036";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "037";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "038";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "039";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "040";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "041";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "042";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "043";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "044";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "045";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "046";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "047";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "048";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "049";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "050";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "051";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "052";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "053";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "054";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "055";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "056";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "057";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "058";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "059";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "060";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+SKIP FI;
+
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+

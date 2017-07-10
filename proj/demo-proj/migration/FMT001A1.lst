@@ -1,0 +1,446 @@
+                                       Tachyon 390 Cross Assembler Option Summary                                          PAGE    1
+
+                                      (c) Copyright 1995-2000 Tachyon Software LLC                     X390 1.4.12  2000/02/29 16.54
+
+                                      Product serial 5162 is licensed to Software Migrations Limited
+                                      License expires on February 1, 2001 at 00:00
+
+Command Line Parameters-  C:\_AWB_TEST\FMT001A1.a11
+                          -Q
+                          -NSE TB SM'c:\windows\TEMP\TideX390.msg'
+
+
+Options for this Assembly       Source
+-------------------------       --------------------------------
+  AControl(AFpr,NoLibMac)       (default)
+NoAData                         (default)
+  Align                         (default)
+  DXref                         (default)
+  Esd                           (default)
+  Flag(0,ALign,ConT,ReCord,NoSUbstr,NoImpLen,PUsh,NoPage0,NoBrpage0,NoREnt,UsingDup,UsingZero,UsingMult,Ra2,NoTRunc,NoIndeX,NoDeciMa
+l)                              (default)
+NoFOld                          (default)
+  IDR('X390ASM   1412')         (default)
+  LAnguage(EN)                  (default)
+NoLibExit                       (default)
+  LineCount(60)                 (default)
+  LineWidth(Nl)                 (default)
+  List(121)                     (default)
+NoMakeDepend                    (default)
+  MakeFile(&D&F.mk)             (default)
+  MXref(Source)                 (default)
+NoObject                        (default)
+  OPtable(Uni)                  (default)
+  PControl(ON,GEN)              c:\windows\TEMP\TideFFE0BEBB.env
+  PRintctl(Ff)                  (default)
+  ProcesS(NoBatch,NoCics,NoDli,NoJcl,NoSql,NoWarn0,NoX390)
+                                (default)
+  Quiet                         Command Line
+  RLd                           (default)
+  RXref(NoAr,NoCr,Gr,NoFr,NoVr) (default)
+  SiZe(MAX)                     (default)
+  SysadatA(&D&F.dat)            (default)
+  SysLib(.\*.mac;.\*.cpb;P:\syslib2\ebcdic\*.mac;P:\halifax\0macros\*.mac;P:\halifax\0macCOPY\*.mac)
+                                C:\Tachyon\x390.win\x390.ini
+  SysliN(&D&F.obj)              (default)
+NoSysParm                       (default)
+  SysprinT(&D&F.lst)            (default)
+  SyspuncH(&D&F.txt)            (default)
+  SystemId('Windows95 4.0')     (default)
+  SysterM(c:\windows\TEMP\TideX390.msg)
+                                Command Line
+  Term(Both)                    Command Line
+NoTEst                          (default)
+NoTRanslate                     (default)
+NoUsingLimit                    (default)
+  UsingMap                      (default)
+  Xref(Full)                    c:\windows\TEMP\TideFFE0BEBB.env
+
+
+ASCII to EBCDIC Translation Table-
+                                       Tachyon 390 Cross Assembler Option Summary                                          PAGE    2
+
+                                      (c) Copyright 1995-2000 Tachyon Software LLC                     X390 1.4.12  2000/02/29 16.54
+
+00=00  20=40  21=5A  22=7F  23=7B  24=5B  25=6C  26=50  27=7D  28=4D  29=5D  2A=5C  2B=4E  2C=6B  2D=60  2E=4B  2F=61
+30=F0  31=F1  32=F2  33=F3  34=F4  35=F5  36=F6  37=F7  38=F8  39=F9  3A=7A  3B=5E  3C=4C  3D=7E  3E=6E  3F=6F  40=7C
+41=C1  42=C2  43=C3  44=C4  45=C5  46=C6  47=C7  48=C8  49=C9  4A=D1  4B=D2  4C=D3  4D=D4  4E=D5  4F=D6  50=D7  51=D8
+52=D9  53=E2  54=E3  55=E4  56=E5  57=E6  58=E7  59=E8  5A=E9  5B=BA  5C=E0  5D=BB  5E=B0  5F=6D  60=79  61=81  62=82
+63=83  64=84  65=85  66=86  67=87  68=88  69=89  6A=91  6B=92  6C=93  6D=94  6E=95  6F=96  70=97  71=98  72=99  73=A2
+74=A3  75=A4  76=A5  77=A6  78=A7  79=A8  7A=A9  7B=C0  7C=4F  7D=D0  7E=A0  9B=4A  AA=5F  C0=AB  C3=EB  C4=BF  DA=AC
+
+
+DDNAMEs     File/Path Names
+--------    ---------------
+SYSIN       C:\_AWB_TEST\FMT001A1.a11
+SYSLIB      .\*.MAC
+            .\*.CPB
+            P:\SYSLIB2\EBCDIC\*.MAC
+            P:\HALIFAX\0MACROS\*.MAC
+            P:\HALIFAX\0MACCOPY\*.MAC
+SYSPRINT    C:\_AWB_TEST\FMT001A1.lst
+SYSTERM     c:\windows\TEMP\TideX390.msg
+                                             External Symbol Dictionary                                                    PAGE    3
+
+Symbol   Type   Id    Address   Length     LD ID  Flags  Alias-of                                      X390 1.4.12  2000/02/29 16.54
+
+          PC 00000001 00000000 00000000             00
+FMT001A1  SD 00000002 00000000 000002D0             00
+                                                                                                                           PAGE    4
+  Active USINGs: None
+
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                             X390 1.4.12  2000/02/29 16.54
+
+                                      1 *********************************************************************   80000010
+                                      2 *  FMT001A1  TEST PROGRAM - SIMPLE5 PROCESS                         *   80000020
+                                      3 *********************************************************************   80000030
+                                      4 *                                                                       80000040
+                                      5 *        PRINT NOGEN                                                    80000050
+                                      6          REGEQU                                                         80000060
+                                      7+         PUSH  PRINT                                                    01-REGEQU
+
+
+                      00000           9+R0       EQU   0                                                        01-REGEQU
+                      00001          10+R1       EQU   1                                                        01-REGEQU
+                      00002          11+R2       EQU   2                                                        01-REGEQU
+                      00003          12+R3       EQU   3                                                        01-REGEQU
+                      00004          13+R4       EQU   4                                                        01-REGEQU
+                      00005          14+R5       EQU   5                                                        01-REGEQU
+                      00006          15+R6       EQU   6                                                        01-REGEQU
+                      00007          16+R7       EQU   7                                                        01-REGEQU
+                      00008          17+R8       EQU   8                                                        01-REGEQU
+                      00009          18+R9       EQU   9                                                        01-REGEQU
+                      0000A          19+R10      EQU   10                                                       01-REGEQU
+                      0000B          20+R11      EQU   11                                                       01-REGEQU
+                      0000C          21+R12      EQU   12                                                       01-REGEQU
+                      0000D          22+R13      EQU   13                                                       01-REGEQU
+                      0000E          23+R14      EQU   14                                                       01-REGEQU
+                      0000F          24+R15      EQU   15                                                       01-REGEQU
+
+
+                                     26+         POP   PRINT                                                    01-REGEQU
+000000                00000 002D0    27 FMT001A1 CSECT                                                          80000070
+000000 90EC D00C            0000C    28          STM   R14,R12,12(R13)                                          80000080
+000004 183F                          29          LR    R3,R15                                                   80000090
+                 R:3  00000          30          USING FMT001A1,R3                                              80000100
+                                     31 *        <FERMAT><ML><0><>
+000006 50D0 3118            00118    32          ST    R13,WSAVE+4                                              80000110
+                                     33 *        <FERMAT><ML><0><>
+00000A 41E0 3114            00114    34          LA    R14,WSAVE                                                80000120
+00000E 50ED 0008            00008    35          ST    R14,8(R13)                                               80000130
+                                     36 *        <FERMAT><ML><0><>
+000012 41D0 3114            00114    37          LA    R13,WSAVE                                                80000140
+                                     38 *                                                                       80000150
+                                     39          OPEN  (DDIN,(INPUT))                                           80000160
+000016 0700                          40+         CNOP  0,4                          ALIGN LIST TO FULLWORD      01-OPEN
+000018 4510 3020            00020    41+         BAL   1,*+8                        LOAD REG1 W/LIST ADDR. @L2A 01-OPEN
+00001C 80                            42+         DC    AL1(128)                     OPTION BYTE                 01-OPEN
+00001D 000210                        43+         DC    AL3(DDIN)                    DCB ADDRESS                 01-OPEN
+000020 0A13                          44+         SVC   19                           ISSUE OPEN SVC              01-OPEN
+                                     45          OPEN  (RDSOUT,(OUTPUT))                                        80000170
+000022 0700                          46+         CNOP  0,4                          ALIGN LIST TO FULLWORD      01-OPEN
+000024 4510 302C            0002C    47+         BAL   1,*+8                        LOAD REG1 W/LIST ADDR. @L2A 01-OPEN
+000028 8F                            48+         DC    AL1(143)                     OPTION BYTE                 01-OPEN
+000029 000270                        49+         DC    AL3(RDSOUT)                  DCB ADDRESS                 01-OPEN
+00002C 0A13                          50+         SVC   19                           ISSUE OPEN SVC              01-OPEN
+00002E 45A0 30B6            000B6    51          BAL   R10,GETREC              READ FIRST RECORD                80000180
+000032 47F0 305C            0005C    52          B     LAB110                                                   80000190
+000036 45A0 30B6            000B6    53 LAB100   BAL   R10,GETREC              READ NEXT RECORD                 80000200
+                                                                                                                           PAGE    5
+  Active USINGs: FMT001A1,R3
+
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                             X390 1.4.12  2000/02/29 16.54
+
+00003A 4450 30FC            000FC    54          EX    R5,WCLC1                INDEX WORD CHANGED ?             80000210
+                                     55 *WCLC1   CLC   WLAST(1),0(R4)                                           80000220
+00003E 4780 306C            0006C    56          BE    LAB120                  NO.                              80000230
+                                     57          PUT   RDSOUT,WPRT             YES - WRITE PRINT LINE           80000240
+000042 4110 3270            00270    58+         LA    1,RDSOUT                          LOAD PARAMETER REG 1   02-IHBINNRA
+000046 4100 31AC            001AC    59+         LA    0,WPRT                            LOAD PARAMETER REG 0   02-IHBINNRA
+00004A 1FFF                          60+         SLR   15,15                    CLEAR REGISTER             @L1A 01-PUT
+00004C BFF7 1031            00031    61+         ICM   15,7,49(1)               LOAD PUT ROUTINE ADDR      @L1C 01-PUT
+000050 05EF                          62+         BALR  14,15                    LINK TO PUT ROUTINE             01-PUT
+000052 9240 31AC      001AC          63          MVI   WPRT,C' '               CLEAR PRINT LINE                 80000250
+000056 D24E 31AD 31AC 001AD 001AC    64          MVC   WPRT+1(79),WPRT                                          80000260
+00005C 4450 3102            00102    65 LAB110   EX    R5,WMVC1                STORE INDEX WORD IN PRINT LINE   80000270
+                                     66 *WMVC1   MVC   WPRT(1),0(R4)                                            80000280
+000060 4180 31AC            001AC    67          LA    R8,WPRT                 ADDRESS PRINT LINE               80000290
+000064 4185 8002            00002    68          LA    R8,2(R5,R8)             SKIP OVER WORD                   80000300
+000068 47F0 3074            00074    69          B     LAB130                                                   80000310
+00006C 926B 8000      00000          70 LAB120   MVI   0(R8),C','              ADD SEPARATOR                    80000320
+000070 4188 0001            00001    71          LA    R8,1(R8)                INDEX OVER SEPARATOR             80000330
+000074 4470 3108            00108    72 LAB130   EX    R7,WMVC2                STORE PAGE NUMBER                80000340
+                                     73 *WMVC2   MVC   0(1,R8),0(R6)                                            80000350
+000078 4187 8001            00001    74          LA    R8,1(R7,R8)             INDEX OVER PAGE NUMBER           80000360
+00007C 4450 310E            0010E    75          EX    R5,WMVC3                STORE LAST WORD                  80000370
+                                     76 *WMVC3   MVC   WLAST(1),WREC                                            80000380
+000080 47F0 3036            00036    77          B     LAB100                                                   80000390
+                                     78 *                                                                       80000400
+                                     79 LAB140   PUT   RDSOUT,WPRT                                              80000410
+000084 4110 3270            00270    80+LAB140   LA    1,RDSOUT                          LOAD PARAMETER REG 1   02-IHBINNRA
+000088 4100 31AC            001AC    81+         LA    0,WPRT                            LOAD PARAMETER REG 0   02-IHBINNRA
+00008C 1FFF                          82+         SLR   15,15                    CLEAR REGISTER             @L1A 01-PUT
+00008E BFF7 1031            00031    83+         ICM   15,7,49(1)               LOAD PUT ROUTINE ADDR      @L1C 01-PUT
+000092 05EF                          84+         BALR  14,15                    LINK TO PUT ROUTINE             01-PUT
+                                     85          CLOSE DDIN                                                     80000420
+000094                               86+         CNOP  0,4                               ALIGN LIST TO FULLWORD 01-CLOSE
+000094 4510 309C            0009C    87+         BAL   1,*+8                        LOAD REG1 W/LIST ADDR. @L2A 01-CLOSE
+000098 80                            88+         DC    AL1(128)                          OPTION BYTE            01-CLOSE
+000099 000210                        89+         DC    AL3(DDIN)                         DCB ADDRESS            01-CLOSE
+00009C 0A14                          90+         SVC   20                                ISSUE CLOSE SVC        01-CLOSE
+                                     91          CLOSE RDSOUT                                                   80000430
+00009E 0700                          92+         CNOP  0,4                               ALIGN LIST TO FULLWORD 01-CLOSE
+0000A0 4510 30A8            000A8    93+         BAL   1,*+8                        LOAD REG1 W/LIST ADDR. @L2A 01-CLOSE
+0000A4 80                            94+         DC    AL1(128)                          OPTION BYTE            01-CLOSE
+0000A5 000270                        95+         DC    AL3(RDSOUT)                       DCB ADDRESS            01-CLOSE
+0000A8 0A14                          96+         SVC   20                                ISSUE CLOSE SVC        01-CLOSE
+                                     97 *                                                                       80000440
+                                     98 *        <FERMAT><ML><0><>
+0000AA 58D0 3118            00118    99 LAB999   L     R13,WSAVE+4                                              80000450
+0000AE 98EC D00C            0000C   100          LM    R14,R12,12(R13)                                          80000460
+0000B2 1FFF                         101          SLR   R15,R15                                                  80000470
+0000B4 07FE                         102          BR    R14                                                      80000480
+                                    103 *                                                                       80000490
+                                    104 GETREC   GET   DDIN,WREC               READ RECORD                      80000500
+0000B6 4110 3210            00210   105+GETREC   LA    1,DDIN                            LOAD PARAMETER REG 1   02-IHBINNRA
+0000BA 4100 315C            0015C   106+         LA    0,WREC                            LOAD PARAMETER REG 0   02-IHBINNRA
+0000BE 1FFF                         107+         SLR   15,15                    CLEAR REGISTER             @L1A 01-GET
+0000C0 BFF7 1031            00031   108+         ICM   15,7,49(1)               LOAD GET ROUTINE ADDR      @L1C 01-GET
+                                                                                                                           PAGE    6
+  Active USINGs: FMT001A1,R3
+
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                             X390 1.4.12  2000/02/29 16.54
+
+0000C4 05EF                         109+         BALR  14,15                    LINK TO GET ROUTINE             01-GET
+0000C6 4140 315C            0015C   110          LA    R4,WREC                 START OF WORD                    80000510
+0000CA 1854                         111          LR    R5,R4                                                    80000520
+0000CC 956B 5000      00000         112 L10A     CLI   0(R5),C','              SEPARATOR (,) ?                  80000530
+0000D0 4780 30DC            000DC   113          BE    L10B                    YES.                             80000540
+0000D4 4155 0001            00001   114          LA    R5,1(R5)                INDEX NEXT CHARACTER             80000550
+0000D8 47F0 30CC            000CC   115          B     L10A                                                     80000560
+0000DC 4175 0001            00001   116 L10B     LA    R7,1(R5)                SAVE START OF PAGE NUMBER        80000570
+0000E0 1B54                         117          SR    R5,R4                   LENGTH OF WORD                   80000580
+0000E2 0650                         118          BCTR  R5,0                    DECREMENT FOR EXECUTE            80000590
+0000E4 1867                         119          LR    R6,R7                   START OF PAGE NUMBER             80000600
+0000E6 9540 7000      00000         120 L10C     CLI   0(R7),C' '              END ?                            80000610
+0000EA 4780 30F6            000F6   121          BE    L10D                    YES.                             80000620
+0000EE 4177 0001            00001   122          LA    R7,1(R7)                INDEX NEXT CHARACTER             80000630
+0000F2 47F0 30E6            000E6   123          B     L10C                                                     80000640
+0000F6 1B76                         124 L10D     SR    R7,R6                   LENGTH OF PAGE NUMBER            80000650
+0000F8 0670                         125          BCTR  R7,0                    DECREMENT FOR EXECUTE            80000660
+0000FA 07FA                         126          BR    10                      RETURN                           80000670
+                                    127 *                                                                       80000680
+0000FC D500 31FC 4000 001FC 00000   128 WCLC1    CLC   WLAST(1),0(R4)                                           80000690
+000102 D200 31AC 4000 001AC 00000   129 WMVC1    MVC   WPRT(1),0(R4)                                            80000700
+000108 D200 8000 6000 00000 00000   130 WMVC2    MVC   0(1,R8),0(R6)                                            80000710
+00010E D200 31FC 315C 001FC 0015C   131 WMVC3    MVC   WLAST(1),WREC                                            80000720
+                                    132 *                                                                       80000730
+                                    133 *        <FERMAT><ML><0><>
+000114                              134 WSAVE    DS    18F                   SAVE AREA                          80000740
+00015C 4040404040404040             135 WREC     DC    CL80' '               INPUT RECORD AREA                  80000750
+0001AC 4040404040404040             136 WPRT     DC    CL80' '               OUTPUT PRINT AREA                  80000760
+0001FC 4040404040404040             137 WLAST    DC    CL20' '               LAST ITEM                          80000770
+                                    138 *                                                                       80000780
+                                    139 DDIN     DCB   DDNAME=DDIN,                                            *80000790
+                                                       DSORG=PS,                                               *80000800
+                                                       EODAD=LAB140,                                           *80000810
+                                                       MACRF=GM                                                 80000820
+
+                                    141+*                       DATA CONTROL BLOCK                              01-DCB
+                                    142+*                                                                       01-DCB
+000210                              143+DDIN     DC    0F'0'          ORIGIN ON WORD BOUNDARY                   01-DCB
+                                    144+*                       DIRECT ACCESS DEVICE INTERFACE                  01-DCB
+000210 0000000000000000             145+         DC    BL16'0'        FDAD, DVTBL                               01-DCB
+000220 00000000                     146+         DC    A(0)           KEYLEN, DEVT, TRBAL                       01-DCB
+                                    147+*                       COMMON ACCESS METHOD INTERFACE                  01-DCB
+000224 00                           148+         DC    AL1(0)         BUFNO, NUMBER OF BUFFERS                  01-DCB
+000225 000001                       149+         DC    AL3(1)         BUFCB, BUFFER POOL CONTROL BLOCK          01-DCB
+000228 0000                         150+         DC    AL2(0)         BUFL, BUFFER LENGTH                       01-DCB
+00022A 4000                         151+         DC    BL2'0100000000000000' DSORG, DATA SET ORGANIZATION       01-DCB
+00022C 00000001                     152+         DC    A(1)           IOBAD FOR EXCP OR RESERVED                01-DCB
+                                    153+*                       FOUNDATION EXTENSION                            01-DCB
+000230 00                           154+         DC    BL1'00000000'  BFTEK, BFALN, DCBE INDICATORS             01-DCB
+000231 000084                       155+         DC    AL3(LAB140)    EODAD (END OF DATA ROUTINE ADDRESS)       01-DCB
+000234 00                           156+         DC    BL1'00000000'  RECFM (RECORD FORMAT)                     01-DCB
+000235 000000                       157+         DC    AL3(0)         EXLST (EXIT LIST ADDRESS)                 01-DCB
+                                    158+*                       FOUNDATION BLOCK                                01-DCB
+000238 C4C4C9D540404040             159+         DC    CL8'DDIN'      DDNAME                                    01-DCB
+000240 02                           160+         DC    BL1'00000010'  OFLGS (OPEN FLAGS)                        01-DCB
+                                                                                                                           PAGE    7
+  Active USINGs: FMT001A1,R3
+
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                             X390 1.4.12  2000/02/29 16.54
+
+000241 00                           161+         DC    BL1'00000000'  IFLGS (IOS FLAGS)                         01-DCB
+000242 5000                         162+         DC    BL2'0101000000000000' MACR (MACRO FORMAT)                01-DCB
+                                    163+*                       BSAM-BPAM-QSAM INTERFACE                        01-DCB
+000244 00                           164+         DC    BL1'00000000'  OPTCD, OPTION CODES                       01-DCB
+000245 000001                       165+         DC    AL3(1)         CHECK OR INTERNAL QSAM SYNCHRONIZING RTN. 01-DCB
+000248 00000001                     166+         DC    A(1)           SYNAD, SYNCHRONOUS ERROR RTN. (3 BYTES)   01-DCB
+00024C 0000                         167+         DC    H'0'           INTERNAL ACCESS METHOD FLAGS              01-DCB
+00024E 0000                         168+         DC    AL2(0)         BLKSIZE, BLOCK SIZE                       01-DCB
+000250 00000000                     169+         DC    F'0'           INTERNAL ACCESS METHOD FLAGS              01-DCB
+000254 00000001                     170+         DC    A(1)           INTERNAL ACCESS METHOD USE                01-DCB
+                                    171+*                            QSAM INTERFACE                             01-DCB
+000258 00000001                     172+         DC    A(1)           EOBAD                                     01-DCB
+00025C 00000001                     173+         DC    A(1)           RECAD                                     01-DCB
+000260 0000                         174+         DC    H'0'           QSWS (FLAGS) AND EITHER DIRCT OR BUFOFF   01-DCB
+000262 0000                         175+         DC    AL2(0)         LRECL                                     01-DCB
+000264 00                           176+         DC    BL1'00000000'  EROPT, ERROR OPTION                       01-DCB
+000265 000001                       177+         DC    AL3(1)         CNTRL                                     01-DCB
+000268 00000000                     178+         DC    H'0,0'         RESERVED AND PRECL                        01-DCB
+00026C 00000001                     179+         DC    A(1)           EOB, INTERNAL ACCESS METHOD FIELD         01-DCB
+                                    180 RDSOUT   DCB   DDNAME=RDSOUT,                                          *80000830
+                                                       DSORG=PS,                                               *80000840
+                                                       MACRF=PM                                                 80000850
+
+                                    182+*                       DATA CONTROL BLOCK                              01-DCB
+                                    183+*                                                                       01-DCB
+000270                              184+RDSOUT   DC    0F'0'          ORIGIN ON WORD BOUNDARY                   01-DCB
+                                    185+*                       DIRECT ACCESS DEVICE INTERFACE                  01-DCB
+000270 0000000000000000             186+         DC    BL16'0'        FDAD, DVTBL                               01-DCB
+000280 00000000                     187+         DC    A(0)           KEYLEN, DEVT, TRBAL                       01-DCB
+                                    188+*                       COMMON ACCESS METHOD INTERFACE                  01-DCB
+000284 00                           189+         DC    AL1(0)         BUFNO, NUMBER OF BUFFERS                  01-DCB
+000285 000001                       190+         DC    AL3(1)         BUFCB, BUFFER POOL CONTROL BLOCK          01-DCB
+000288 0000                         191+         DC    AL2(0)         BUFL, BUFFER LENGTH                       01-DCB
+00028A 4000                         192+         DC    BL2'0100000000000000' DSORG, DATA SET ORGANIZATION       01-DCB
+00028C 00000001                     193+         DC    A(1)           IOBAD FOR EXCP OR RESERVED                01-DCB
+                                    194+*                       FOUNDATION EXTENSION                            01-DCB
+000290 00                           195+         DC    BL1'00000000'  BFTEK, BFALN, DCBE INDICATORS             01-DCB
+000291 000001                       196+         DC    AL3(1)         EODAD (END OF DATA ROUTINE ADDRESS)       01-DCB
+000294 00                           197+         DC    BL1'00000000'  RECFM (RECORD FORMAT)                     01-DCB
+000295 000000                       198+         DC    AL3(0)         EXLST (EXIT LIST ADDRESS)                 01-DCB
+                                    199+*                       FOUNDATION BLOCK                                01-DCB
+000298 D9C4E2D6E4E34040             200+         DC    CL8'RDSOUT'    DDNAME                                    01-DCB
+0002A0 02                           201+         DC    BL1'00000010'  OFLGS (OPEN FLAGS)                        01-DCB
+0002A1 00                           202+         DC    BL1'00000000'  IFLGS (IOS FLAGS)                         01-DCB
+0002A2 0050                         203+         DC    BL2'0000000001010000' MACR (MACRO FORMAT)                01-DCB
+                                    204+*                       BSAM-BPAM-QSAM INTERFACE                        01-DCB
+0002A4 00                           205+         DC    BL1'00000000'  OPTCD, OPTION CODES                       01-DCB
+0002A5 000001                       206+         DC    AL3(1)         CHECK OR INTERNAL QSAM SYNCHRONIZING RTN. 01-DCB
+0002A8 00000001                     207+         DC    A(1)           SYNAD, SYNCHRONOUS ERROR RTN. (3 BYTES)   01-DCB
+0002AC 0000                         208+         DC    H'0'           INTERNAL ACCESS METHOD FLAGS              01-DCB
+0002AE 0000                         209+         DC    AL2(0)         BLKSIZE, BLOCK SIZE                       01-DCB
+0002B0 00000000                     210+         DC    F'0'           INTERNAL ACCESS METHOD FLAGS              01-DCB
+0002B4 00000001                     211+         DC    A(1)           INTERNAL ACCESS METHOD USE                01-DCB
+                                    212+*                            QSAM INTERFACE                             01-DCB
+0002B8 00000001                     213+         DC    A(1)           EOBAD                                     01-DCB
+                                                                                                                           PAGE    8
+  Active USINGs: FMT001A1,R3
+
+  Loc  Object Code    Addr1 Addr2  Stmt   Source Statement                                             X390 1.4.12  2000/02/29 16.54
+
+0002BC 00000001                     214+         DC    A(1)           RECAD                                     01-DCB
+0002C0 0000                         215+         DC    H'0'           QSWS (FLAGS) AND EITHER DIRCT OR BUFOFF   01-DCB
+0002C2 0000                         216+         DC    AL2(0)         LRECL                                     01-DCB
+0002C4 00                           217+         DC    BL1'00000000'  EROPT, ERROR OPTION                       01-DCB
+0002C5 000001                       218+         DC    AL3(1)         CNTRL                                     01-DCB
+0002C8 00000000                     219+         DC    H'0,0'         RESERVED AND PRECL                        01-DCB
+0002CC 00000001                     220+         DC    A(1)           EOB, INTERNAL ACCESS METHOD FIELD         01-DCB
+                                    221 *                                                                       80000860
+                                    222          END                                                            80000870
+                                                Relocation Dictionary                                                      PAGE    9
+
+ Pos.Id       Rel.Id     Flags   Address                                                               X390 1.4.12  2000/02/29 16.54
+
+00000002     00000002     08     0000001D
+00000002     00000002     08     00000029
+00000002     00000002     08     00000099
+00000002     00000002     08     000000A5
+00000002     00000002     08     00000231
+                                                   Cross Reference                                                         PAGE   10
+
+Symbol    Length    Value     Id   Type  Defn  References                                              X390 1.4.12  2000/02/29 16.54
+
+DDIN            4 00000210 00000002  F    143   43   89  105
+FMT001A1        1 00000000 00000002  J     27   30U
+GETREC          4 000000B6 00000002  I    105   51B  53B
+LAB100          4 00000036 00000002  I     53   77B
+LAB110          4 0000005C 00000002  I     65   52B
+LAB120          4 0000006C 00000002  I     70   56B
+LAB130          4 00000074 00000002  I     72   69B
+LAB140          4 00000084 00000002  I     80  155
+LAB999          4 000000AA 00000002  I     99
+L10A            4 000000CC 00000002  I    112  115B
+L10B            4 000000DC 00000002  I    116  113B
+L10C            4 000000E6 00000002  I    120  123B
+L10D            2 000000F6 00000002  I    124  121B
+RDSOUT          4 00000270 00000002  F    184   49   58   80   95
+R0              1 00000000           U      9
+R1              1 00000001           U     10
+R10             1 0000000A           U     19   51M  53M
+R11             1 0000000B           U     20
+R12             1 0000000C           U     21   28  100M
+R13             1 0000000D           U     22   28   32   35   37M  99M 100
+R14             1 0000000E           U     23   28   34M  35  100M 102B
+R15             1 0000000F           U     24   29  101M
+R2              1 00000002           U     11
+R3              1 00000003           U     12   29M  30U
+R4              1 00000004           U     13  110M 111  117  128  129
+R5              1 00000005           U     14   54   65   68   75  111M 112  114M 116  117M 118M
+R6              1 00000006           U     15  119M 124  130
+R7              1 00000007           U     16   72   74  116M 119  120  122M 124M 125M
+R8              1 00000008           U     17   67M  68M  70   71M  74M 130
+R9              1 00000009           U     18
+WCLC1           6 000000FC 00000002  I    128   54X
+WLAST          20 000001FC 00000002  C    137  128  131M
+WMVC1           6 00000102 00000002  I    129   65X
+WMVC2           6 00000108 00000002  I    130   72X
+WMVC3           6 0000010E 00000002  I    131   75X
+WPRT           80 000001AC 00000002  C    136   59   63M  64M  67   81  129M
+WREC           80 0000015C 00000002  C    135  106  110  131
+WSAVE           4 00000114 00000002  F    134   32M  34   37   99
+                                       General Purpose Register Cross Reference                                            PAGE   11
+
+Register  References (M=modified, B=branch, U=USING, D=DROP, N=index)                                  X390 1.4.12  2000/02/29 16.54
+
+    0(0)   28   59M  81M 100M 106M
+    1(1)   28   41M  47M  58M  61   80M  83   87M  93M 100M 105M 108
+    2(2)   28  100M
+    3(3)   28   29M  30U 100M
+    4(4)   28  100M 110M 111  117  128  129
+    5(5)   28   54   65   68N  75  100M 111M 112  114M 114N 116N 117M 118M
+    6(6)   28  100M 119M 124  130
+    7(7)   28   72   74N 100M 116M 119  120  122M 122N 124M 125M
+    8(8)   28   67M  68M  70   71M  71N  74M 100M 130
+    9(9)   28  100M
+   10(A)   28   51M  53M 100M 126B
+   11(B)   28  100M
+   12(C)   28  100M
+   13(D)   28   32   35N  37M  99M 100
+   14(E)   28   34M  35   62M  84M 100M 102B 109M
+   15(F)   28   29   60M  61M  62B  82M  83M  84B 100M 101M 107M 108M 109B
+                                         MACRO and COPY Code Source Summary                                                PAGE   12
+
+Con Source      Members                                                                                X390 1.4.12  2000/02/29 16.54
+
+  1 .\*.MAC
+  2 .\*.CPB
+  3 P:\SYSLIB2\EBCDIC\*.MAC
+                CLOSE    DCB      GET      IHBINNRA IHB01    OPEN     PUT
+  4 P:\HALIFAX\0MACROS\*.MAC
+                REGEQU
+  5 P:\HALIFAX\0MACCOPY\*.MAC
+                                                      USING Map                                                            PAGE   13
+
+  Stmt  Level  Action  Type          Id     Address   Range    Reg  Max   Last  Label.Text             X390 1.4.12  2000/02/29 16.54
+
+    30         USING   Ordinary   00000002  00000000  00001000   3  270    131  FMT001A1,R3
+                                  Diagnostic Cross Reference and Assembler Summary                                         PAGE   14
+
+                                                                                                       X390 1.4.12  2000/02/29 16.54
+
+No statements flagged in this assembly
+
+TACHYON 390 CROSS ASSEMBLER, VERSION 1.4.12
+
+SYSTEM: Windows95 4.0    JOBNAME: DELL2    STEPNAME: dcs7dgh
+
+Primary input:  lines      1 to      92 of C:\_AWB_TEST\FMT001A1.a11
+
+MACRO work file size: 197212
+
+SYSUT1 work file size: 21487
+
+TXA000I Return code 0, elapsed time 2.20 seconds.

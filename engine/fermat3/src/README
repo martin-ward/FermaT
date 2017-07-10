@@ -1,0 +1,230 @@
+
+PERFORMANCE TESTS (via make-fermat -gperf -comp) Feb 2000
+
+Test of Fix_Assembler on mbna.ws2:
+
+(*) A major CPU hog is Delete_Redundant_Statements_Test.
+This can obviously be improved with better data flow analysis,
+but for now we could call it less often and maybe make it more efficient.
+@Join_Point? seems to use a lot of the CPU time.
+
+(*) equal is the function which uses most CPU, it is most often called by
+member and adjoin: to really improve this we need data type information
+(so that we know whether a given set is a set of names, numbers or whatever).
+Then we can call the more efficient set operations (memq etc.)
+
+(*) Biggest users of cons are reverse (13.4% of calls), @Elt_Remove (9.7%),
+@Join_Point (6.5%), @Foreach_S (5.8%), @Foreach_Gen (5.1%), @Qry_Elts (4.7%),
+and adjoin (4.0%).
+
+(*) Biggest users of reverse are @Undo_Edit (30.2%), @Posn (19.5%),
+@Elt_Remove (10.8%), @PP_Calc (4.6%).
+
+
+TODO: Add "-DRECKLESS" to the compilation options (this disables
+the ASSERT and ASSERTGO macros).
+
+
+Performance on test2.scm at 5th Feb 2002 on a 1GHz Linux PC:
+
+2.550u 0.070s 0:02.69 97.3%     0+0k 0+0io 650pf+0w
+
+Performance on test2.scm at Jul 16th 2009 on a 3.73GHz Linux PC:
+
+0.955u 0.035s 0:00.99 98.9%     0+0k 0+0io 0pf+0w
+
+
+
+NB: Check implementation of DO ... OD loops:
+the (floop exit_0 ...) macro doesn't seem to work!
+
+
+The only change needed to hobbit5x is to add the line:
+
+system random
+
+to the list of *c-keywords*, eg just before the comment:
+
+;;; Some things are commented out to make hobbit compile itself correctly.
+
+
+The following notes are now obsolete.  With recent versions
+of FermaT, SCM and hobbit, no customisations of SCM or hobbit are required.
+
+
+NOTES on using the Hobbit compiler:
+
+(1) Added a line:
+
+#define read_char scm_read_char
+
+to scmhob.h
+
+(2) Added a line:
+
+    (#\\ "_bs_")    ; Added by Martin Ward
+
+to *char-replacements* in hobbit.scm
+
+(3) Added
+
+-lsocket -lnsl
+
+to LIBS in Makefile.hob.
+
+(4) Added the new object files:
+
+  continue.o gsubr.o ecrt0.o ioext.o rgx.o script.o posix.o \
+  rope.o socket.o unexelf.o findexec.o sc2.o gmalloc.o record.o unix.o
+
+to ofiles in Makefile.hob.
+
+
+
+TODO: Try everything using scm4e1 (for lower overhead?)
+
+
+
+* The compiled compiler doesn't appear to work? (try with scm4e1)
+
+* To compile the base files (scheme + adt):
+
+(load "fermat.scm")
+ 
+(hobbit "adt.scm"
+
+"scheme/support-mac"
+"adt/ADT-mac"
+
+"scheme/hash.scm"
+"scheme/list.scm"
+"scheme/string.scm"
+"scheme/support.scm"
+"adt/ADT.scm"
+"adt/WSL-init.scm"
+"adt/adt-edit.scm"
+"adt/adt-procs.scm"
+"adt/match.scm"
+"adt/maths.scm"
+"adt/maths2-2.scm"
+"adt/metrics.scm"
+"adt/query.scm"
+"adt/random-program.scm"
+"adt/static.scm"
+"adt/tr-engine.scm"
+"adt/utility.scm"
+)
+
+This creates adt.c and adt.h
+Compile adt.c with:
+
+gcc  -I/home/user1/martin/Scheme/scm5b1 -O2 -c adt.c
+
+Copy to scm5b1. cd to scm5b1 and run:
+
+make -f Makefile.hob COMPILED=adt
+
+to create an executable file "adt"
+
+The makefile does:
+
+gcc -O2 -c -DIMPLINIT=\"`pwd`/Init.scm\" -DCOMPILED_INITS=init_adt\(\)\; scm.c
+
+Note the COMPILED_INITS=init_adt\(\)\; definition: if we want to load several .o files
+into one executable we need to include all the init functions in COMPILED_INITS
+(maybe write our own version of scm.c using perl?)
+
+Then the makefile loads all the object files:
+
+gcc -o mat time.o repl.o scl.o sys.o eval.o subr.o unif.o ramap.o
+  continue.o gsubr.o ecrt0.o ioext.o rgx.o script.o posix.o rope.o
+  socket.o unexelf.o findexec.o sc2.o gmalloc.o record.o unix.o scm.o
+  adt.o -lm -lsocket -lnsl
+  ^^^
+  put all the object files here.
+
+
+
+
+Note: Only the base file needs the defines (from the top of fermat.scm),
+other files have a dummy initial .scm file, for example:
+
+wslib-compile contains:
+
+(load "fermat.scm")
+
+(hobbit "wslib.scm"
+
+"scheme/support-mac.scm"
+"adt/ADT-mac.scm"
+
+"wslib/cond_parser.scm"
+"wslib/exp_parser.scm"
+"wslib/lexer.scm"
+"wslib/parser.scm"
+"wslib/wsl2c.scm"
+"wslib/wsl2scheme.scm"
+"wslib/wsl2wsl.scm"
+
+)
+
+where wslib.scm is a dummy file.
+
+This creates wslib.c which we compile with:
+
+gcc -I/home/user1/martin/Scheme/scm5b1 -O2 adt.c
+
+
+
+
+To compile multiple files into a single executable:
+
+PROBLEM: Hobbit assumes that an externally-defined function is re-definable
+and types it as an OBJT, while the file which contains the definition
+will typeset it as a FUNC.
+
+Slow Solution: Ensure everything is defined as an OBJT by adding the line:
+(define compile-new-proc-redefined #t) to one of the files in each Hobbit
+compiler call. This ensures all new procs are typed as OBJT, which causes
+some loss of efficiency.
+
+Fast Solution: Add definitions of all externally-defined procs to each scm
+file of the form:
+	(define (proc-name arg1 arg2 ... argn)
+	  (external_proc))
+Compile the file (the externals will be typed as FUNC)
+and then delete the "dummy" definition from the generated C file
+(leave the .h file untouched). Simply delete the whole paragraph
+containing the expression GLOBAL(external_proc).
+
+Better Fast Solution: Add the names of all the procs defined in compiled files
+to the list *special-scm->c-functions* after loading hobbit.scm but before
+calling hobbit. These will then be treated as simple functions, even when they
+are defined externally.
+
+
+
+
+NOTE: All macros must be loaded before calling hobbit, and must ALSO be included
+somewhere in the list of files to compile.
+
+
+
+
+
+DONE:
+
+
+NB: FOREACH and ATEACH should avoid the pattern part of an IFMATCH
+	IFMATCH DO ~*S; ~*S OD
+	THEN... ENDMATCH
+is NOT equivalent to
+	IFMATCH DO ~*S OD
+	THEN...ENDMATCH
+(or even IFMATCH WHILE ...)
+
+Also fix the code in Simplify_Item to avoid this test.
+
+Use efficient code to read lines from a file and process them in the lexer.
+
+

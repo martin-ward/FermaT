@@ -1,0 +1,2050 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" ----------------------------------------------------------------------- ";
+C:" This file contains the `query' functions; ie those which return         ";
+C:" information about part of the WSL tree structure.  Many of these        ";
+C:" functions store their results in tables linked to the trees, but        ";
+C:" not all of them do this.                                                ";
+C:" ----------------------------------------------------------------------- ";
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The first set of functions in this file return information about the    ";
+C:" use of variables in a section of code.                                  ";
+C:" ----------------------------------------------------------------------- ";
+
+Qry_Vars 	   := @Make_Name("Qry_Vars");
+Qry_Clobbered 	   := @Make_Name("Qry_Clobbered");
+Qry_Redefined	   := @Make_Name("Qry_Redefined");
+Qry_UBA 	   := @Make_Name("Qry_UBA");
+Qry_Elts_UBA 	   := @Make_Name("Qty_Elts_UBA");
+Qry_Elts 	   := @Make_Name("Qry_Elts");
+Qry_Elts_Redefined := @Make_Name("Qry_Elts_Redefined");
+Qry_Calls 	   := @Make_Name("Qry_Calls");
+Qry_Proc_Calls 	   := @Make_Name("Qry_Proc_Calls");
+Qry_A_Proc_Calls   := @Make_Name("Qry_A_Proc_Calls");
+Qry_Funct_Calls    := @Make_Name("Qry_Funct_Calls");
+Qry_X_Funct_Calls  := @Make_Name("Qry_X_Funct_Calls");
+Qry_Max_Dep 	   := @Make_Name("Qry_Max_Dep");
+Qry_Rec_TVs 	   := @Make_Name("Qry_Rec_TVs");
+Qry_Reg_TVs 	   := @Make_Name("Qry_Reg_TVs");
+Qry_Hyb_TVs 	   := @Make_Name("Qry_Hyb_TVs");
+Qry_Max_Pos_L 	   := @Make_Name("Qry_Max_Pos_L");
+
+Assume_A_S_Regular := 0;
+
+os_name := @Make_Name("os");
+
+
+MW_FUNCT @Variables (I) ==
+  VAR <Result := @Qry_Vars(I)> :
+  SKIP;
+  (Result[1] \/ Result[2]) .;
+
+
+MW_FUNCT @Assigned(I) ==
+  VAR <Result := @Qry_Vars(I)> :
+  SKIP;
+  (Result[1]) .;
+
+
+MW_FUNCT @Used(I) ==
+  VAR <Result := @Qry_Vars(I)> :
+  SKIP;
+  (Result[2]) .;
+
+
+MW_FUNCT @Assd_Only(I) ==
+  VAR <Result := @Qry_Vars(I)> :
+  SKIP;
+  (Result[1] \ Result[2]) .;
+
+
+MW_FUNCT @Used_Only(I) ==
+  VAR <Result := @Qry_Vars(I)> :
+  SKIP;
+  (Result[2] \ Result[1]) .;
+
+
+MW_FUNCT @Assd_To_Self(I) ==
+  VAR <Result := @Qry_Vars(I)> :
+  SKIP;
+  (Result[3]) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns a set of variables used etc.             ";
+C:" The format is as follows...                                             ";
+C:"                                                                         ";
+C:" <Assigned, Used, Assigned_To_Self>                                      ";
+C:"                                                                         ";
+C:" where...                                                                ";
+C:"                                                                         ";
+C:"         Assigned - are the variables referred to as l-values.           ";
+C:"                                                                         ";
+C:"             Used - are the variables which are used in expressions.     ";
+C:"                                                                         ";
+C:" Assigned_To_Self - are the variables which are only used in assign-     ";
+C:"                    ments to themselves (eg `X' in `X := X + Q').        ";
+C:"                                                                         ";
+C:" ----------------------------------------------------------------------- ";
+
+MW_FUNCT @Qry_Vars(I) ==
+VAR < ST := @ST(I), GT := @GT(I), Result := < > >:
+  IF NOT @Cs?(I)
+    THEN C:"The item is a leaf node, so we know the results for that, trivially.";
+	 Result := <IF (ST = T_Var_Lvalue) THEN <@V(I)> ELSE < > FI,
+		    IF (ST = T_Variable) THEN <@V(I)> ELSE < > FI,
+		    IF (ST = T_Var_Lvalue) OR (ST = T_Variable)
+		      THEN <@V(I)>
+		      ELSE < > FI>
+  ELSIF GT = T_Expression OR GT = T_Condition OR GT = T_Expressions
+    THEN Result := < < >, @Qry_Exp_Vars(I), < > >
+    ELSE C:"The item is not a leaf node, so we look in a table for the result. ";
+	 VAR < Previous := @Dtable_Get(I, Qry_Vars),
+	       Assd := < >, Used := < >, Self := < >,
+	       Comps := @Cs(I),
+	       Temp := < > >:
+	 C:" Check for a stored result ";
+	 IF NOT EMPTY?(Previous)
+	   THEN Result := @Dtable_Value_Part(Previous)
+	   ELSE C:"The result is not stored in a table, so it must be calculated. ";
+		C:"We look at each component in turn, calculate the variables for ";
+		C:"that and combine these results.                                ";
+		C:" An array Lvalue uses as well as assigns to its first component ";
+		C:" Also, VAR parameters are used as well as assigned.             ";
+		WHILE NOT EMPTY?(Comps) DO
+		  IF @GT(HEAD(Comps)) IN <T_Expression, T_Condition>
+		    THEN Used := Used \/ @Qry_Exp_Vars(HEAD(Comps))
+		    ELSE Temp := @Qry_Vars(HEAD(Comps));
+			 IF ST = T_Assign
+			   THEN Self := Self \/ Temp[3]
+			 ELSIF GT IN <T_Statement, T_Assignment, T_Variable,
+				      T_Statements, T_Guarded, T_Action>
+			   THEN Self := (Temp[3] \ Used) \/ (Self \ Temp[2])
+			   ELSE Self := < > FI;
+			 Assd := Assd \/ Temp[1];
+			 Used := Used \/ Temp[2] FI;
+		  Comps := TAIL(Comps) OD;
+		C:"If the current item is a local variable structure or a `FOR' loop ";
+		C:"then there are local variables which we don't want to return as   ";
+		C:"part of the result; so these must be taken out.                   ";
+		IF ST = T_Var
+		  THEN VAR < Local_Vars := @Make_Set(MAP("@Qry_Get_Lvar", @Cs(I^1))) >:
+		 	 Assd := Assd \ Local_Vars;
+			 Used := Used \ Local_Vars;
+			 Self := Self \ Local_Vars ENDVAR
+		ELSIF ST = T_For
+		  THEN VAR <Loop_Var := <@V(I^1)>> :
+			 Assd := Assd \ Loop_Var;
+			 Used := Used \ Loop_Var;
+			 Self := Self \ Loop_Var ENDVAR 
+                ELSIF ST = T_Proc OR ST = T_Funct OR ST = T_BFunct
+		  THEN VAR < Local_Vars := @Assigned(I^2) \/ @Assigned(I^3) >:
+		         Assd := Assd \ Local_Vars;
+			 Used := Used \ Local_Vars;
+			 Self := Self \ Local_Vars ENDVAR
+	        ELSIF ST = T_Print OR ST = T_Prinflush OR ST = T_Error
+		  THEN Assd := Assd \/ <os_name>; Used := Used \/ <os_name>
+		ELSIF ST = T_Pop
+		  THEN Used := Used \/ @Assigned(I^2); Self := < >
+		ELSIF ST IN <T_Mem_Lvalue, T_Mem_Seg_Lvalue, T_Mem_Rel_Lvalue>
+		  THEN Assd := Assd \/ <a_name>; Used := Used \/ <a_name>;
+		ELSIF ST IN <T_Struct_Lvalue,  T_Aref_Lvalue, T_Sub_Seg_Lvalue,
+			     T_Rel_Seg_Lvalue, T_Final_Seg_Lvalue,
+			     T_Proc_Call, T_A_Proc_Call, T_MW_Proc_Call,
+			     T_Push>
+		  THEN Used := Used \/ Assd FI;
+		Result := <Assd, Used, Self>;
+		C:"Store the result in the table associated with this item.";
+		@Dtable_Put(I, Qry_Vars, Result) FI ENDVAR FI;
+  (Result) .;
+
+
+C:" Temporary functions for pointers ";
+C:" (1) Replace all tests by function calls ";
+C:" (2) Add new syntax to WSL ";
+C:" (3) Extend functions to handle both versions ";
+C:" (4) Modify translators and functions to generate new syntax ";
+C:" (5) Modify functions to complain about old syntax ";
+C:" (6) Test thoroughly ";
+C:" (7) Replace functions by direct references to new syntax. ";
+
+a_name := @Make_Name("a");
+a_name_var := @Make(T_Variable, a_name, < >);
+a_name_lvar := @Make(T_Var_Lvalue, a_name, < >);
+address_of := @Make_Name("address_of");
+address_of_name := @Make(T_Name, address_of, < >);
+
+MW_BFUNCT @Is_Mem?(I) == : SKIP;
+  ((@ST(I) = T_Aref OR @ST(I) = T_Aref_Lvalue)
+     AND (@ST(I^1) = T_Variable OR @ST(I^1) = T_Var_Lvalue)
+     AND (@V(I^1) = a_name)
+   OR @ST(I) = T_Mem OR @ST(I) = T_Mem_Lvalue) .;
+
+MW_BFUNCT @Is_DSECT?(I) == : SKIP;
+  ((@ST(I) = T_Aref OR @ST(I) = T_Aref_Lvalue)
+     AND (@ST(I^1) = T_Variable OR @ST(I^1) = T_Var_Lvalue)
+     AND (@V(I^1) = a_name) AND @ST(I^2^1) = T_Variable
+    OR ((@ST(I) = T_Mem OR @ST(I) = T_Mem_Lvalue)
+          AND @ST(I^1) = T_Variable)) .;
+
+MW_BFUNCT @Is_Mem_Rel?(I) == : SKIP;
+  ((@ST(I) = T_Rel_Seg OR @ST(I) = T_Rel_Seg_Lvalue)
+     AND (@ST(I^1) = T_Variable OR @ST(I^1) = T_Var_Lvalue)
+     AND (@V(I^1) = a_name)
+    OR @ST(I) = T_Mem_Rel OR @ST(I) = T_Mem_Rel_Lvalue) .;
+
+MW_FUNCT @Get_Mem(I) == : SKIP;
+  (IF @ST(I) = T_Mem OR @ST(I) = T_Mem_Lvalue
+    THEN I^1
+    ELSE I^2^1 FI) .;
+
+MW_FUNCT @Get_Mem_Rel(I) == : SKIP;
+  (IF @ST(I) = T_Mem_Rel OR @ST(I) = T_Mem_Rel_Lvalue
+    THEN I^1
+    ELSE I^2 FI) .;
+
+MW_FUNCT @Get_Mem_Rel_N(I) == : SKIP;
+  (IF @ST(I) = T_Mem_Rel OR @ST(I) = T_Mem_Rel_Lvalue
+    THEN I^2
+    ELSE I^3 FI) .;
+
+MW_BFUNCT @Is_Addr?(I) == : SKIP;
+  (@ST(I) = T_X_Funct_Call AND @V(I^1) = address_of
+     OR @ST(I) = T_Address_Of) .;
+
+MW_FUNCT @Get_Addr(I) == : SKIP;
+  (IF @ST(I) = T_Address_Of
+    THEN I^1
+    ELSE I^2^1 FI) .;
+
+C:" Use 0 for old and 1 for new ";
+
+Mem_Version := 0;
+
+MW_FUNCT @Make_Addr(I) == : SKIP;
+  (IF Mem_Version = 0
+     THEN @Make(T_X_Funct_Call, < >, <address_of_name, @Make(T_Expressions, < >, <I>)>)
+     ELSE @Make(T_Address_Of, < >, <I>) FI) .;
+
+MW_FUNCT @Make_Mem(I) == : SKIP;
+  (IF Mem_Version = 0
+     THEN @Make(T_Aref, < >, <a_name_var, @Make(T_Expressions, < >, <I>)>)
+     ELSE @Make(T_Mem, < >, <I>) FI) .;
+
+MW_FUNCT @Make_Mem_L(I) == : SKIP;
+  (IF Mem_Version = 0
+     THEN @Make(T_Aref_Lvalue, < >, <a_name_lvar, @Make(T_Expressions, < >, <I>)>)
+     ELSE @Make(T_Mem_Lvalue, < >, <I>) FI) .;
+
+MW_FUNCT @Make_Mem_Seg(I, n) == : SKIP;
+  (IF Mem_Version = 0
+     THEN @Make(T_Rel_Seg, < >, <a_name_var, I, n>)
+     ELSE @Make(T_Mem_Rel, < >, <I, n>) FI) .;
+
+MW_FUNCT @Make_Mem_Seg_L(I) == : SKIP;
+  (IF Mem_Version = 0
+     THEN @Make(T_Rel_Seg_Lvalue, < >, <a_name_lvar, I, n>)
+     ELSE @Make(T_Mem_Rel_Lvalue, < >, <I, n>) FI) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function calculates the variables used in an expression   ";
+C:" or condition.  The reasons for having a separate function to do this    ";
+C:" are:                                                                    ";
+C:"                                                                         ";
+C:"   1.  We know that there will be no assigned variables.                 ";
+C:"   2.  There is little point in storing the results in tables (or in     ";
+C:"       looking in tables for the results).                               ";
+C:"                                                                         ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_FUNCT @Qry_Exp_Vars(I) == : SKIP;
+  (IF @Cs?(I)
+     THEN IF @Is_Addr?(I)
+            THEN @Qry_Exp_Vars_A(@Get_Addr(I))
+          ELSE IF @ST(I) = T_Forall OR @ST(I) = T_Exists
+	    THEN @Qry_Exp_Vars(I^2) \ @Variables(I^1)
+          ELSE IF @ST(I) = T_Mem OR @ST(I) = T_Mem_Seg OR @ST(I) = T_Mem_Rel
+	    THEN <a_name> \/ REDUCE("\\/", MAP("@Qry_Exp_Vars", @Cs(I)))
+            ELSE REDUCE("\\/", MAP("@Qry_Exp_Vars", @Cs(I))) FI FI FI
+   ELSE IF @ST(I) = T_Variable
+          THEN <@V(I)>
+	  ELSE < > FI FI) .;
+
+
+C:" !XF address_of(foo) does not use value of foo, ";
+C:" but !XF address_of(foo[bar]) *does* depend on the value of bar! ";
+
+MW_FUNCT @Qry_Exp_Vars_A(I) == : SKIP;
+  (IF @ST(I) IN <T_Aref, T_Sub_Seg, T_Rel_Seg, T_Final_Seg>
+     THEN @Qry_Exp_Vars_A(I^1) \/ REDUCE("\\/", MAP("@Qry_Exp_Vars", TAIL(@Cs(I))))
+   ELSE IF @Cs?(I)
+     THEN REDUCE("\\/", MAP("@Qry_Exp_Vars_A", @Cs(I)))
+     ELSE < > FI FI) .;
+
+
+C:" Return ALL variables, including !XF address_of(...) variables: ";
+
+MW_FUNCT @All_Variables(I) == : SKIP;
+  (IF @Cs?(I)
+     THEN IF @ST(I) = T_Mem OR @ST(I) = T_Mem_Seg OR @ST(I) = T_Mem_Rel
+	    THEN <a_name> \/ REDUCE("\\/", MAP("@Qry_Exp_Vars", @Cs(I)))
+            ELSE REDUCE("\\/", MAP("@All_Variables", @Cs(I))) FI
+   ELSE IF @ST(I) = T_Variable OR @ST(I) = T_Var_Lvalue
+     THEN <@V(I)>
+     ELSE < > FI FI) .;
+
+
+
+C:" Compute the set of primed vars in the given expression or condition: ";
+
+MW_FUNCT @Primed_Vars(I) == : SKIP;
+  (IF @Cs?(I)
+     THEN REDUCE("\\/", MAP("@Primed_Vars", @Cs(I)))
+   ELSE IF @ST(I) = T_Primed_Var
+          THEN <@V(I)>
+	  ELSE < > FI FI) .;
+
+
+C:" Return the list of variable names assigned from an Assigns or Assignment item ";
+C:" (Note: @Elt_Lvars returns the list of element lists, <name, field, ...>) ";
+
+MW_FUNCT @Lvars(I) == : SKIP; (@Make_Set(MAP("@Qry_Get_Lvar", @Cs(I)))) .;
+
+C:" Given an Assign, return the name of the variable assigned ";
+
+MW_FUNCT @Qry_Get_Lvar(I) == : SKIP; (@Lvalue_Name(I^1)) .;
+
+C:" Return the name of the variable assigned in the given Lvalue ";
+
+MW_FUNCT @Lvalue_Name(I) == : SKIP;
+  (IF @ST(I) = T_Var_Lvalue
+     THEN @V(I)
+   ELSE IF @ST(I) = T_Struct_Lvalue
+     THEN @Lvalue_Name(I^2)
+   ELSE IF @ST(I) = T_Lvalue_Pat_One OR @ST(I) = T_Lvalue_Pat_Many
+	     OR @ST(I) = T_Lvalue_Pat_Any
+     THEN @V(I)
+   ELSE IF @ST(I) = T_Mem_Lvalue OR @ST(I) = T_Mem_Seg_Lvalue
+             OR @ST(I) = T_Mem_Rel_Lvalue
+     THEN a_name
+     ELSE @Lvalue_Name(I^1) FI FI FI FI) .;
+
+
+C:" Return the list of elements assigned, given an Assigns or Assignment item ";
+
+MW_FUNCT @Elt_Lvars(I) == : SKIP; (@Make_Set(MAP("@Qry_Get_Lvar_Elts", @Cs(I)))) .;
+
+MW_FUNCT @Qry_Get_Lvar_Elts(I) == : SKIP; (@Struct_Elts(I^1)) .;
+
+C:" Given a Variable or Struct or _any_ Lvalue, return <name, field, field, ...> ";
+
+MW_FUNCT @Struct_Elts_Old(I) == : SKIP;
+  (IF @ST(I) = T_Variable OR @ST(I) = T_Var_Lvalue
+     THEN <@V(I)>
+   ELSE IF @ST(I) = T_Struct OR @ST(I) = T_Struct_Lvalue
+     THEN @Struct_Elts(I^2) ++ <@V(I^1)>
+   ELSE IF @ST(I) = T_Lvalue_Pat_One OR @ST(I) = T_Lvalue_Pat_Many
+	     OR @ST(I) = T_Lvalue_Pat_Any
+     THEN <@V(I)>
+     ELSE @Struct_Elts(I^2) FI FI FI) .;
+
+
+C:" Special case for DSECTs: @[FOO].BAR --> <a, FOO, BAR> not <a, BAR> ";
+
+MW_FUNCT @Struct_Elts(I) == : SKIP;
+ (IF @ST(I) = T_Variable OR @ST(I) = T_Var_Lvalue
+       OR @ST(I) = T_Lvalue_Pat_One
+       OR @ST(I) = T_Lvalue_Pat_Many
+       OR @ST(I) = T_Lvalue_Pat_Any
+    THEN <@V(I)>
+  ELSE IF @ST(I) = T_Struct OR @ST(I) = T_Struct_Lvalue
+    THEN @Struct_Elts(I^2) ++ <@V(I^1)>
+  ELSE IF (@ST(I) = T_Aref AND @ST(I^1) = T_Variable
+              OR @ST(I) = T_Aref_Lvalue AND @ST(I^1) = T_Var_Lvalue)
+	    AND @V(I^1) = a_name
+    THEN <a_name> ++ @Struct_Elts(I^2^1)
+  ELSE IF @ST(I) = T_Mem OR @ST(I) = T_Mem_Lvalue
+    THEN <a_name> ++ @Struct_Elts(I^1)
+  ELSE IF @Cs?(I)
+    THEN @Struct_Elts(I^1)
+    ELSE < > FI FI FI FI FI) .;
+
+
+
+
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" @Clobbered takes a program item and returns a set of all the variables  ";
+C:" which will always be changed by execution of that item.                 ";
+C:"                                                                         ";
+C:" @Redefined takes a program item and returns a set of all the variables  ";
+C:" which will always be redefined, and not in terms of themselves, by that ";
+C:" item.                                                                   ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_FUNCT @Clobbered(I) ==
+  VAR < ST := @ST(I), GT := @GT(I), Clob := < > >:
+  IF @Cs?(I)
+    THEN VAR < Previous := @Dtable_Get(I, Qry_Clobbered) >:
+	 IF EMPTY?(Previous)
+	   THEN IF ST = T_Assign
+		  THEN Clob := <@Lvalue_Name(I^1)>
+		ELSIF ST = T_For
+		  THEN Clob := @Clobbered(I^4) \ <@V(I^1)>
+		ELSIF ST = T_Var
+		  THEN Clob := @Clobbered(I^2) \ @Lvars(I^1)
+		ELSIF ST = T_While
+		  THEN Clob := < >
+		ELSIF ST = T_Guarded
+		  THEN Clob := @Clobbered(I^2)
+		ELSIF (GT = T_Statements) OR (ST = T_Assignment)
+		  THEN Clob := REDUCE("\\/", MAP("@Clobbered", @Cs(I)))
+		ELSIF (GT = T_Expression) OR (GT = T_Expression)
+		  THEN Clob := < >
+		  ELSE Clob := REDUCE("/\\", MAP("@Clobbered", @Cs(I))) FI;
+		@Dtable_Put(I, Qry_Clobbered, Clob)
+	   ELSE Clob := @Dtable_Value_Part(Previous) FI ENDVAR FI;
+  (Clob) .;
+
+
+MW_FUNCT @Redefined(I) ==
+  VAR < ST := @ST(I), GT := @GT(I), Redf := < > >:
+  IF @Cs?(I)
+    THEN VAR < Previous := @Dtable_Get(I, Qry_Redefined) >:
+	 IF EMPTY?(Previous)
+	   THEN IF ST = T_Assign
+		  THEN IF @Lvalue_Name(I^1) NOTIN @Used(I^2)
+			    AND @Lvalue_Name(I^1) NOTIN @Used(I^1)
+			 THEN Redf := <@Lvalue_Name(I^1)> FI
+		ELSIF ST = T_For
+		  THEN Redf := @Redefined(I^4) \ <@V(I^1)>
+		ELSIF ST = T_Var
+		  THEN Redf := @Redefined(I^2) \ @Lvars(I^1)
+		ELSIF ST = T_While
+		  THEN Redf := < >
+		ELSIF ST = T_Guarded
+		  THEN Redf := @Redefined(I^2)
+		ELSIF ST = T_Pop
+		  THEN Redef := @Variables(I^1)
+		ELSIF (GT = T_Statements) OR (ST = T_Assignment)
+		  THEN Redf := REDUCE("\\/", MAP("@Redefined", @Cs(I)))
+		ELSIF (GT = T_Expression) OR (GT = T_Condition)
+		  THEN Redf := < >
+		  ELSE Redf := REDUCE("/\\", MAP("@Redefined", @Cs(I))) FI;
+		       @Dtable_Put(I, Qry_Redefined, Redf)
+	   ELSE Redf := @Dtable_Value_Part(Previous) FI ENDVAR FI;
+  (Redf) .;
+
+
+C:" This query function returns the list of variables whose initial values ";
+C:" (on entry to the selected item) are used, before new values are assigned ";
+C:" to the variables. For example, in `x:=y; y:=1; z:=x' variables x and y are both ";
+C:" used and both assigned, but variable y is used before assigned, while x is assigned ";
+C:" before it is used. ";
+
+C:" Note that the function does not (indeed, cannot) take account of procedure ";
+C:" or function calls or action calls which may also use the values of variables. ";
+C:" See @Full_UBA for a version which takes into account procedures. ";
+
+pop_regs := @Make_Name("pop_regs");
+
+MW_FUNCT @UBA (I) ==
+  VAR < ST := @ST(I), GT := @GT(I), Result := < > >:
+  IF GT = T_Expression OR GT = T_Condition OR GT = T_Expressions
+    THEN C:" All vars are used before assigned: ";
+	 Result := @Qry_Exp_Vars(I)
+  ELSIF NOT @Cs?(I)
+    THEN C: "The item is a leaf node, but is not a variable: ";
+	 Result := < >
+    ELSE C: "The item is not a leaf node, so we look in a table for the result. ";
+	 VAR < Previous := @Dtable_Get(I, Qry_UBA),
+	       Comps := @Cs(I), Assigned := < > >:
+	 IF NOT EMPTY?(Previous)
+	   THEN C: "We can get the result from the table attached to the item.";
+		Result := @Dtable_Value_Part(Previous)
+	   ELSE C: "The result is not in the table, so it must be calculated. ";
+		C: "We look at each component in turn and combine the results. ";
+		IF GT = T_Statements
+		  THEN WHILE NOT EMPTY?(Comps) DO
+			 Result := Result \/ (@UBA (HEAD(Comps)) \ Assigned);
+			 C:" A self-assignment does not count as clobbering the variable: ";
+			 Assigned := Assigned \/ @Redefined(HEAD(Comps));
+			 IF @Gen_Improper?(HEAD(Comps), "Hyb")
+			   THEN Comps := < >
+			   ELSE Comps := TAIL(Comps) FI OD
+		ELSIF ST = T_Pop
+		  THEN Result := Result \/ @Variables(I^2)
+		ELSIF ST = T_A_Proc_Call AND @V(I^1) = pop_regs
+		  THEN Result := Result \/ @Variables(LAST(@Cs(I^3)))
+		ELSIF ST IN <T_Struct_Lvalue, T_Proc_Call, T_A_Proc_Call,
+			     T_Aref_Lvalue, T_Sub_Seg_Lvalue,
+			     T_Rel_Seg_Lvalue, T_Final_Seg_Lvalue,
+			     T_Push>
+		  THEN Result := Result \/ @Variables(I)
+		  ELSE WHILE NOT EMPTY?(Comps) DO
+			 Result := Result \/ @UBA(HEAD(Comps));
+			 Comps := TAIL(Comps) OD;
+		       C: "If the current item is a VAR structure or a FOR loop ";
+		       C: "then there are local variables which we don't want to return ";
+		       C: "as part of the result; so these must be taken out. ";
+		       IF ST = T_Var
+			 THEN Result := Result \
+				(@Lvars(I^1) \ @Used(I^1))
+		       ELSIF ST = T_For
+			 THEN Result := Result \ <@V(I^1)> FI FI;
+		C: "Store the result in the table associated with this item.";
+		@Dtable_Put(I, Qry_UBA, Result) FI ENDVAR FI;
+  (Result) .;
+
+
+C:" Return the list of element lists <name, field, field, ...> which are accessed ";
+C:" before being overwritten in the given item. ";
+
+C:" Note that the function does not (indeed, cannot) take account of procedure ";
+C:" or function calls or action calls which may also use the values of variables. ";
+
+MW_FUNCT @Elts_UBA (I) ==
+  VAR < ST := @ST(I), GT := @GT(I), Result := < > >:
+  IF GT = T_Expression OR GT = T_Condition OR GT = T_Expressions
+    THEN Result := @Qry_Exp_Elts(I)
+  ELSIF NOT @Cs?(I)
+    THEN C: "The item is a leaf node, but is not a variable or struct: ";
+	 Result := < >
+    ELSE C: "The item is not a leaf node, so we look in a table for the result. ";
+	 VAR < Previous := @Dtable_Get(I, Qry_Elts_UBA),
+	       Comps := @Cs(I), Assigned := < > >:
+	 IF NOT EMPTY?(Previous)
+	   THEN C: "We can get the result from the table attached to the item.";
+		Result := @Dtable_Value_Part(Previous)
+	   ELSE C: "The result is not in the table, so it must be calculated. ";
+		C: "We look at each component in turn and combine the results. ";
+		IF GT = T_Statements
+		  THEN WHILE NOT EMPTY?(Comps) DO
+			 Result := Result \/ (@Elts_UBA(HEAD(Comps)) \ Assigned);
+			 C:" A self-assignment does not count as clobbering the variable: ";
+			 Assigned := Assigned \/ @Elts_Redefined(HEAD(Comps));
+			 IF @Gen_Improper?(HEAD(Comps), "Hyb")
+			   THEN Comps := < >
+			   ELSE Comps := TAIL(Comps) FI OD
+		ELSIF ST = T_Pop
+		  THEN Result := Result \/ @Elements(I^2)
+		ELSIF ST = T_A_Proc_Call AND @V(I^1) = pop_regs
+		  THEN Result := Result \/ @Elements(I^1)
+		ELSIF ST IN <T_Struct_Lvalue, T_Proc_Call, T_A_Proc_Call,
+			     T_Aref_Lvalue, T_Sub_Seg_Lvalue,
+			     T_Rel_Seg_Lvalue, T_Final_Seg_Lvalue,
+			     T_Push>
+		  THEN Result := Result \/ @Elements(I)
+		  ELSE WHILE NOT EMPTY?(Comps) DO
+			 Result := Result \/ @Elts_UBA(HEAD(Comps));
+			 Comps := TAIL(Comps) OD;
+		       C: "If the current item is a VAR structure or a FOR loop ";
+		       C: "then there are local variables which we don't want to return ";
+		       C: "as part of the result; so these must be taken out. ";
+		       IF ST = T_Var
+			 THEN Result := Result \
+				(@Elt_Lvars(I^1) \ @Elts_Used(I^1))
+		       ELSIF ST = T_For
+			 THEN Result := Result \ <<@V(I^1)>> FI FI;
+		C: "Store the result in the table associated with this item.";
+		@Dtable_Put(I, Qry_Elts_UBA, Result) FI ENDVAR FI;
+  (Result) .;
+
+
+
+C:" Rename a variable to a new name throughout the current item ";
+MW_PROC @Rename(old, new) ==
+  IF @ST(@I) = T_Var_Lvalue AND @V(@I) = old
+    THEN @Paste_Over(@Make(T_Var_Lvalue, new, < >))
+  ELSIF @ST(@I) = T_Variable AND @V(@I) = old
+    THEN @Paste_Over(@Make(T_Variable, new, < >)) FI;
+  IF @Components?(@I) AND old IN @All_Variables(@I)
+    THEN @Down;
+	 DO @Rename(old, new);
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up FI .;
+
+
+
+MW_FUNCT @Elements (I) ==
+  VAR < Result := @Qry_Elts(I) >:
+  SKIP;
+  (Result[1] \/ Result[2]) .;
+
+
+MW_FUNCT @Elts_Assigned(I) ==
+  VAR < Result := @Qry_Elts(I) >:
+  SKIP;
+  (Result[1]) .;
+
+
+MW_FUNCT @Elts_Used(I) ==
+  VAR < Result := @Qry_Elts(I) >:
+  SKIP;
+  (Result[2]) .;
+
+
+MW_FUNCT @Elts_Assd_To_Self(I) ==
+  VAR < Result := @Qry_Elts(I) >:
+  SKIP;
+  (Result[3]) .;
+
+
+C:" Return a list of three lists: the list of structure elements assigned to, ";
+C:" the list of structure elements used, and the list of structure elements ";
+C:" only used in assigments to themselves, in the given item. ";
+C:" An element of a structure is recorded in the form: <name, field, field, ...> ";
+C:" An array element with numeric index is recorded: <name, n> ";
+C:" A sub seg or rel seg with <= Max_Subfield known elements ";
+C:" is recorded as a list of elements. ";
+
+C:" Default value for Max_Subfield: ";
+C:" (This is small because an assignment of a struct from itself expands into ";
+C:" Max_Subfield + 1 assignments each with Max_Subfield + 1 references). ";
+
+Max_Subfield := 4;
+
+MW_FUNCT @Qry_Elts(I) ==
+  VAR < ST := @ST(I), GT := @GT(I), Result := < > >:
+  IF NOT @Cs?(I)
+    THEN C:"The item is a leaf node, so we know the results for that, trivially.";
+	 Result := < IF (ST = T_Var_Lvalue) THEN <<@V(I)>> ELSE < > FI,
+		     IF (ST = T_Variable) THEN <<@V(I)>> ELSE < > FI,
+		     IF (ST = T_Var_Lvalue) OR (ST = T_Variable)
+		       THEN <<@V(I)>>
+		       ELSE < > FI >
+  ELSIF ST = T_Struct AND @Qry_Simple_Struct?(I^2)
+    THEN Result := << >, <@Struct_Elts(I)>, < >>
+  ELSIF ST = T_Struct_Lvalue AND @Qry_Simple_LStruct?(I^2)
+    THEN Result := <<@Struct_Elts(I)>, < >, < >>
+  ELSIF ST IN <T_Aref, T_Aref_Lvalue, T_Sub_Seg, T_Sub_Seg_Lvalue,
+	       T_Rel_Seg, T_Rel_Seg_Lvalue>
+    THEN Result := @Qry_Aref_Elts(I)
+  ELSIF GT = T_Expression OR GT = T_Condition OR GT = T_Expressions
+    THEN Result := << >, @Qry_Exp_Elts(I), < >>
+    ELSE C:"The item is not a leaf node, so we look in a table for the result. ";
+	 VAR < Previous := @Dtable_Get(I, Qry_Elts),
+	       Assd := < >, Used := < >, Self := < >,
+	       Temp := < >, Comps := @Cs(I)>:
+	 C:" Check for a stored result ";
+	 IF NOT EMPTY?(Previous)
+	   THEN Result := @Dtable_Value_Part(Previous)
+	   ELSE C:" The result is not stored in a table, so it must be calculated. ";
+		C:" We look at each component in turn, calculate the variables for ";
+		C:" that and combine these results.                                ";
+		C:" An array Lvalue uses as well as assigns to its first component ";
+		C:" Also, VAR parameters are used as well as assigned.             ";
+		WHILE NOT EMPTY?(Comps) DO
+		  IF @GT(HEAD(Comps)) IN <T_Expression, T_Condition>
+		    THEN Used := Used \/ @Qry_Exp_Elts(HEAD(Comps))
+		    ELSE Temp := @Qry_Elts(HEAD(Comps));
+			 IF ST = T_Assign
+			   THEN Self := Self \/ Temp[3]
+			 ELSIF GT IN <T_Statement, T_Assignment, T_Variable,
+				      T_Statements, T_Guarded, T_Action>
+			   THEN Self := (Temp[3] \ Used) \/ (Self \ Temp[2])
+			   ELSE Self := < > FI;
+			 Assd := Assd \/ Temp[1];
+			 Used := Used \/ Temp[2] FI;
+		  Comps := TAIL(Comps) OD;
+		C:"If the current item is a local variable structure or a `FOR' loop ";
+		C:"then there are local variables which we don't want to return as   ";
+		C:"part of the result; so these must be taken out.                   ";
+		IF ST = T_Var
+		   THEN VAR < Local_Vars := @Elt_Lvars(I^1) >:
+			Assd := Assd \ Local_Vars;
+			Used := Used \ Local_Vars;
+			Self := Self \ Local_Vars ENDVAR
+		ELSIF ST = T_For
+		   THEN VAR < Loop_Var := <@V(I^1)> >:
+			Assd := Assd \ Loop_Var;
+			Used := Used \ Loop_Var;
+			Self := Self \ Loop_Var ENDVAR 
+                ELSIF ST = T_Proc OR ST = T_Funct OR ST = T_BFunct
+                   THEN VAR < Local_Vars := @Elts_Assigned(I^2) \/ @Elts_Assigned(I^3) >:
+                            Assd := Assd \ Local_Vars;
+                            Used := Used \ Local_Vars;
+                            Self := Self \ Local_Vars ENDVAR
+		ELSIF ST = T_Print OR ST = T_Prinflush OR ST = T_Error
+		   THEN Assd := Assd \/ <<os_name>>; Used := Used \/ <<os_name>>
+		ELSIF ST = T_Pop
+		   THEN Used := Used \/ @Elts_Assigned(I^2); Self := < >
+		ELSIF ST IN <T_Struct_Lvalue,  T_Aref_Lvalue, T_Sub_Seg_Lvalue,
+			     T_Rel_Seg_Lvalue, T_Final_Seg_Lvalue,
+			     T_Proc_Call, T_A_Proc_Call, T_Push,
+			     T_Mem_Lvalue, T_Mem_Seg_Lvalue, T_Mem_Rel_Lvalue>
+		   THEN Used := Used \/ Assd FI;
+		Result := <Assd, Used, Self>;
+		C:"Store the result in the table associated with this item.";
+		@Dtable_Put(I, Qry_Elts, Result) FI ENDVAR FI;
+  (Result) .;
+
+
+C:" Check that the struct is a simple foo.bar.baz, not (eg) foo[bar].baz: ";
+C:" NB: @[foo].bar is a simple struct: ";
+
+MW_BFUNCT @Qry_Simple_Struct?(I) == : SKIP;
+  (@ST(I) = T_Variable
+     OR @ST(I) = T_Aref AND @ST(I^1) = T_Variable AND @V(I^1) = a_name
+     OR @ST(I) = T_Mem
+     OR @ST(I) = T_Struct AND @Qry_Simple_Struct?(I^2)) .;
+
+MW_BFUNCT @Qry_Simple_LStruct?(I) == : SKIP;
+  (@ST(I) = T_Var_Lvalue
+     OR @ST(I) = T_Aref_Lvalue AND @ST(I^1) = T_Var_Lvalue AND @V(I^1) = a_name
+     OR @ST(I) = T_Mem_Lvalue
+     OR @ST(I) = T_Struct_Lvalue AND @Qry_Simple_LStruct?(I^2)) .;
+
+
+C:" Query elements for array references: eg A[x] := 0 uses and assigns to A, ";
+C:" while A[2] := 0 assigns to <A, 2> and doesn't use A. ";
+C:" A[2..3] := 0 assigns to <A, 2> and <A, 3>, ";
+C:" while A[2..6] := 0 uses and assigns to A (the list of individual elements is too big!) ";
+
+C:" For an Lvalue, R1 lists the assigned elements, while R2 lists the used only elements. ";
+C:" For an expression, nothing is assigned and R1 \/ R2 are the used elements. ";
+C:" In a[!XF address_of(FOO)...] variable FOO is actually used ";
+C:" even though it appears within an address_of call. ";
+
+MW_FUNCT @Qry_Aref_Elts(I) ==
+  VAR < ST := @ST(I), R1 := <@Struct_Elts(I^1)>, R2 := < > >:
+  IF EMPTY?(HEAD(R1)) AND NOT EMPTY?(@Elements(I^1))
+    THEN R1 := @Elements(I^1)
+  ELSIF (ST = T_Aref OR ST = T_Aref_Lvalue) AND @Size(I^2) = 1 AND @ST(I^2^1) = T_Number
+    THEN R1 := @Qry_Add_Index1(R1, <@V(I^2^1)>)
+  ELSIF (ST = T_Sub_Seg OR ST = T_Sub_Seg_Lvalue)
+	  AND @ST(I^2) = T_Number AND @ST(I^3) = T_Number
+	  AND (@V(I^3) - @V(I^2)) < Max_Subfield
+    THEN R1 := @Qry_Add_Index1(R1, @Num_List(@V(I^2), @V(I^3)))
+  ELSIF (ST = T_Rel_Seg OR ST = T_Rel_Seg_Lvalue)
+	  AND @ST(I^2) = T_Number AND @ST(I^3) = T_Number
+	  AND @V(I^3) <= Max_Subfield
+    THEN R1 := @Qry_Add_Index1(R1, @Num_List(@V(I^2), @V(I^2) + @V(I^3) - 1))
+    ELSE IF (@ST(I^1) = T_Variable OR @ST(I^1) = T_Var_Lvalue) AND @V(I^1) = a_name
+           THEN R1 := R1 \/ @Elts_Addr(I) FI;
+         R2 := R1 \/ REDUCE("\\/", MAP("@Qry_Exp_Elts", TAIL(@Components(I)))) FI;
+  IF @ST(I^1) IN <T_Aref, T_Aref_Lvalue, T_Sub_Seg, T_Sub_Seg_Lvalue,
+                  T_Rel_Seg, T_Rel_Seg_Lvalue>
+    THEN VAR < sub := @Qry_Aref_Elts(I^1) >:
+         R1 := R1 \/ sub[1];
+	 R2 := R2 \/ sub[2] ENDVAR FI;
+  (IF @GT(I) = T_Lvalue
+     THEN <R1, R2, < >>
+     ELSE << >, R1 \/ R2, < >> FI) .;
+
+
+C:" Add each element of the list of index numbers to each component of each result ";
+C:" to create a new result, eg: << >, <<x>>, < >> plus <1, 2> becomes ";
+C:" << >, <<x, -1>, <x, -2>>, < >> ";
+
+MW_FUNCT @Qry_Add_Index(R, nums) ==
+  VAR < new_R := < >, new := < >, elt := < >, num := < > >:
+  C:" Ensure that there is at least one element: ";
+  IF EMPTY?(nums) THEN nums := <0> FI;
+  FOR old IN R DO
+    new := < >;
+    FOR elt IN old DO
+      FOR num IN nums DO
+	IF elt = <a_name>
+	  THEN new := <elt> ++ new
+	  ELSE new := <elt ++ <-num>> ++ new FI OD OD;
+    new_R := <new> ++ new_R OD;
+  (@Make_Set(new_R)) .;
+
+
+MW_FUNCT @Qry_Add_Index1(old, nums) ==
+  VAR < new := < >, elt := < >, num := < > >:
+  C:" Ensure that there is at least one element: ";
+  IF EMPTY?(nums) THEN nums := <0> FI;
+  FOR elt IN old DO
+    FOR num IN nums DO
+      IF elt = <a_name>
+	THEN new := <elt> ++ new
+	ELSE new := <elt ++ <-num>> ++ new FI OD OD;
+  (@Make_Set(new)) .;
+
+
+C:" Return the list of numbers: <n, n+1, n+2, ..., m> ";
+MW_FUNCT @Num_List(n, m) ==
+  VAR < R := < > >:
+  WHILE n <= m DO
+    R := <n> ++ R; n := n + 1 OD;
+  (REVERSE(R)) .;
+
+
+C:" Return the list of element structures appearing in the expression or condition ";
+
+MW_FUNCT @Qry_Exp_Elts(I) ==
+  VAR < Result := < >, ST := @ST(I) >:
+  IF @Is_Addr?(I)
+    THEN Result := @Qry_Exp_Elts_A(@Get_Addr(I))
+  ELSIF ST = T_Struct AND @Qry_Simple_Struct?(I^2)
+    THEN Result := <@Struct_Elts(I)>
+  ELSIF ST = T_Struct_Lvalue AND @Qry_Simple_LStruct?(I^2)
+    THEN Result := <@Struct_Elts(I)>
+  ELSIF (ST = T_Aref OR ST = T_Aref_Lvalue)
+	  AND @Size(I^2) = 1 AND @ST(I^2^1) = T_Number
+    THEN Result := @Qry_Add_Index1(@Qry_Exp_Elts(I^1), <@V(I^2^1)>)
+  ELSIF (ST = T_Sub_Seg OR ST = T_Sub_Seg_Lvalue)
+	  AND @ST(I^2) = T_Number AND @ST(I^3) = T_Number
+	  AND (@V(I^3) - @V(I^2)) < Max_Subfield
+    THEN Result := @Qry_Add_Index1(@Qry_Exp_Elts(I^1), @Num_List(@V(I^2), @V(I^3)))
+  ELSIF (ST = T_Rel_Seg OR ST = T_Rel_Seg_Lvalue)
+	  AND @ST(I^2) = T_Number AND @ST(I^3) = T_Number
+	  AND @V(I^3) <= Max_Subfield
+    THEN Result := @Qry_Add_Index1(@Qry_Exp_Elts(I^1), @Num_List(@V(I^2), @V(I^3) + @V(I^2) - 1))
+
+  ELSIF ST = T_Rel_Seg OR ST = T_Sub_Seg OR ST = T_Aref
+     THEN Result := REDUCE("\\/", MAP("@Qry_Exp_Elts", @Components(I))) \/ @Elts_Addr(I)
+  ELSIF @Cs?(I)
+     THEN Result := REDUCE("\\/", MAP("@Qry_Exp_Elts", @Components(I)))
+  ELSIF ST = T_Variable OR ST = T_Var_Lvalue
+     THEN Result := <<@V(I)>> FI;
+  (Result) .;
+
+
+C:" !XF address_of(foo) does not use value of foo, ";
+C:" but !XF address_of(foo[bar]) *does* depend on the value of bar! ";
+
+MW_FUNCT @Qry_Exp_Elts_A(I) == : SKIP;
+  (IF @ST(I) IN <T_Aref, T_Sub_Seg, T_Rel_Seg, T_Final_Seg>
+     THEN @Qry_Exp_Elts_A(I^1) \/ REDUCE("\\/", MAP("@Qry_Exp_Elts", TAIL(@Cs(I))))
+   ELSE IF @Cs?(I)
+     THEN REDUCE("\\/", MAP("@Qry_Exp_Elts_A", @Cs(I)))
+     ELSE < > FI FI) .;
+
+
+
+MW_FUNCT @Elts_Redefined(I) ==
+  VAR <ST := @ST(I), GT := @GT(I), Redef := < >, L := < >, Cs := < > > :
+  IF @Cs?(I)
+    THEN VAR < Previous := @Dtable_Get(I, Qry_Elts_Redefined) >:
+	 IF EMPTY?(Previous)
+	   THEN IF ST = T_Assign
+		  THEN VAR < A1 := @Elts_Assigned(I^1) >:
+		       IF NOT @Elt_Clash_List?(@Elts_Used(I^2), A1)
+			    AND NOT @Elt_Clash_List?(@Elts_Used(I^1), A1)
+			 THEN Redef := A1 FI ENDVAR
+		ELSIF ST = T_For
+		  THEN Redef := @Elt_Remove(@Elts_Redefined(I^5), <@V(I^1)>)
+		ELSIF ST = T_Var
+		  THEN Redef := @Elt_Subtract(@Elts_Redefined(I^2), @Elt_Lvars(I^1))
+		ELSIF ST = T_While
+		  THEN Redef := < >
+		ELSIF ST = T_Floop
+		  THEN C:" Anything redefined before an EXIT is redefined in the floop ";
+		       L := < >; Cs := @Cs(I^1);
+		       WHILE NOT EMPTY?(Cs) DO
+		         IF @Gen_Proper?(HEAD(Cs), "Hyb")
+			   THEN L := <HEAD(Cs)> ++ L; Cs := TAIL(Cs)
+			   ELSE Cs := < > FI OD;
+		       IF EMPTY?(L)
+		         THEN Redef := < >
+			 ELSE Redef := REDUCE("\\/", MAP("@Elts_Redefined", REVERSE(L))) FI
+		ELSIF ST = T_Guarded
+		  THEN Redef := @Elts_Redefined(I^2)
+		ELSIF ST = T_Pop
+		  THEN Redef := @Elements(I^1)
+		ELSIF (GT = T_Statements) OR (ST = T_Assignment)
+		  THEN Redef := REDUCE("\\/", MAP("@Elts_Redefined", @Cs(I)))
+		ELSIF (GT = T_Expression) OR (GT = T_Condition)
+		  THEN Redef := < >
+		  ELSE Redef := REDUCE("/\\", MAP("@Elts_Redefined", @Cs(I))) FI;
+		       @Dtable_Put(I, Qry_Elts_Redefined, Redef)
+	   ELSE Redef := @Dtable_Value_Part(Previous) FI ENDVAR FI;
+  (Redef) .;
+
+
+C:" Utility functions for processing lists of elements. ";
+C:" NOTE: Removing foo also removes all its field references (foo.bar etc.) ";
+C:" NOTE: If foo.bar is in the list, and foo is referenced, ";
+C:" then this must be treated as a reference to foo.bar also. ";
+
+C:" Remove an element (and all its components) from a list: ";
+C:" (Removing foo also removes foo.bar). ";
+
+C:" This uses the fact that V is sorted and a prefix of a list is ordered ";
+C:" before the list itself: ";
+
+MW_FUNCT @Elt_Remove(V, elt) == : SKIP;
+  (IF EMPTY?(V)
+     THEN < >
+   ELSE IF @Prefix?(elt, HEAD(V))
+     THEN @Elt_Remove(TAIL(V), elt)
+   ELSE IF @Gen_Less?(elt, HEAD(V))
+     THEN V
+     ELSE <HEAD(V)> ++ @Elt_Remove(TAIL(V), elt) FI FI FI) .;
+     
+
+C:" Subtract one element list from another, using the fact that they are sorted: ";
+
+MW_FUNCT @Elt_Subtract(V, W) == : SKIP;
+  (IF EMPTY?(V)
+     THEN < >
+   ELSE IF EMPTY?(W)
+     THEN V
+   ELSE IF @Prefix?(HEAD(W), HEAD(V))
+     THEN @Elt_Subtract(TAIL(V), W)
+   ELSE IF @Gen_Less?(HEAD(W), HEAD(V))
+     THEN @Elt_Subtract(V, TAIL(W))
+     ELSE <HEAD(V)> ++ @Elt_Subtract(TAIL(V), W) FI FI FI FI) .;
+
+C:" Given a sorted element list, remove fields where the struct is also present. ";
+C:" This uses the fact that a prefix of a list is ordered before the list itself. ";
+
+MW_FUNCT @Elt_Remove_Fields(V) == : SKIP;
+  (IF EMPTY?(V)
+     THEN V
+   ELSE IF EMPTY?(TAIL(V))
+     THEN V
+   ELSE IF @Prefix?(HEAD(V), HEAD(TAIL(V)))
+     THEN @Elt_Remove_Fields(<HEAD(V)> ++ TAIL(TAIL(V)))
+     ELSE <HEAD(V)> ++ @Elt_Remove_Fields(TAIL(V)) FI FI FI) .;
+
+C:" Convert an element list to an item (ie the opposite of @Struct_Elts) ";
+
+MW_FUNCT @Elt_To_Expn(V) ==
+  VAR < R := @Make(T_Variable, HEAD(V), < >) >:
+  IF HEAD(V) = a_name AND NOT EMPTY?(TAIL(V))
+    THEN C:" Return @[FOO] ";
+	 V := TAIL(V);
+	 R := @Make_Mem(@Make(T_Variable, HEAD(V), < >)) FI;
+  V := TAIL(V);
+  WHILE NOT EMPTY?(V) AND HEAD(V) > 0 DO
+    R := @Make(T_Struct, < >, <@Name(HEAD(V)), R>);
+    V := TAIL(V) OD;
+  (R) .;
+
+
+C:" Convert an element list to an Lvalue ";
+
+MW_FUNCT @Elt_To_Lvalue(V) ==
+  VAR < R := @Make(T_Var_Lvalue, HEAD(V), < >) >:
+  IF HEAD(V) = a_name AND NOT EMPTY?(TAIL(V))
+    THEN C:" Return a[FOO] ";
+	 V := TAIL(V);
+	 R := @Make_Mem_L(@Make(T_Variable, HEAD(V), < >)) FI;
+  V := TAIL(V);
+  WHILE NOT EMPTY?(V) AND HEAD(V) > 0 DO
+    R := @Make(T_Struct_Lvalue, < >, <@Name(HEAD(V)), R>);
+    V := TAIL(V) OD;
+  (R) .;
+
+
+MW_FUNCT @Elt_To_String(elt) ==
+  VAR < item := < >, R := < > >:
+  IF SEQUENCE?(elt)
+    THEN C:" Don't print the a. for a DSECT reference: ";
+	 IF LENGTH(elt) > 1 AND HEAD(elt) = a_name AND elt[2] > 0
+	   THEN elt := TAIL(elt) FI;
+	 R := @Name_Or_Num_String(HEAD(elt));
+	 FOR item IN TAIL(elt) DO
+	   IF item <= 0
+	     THEN R := R ++ "[" ++ @String(-item) ++ "]"
+	     ELSE R := R ++ "." ++ @Name_Or_Num_String(item) FI OD
+    ELSE R := @Name_Or_Num_String(elt) FI;
+  (R) .;
+
+
+
+MW_FUNCT @Name_Or_Num_String(n) == : SKIP;
+  (IF NUMBER?(n) AND n <= 0 THEN @String(-n) ELSE @N_String(n) FI) .;
+
+
+
+
+C:" Element set handling routines: ";
+
+MW_BFUNCT @Elt_Clash?(V, e) ==
+  VAR < R := 0 >:
+  WHILE NOT EMPTY?(V) DO
+    IF FALSE AND HEAD(V) = <a_name>
+      THEN V := TAIL(V)
+    ELSIF @Either_Prefix?(HEAD(V), e) OR @DSECT_Clash?(HEAD(V), e)
+      THEN R := 1; V := < >
+      ELSE V := TAIL(V) FI OD;
+  (R = 1) .;
+
+
+
+C:" This is equivalent to @Prefix?(A, B) OR @Prefix(B, A): ";
+
+MW_BFUNCT @Either_Prefix?(A, B) == :
+  SKIP;
+  (EMPTY?(A) OR EMPTY?(B)
+    OR (NOT EMPTY?(A) AND NOT EMPTY?(B)
+	 AND HEAD(A) = HEAD(B) AND @Either_Prefix?(TAIL(A), TAIL(B)))) .;
+
+
+C:" Check if one element is a DSECT reference and the other is the DSECT pointer: ";
+
+MW_BFUNCT @DSECT_Clash?(A, B) == :
+  SKIP;
+  ((LENGTH(A) = 1 AND LENGTH(B) > 1 AND B[1] = a_name AND A[1] = B[2])
+    OR (LENGTH(B) = 1 AND LENGTH(A) > 1 AND A[1] = a_name AND B[1] = A[2])) .;
+
+
+
+C:" Check if any element in the second list is in the first list, ";
+C:" or is a prefix or extension of an element in the first list: ";
+C:" Also check for DSECT clashes. ";
+C:" Strip any a's from the front of elements before checking, ";
+C:" and make sure the result is sorted. ";
+
+C:" Special case: If V contains a DSECT pointer, then references to the DSECT elements ";
+C:" in W are *not* clashes ";
+
+MW_BFUNCT @Elt_Clash_List?(V, W) ==
+  VAR < found := 0 >:
+  IF LENGTH(V) = 1 AND LENGTH(HEAD(V)) = 1
+    THEN W := @Elt_Strip_DSECT(HEAD(HEAD(V)), W) FI;
+  V := @Elt_Strip_a(V);
+  W := @Elt_Strip_a(W);
+  WHILE NOT EMPTY?(V) AND NOT EMPTY?(W) DO
+    IF @Either_Prefix?(HEAD(W), HEAD(V))
+      THEN found := 1; V := < >
+    ELSIF @Gen_Less?(HEAD(W), HEAD(V))
+      THEN W := TAIL(W)
+      ELSE V := TAIL(V) FI OD;
+  (found = 1) .;
+
+
+MW_FUNCT @Elt_Strip_a(V) ==
+  VAR < R := < > >:
+  FOR elt IN V DO
+    IF NOT EMPTY?(elt) AND elt[1] = a_name AND LENGTH(elt) > 1
+      THEN R := <TAIL(elt)> ++ R
+      ELSE R := <elt> ++ R FI OD;
+  (@Make_Set(R)) .;
+
+
+MW_FUNCT @Elt_Strip_DSECT(v, W) ==
+  VAR < R := < > >:
+  FOR elt IN W DO
+    IF LENGTH(elt) > 2 AND elt[1] = a_name AND elt[2] = v
+      THEN SKIP
+      ELSE R := <elt> ++ R FI OD;
+  (REVERSE(R)) .;
+
+
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns information about the actions calls.     ";
+C:" The information takes the form of a list of pairs in which each pair    ";
+C:" contains the name of an action followed by a number indicating how      ";
+C:" often that action is called.  The function does not look inside nested  ";
+C:" action systems.                                                         ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_FUNCT @Calls(I) ==
+  VAR < Result := < > >:
+  IF @Cs?(I)
+    THEN VAR <Previous := @Dtable_Get(I, Qry_Calls), comp := < > >:
+	 IF EMPTY?(Previous)
+	   THEN C:"If the result has not been stored in a table already, we   ";
+		C:"have to calculate it by looking at each component in turn. ";
+		FOR comp IN @Cs(I) DO
+		  IF NOT (@ST(comp) = T_A_S OR
+			  @GT(comp) = T_Expression OR
+			  @GT(comp) = T_Condition)
+		    THEN C:"If the current item is a whole action system or in an  ";
+			 C:"expression or condition, then we needn't look for more ";
+			 C:"`CALL's inside it.                                     ";
+			 Result := @Qry_Call_Join(Result, @Calls(comp)) FI OD;
+		@Dtable_Put(I, Qry_Calls, Result)
+	   ELSE Result := @Dtable_Value_Part(Previous) FI ENDVAR
+       ELSIF @ST(I) = T_Call
+	  THEN Result := <<@V(I), 1>> FI;
+       (Result) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following two functions return more information about action calls. ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Called?(Name, I) == : SKIP; (NOT EMPTY?(@Assoc(Name, @Calls(I)))) .;
+
+
+MW_FUNCT @Call_Freq(Name, I) ==
+  VAR <Result := @Assoc(Name, @Calls(I))> :
+  IF EMPTY?(Result) THEN Result := 0 ELSE Result := HEAD(TAIL(Result)) FI;
+  (Result) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" @Proc_Calls returns a list of pairs: <name, no-of-calls>                ";
+C:" ----------------------------------------------------------------------- ";
+
+C:" MW 13/03/95: BUGFIX -- ignore local calls ";
+
+
+MW_FUNCT @Proc_Calls(I) ==
+  VAR <Result := < >> :
+  IF @Cs?(I)
+    THEN VAR <Previous := @Dtable_Get(I, Qry_Proc_Calls), Temp := @Cs(I)> :
+	 IF NOT EMPTY?(Previous)
+	    THEN Result := @Dtable_Value_Part(Previous)
+	 ELSIF @ST(I) = T_Proc_Call
+	    THEN Result := <<@V(I^1), 1>>
+	    ELSE C:" If the result has not been stored in a table already, we   ";
+		 C:" have to calculate it by looking at each component in turn, ";
+		 C:" then remove any local procs (if we are on a WHERE clause). ";  
+		 WHILE NOT EMPTY?(Temp) DO
+		   IF (@GT(HEAD(Temp)) <> T_Expression)  AND
+		      (@GT(HEAD(Temp)) <> T_Condition)   AND
+		      (@GT(HEAD(Temp)) <> T_Expressions)
+		     THEN C:"If the current item is an expression(s) or condition(s), ";
+			  C:"then we needn't look for more calls inside it. ";
+			  Result := @Qry_Call_Join(Result, @Proc_Calls(HEAD(Temp))) FI;
+		   Temp := TAIL(Temp) OD;
+		 IF @ST(I) = T_Where
+		   THEN Temp := @Cs(I^2);
+			WHILE NOT EMPTY?(Temp) DO
+			  IF @ST(HEAD(Temp)) = T_Proc
+			    THEN Result := @Qry_Remove_A_Call(Result, @V(HEAD(Temp)^1)) FI;
+			  Temp := TAIL(Temp) OD FI;
+		 @Dtable_Put(I, Qry_Proc_Calls, Result) FI ENDVAR FI;
+  (Result) .;
+
+
+
+MW_FUNCT @A_Proc_Calls(I) ==
+  VAR <Result := < >> :
+  IF @Cs?(I)
+    THEN VAR <Previous := @Dtable_Get(I, Qry_A_Proc_Calls), Temp := @Cs(I)> :
+	 IF NOT EMPTY?(Previous)
+	    THEN Result := @Dtable_Value_Part(Previous)
+	 ELSIF @ST(I) = T_A_Proc_Call
+	    THEN Result := <<@V(I^1), 1>>
+	    ELSE C:" If the result has not been stored in a table already, we   ";
+		 C:" have to calculate it by looking at each component in turn, ";
+		 C:" then remove any local procs (if we are on a WHERE clause). ";  
+		 WHILE NOT EMPTY?(Temp) DO
+		   IF (@GT(HEAD(Temp)) <> T_Expression)  AND
+		      (@GT(HEAD(Temp)) <> T_Condition)   AND
+		      (@GT(HEAD(Temp)) <> T_Expressions)
+		     THEN C:"If the current item is an expression(s) or condition(s), ";
+			  C:"then we needn't look for more calls inside it. ";
+			  Result := @Qry_Call_Join(Result, @A_Proc_Calls(HEAD(Temp))) FI;
+		   Temp := TAIL(Temp) OD;
+		 IF @ST(I) = T_Where
+		   THEN Temp := @Cs(I^2);
+			WHILE NOT EMPTY?(Temp) DO
+			  IF @ST(HEAD(Temp)) = T_Proc
+			    THEN Result := @Qry_Remove_A_Call(Result, @V(HEAD(Temp)^1)) FI;
+			  Temp := TAIL(Temp) OD FI;
+		 @Dtable_Put(I, Qry_A_Proc_Calls, Result) FI ENDVAR FI;
+  (Result) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following functions return more information about procedure calls.  ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Proc_Called?(Name, I) == : SKIP; (NOT EMPTY?(@Assoc(Name, @Proc_Calls(I)))) .;
+
+
+MW_FUNCT @Proc_Call_Freq(Name, I) ==
+  VAR <Result := @Assoc(Name, @Proc_Calls(I))> :
+  IF EMPTY?(Result) THEN Result := 0 ELSE Result := HEAD(TAIL(Result)) FI;
+  (Result) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" Return the number of times a procedure is called in the body of the given ";
+C:" WHERE clause, plus the bodies of all other procedures in the WHERE ";
+C:" ----------------------------------------------------------------------- ";
+
+MW_FUNCT @Non_Recursive_Calls(Name, I) ==
+  VAR < Result := @Proc_Call_Freq(Name, I^1),
+	bodies := @Cs(I^2) >:
+  WHILE NOT EMPTY?(bodies) DO
+    IF @ST(HEAD(bodies)) = T_Proc AND Name <> @V(HEAD(bodies)^1)
+      THEN Result := Result + @Proc_Call_Freq(Name, HEAD(bodies)^4) FI;
+    bodies := TAIL(bodies) OD;
+  (Result) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" @Funct_Calls returns a list of pairs: <name, no-of-calls>               ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_FUNCT @Funct_Calls(I) ==
+  VAR <Result := < >> :
+  IF @Cs?(I)
+    THEN VAR < Previous := @Dtable_Get(I, Qry_Funct_Calls), Temp := @Cs(I) >:
+	 IF NOT EMPTY?(Previous)
+	   THEN Result := @Dtable_Value_Part(Previous)
+	 ELSIF (@ST(I) = T_Funct_Call) OR (@ST(I) = T_BFunct_Call)
+	   THEN Result := <<@V(I^1), 1>>;
+		@Dtable_Put(I, Qry_Funct_Calls, Result)
+	   ELSE C:"If the result has not been stored in a table already, we   ";
+		C:"have to calculate it by looking at each component in turn. ";
+		WHILE NOT EMPTY?(Temp) DO
+		  Result := @Qry_Call_Join(Result, @Funct_Calls(HEAD(Temp)));
+		  Temp := TAIL(Temp) OD;
+		@Dtable_Put(I, Qry_Funct_Calls, Result) FI ENDVAR FI;
+  (Result) .;
+
+
+MW_BFUNCT @Funct_Called?(Name, I) == : SKIP;
+  (NOT EMPTY?(@Assoc(Name, @Funct_Calls(I)))) .;
+
+
+MW_FUNCT @Funct_Call_Freq(Name, I) ==
+  VAR <Result := @Assoc(Name, @Funct_Calls(I))> :
+  IF EMPTY?(Result) THEN Result := 0 ELSE Result := HEAD(TAIL(Result)) FI;
+  (Result) .;
+
+
+MW_FUNCT @X_Funct_Calls(I) ==
+  VAR <Result := < >> :
+  IF @Cs?(I)
+    THEN VAR < Previous := @Dtable_Get(I, Qry_X_Funct_Calls), Temp := @Cs(I) >:
+	 IF NOT EMPTY?(Previous)
+	   THEN Result := @Dtable_Value_Part(Previous)
+	 ELSIF (@ST(I) = T_X_Funct_Call) OR (@ST(I) = T_X_BFunct_Call)
+	   THEN Result := <<@V(I^1), 1>>;
+		@Dtable_Put(I, Qry_X_Funct_Calls, Result)
+	   ELSE C:"If the result has not been stored in a table already, we   ";
+		C:"have to calculate it by looking at each component in turn. ";
+		WHILE NOT EMPTY?(Temp) DO
+		      Result := @Qry_Call_Join(Result, @X_Funct_Calls(HEAD(Temp)));
+		      Temp := TAIL(Temp) OD;
+		@Dtable_Put(I, Qry_X_Funct_Calls, Result) FI ENDVAR FI;
+  (Result) .;
+
+
+MW_BFUNCT @X_Funct_Called?(Name, I) == : SKIP;
+  (NOT EMPTY?(@Assoc(Name, @X_Funct_Calls(I)))) .;
+
+
+MW_FUNCT @X_Funct_Call_Freq(Name, I) ==
+  VAR < Result := @Assoc(Name, @X_Funct_Calls(I)) >:
+  IF EMPTY?(Result) THEN Result := 0 ELSE Result := HEAD(TAIL(Result)) FI;
+  (Result) .;
+
+dec_conds := MAP("@Make_Name",        
+                 <"dec_eq", "dec_not_eq", "dec_greater", "dec_greater_eq",        
+                  "dec_less", "dec_less_eq">);
+
+MW_BFUNCT @Unsafe_Test?(I) ==
+  VAR < found := 0 >:
+  IF @ST(I) = T_X_BFunct_Call AND @V(I^1) IN dec_conds
+    THEN found := 1
+  ELSIF @ST(I) = T_And OR @ST(I) = T_Or OR @ST(I) = T_Not
+    THEN C:" TODO: Maybe define as a query function ";
+         FOR comp IN @Cs(I) DO
+           IF @Unsafe_Test?(comp)
+             THEN found := 1 FI OD FI;
+  (found = 1) .;
+
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" Return the number of times a procedure is called in the body of the given ";
+C:" WHERE clause, plus the bodies of all other procedures in the WHERE ";
+C:" ----------------------------------------------------------------------- ";
+
+MW_FUNCT @Non_Recursive_Funct_Calls(Name, I) ==
+  VAR < Result := @Funct_Call_Freq(Name, I^1),
+	bodies := @Cs(I^2) >:
+  WHILE NOT EMPTY?(bodies) DO
+    IF Name <> @V(HEAD(bodies)^1)
+      THEN Result := Result + @Funct_Call_Freq(Name, HEAD(bodies)) FI;
+    bodies := TAIL(bodies) OD;
+  (Result) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following functions are used to join two sets of `calls'-style      ";
+C:" information.  For example,                                              ";
+C:"                                                                         ";
+C:"    @Qry_Call_Join (<<A, 1>, <B, 2>>,  <<B, 1>, <C, 1>>)                 ";
+C:"                                                                         ";
+C:" would return the list                                                   ";
+C:"                                                                         ";
+C:"    <<A, 1>, <B, 3>, <C, 1>>.                                            ";
+C:" ----------------------------------------------------------------------- ";
+
+C:" It should be more efficient to merge sorted lists: ";
+
+MW_FUNCT @Qry_Call_Join(L1, L2) == : SKIP;
+  (IF EMPTY?(L1) THEN L2
+   ELSE IF EMPTY?(L2) THEN L1
+   ELSE IF HEAD(HEAD(L1)) = HEAD(HEAD(L2))
+	  THEN <<HEAD(HEAD(L1)), HEAD(TAIL(HEAD(L1))) + HEAD(TAIL(HEAD(L2)))>>
+		 ++ @Qry_Call_Join(TAIL(L1), TAIL(L2))
+   ELSE IF HEAD(HEAD(L1)) < HEAD(HEAD(L2))
+	  THEN <HEAD(L1)> ++ @Qry_Call_Join(TAIL(L1), L2)
+	  ELSE <HEAD(L2)> ++ @Qry_Call_Join(L1, TAIL(L2)) FI FI FI FI) .; 
+
+
+MW_FUNCT @Qry_Remove_A_Call(L, name) == : SKIP;
+  (IF EMPTY?(L) THEN < >
+   ELSE IF name = HEAD(HEAD(L))
+	  THEN TAIL(L)
+	  ELSE <HEAD(L)> ++ @Qry_Remove_A_Call(TAIL(L), name) FI FI) .;
+
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns `TRUE' if and only if the given item is  ";
+C:" a simple statement; ie a statement that cannot be terminated by an      ";
+C:" `EXIT'.                                                                 ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Simple?(I) == : SKIP;
+   (@GT(I) = T_Statement AND @ST(I) NOTIN <T_Cond, T_D_If, T_Floop, T_Join>) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:"The function `@Terminal_n?' returns true if and only if the nth          ";
+C:"component of I is a terminal position of I.                              ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Terminal_n?(I, n) == : SKIP;
+   (1 <= n AND n <= @Size(I)
+     AND (@ST(I) IN <T_Cond, T_D_If, T_Join>
+            OR @ST(I) <> T_Floop AND n = @Size(I))) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns `TRUE' if and only if the component at   ";
+C:" the *relative* position p is in a terminal position.                    ";
+C:"                                                                         ";
+C:" A general component of an item is in a terminal position if every step  ";
+C:" on the path to that component is terminal.                              ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Terminal_Posn?(I, p) == : SKIP;
+   (EMPTY?(p) OR (@Terminal_n?(I, HEAD(p)) AND @Terminal_Posn?(I^HEAD(p), TAIL(p)))) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The function `@Outermost_Floop_Terminal?' returns `TRUE' if and only if ";
+C:" the outermost `FLOOP' containing the given position is in a terminal    ";
+C:" position.                                                               ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Outermost_Floop_Terminal?(I, p) ==
+  VAR < OK := 0, Temp_I := I, Temp_P := < >, Old_P := p, Term_Posn := 1 >:
+  WHILE OK = 0 AND NOT EMPTY?(Old_P) DO
+    IF @ST(Temp_I) = T_Floop
+      THEN OK := Term_Posn
+      ELSE IF Term_Posn = 1 AND NOT @Terminal_n?(Temp_I, HEAD(Old_P))
+              THEN Term_Posn := -1 FI;
+	   Temp_I := Temp_I^HEAD(Old_P);
+           Temp_P := Temp_P ++ <HEAD(Old_P)>;
+           Old_P := TAIL(Old_P) FI OD;
+  (OK = 1) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns the depth within the item of that item   ";
+C:" with the given *relative* position.                                     ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_FUNCT @Depth(I, p) ==
+  VAR < Result := 0, Temp_I := I, Old_P := p >:
+  WHILE NOT EMPTY?(Old_P) DO
+    IF @ST(Temp_I) = T_Floop THEN Result := Result + 1 FI;
+    Temp_I := Temp_I^HEAD(Old_P);
+    Old_P := TAIL(Old_P) OD;
+  (Result) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns the maximum position depth of            ";
+C:" any of its component simple statements. (NOT the loop nesting depth)    ";
+C:" Any simple statement has Max_Depth = 1                                  ";
+C:" (This is used to ignore cases where S1 is a subcomponent of S2)         ";
+C:" ----------------------------------------------------------------------- ";
+
+MW_FUNCT @Max_Depth(I) ==
+  VAR < Result := 0, Previous := < > >:
+  IF NOT @Cs?(I) OR @GT(I) = T_Expression OR @GT(I) = T_Expressions
+       OR @GT(I) = T_Condition
+    THEN SKIP
+  ELSIF @Simple?(I)
+    THEN Result := 1
+    ELSE Previous := @Dtable_Get(I, Qry_Max_Dep);
+	 IF NOT EMPTY?(Previous)
+	   THEN Result := @Dtable_Value_Part(Previous)
+	   ELSE Result := 1 + REDUCE("MAX", MAP("@Max_Depth", @Cs(I)));
+		@Dtable_Put(I, Qry_Max_Dep, Result) FI FI;
+  (Result) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The next three functions return the terminal values of all reachable    ";
+C:" components of the given item.  (For statements sequences, the terminal  ";
+C:" values of each statement are only included provided all the previous    ";
+C:" statements allow zero as a terminal value.)                             ";
+C:"                                                                         ";
+C:" For more information on these functions, see Martin's document:         ";
+C:" `GREET: Requirements and High Level Design'.                            ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_FUNCT @Rec_TVs(I) ==
+  VAR < Temp := < >, G := @GT(I), S := @ST(I), Result := @Dtable_Get(I, Qry_Rec_TVs) >:
+  IF EMPTY?(Result)
+    THEN IF G IN <T_Condition, T_Expression, T_Expressions>
+	   THEN Result := < >
+	 ELSIF S = T_Abort
+	   THEN Result := <0>
+	 ELSIF S = T_Exit
+	   THEN Result := <@V(I)>
+	 ELSIF @Simple?(I)
+	   THEN Result := <0>
+	 ELSIF S = T_Statements
+	   THEN Result := REDUCE("@TV_Conditional_Union", MAP("@Rec_TVs", @Components(I)))
+	 ELSIF S = T_Floop
+	   THEN Temp := REDUCE("@TV_Conditional_Union", MAP("@Rec_TVs", @Components(I)));
+		WHILE NOT EMPTY?(Temp) DO
+		  IF HEAD(Temp) > 0 THEN Result := Result ++ <(HEAD(Temp)-1)> FI;
+		  Temp := TAIL(Temp) OD
+	   ELSE Result := REDUCE("\\/", MAP("@Rec_TVs", @Components(I))) FI;
+	@Dtable_Put(I, Qry_Rec_TVs, Result)
+    ELSE Result := @Dtable_Value_Part(Result) FI;
+  (Result) .;
+
+
+C:" Omega is the largest simple integer: ";
+
+Omega := 536870911;
+
+
+MW_FUNCT @Reg_TVs(I) ==
+  VAR < Temp := < >, G := @GT(I), S := @ST(I), Result := @Dtable_Get(I, Qry_Reg_TVs) >:
+  IF EMPTY?(Result)
+    THEN IF G IN <T_Condition, T_Expression, T_Expressions>
+	   THEN Result := < >
+	 ELSIF S = T_Abort
+	   THEN Result := <0>
+	 ELSIF S = T_Exit
+	   THEN Result := <@V(I)>
+	 ELSIF S = T_Call
+	   THEN Result := <Omega>
+	 ELSIF @Simple?(I)
+	   THEN Result := <0>
+	 ELSIF S = T_Statements
+	   THEN Result := REDUCE("@TV_Conditional_Union", MAP("@Reg_TVs", @Components(I)))
+	 ELSIF S = T_Floop
+	   THEN Temp := REDUCE("@TV_Conditional_Union", MAP("@Reg_TVs", @Components(I)));
+		WHILE NOT EMPTY?(Temp) DO
+		  IF HEAD(Temp) = Omega THEN Result := Result ++ <HEAD(Temp)>
+		  ELSIF HEAD(Temp) > 0 THEN Result := Result ++ <(HEAD(Temp)-1)> FI;
+		  Temp := TAIL(Temp) OD
+	   ELSE Result := REDUCE("\\/", MAP("@Reg_TVs", @Components(I))) FI;
+	@Dtable_Put(I, Qry_Reg_TVs, Result)
+    ELSE Result := @Dtable_Value_Part(Result) FI;
+  (Result) .;
+
+
+MW_FUNCT @Hyb_TVs(I) ==
+   VAR < Temp := < >, G := @GT(I), S := @ST(I), Result := @Dtable_Get(I, Qry_Hyb_TVs) >:
+  IF EMPTY?(Result)
+    THEN IF G IN <T_Condition, T_Expression, T_Expressions>
+	   THEN Result := < >
+	 ELSIF S = T_Abort
+	   THEN Result := <0>
+	 ELSIF S = T_Exit
+	   THEN Result := <@V(I)>
+	 ELSIF S = T_Call
+	   THEN IF @V(I) = @Make_Name("Z")
+		  THEN Result := <Omega>
+		  ELSE Result := <0, Omega> FI
+	 ELSIF @Simple?(I)
+	   THEN Result := <0>
+	 ELSIF S = T_Statements
+	   THEN Result := REDUCE("@TV_Conditional_Union", MAP("@Hyb_TVs", @Components(I)))
+	 ELSIF S = T_Floop
+	   THEN Temp := REDUCE("@TV_Conditional_Union", MAP("@Hyb_TVs", @Components(I)));
+		WHILE NOT EMPTY?(Temp) DO
+		  IF HEAD(Temp) = Omega THEN Result := Result ++ <HEAD(Temp)>
+		  ELSIF HEAD(Temp) > 0 THEN Result := Result ++ <(HEAD(Temp)-1)> FI;
+		  Temp := TAIL(Temp) OD
+	   ELSE Result := REDUCE("\\/", MAP("@Hyb_TVs", @Components(I))) FI;
+	 @Dtable_Put(I, Qry_Hyb_TVs, Result)
+    ELSE Result := @Dtable_Value_Part(Result) FI;
+  (Result) .;
+
+
+MW_FUNCT @Gen_TVs(I, AS) == : SKIP;
+  (IF AS = "Rec"
+     THEN @Rec_TVs(I)
+     ELSE IF AS = "Reg" THEN @Reg_TVs(I) ELSE @Hyb_TVs(I) FI FI) .;
+
+
+MW_FUNCT @TV_Conditional_Union(A, B) == : SKIP;
+  (IF 0 IN A THEN (A \ <0>) \/ B ELSE A FI) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" A component is reachable if all the preceding statements in the         ";
+C:" execution sequence have 0 as a possible terminal value.                 ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Gen_Reachable?(I, p, AS) ==
+  VAR < OK := 1, Temp := < >, C := 1> :
+  IF NOT (EMPTY?(p) OR @Simple?(I))
+    THEN IF @ST(I) = T_Statements
+	 THEN Temp := @Cs(I);
+	      WHILE OK = 1 AND NOT EMPTY?(Temp) AND C < HEAD(p) DO
+		IF 0 NOTIN @Gen_TVs(HEAD(Temp), AS) THEN OK := 0 FI;
+		Temp := TAIL(Temp);
+		C := C + 1 OD FI;
+	 IF (OK = 1) AND NOT @Gen_Reachable?(I^HEAD(p), TAIL(p), AS)
+	   THEN OK := 0 FI FI;
+  (OK = 1) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" A position within a statement is terminal if it is reachable and...     ";
+C:"                                                                         ";
+C:"    1. One of the terminal values of that statement is greater than the  ";
+C:"       depth OR                                                          ";
+C:"                                                                         ";
+C:"    2. The component is in a `Floop', the outermost `Floop' is in a      ";
+C:"       terminal position, and one of the terminal values of the          ";
+C:"       statement is equal to the depth OR                                ";
+C:"                                                                         ";
+C:"    3. The component is in a terminal position.                          ";
+C:"                                                                         ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Gen_Terminal?(I, p, AS) ==
+  VAR < OK := 0, d := 0, TVs := < >, n := 0, OFT := 0, Reach := 1, Comps := < >,
+	Temp_I := I, Temp_P := < >, Old_P := p, Term_Posn := 1 >:
+  WHILE NOT EMPTY?(Old_P) DO
+    IF Reach = 1
+      THEN IF @Simple?(Temp_I)
+	     THEN Reach := 2
+	   ELSIF @ST(Temp_I) = T_Statements
+	     THEN Comps := @Cs(Temp_I);
+		  n := 1;
+		  WHILE Reach = 1 AND NOT EMPTY?(Comps) AND n < HEAD(Old_P) DO
+		    IF 0 NOTIN @Gen_TVs(HEAD(Comps), AS) THEN Reach := 0 FI;
+		    Comps := TAIL(Comps);
+		    n := n + 1 OD FI FI;
+    IF @ST(Temp_I) = T_Floop
+      THEN d := d + 1; IF OFT = 0 THEN OFT := Term_Posn FI FI;
+    IF Term_Posn = 1 AND NOT @Terminal_n?(Temp_I, HEAD(Old_P)) THEN Term_Posn := -1 FI;
+    Temp_I := Temp_I^HEAD(Old_P);
+    Temp_P := Temp_P ++ <HEAD(Old_P)>;
+    Old_P := TAIL(Old_P) OD;
+  IF Reach <> 0
+    THEN TVs := @Gen_TVs(@Get(I, p), AS);
+	 WHILE OK = 0 AND NOT EMPTY?(TVs) DO
+	   n := HEAD(TVs);
+	   IF (n = Omega) OR
+	      (n > d) OR
+	      ((n = d) AND (OFT = 1)) OR
+	      ((d = 0) AND (Term_Posn = 1))
+	     THEN OK := 1 FI;
+	 TVs := TAIL(TVs) OD FI;
+  (OK = 1) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" A proper statement is a statement which cannot cause termination of an  ";
+C:" enclosing loop by way of an `EXIT' statement.                           ";
+C:" ----------------------------------------------------------------------- ";
+
+Proper_TVs_Set := @Make_Set(<0, Omega>);
+
+MW_BFUNCT @Gen_Proper?(I, AS) == : SKIP;
+  (SUBSET?(@Gen_TVs(I, AS), Proper_TVs_Set)) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" An improper statement is one which only terminates via an `EXIT' or     ";
+C:" `CALL' which would cause termination of one or more enclosing loops.    ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Gen_Improper?(I, AS) ==
+  VAR <OK := 1, Temp := @Gen_TVs(I, AS)> :
+  WHILE OK = 1 AND NOT EMPTY?(Temp) DO
+    IF (HEAD(Temp) <> Omega) AND (HEAD(Temp) <= 0) THEN OK := 0 FI;
+    Temp := TAIL(Temp) OD;
+  (OK = 1) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" A statement is reducible if replacing any terminal statement `EXIT (k)' ";
+C:" with terminal value 1 by `EXIT (k-1)' results in a terminal statement   ";
+C:" with terminal value 0.                                                  ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Gen_Reducible?(I, AS) == : SKIP;
+  (@Gen_Do_Rdc?(I, I, < >, 0, AS)) .;
+
+
+MW_BFUNCT @Gen_Do_Rdc?(Top, I, p, d, AS) ==
+  VAR <OK := 1, TC := @Components(I), TN := 1, d2 := d> :
+  IF (@GT(I) <> T_Expression) AND (@GT(I) <> T_Condition)
+    THEN IF @Gen_Terminal?(Top, p, AS) AND (@ST(I) = T_Exit) AND (@V(I) = d + 1)
+	   THEN IF NOT (@Terminal_Posn?(Top, p) OR ((@V(I) > d)
+						      AND @Outermost_Floop_Terminal?(Top, p)))
+		  THEN OK := 0 FI FI;
+	 IF NOT @Simple?(I)
+	   THEN WHILE OK = 1 AND NOT EMPTY?(TC) DO
+		  IF @ST(I) = T_Floop THEN d2 := (d + 1) FI;
+		  IF NOT @Gen_Do_Rdc?(Top, HEAD(TC), p ++ <TN>, d2, AS) THEN OK := 0 FI;
+		  TC := TAIL(TC);
+		  TN := TN + 1 OD FI FI;
+  (OK = 1) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns `TRUE' if and only if the item is a      ";
+C:" dummy loop.                                                             ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @Gen_Dummy?(I, AS) == : SKIP;
+  (@ST(I) = T_Floop AND @Gen_Reducible?(I^1, AS) AND @Gen_Improper?(I^1, AS)) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns `TRUE' if and only if the item is        ";
+C:" regular.                                                                ";
+C:" ----------------------------------------------------------------------- ";
+
+MW_BFUNCT @Regular?(I) == : SKIP;
+  (SUBSET?(@Reg_TVs(I), <Omega>)) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns `TRUE' if and only if the item is        ";
+C:" a regular action system.                                                ";
+C:" ----------------------------------------------------------------------- ";
+
+MW_BFUNCT @Regular_System?(I) ==
+  VAR < OK := 0, Temp := < > >:
+  IF @ST(I) <> T_A_S
+    THEN OK := 0
+  ELSIF Assume_A_S_Regular = 1
+    THEN OK := 1
+    ELSE OK := 1;
+         Temp := @Cs(I^2);
+         WHILE OK = 1 AND NOT EMPTY?(Temp) DO
+	   IF NOT @Regular?(HEAD(Temp)) THEN OK := 0 FI;
+	   Temp := TAIL(Temp) OD FI;
+  (OK = 1) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns `TRUE' if and only if the item is        ";
+C:" recursive.                                                              ";
+C:" ----------------------------------------------------------------------- ";
+
+MW_BFUNCT @Recursive?(I) ==
+  VAR < OK := 1, Temp := < > >:
+  IF @Simple?(I)
+    THEN IF @Equal?(I, FILL Statement CALL Z ENDFILL) THEN OK := 0 FI
+  ELSIF NOT @Has_Comps?(I)
+    THEN SKIP
+    ELSE Temp := @Cs(I);
+         WHILE OK = 1 AND NOT EMPTY?(Temp) DO
+	   IF NOT @Recursive?(HEAD(Temp)) THEN OK := 0 FI;
+	   Temp := TAIL(Temp) OD FI;
+  (OK = 1) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following function returns `TRUE' if and only if the item is        ";
+C:" a recursive action system.                                              ";
+C:" ----------------------------------------------------------------------- ";
+
+MW_BFUNCT @Recursive_System?(I) ==
+  VAR < OK := (IF @ST(I) = T_A_S THEN 1 ELSE 0 FI), Temp := @Cs(I^2) >:
+  WHILE OK = 1 AND NOT EMPTY?(Temp) DO
+    IF NOT @Recursive?(HEAD(Temp)) THEN OK := 0 FI;
+    Temp := TAIL(Temp) OD;
+  (OK = 1) .;
+
+
+C:" Return the type of the given action system: ";
+MW_FUNCT @System_Type(I) == : SKIP;
+  (IF Assume_A_S_Regular = 1 THEN "Reg" ELSE @System_Type_Gen(I) FI) .;
+
+MW_FUNCT @System_Type_Gen(I) ==
+  VAR < Type := "Reg", Rec := 1, Z := @Make_Name("Z"), Actions := @Cs(I^2) >:
+  WHILE NOT EMPTY?(Actions) DO
+    IF NOT @Regular?(HEAD(Actions)) THEN Type := "Hyb" FI;
+    IF @Call_Freq(Z, HEAD(Actions)) > 0 THEN Rec := 0 FI;
+    Actions := TAIL(Actions) OD;
+  IF Rec = 1 THEN Type := "Rec" FI;
+  (Type) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" Note that an item of type `Actions' is not a statement.                 ";
+C:" These functions consider items of type `Actions', and this has two      ";
+C:" consequences:                                                           ";
+C:"                                                                         ";
+C:"  (a)  An `Action System' statement is only `in' a regular system if it  ";
+C:"       itself if inside a regular system.                                ";
+C:"                                                                         ";
+C:"  (b)  The function `@AS_Type' returns the type of the enclosing action  ";
+C:"       system, and not of the selected system (if one is selected).      ";
+C:"                                                                         ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_BFUNCT @In_Reg_System?() == : SKIP;
+  (Assume_A_S_Regular = 1 OR @In_Reg_System_Gen?) .;
+
+MW_BFUNCT @In_Reg_System_Gen?() ==
+  VAR < P := @Posn >:
+  WHILE (@ST(@Get(@Program, P)) <> T_Actions) AND NOT EMPTY?(P) DO
+    P := BUTLAST(P) OD;
+  (@ST(@Get(@Program, P)) = T_Actions AND @Regular?(@Get(@Program, P))) .;
+
+
+MW_BFUNCT @In_Rec_System?() == : SKIP;
+  (Assume_A_S_Regular = 0 AND @In_Rec_System_Gen?) .;
+
+MW_BFUNCT @In_Rec_System_Gen?() ==
+  VAR < P := @Posn >:
+  WHILE (@ST(@Get(@Program, P)) <> T_Actions) AND NOT EMPTY?(P) DO
+    P := BUTLAST(P) OD;
+  (@ST(@Get(@Program, P)) = T_Actions) AND @Recursive?(@Get(@Program, P)) .;
+
+
+MW_BFUNCT @In_Hyb_System?() == : SKIP;
+  (Assume_A_S_Regular = 0 AND @In_Hyb_System_Gen?) .;
+
+MW_BFUNCT @In_Hyb_System_Gen?() ==
+  VAR < P := @Posn >:
+  WHILE (@ST(@Get(@Program, P)) <> T_Actions) AND NOT EMPTY?(P) DO
+    P := BUTLAST(P) OD;
+  (NOT (@ST(@Get(@Program, P)) = T_Actions AND @Regular?(@Get(@Program, P)))
+     AND NOT (@ST(@Get(@Program, P)) <> T_Actions OR @Recursive?(@Get(@Program, P)))) .;
+
+
+MW_FUNCT @AS_Type() == : SKIP;
+  (IF Assume_A_S_Regular = 1 THEN "Reg" ELSE @AS_Type_Gen FI) .;
+
+MW_FUNCT @AS_Type_Gen() ==
+  VAR < P := @Posn, Result := < > >:
+  WHILE (@ST(@Get(@Program, P)) <> T_Actions) AND NOT EMPTY?(P) DO
+    P := BUTLAST(P) OD;
+  IF @ST(@Get(@Program, P)) = T_Actions
+    THEN IF @Regular?(@Get(@Program, P))
+	   THEN Result := "Reg"
+	 ELSIF @Recursive?(@Get(@Program, P))
+	   THEN Result := "Rec"
+	   ELSE Result := "Hyb" FI
+  ELSIF NOT EMPTY?(AS_Type)
+    THEN Result := AS_Type
+    ELSE Result := "Hyb" FI;
+  (Result) .;
+
+
+C:" ----------------------------------------------------------------------- ";
+C:" The following functions are special cases of the ones earlier in this   ";
+C:" file.  Each returns the corresponding result for the *current* item in  ";
+C:" the *current* type of action system.                                    ";
+C:" ----------------------------------------------------------------------- ";
+
+
+MW_FUNCT @TVs() == : SKIP; (@Gen_TVs(@I, @AS_Type)) .;
+MW_BFUNCT @Is_Reachable?(p) == : SKIP; (@Gen_Reachable?(@I, p, @AS_Type)) .;
+MW_BFUNCT @Is_Terminal?(p) == : SKIP; (@Gen_Terminal?(@I, p, @AS_Type)) .;
+MW_BFUNCT @Is_Terminal_Posn?(p) == : SKIP; (@Terminal_Posn?(@I, p)) .;
+MW_BFUNCT @Is_Proper?() == : SKIP; (@Gen_Proper?(@I, @AS_Type)) .;
+MW_BFUNCT @Is_Improper?() == : SKIP; (@Gen_Improper?(@I, @AS_Type)) .;
+MW_BFUNCT @Is_Reducible?() == : SKIP; (@Gen_Reducible?(@I, @AS_Type)) .;
+MW_BFUNCT @Is_Dummy?() == : SKIP; (@Gen_Dummy?(@I, @AS_Type)) .;
+
+
+MW_FUNCT @All_Vars (I) == 
+  VAR <vars := < > >:
+  @Edit;
+  @New_Program(I);
+  ATEACH Expression DO
+    IF @ST(@I) = T_Variable 
+      THEN vars := <@V(@I)> \/ vars FI OD;
+  ATEACH Lvalue DO
+    IF @ST(@I) = T_Var_Lvalue
+      THEN vars := <@V(@I)> \/ vars FI OD;
+  @Undo_Edit;
+  (vars) .;
+
+
+C:" Return the maximum length of sub-positions of items in the component: ";
+
+MW_FUNCT @Max_Pos_L(I) ==
+  VAR < R := 1, Previous := < >, Temp := < > >:
+  IF @Cs?(I)
+    THEN Previous := @Dtable_Get(I, Qry_Max_Pos_L);
+	 IF NOT EMPTY?(Previous)
+	   THEN R := @Dtable_Value_Part(Previous)
+	   ELSE R := 1 + REDUCE("MAX", MAP("@Max_Pos_L", @Components(I)));
+		@Dtable_Put(I, Qry_Max_Pos_L, R) FI FI;
+  (R) .;
+
+
+C:" Compute the list of variables whose initial values ";
+C:" (on entry to the selected item) are used, before new values are assigned. ";
+C:" This version does *not* store the results in the dbase table because ";
+C:" it takes into account the bodies of known procedures in the procs table. ";
+C:" The proc_vars table stores the full UBA and Redefined values for the proc body. ";
+C:" TODO: This version assumes that the procs have no parameters! ";
+
+MW_FUNCT @Full_UBA(I, procs, proc_vars) ==
+  VAR < R := < > >:
+  IF T_Proc_Call NOTIN @Stat_Types(I)
+    THEN C:" Can use the query function on this component: ";
+	 R := @UBA(I)
+    ELSE C: "We look at each component in turn and combine the results. ";
+         VAR < GT := @GT(I), ST := @ST(I), redef := < >, comps := @Cs(I), comp := < > >:
+         IF GT = T_Statements
+           THEN WHILE NOT EMPTY?(comps) DO
+	          comp := HEAD(comps);
+		  comps := TAIL(comps);
+                  R := R \/ (@Full_UBA(comp, procs, proc_vars) \ redef);
+                  redef := redef \/ @Full_Redefined(comp, procs, proc_vars);
+                  IF @Gen_Improper?(comp, "Hyb")
+                    THEN comps := < > FI OD
+         ELSIF ST = T_Proc_Call
+	   THEN VAR < name := @V(I^1) >:
+	        IF EMPTY?(procs.(name))
+	          THEN R := @UBA(I)
+	        ELSIF NOT EMPTY?(proc_vars.(name))
+	          THEN C:" Use the cached value ";
+		       R := HEAD(TAIL(proc_vars.(name)))
+		  ELSE C:" Store dummy values in case of recursion, ";
+		       C:" and compute the value for the proc body: ";
+		       proc_vars.(name) := <<< >, < >, < >>, < >, < >>;
+		       vars := @Full_Vars(procs.(name)^4, procs, proc_vars);
+		       R := @Full_UBA(procs.(name)^4, procs, proc_vars);
+		       redef := @Full_Redefined(procs.(name)^4, procs, proc_vars);
+		       proc_vars.(name) := <vars, R, redef> FI ENDVAR
+         ELSIF ST IN <T_A_Proc_Call, T_Push>
+           THEN R := R \/ @Variables(I)
+	 ELSIF ST = T_Where
+	   THEN C:" Assumes proc names in nested WHEREs are unique: ";
+	        FOR defn IN @Cs(I^2) DO
+                  IF @ST(defn) = T_Proc THEN procs.(@V(defn^1)) := defn FI OD;
+		R := @Full_UBA(I^1, procs, proc_vars)
+           ELSE FOR comp IN comps DO
+                  R := R \/ @Full_UBA(comp, procs, proc_vars) OD;
+                C: "If the current item is a VAR structure or a FOR loop ";
+                C: "then there are local variables which we don't want to return ";
+                C: "as part of the result; so these must be taken out. ";
+                IF ST = T_Var
+                  THEN R := R \ (@Lvars(I^1) \ @Used(I^1))
+                ELSIF ST = T_For
+                  THEN R := R \ <@V(I^1)> FI FI ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @Full_Redefined(I, procs, proc_vars) ==
+  VAR < R := < >, GT := @GT(I), ST := @ST(I) >:
+  IF T_Proc_Call NOTIN @Stat_Types(I)
+    THEN C:" Can use the query function on this component: ";
+	 R := @Redefined(I)
+  ELSIF ST = T_Proc_Call
+    THEN VAR < name := @V(I^1), vars := < >, UBA := < > >:
+         IF EMPTY?(procs.(name))
+           THEN R := @Redefined(I)
+         ELSIF NOT EMPTY?(proc_vars.(name))
+           THEN C:" Use the cached value ";
+                R := HEAD(TAIL(TAIL(proc_vars.(name))))
+           ELSE C:" Store dummy values in case of recursion, ";
+                C:" and compute the value for the proc body: ";
+                proc_vars.(name) := <<< >, < >, < >>, < >, < >>;
+		vars := @Full_Vars(procs.(name)^4, procs, proc_vars);
+                UBA := @Full_UBA(procs.(name)^4, procs, proc_vars);
+                R := @Full_Redefined(procs.(name)^4, procs, proc_vars);
+                proc_vars.(name) := <vars, UBA, R> FI ENDVAR
+  ELSIF ST = T_For
+    THEN R := @Full_Redefined(I^4, procs, proc_vars) \ <@V(I^1)>
+  ELSIF ST = T_Var
+    THEN R := @Full_Redefined(I^2, procs, proc_vars) \ @Lvars(I^1)
+  ELSIF ST = T_While
+    THEN R := < >
+  ELSIF ST = T_Guarded
+    THEN R := @Full_Redefined(I^2, procs, proc_vars)
+  ELSIF GT = T_Statements
+    THEN FOR comp IN @Cs(I) DO
+           R := R \/ @Full_Redefined(comp, procs, proc_vars) OD
+    ELSE R := @Full_Redefined(I^1, procs, proc_vars);
+         FOR comp IN TAIL(@Cs(I)) DO
+           R := R /\ @Full_Redefined(comp, procs, proc_vars) OD FI
+  (R) .;
+
+
+C:" Returns <assigned, used, assigned_to_self> variables, cf @Qry_Vars: ";
+
+MW_FUNCT @Full_Vars(I, procs, proc_vars) ==
+  VAR < R := < > >:
+  IF T_Proc_Call NOTIN @Stat_Types(I)
+    THEN C:" Can use the query function on this component: ";
+	 R := @Qry_Vars(I)
+  ELSIF @ST(I) = T_Proc_Call
+    THEN VAR < name := @V(I^1) >:
+         IF EMPTY?(procs.(name))
+	   THEN R := @Qry_Vars(I)
+	 ELSIF NOT EMPTY?(proc_vars.(name))
+           THEN R := HEAD(proc_vars.(name))
+           ELSE C:" Store dummy values in case of recursion, ";
+                C:" and compute the value for the proc body: ";
+                proc_vars.(name) := <<< >, < >, < >>, < >, < >>;
+                R := @Full_Vars(procs.(name)^4, procs, proc_vars);
+                redef := @Full_Redefined(procs.(name)^4, procs, proc_vars);
+                UBA := @Full_UBA(procs.(name)^4, procs, proc_vars);
+                proc_vars.(name) := <R, UBA, redef> FI ENDVAR
+    ELSE C:" We look at each component in turn and combine these results. ";
+         C:" NB: VAR parameters are used as well as assigned.             ";
+         VAR < ST := @ST(I), GT := @GT(I), Comps := @Cs(I),
+	       Assd:= < >, Used := < >, Self := < >, Temp := < > >:
+         WHILE NOT EMPTY?(Comps) DO
+           IF @GT(HEAD(Comps)) IN <T_Expression, T_Condition>
+             THEN Used := Used \/ @Qry_Exp_Vars(HEAD(Comps))
+             ELSE Temp := @Full_Vars(HEAD(Comps), procs, proc_vars);
+                  IF ST = T_Assign
+                    THEN Self := Self \/ Temp[3]
+                  ELSIF GT IN <T_Statement, T_Assignment, T_Variable,
+                               T_Statements, T_Guarded, T_Action>
+                    THEN Self := (Temp[3] \ Used) \/ (Self \ Temp[2])
+                    ELSE Self := < > FI;
+                  Assd := Assd \/ Temp[1];
+                  Used := Used \/ Temp[2] FI;
+           Comps := TAIL(Comps) OD;
+         C:" If the current item is a local variable structure or a `FOR' loop ";
+         C:" then there are local variables which we don't want to return as   ";
+         C:" part of the result; so these must be taken out.                   ";
+         IF ST = T_Var
+            THEN VAR < Local_Vars := @Make_Set(MAP("@Qry_Get_Lvar", @Cs(I^1))) >:
+                 Assd := Assd \ Local_Vars;
+                 Used := Used \ Local_Vars;
+                 Self := Self \ Local_Vars ENDVAR
+         ELSIF ST = T_For
+            THEN VAR < Loop_Var := <@V(I^1)> >:
+                 Assd := Assd \ Loop_Var;
+                 Used := Used \ Loop_Var;
+                 Self := Self \ Loop_Var ENDVAR 
+         ELSIF ST = T_Proc OR ST = T_Funct OR ST = T_BFunct
+            THEN VAR < Local_Vars := @Assigned(I^2) \/ @Assigned(I^3) >:
+                 Assd := Assd \ Local_Vars;
+                 Used := Used \ Local_Vars;
+                 Self := Self \ Local_Vars ENDVAR
+	 ELSIF ST = T_Print OR ST = T_Prinflush OR ST = T_Error
+            THEN Assd := Assd \/ <os_name>; Used := Used \/ <os_name>
+         ELSIF ST = T_Pop
+            THEN Used := Used \/ @Assigned(I^2); Self := < >
+         ELSIF ST IN <T_Struct_Lvalue,  T_Aref_Lvalue, T_Sub_Seg_Lvalue,
+                      T_Rel_Seg_Lvalue, T_Final_Seg_Lvalue,
+                      T_Proc_Call, T_A_Proc_Call, T_Push>
+            THEN Used := Used \/ Assd FI;
+         R := <Assd, Used, Self> ENDVAR FI;
+  (R) .;
+
+
+
+MW_FUNCT @Full_Variables(I, procs, proc_vars) == 
+  VAR < R := @Full_Vars(I, procs, proc_vars) >:
+  SKIP;
+  (R[1] \/ R[2]) .;
+
+
+MW_FUNCT @Full_Assigned(I, procs, proc_vars) ==
+  VAR <R := @Full_Vars(I, procs, proc_vars)> :
+  SKIP;
+  (R[1]) .;
+
+
+MW_FUNCT @Full_Used(I, procs, proc_vars) ==
+  VAR <R := @Full_Vars(I, procs, proc_vars)> :
+  SKIP;
+  (R[2]) .;
+
+
+MW_FUNCT @Full_Assd_Only(I, procs, proc_vars) ==
+  VAR <R := @Full_Vars(I, procs, proc_vars)> :
+  SKIP;
+  (R[1] \ R[2]) .;
+
+
+MW_FUNCT @Full_Used_Only(I, procs, proc_vars) ==
+  VAR <R := @Full_Vars(I, procs, proc_vars)> :
+  SKIP;
+  (R[2] \ R[1]) .;
+
+
+MW_FUNCT @Full_Assd_To_Self(I, procs, proc_vars) ==
+  VAR <R := @Full_Vars(I, procs, proc_vars)> :
+  SKIP;
+  (R[3]) .;
+
+
+
+MW_PROC @Print_Elts(elts) ==
+  PRINFLUSH("<");
+  WHILE NOT EMPTY?(elts) DO
+    IF LAST(HEAD(elts)) < 0
+      THEN PRINFLUSH(@Join(".", MAP("@N_String", BUTLAST(HEAD(elts)))));
+           PRINFLUSH(".", -LAST(HEAD(elts)))
+      ELSE PRINFLUSH(@Join(".", MAP("@N_String", HEAD(elts)))) FI;
+    elts := TAIL(elts);
+    IF NOT EMPTY?(elts) THEN PRINFLUSH(", ") FI OD;
+  PRINT(">") .;
+
+
+C:" Find all elements whose address is taken: ";
+
+
+MW_FUNCT @Elts_Addr(I) == : SKIP;
+  (IF @Is_Addr?(I)
+     THEN @Elements(@Get_Addr(I))
+   ELSE IF @Cs?(I)
+     THEN REDUCE("\\/", MAP("@Elts_Addr", @Cs(I)))
+     ELSE < > FI FI) .;
+
+
+
+C:" ----------------------------------------------------------------------- "

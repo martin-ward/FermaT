@@ -1,0 +1,114 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C: "Written by Tim.";
+C: "Almost entirely rewritten by Eddy, Apr. 1997.";
+ 
+
+MW_PROC @Apply_To_Right_Test () ==
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF @GT(@I) <> T_Statement
+    THEN @Fail("Selected item is not a statement.")
+  ELSIF NOT @Right?
+    THEN @Fail("There is no following statement.")
+  ELSIF (@Spec_Type(@I) <> T_Assert) AND (NOT @Trans?(TR_Add_Assertion))
+     THEN @Fail("The item was not an assertion and it was not possible to add one.")
+     ELSE @Edit_Parent;
+          IF @ST(@I) <> T_Assert
+             THEN @Trans(TR_Add_Assertion, "") FI;
+          VAR < B1 := @I^1 >:
+          @Right;
+          IF @ST(@I) = T_Cond OR @ST(@I) = T_D_If
+             THEN @Apply_To_Right_Test_Cond(B1)
+          ELSIF @ST(@I) = T_D_Do
+             THEN @Apply_To_Right_Test_D_Do(B1)
+          ELSIF @ST(@I) = T_While
+             THEN IF @Implies?(B1, @Not(@I^1))
+                     THEN @Pass
+                     ELSE @Fail("The assertion does not affect the condition.") FI
+             ELSE @Fail("The following statement is not of a suitable type.") FI;
+          @Left;
+          @Undo_Edit ENDVAR FI .;
+
+C:"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
+
+MW_PROC @Apply_To_Right_Test_Cond(B1) ==
+  @Down;
+  C: "Consider each guard in turn until there are no more clauses.   ";
+  C: "For each clause determine whether the assertion allows the     ";
+  C: "guard's condition to be simplified.                            ";
+  DO @Down;
+     IF @Implies?(B1, @I) OR @Implies?(B1, @Not(@I)) OR @ST(@And(B1, @I)) = T_False
+       THEN @Pass; @Up; EXIT(1) FI;
+     @Up;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up;
+  IF NOT @Passed? 
+    THEN @Fail("Application of the selected item causes no change") FI .;
+
+C:"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
+
+MW_PROC @Apply_To_Right_Test_D_Do(B1) ==
+  C:" If the item implies that all the guards in a D_Do are false when the   ";
+  C:" loop is entered, (i.e. none will be executed) the loop is equivalent to SKIP ";
+  @Down;
+  DO @Down;
+     IF @Implies?(B1, @Not(@I)) OR @ST(@And(B1, @I)) = T_False
+       THEN SKIP
+       ELSE @Fail("At least one guard cannot be shown to be false");
+	    @Up; EXIT(1) FI;
+     @Up;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up;
+  IF NOT @Failed? THEN @Pass FI .;
+
+C:"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~";
+
+
+MW_PROC @Apply_To_Right_Code (Data) ==
+   IF (@GT(@I) = T_Assign) AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+   VAR < B1 := < > >:
+   IF @ST(@I) = T_Assert
+      THEN B1 := @I^1;
+           @Right
+      ELSE @Trans(TR_Add_Assertion, "");
+	   B1 := @I^1;
+	   @Delete FI;
+   IF @ST(@I) = T_While OR @ST(@I) = T_D_Do
+     THEN @Paste_Over(@Make(T_Skip,< >,< >))
+     ELSE C:" Item is not a WHILE or D_Do, so it must be a Cond or a D_If";
+          @Down;
+          DO @Down;
+             IF @Implies?(B1, @I)
+               THEN @Paste_Over(@Make(T_True, < >, < >))
+             ELSIF @Implies?(B1, @Not(@I)) OR @ST(@And(B1, @I)) = T_False
+               THEN @Paste_Over(@Make(T_False, < >, < >)) FI;
+             @Up;
+             IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+          @Up;
+          IF @Trans?(TR_Simplify_Item)
+            THEN @Trans(TR_Simplify_Item, "") FI FI;
+    @Left ENDVAR .;
+
+
+SKIP
+
+

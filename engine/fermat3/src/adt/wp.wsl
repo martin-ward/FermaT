@@ -1,0 +1,153 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C: " Compute the Weakest Precondition of a program and a postcondition. ";
+
+MW_FUNCT @WP(S, R) ==
+  VAR < WP := < > >:
+
+  IF @GT(S) = T_Statements
+    THEN WP := R;
+         FOR S1 IN REVERSE(@Cs(S)) DO
+	   WP := @WP(S1, WP) OD
+
+  ELSIF @ST(S) = T_Assert
+    THEN WP := @And(S^1, R)
+
+  ELSIF @ST(S) IN <T_Comment, T_Skip, T_Print, T_Prinflush>
+    THEN WP := R
+
+  ELSIF @ST(S) = T_Abort
+    THEN WP := @Make(T_False, < >, < >)
+
+  ELSIF @ST(S) = T_Assignment
+    THEN C:" Simultaneously replace each variable by its value ";
+         C:" Replace the vars by temps, then replace the temps by values ";
+         C:" Consider the assignment <x := y, y := x> ";
+	 VAR < tmp := < >, n := 1 >:
+	 @Edit; @New_Program(R);
+         FOR assign IN @Cs(S) DO
+	   tmp := @Make(T_Variable, @Make_Name("*tmp*" ++ @String(n)), < >);
+	   n := n + 1;
+	   FOREACH Expression DO
+	     IF @LR_Equal?(assign^1, @I)
+	       THEN @Paste_Over(tmp) FI OD OD;
+	 n := 1;
+         FOR assign IN @Cs(S) DO
+	   tmp := @Make(T_Variable, @Make_Name("*tmp*" ++ @String(n)), < >);
+	   n := n + 1;
+	   FOREACH Expression DO
+	     IF @Equal?(@I, tmp)
+	       THEN @Paste_Over(assign^2) FI OD OD;
+	 WP := @Program;
+	 @Undo_Edit ENDVAR
+
+  ELSIF @ST(S) = T_Cond
+    THEN VAR < B := @Make(T_False, < >, < >) >:
+         WP := @Make(T_True, < >, < >);
+         FOR guard IN @Cs(S) DO
+	   WP := @And(WP, @Or(B, @Or(@Not(guard^1), @WP(guard^2, R))));
+	   B := @Or(B, guard^1) OD ENDVAR
+
+  ELSIF @ST(S) = T_D_If
+    THEN WP := @Make(T_True, < >, < >);
+         VAR < B := @Make(T_False, < >, < >) >:
+         FOR guard IN @Cs(S) DO
+	   WP := @And(WP, @Or(@Not(guard^1), @WP(guard^2, R)));
+	   B := @Or(B, guard^1) OD;
+	 WP := @And(B, WP) ENDVAR
+
+  ELSIF @ST(S) = T_Var
+    THEN C:" Rename the local vars in the body with new temp vars ";
+         C:" Then process the initial assignment and the body as a sequence ";
+	 VAR < new := HASH_TABLE, assigns := < >,
+	       n := 0, used := @Used(S^2), name := < > >:
+	 FOR assign IN @Cs(S^1) DO
+	   n := 0;
+	   name := @Make_Name("tmp__" ++ @N_String(@V(assign^1)));
+	   WHILE var IN used DO
+	     n := n + 1;
+	     name := @Make_Name("tmp__" ++ @N_String(@V(assign^1)) ++ @String(n)) OD;
+	   new.(@V(assign^1)) := name;
+	   assigns := <@Make(T_Assign, < >, <@Make(T_Var_Lvalue, name, < >), assign^2>)>
+	                 ++ assigns OD;
+	 @Edit; @New_Program(S^2);
+	 FOREACH Global Variable DO
+	   IF NOT EMPTY?(new.(@V(@I)))
+             THEN @Paste_Over(@Make(@ST(@I), new.(@V(@I)), < >)) FI OD;
+         S := @Make(T_Statements, < >, <@Make(T_Assignment, < >, REVERSE(assigns))>
+	                                 ++ @Cs(@Program));
+	 @Undo_Edit;
+	 WP := @WP(S, R) ENDVAR
+
+  ELSIF @ST(S) = T_Spec
+    THEN C:" WP(x := x'.Q, R) is Ex'.Q AND Ax'(Q => R[x'/x]) ";
+         C:" We use x__p for the (local) variables x' and assume that ";
+	 C:" these variables are not already in use. ";
+         VAR < Q := < >, vars := < >, v := < > >:
+	 @Edit; @New_Program(R);
+	 FOR var IN @Assigned(S^1) DO
+           v := @Make(T_Variable, @Make_Name(@N_String(var) ++ "__p"), < >);
+	   vars := <v> ++ vars;
+           FOREACH Global Variable DO
+             IF @ST(@I) = T_Variable AND @V(@I) = var
+               THEN @Paste_Over(v) FI OD OD;
+	 R := @Program;
+	 vars := @Make(T_Lvalues, < >, REVERSE(vars));
+	 @New_Program(S^2);
+	 FOR var IN @Assigned(S^1) DO
+           v := @Make(T_Variable, @Make_Name(@N_String(var) ++ "__p"), < >);
+           FOREACH Expression DO
+             IF @ST(@I) = T_Primed_Var AND @V(@I) = var
+               THEN @Paste_Over(v) FI OD OD;
+	 Q := @Program;
+	 @Undo_Edit;
+	 WP := @And(@Make(T_Exists, < >, <vars, Q>),
+	            @Make(T_Forall, < >, <vars, @Implies(Q, R)>)) ENDVAR
+
+
+  ELSIF @ST(S) = T_A_Proc_Call
+    THEN VAR < name := < >, count := 1, assigns := < >, e := < >, vars := < > >:
+         FOR v IN @Variables(S) DO
+	   vars := <@Make(T_Variable, v, < >)> ++ vars OD;
+         vars := @Make(T_Expressions, < >, vars);
+	 FOR v IN @Cs(S^3) DO
+	   name := @Make_Name(@N_String(@V(S^1)) ++ "__" ++ @String(count));
+	   count := count + 1;
+	   e := @Make(T_X_Funct_Call, < >, <@Name(name), vars>);
+	   assigns := <@Make(T_Assign, < >, <v, e>)> ++ assigns OD;
+         WP := @WP(@Make(T_Assignment, < >, assigns), R) ENDVAR
+
+    ELSE ERROR("@WP is not defined for type " ++ @Type_Name(@ST(S))) FI;
+
+  (WP) .;
+
+
+C:" Statement types on which @WP can be calculated: ";
+
+WP_Types_Set := @Make_Set(<T_Cond, T_D_If, T_Assignment, T_Var,
+                           T_Assert, T_Skip, T_Abort, T_Spec, T_Comment,
+                           T_Print, T_Prinflush, T_A_Proc_Call>);
+
+
+
+SKIP
+
+

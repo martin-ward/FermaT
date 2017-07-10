@@ -1,0 +1,35 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+TR_Move_Comments := @New_TR_Number();
+
+TRs_Name[TR_Move_Comments] := "Move Comments";
+TRs_Proc_Name[TR_Move_Comments] := "Move_Comments";
+TRs_Test[TR_Move_Comments]:=!XF funct(@Move_Comments_Test);
+TRs_Code[TR_Move_Comments]:=!XF funct(@Move_Comments_Code);
+
+TRs_Keywords[TR_Move_Comments] := < "Rewrite" >;
+
+TRs_Help[TR_Move_Comments] := "Move Comments will move any comments which appear at the end of actions within an action system and which follow a call. The comments will  be moved in front of the call. This will help tidy up the output of the Herma translator.";
+
+TRs_Prompt[TR_Move_Comments] := ""; 
+
+TRs_Data_Gen_Type[TR_Move_Comments] := "" 

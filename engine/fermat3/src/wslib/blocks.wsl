@@ -1,0 +1,639 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" Construct the Basic Block arrays for the given program. ";
+
+C:" A basic block is a sequence of consecutive statements in which ";
+C:" the flow of control enters at the beginning and leaves at the end ";
+C:" without halt or possibility of branching except at the end. ";
+C:" For simplicity, we ensure that there is no more than one ";
+C:" reference to any variable in the block. ";
+C:" (This should help us to track each reference back to the right ";
+C:" line in the assembler file) ";
+
+C:" We don't need to include the actual WSL code in the block ";
+C:" provided we give the position of the first statement, ";
+C:" plus the number of statements in the sequence which are in the block. ";
+
+C:" NB: This assumes that the procs contain no global variable references ";
+C:" Use TR_Globals_To_Pars on any WHERE clauses for correct results. ";
+
+C:" The output is a list of basic blocks in the form:
+
+Node: N posn:(...) len: L --> (succs list...)
+[node type]
+0: <control vars...>
+  v1 := phi(v11, v12, ...)
+  ...
+  w1 := <w11, w12, ...>
+
+Blocks are separated by blank lines.
+The file ends with the line:
+Entry node is: N
+";
+
+
+C:" For each block, the information we need for data flow analysis is: ";
+C:" (1) List of modified variables; ";
+C:" (2) For each modified variable, the list of vars its value depends on ";
+C:"     (for a KILL, this list will not include the var itself) ";
+C:" (3) For a block with >1 exits: list of control-dependent variables ";
+C:"     (ie variables whose initial value can affect which branch is taken) ";
+
+
+C:" The format of the Node: line is determined by @BB_Write_Node_Line  ";
+C:" The format of the summary information is determined by ";
+C:" @BB_Write_Item and @BB_Write_List ";
+C:" These may generate extra nodes for funct calls. ";
+
+						
+C:" Work backwards through the program, since we need to pass the target ";
+C:" node to branch to when the current statement terminates. ";
+
+C:" Node 0 is the end node (not generated) and we skip node 1 ";
+C:" so that it can be used for the start node: ";
+
+MW_PROC @Basic_Blocks(I, Filename) ==
+  VAR < Action_Call_To_Node := < >, Loop_Exits := < >, Proc_Data := HASH_TABLE,
+	Next_Node := 2, node := 0, exit_flag := @Make_Name("exit_flag") >:
+  C:" Action_Call_To_Node is a stack of hash tables mapping action calls ";
+  C:" to the block number of the start of the action. ";
+  C:" The Loop_Exits stack records the exit node of each enclosing Floop. ";
+  C:" Proc_Data lists the definition and position for each proc ";
+  C:" (after renaming if necessary). ";
+  C:" This is used to construct proc header, proc return and proc call nodes. ";
+  C:" Next_Node is the number of the next free node. ";
+
+  @Write_To(Filename);
+
+  @Edit;
+  @New_Program(I);
+
+  IF T_Where IN @Stat_Types(@I)
+    THEN C:" Rename the procs and proc calls which clash, if necessary: ";
+	 VAR < Defn_Count := @Count_Proc_Defns(@I),
+	       Orig_Name := HASH_TABLE, doit := 0 >:
+	 FOR name IN @Hash_Keys(Defn_Count) DO
+	   IF Defn_Count.(name) > 1 THEN doit := 1 FI OD;
+	 IF doit = 1
+	   THEN @Rename_Procs(Defn_Count VAR Orig_Name) FI ENDVAR;
+
+	 C:" If there are any proc definitions, then generate the WHERE Header ";
+	 C:" and put all the (now non-clashing) definitions ";
+	 C:" plus the body at the top level. ";
+
+	 FOREACH Statement DO
+	   IF @ST(@I) = T_Where
+	     THEN @Down_Last; @Down; C:" to first defn ";
+		  DO IF @ST(@I) = T_Proc
+		       THEN Proc_Data.(@V(@I^1)) := <@I, @Posn> FI;
+		     IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+
+	 VAR < heads := < >, defn := < >, posn := < > >:
+	 C:" Process the body (ignoring all definitions): ";
+	 heads := <@BB_Statements(@Program, < >, 0)>;
+	 FOR name IN @Hash_Keys(Proc_Data) DO
+	   defn := Proc_Data.(name)[1];
+	   posn := Proc_Data.(name)[2];
+	   heads := <@BB_Block(<defn>, posn, 1, 0)> ++ heads OD;
+	 C:" Generate the PROC Header node and link to heads: ";
+	 node := Next_Node;
+	 Next_Node := Next_Node + 1;
+	 @BB_Write_Node_Line(node, < >, 1, heads);
+	 @WL("WHERE Header"); @WL("") ENDVAR
+
+    ELSE node := @BB_Statements(@Program, < >, 0) FI;
+
+  @WL("Entry node is: " ++ @String(node));
+  @Undo_Edit;
+  @End_Write ENDVAR .;
+
+
+C:" List of statement types which cause a change in the control flow and ";
+C:" which will be the last statement in the current block ";
+
+BB_End_Block_Types := <T_Cond, T_D_If, T_Exit, T_Call, T_Abort, T_Proc_Call>;
+
+C:" List of statements which start a new basic block when they are encountered: ";
+
+BB_New_Block_Types := <T_Floop, T_While, T_For, T_D_Do, T_A_S, T_Var, T_Where, T_Proc_Call>;
+
+
+MW_FUNCT @BB_Statements(I, posn, dest) == : SKIP;
+  (@BB_List(REVERSE(@Cs(I)), @Size(I), posn, dest)) .;
+
+
+C:" L is a reversed list of statements, posn ++ <posn_n> is ";
+C:" the position of HEAD(L) in the original program ";
+
+MW_FUNCT @BB_List(L, posn_n, posn, dest) ==
+  VAR < block := < >, len := 1, vars := < >, addr := 0 >:
+  C:" See how much of L can be added to the block: ";
+  DO block := <HEAD(L)> ++ block; L := TAIL(L);
+     IF EMPTY?(L) OR @ST(HEAD(block)) IN BB_New_Block_Types
+       THEN EXIT(1) FI;
+     IF @ST(HEAD(L)) IN BB_End_Block_Types OR @ST(HEAD(L)) IN BB_New_Block_Types
+       THEN EXIT(1) FI;
+     C:" Check that there is no more than one reference to any variable: ";
+     vars := vars \/ @Variables(HEAD(block));
+     IF NOT EMPTY?(vars /\ @Variables(HEAD(L)))
+       THEN EXIT(1) FI;
+     C:" If the (just added) statement assigned from a NOTUSED_ variable ";
+     C:" then the original assembler was a BAL call which might have been ";
+     C:" folded into the sequence. So, start a new node ";
+     IF @ST(HEAD(block)) = T_Assignment AND @ST(HEAD(block)^1^2) = T_Variable
+          AND @Starts_With?(@N_String(@V(HEAD(block)^1^2)), "NOTUSED_")
+       THEN EXIT(1) FI;
+     C:" Add next statement to the block: ";
+     posn_n := posn_n - 1;
+     len := len + 1 OD;
+  C:" Process this block ";
+  dest := @BB_Block(block, posn ++ <posn_n>, len, dest);
+  C:" Process the rest if the list: ";
+  IF NOT EMPTY?(L)
+    THEN dest := @BB_List(L, posn_n - 1, posn, dest) FI;
+  (dest) .;
+
+
+C:" Return a singleton list containing the first FermaT comment found ";
+C:" or the empty list if no FermaT comment was found: ";
+
+MW_FUNCT @BB_Fermat_Comment(L) ==
+  VAR < R := < > >:
+  WHILE NOT EMPTY?(L) DO
+    IF @ST(HEAD(L)) = T_Comment AND @Starts_With?(@V(HEAD(L)), "<FermaT>")
+      THEN R := <HEAD(L)>;
+           L := < >
+      ELSE L := TAIL(L) FI OD;
+  (R) .;
+
+
+
+C:" block is either a singleton of type BB_New_Block_Types ";
+C:" or a list of simple statements, possibly ending in a BB_End_Block_Types ";
+
+MW_FUNCT @BB_Block(block, posn, len, dest) ==
+  VAR < ST := @ST(LAST(block)), node := dest >:
+  IF ST = T_Cond OR ST = T_D_If
+    THEN node := @BB_Cond(block, posn, len, dest)
+  ELSIF ST = T_Floop
+    THEN node := @BB_Floop(block, posn, len, dest)
+  ELSIF ST = T_Exit
+    THEN node := @BB_Exit(block, posn, len, dest)
+  ELSIF ST = T_While
+    THEN node := @BB_While(block, posn, len, dest)
+  ELSIF ST = T_D_Do
+    THEN node := @BB_D_Do(block, posn, len, dest)
+  ELSIF ST = T_A_S
+    THEN node := @BB_A_S(block, posn, len, dest)
+  ELSIF ST = T_Call
+    THEN node := @BB_Call(block, posn, len, dest)
+  ELSIF ST = T_Var
+    THEN node := @BB_Var(block, posn, len, dest)
+  ELSIF ST = T_For
+    THEN node := @BB_For(block, posn, len, dest)
+  ELSIF ST = T_Where
+    THEN node := @BB_Where(block, posn, len, dest)
+  ELSIF ST = T_Abort
+    THEN node := @BB_Abort(block, posn, len, dest)
+  ELSIF ST = T_Skip AND len = 1
+    THEN C:" Don't create a node "
+  ELSIF ST = T_Proc_Call
+    THEN node := @BB_Proc_Call(block, posn, len, dest)
+  ELSIF ST = T_Proc
+    THEN node := @BB_Proc(block, posn, len, dest)
+  ELSIF ST = T_Funct
+    THEN ERROR("@BB_Funct not yet implemented")
+  ELSIF ST = T_BFunct
+    THEN ERROR("@BB_BFunct not yet implemented")
+
+    ELSE node := @BB_Node(-1, block, posn, len, <dest>) FI;
+  (node) .;
+
+
+
+MW_FUNCT @BB_Cond(block, posn, len, dest) ==
+  VAR < targets := < >, last := LAST(block),
+	last_posn := posn, guarded := < >, n := 1 >:
+  IF len > 1 THEN last_posn := BUTLAST(posn) ++ <LAST(posn) + len - 1> FI;
+  C:" Process the arms of the cond to get the list of targets ";
+  C:" for the node which does the tests: ";
+  FOR guarded IN @Cs(last) DO
+    targets := <@BB_Statements(guarded^2, last_posn ++ <n, 2>, dest)> ++ targets;
+    n := n + 1 OD;
+  (@BB_Node(-1, block, posn, len, REVERSE(targets))) .;
+
+
+C:" Create a node containing the given data, return the node number. ";
+C:" If the given node number is negative, then allocate a new node. ";
+
+MW_FUNCT @BB_Node(node, block, posn, len, targets) == :
+  IF node < 0
+    THEN node := Next_Node;
+	 Next_Node := Next_Node + 1 FI;
+
+  IF NOT EMPTY?(block) AND exit_flag IN @Assigned(LAST(block))
+    THEN VAR < last := LAST(block) >:
+         IF @ST(last) = T_Assignment AND @ST(last^1^1) = T_Var_Lvalue
+	      AND @V(last^1^1) = exit_flag AND @ST(last^1^2) = T_Number
+	      AND @V(last^1^2) = 1
+           THEN C:" This block sets exit flag, so set the target to the end node ";
+	        targets := <0> FI ENDVAR FI;
+
+  @BB_Write_Node_Line(node, posn, len, targets);
+
+  (@BB_Write_Block(node, block)) .;
+
+
+MW_FUNCT @BB_Exit(block, posn, len, dest) ==
+  VAR < node := IF @V(LAST(block)) > LENGTH(Loop_Exits)
+		  THEN 0
+		  ELSE Loop_Exits[@V(LAST(block))] FI >:
+  IF LENGTH(block) > 1
+    THEN C:" Create a node for the rest of the list which ";
+	 C:" then passes control to `node' ";
+	 node := @BB_Node(-1, block, posn, len, <node>) FI;
+  (node) .;
+
+
+MW_FUNCT @BB_Call(block, posn, len, dest) ==
+  VAR < node := 0, name := @V(LAST(block)) >:
+  node := @BB_Get_Node(name, Action_Call_To_Node);
+  IF EMPTY?(node)
+    THEN node := 0
+  ELSIF LENGTH(block) > 1
+    THEN node := @BB_Node(-1, block, posn, len, <node>) FI;
+  (node) .;
+
+
+C:" Look up a name in a stack of name -> node tables and return the node: ";
+
+MW_FUNCT @BB_Get_Node(name, L) ==
+  VAR < node := < > >:
+  WHILE EMPTY?(node) AND NOT EMPTY?(L) DO
+    node := HEAD(L).(name);
+    L := TAIL(L) OD;
+  (node) .;
+
+
+C:" Throw away this block, but return dest to avoid unreachable nodes: ";
+
+MW_FUNCT @BB_Abort(block, posn, len, dest) == : SKIP; (dest) .;
+
+
+
+C:" For the following @BB_XXX calls, block must contain a single statement. ";
+
+
+
+MW_FUNCT @BB_Floop(block, posn, len, dest) ==
+  VAR < head := Next_Node, body := 0 >:
+  Next_Node := Next_Node + 1;
+  C:" An EXIT(1) within the loop will branch to dest ";
+  Loop_Exits := <dest> ++ Loop_Exits;
+  C:" head will be the loop header node, and is also ";
+  C:" the exit node for the body. We will create the head node ";
+  C:" once we have a body to link it to: ";
+  body := @BB_Statements(HEAD(block)^1, posn ++ <1>, head);
+  Loop_Exits := TAIL(Loop_Exits);
+  (@BB_Node(head, block, posn, len, <body>)) .;
+
+
+MW_FUNCT @BB_While(block, posn, len, dest) ==
+  VAR < head := Next_Node, body := 0 >:
+  Next_Node := Next_Node + 1;
+  C:" head will be the loop header node, and is also ";
+  C:" the exit node for the body. We will create the head node ";
+  C:" once we have a body to link it to: ";
+  body := @BB_Statements(HEAD(block)^2, posn ++ <2>, head);
+  (@BB_Node(head, <HEAD(block)>, posn, len, <body, dest>)) .;
+
+
+MW_FUNCT @BB_D_Do(block, posn, len, dest) ==
+  VAR < head := Next_Node, body := 0,
+	targets := < >, last := LAST(block),
+	last_posn := posn, guarded := < >, n := 1 >:
+  Next_Node := Next_Node + 1;
+  C:" head will be the loop header node, and is also ";
+  C:" the exit node for the various body nodes. ";
+  C:" We will create the head node once we have a body to link it to. ";
+  C:" Process the arms of the D_DO to get the list of targets ";
+  C:" for the node which does the tests: ";
+  FOR guarded IN @Cs(last) DO
+    targets := <@BB_Statements(guarded^2, last_posn ++ <n, 2>, head)> ++ targets;
+    n := n + 1 OD;
+  (@BB_Node(head, block, posn, len, REVERSE(<dest> ++ targets))) .;
+
+
+C:" To process a (regular) A_S, set up nodes for each action, ";
+C:" with `dest' as the node for CALL Z. ";
+C:" Then process each action body in turn to get the starting node for each action. ";
+C:" Create the action node as a simple branch to the start node. ";
+C:" NOTE: we must create a header node for each action: consider FOO == CALL FOO. ";
+C:" Return the node for the starting action. ";
+
+MW_FUNCT @BB_A_S(block, posn, len, dest) ==
+  VAR < node := 0, start := @V(HEAD(block)^1), tab := HASH_TABLE,
+	n := 1, head := 0 >:
+  C:" Set up the entry nodes: ";
+  FOR action IN @Cs(HEAD(block)^2) DO
+    node := Next_Node; Next_Node := Next_Node + 1;
+    tab.(@V(action^1)) := node OD;
+  C:" CALL Z branches to the dest: ";
+  tab.(@Make_Name("Z")) := dest;
+  Action_Call_To_Node := <tab> ++ Action_Call_To_Node;
+  C:" Process the action bodies: ";
+  FOR action IN @Cs(HEAD(block)^2) DO
+    C:" For a regular action the dest node here should not be used: ";
+    node := @BB_Statements(action^2, posn ++ <2, n, 2>, dest);
+    head := tab.(@V(action^1));
+    head := @BB_Node(head, @BB_Name("ACTION", action^1), posn ++ <2, n>, 1, <node>);
+    n := n + 1 OD;
+  Action_Call_To_Node := TAIL(Action_Call_To_Node);
+  C:" Finally, return the start node header as the entry point: ";
+  (tab.(start)) .;
+
+
+
+C:" @BB_Where only needs to process the body: the defns have already been done: ";
+
+MW_FUNCT @BB_Where(block, posn, len, dest) == : SKIP;
+  (@BB_Statements(HEAD(block)^1, posn ++ <1>, dest)) .;
+
+
+C:" Save	stacks the values of local variables ";
+C:" VAR Init	initalises the new values of local variables ";
+C:" body goes here... ";
+C:" Restore	restores the old values of local variables from the stacks ";
+
+MW_FUNCT @BB_Var(block, posn, len, dest) ==
+  VAR < node := Next_Node, assigns := @Cs(HEAD(block)^1), stack := < >,
+	saves := < >, restores := < >, body := 0 >:
+  Next_Node := Next_Node + 1;
+  @BB_Write_Node_Line(node, posn, len, <dest>);
+  @WL("Restore");
+  FOR assign IN assigns DO
+    stack := @Make(T_Variable, @Make_Name(@N_String(@V(assign^1)) ++ "__save__"), < >);
+    restores := <@Make(T_Assign, < >, <assign^1, stack>)> ++ restores OD;
+  node := @BB_Write_Item(node, @Make(T_Assignment, < >, REVERSE(restores)));
+  body := @BB_Statements(HEAD(block)^2, posn ++ <2>, node);
+  node := Next_Node;
+  Next_Node := Next_Node + 1;
+  @BB_Write_Node_Line(node, posn ++ <1>, len, <body>);
+  @WL("VAR Init");
+  body := @BB_Write_Item(node, @Make(T_Assignment, < >, assigns));
+  node := Next_Node;
+  Next_Node := Next_Node + 1;
+  @BB_Write_Node_Line(node, posn ++ <1>, len, <body>);
+  @WL("Save");
+  FOR assign IN assigns DO
+    stack := @Make(T_Var_Lvalue, @Make_Name(@N_String(@V(assign^1)) ++ "__save__"), < >);
+    saves := <@Make(T_Assign, < >, <stack, @Lvalue_To_Expn(assign^1)>)> ++ saves OD;
+  (@BB_Write_Item(node, @Make(T_Assignment, < >, REVERSE(saves)))) .;
+
+
+C:" Save	stacks the value of the control variable ";
+C:" FOR Init	initalises the control variable ";
+C:" FOR Header	tests the control variable and exits the loop if necessary ";
+C:" body goes here... ";
+C:" FOR Footer	increments the control variable and branches to the header ";
+C:" Restore	restores the control variable ";
+
+MW_FUNCT @BB_For(block, posn, len, dest) ==
+  VAR < exit := Next_Node, var := @Make(T_Var_Lvalue, @V(HEAD(block)^1), < >),
+	start := HEAD(block)^2, end := HEAD(block)^3, inc := HEAD(block)^4,
+	stack := < >, init := 0, head := 0, body := 0, footer := 0, node := 0 >:
+  Next_Node := Next_Node + 1;
+  @BB_Write_Node_Line(exit, posn, len, <dest>);
+  @WL("Restore");
+  stack := @Make(T_Variable, @Make_Name(@N_String(@V(var)) ++ "__save__"), < >);
+  exit := @BB_Write_Item(exit, FILL Statement ~?var := ~?stack ENDFILL);
+  head := Next_Node;
+  Next_Node := Next_Node + 1;
+  C:" We will create the header node when we have a body to link it to ";
+  footer := Next_Node;
+  Next_Node := Next_Node + 1;
+  @BB_Write_Node_Line(footer, posn, len, <head>);
+  @WL("FOR Footer");
+  footer := @BB_Write_Item(footer, FILL Statement ~?var := ~?var + ~?inc ENDFILL);
+  body := @BB_Statements(HEAD(block)^5, posn ++ <5>, footer);
+  @BB_Write_Node_Line(head, posn, len, <body, exit>);
+  @WL("FOR Header");
+  head := @BB_Write_Item(head, FILL Condition ~?var <= ~?end ENDFILL);
+  init := Next_Node;
+  Next_Node := Next_Node + 1;
+  @BB_Write_Node_Line(init, posn, len, <head>);
+  @WL("FOR Init");
+  init := @BB_Write_Item(init, FILL Statement ~?var := ~?start ENDFILL);
+  node := Next_Node;
+  Next_Node := Next_Node + 1;
+  @BB_Write_Node_Line(node, posn, len, <init>);
+  @WL("Save");
+  (@BB_Write_Item(node, FILL Statement ~?stack := ~?var ENDFILL)) .;
+
+
+C:" Proc, Funct and BFunct definitions. ";
+C:" Do we need to record the parameters in the header node?? ";
+C:" (The PROC CALL 1 nodes will include a list of formal parameters) ";
+C:" We need a return node which references the var parameters ";
+C:" so that phi functions will be inserted for these variables: ";
+
+MW_FUNCT @BB_Proc(block, posn, len, dest) ==
+  VAR < body := 0,
+	return := @BB_Node(-1, <HEAD(block)^3, HEAD(block)>, posn ++ <3>, 1, <dest>) >:
+  body := @BB_Statements(HEAD(block)^4, posn ++ <4>, return);
+  (@BB_Node(-1, block, posn, len, <body>)) .;
+
+
+
+C:" Return a singleton item list consisting of the name plus a prefix: ";
+
+MW_FUNCT @BB_Name(prefix, I) == : SKIP;
+  (<@Make(T_Name, @Make_Name(prefix ++ " " ++ @N_String(@V(I))), < >)>) .;
+
+
+
+C:" The Node: line for this block has already been written. ";
+C:" block is either a singleton of type BB_New_Block_Types ";
+C:" (in which case we generate a special `header' node) ";
+C:" or a list of simple statements, possibly ending in a BB_End_Block_Types ";
+
+C:" If the block ends in a T_Cond or a T_D_If then the various arms ";
+C:" of the conditional are the sucessor blocks: ie we only generate ";
+C:" data for the conditions. ";
+
+MW_FUNCT @BB_Write_Block(node, block) ==
+  VAR < ST1 := @ST(HEAD(block)), ST2 := @ST(LAST(block)) >:
+
+  IF ST1 = T_Floop
+    THEN @WL("FLOOP Header"); @WL("")
+
+  ELSIF ST1 = T_While
+    THEN @WL("WHILE Header");
+	 node := @BB_Write_Item(node, HEAD(block)^1)
+
+  ELSIF ST1 = T_Where
+    THEN @WL("WHERE Header"); @WL("")
+
+  ELSIF ST1 = T_Name
+    THEN C:" The name has been prefixed with the type, eg ACTION ";
+	 @WL(@N_String(@V(HEAD(block)))); @WL("")
+
+  ELSIF ST1 = T_Lvalues
+    THEN C:" The block for a return node is the VAR parameters plus the whole proc: ";
+	 @WL("PROC Return " ++ @N_String(@V(block[2]^1)));
+	 node := @BB_Write_Item(node, HEAD(block))
+
+  ELSIF ST1 = T_Proc_Call
+    THEN C:" Used for proc calls where the body cannot be found: ";
+	 @WL("PROC CALL " ++ @N_String(@V(HEAD(block)^1)));
+	 node := @BB_Write_Item(node, HEAD(block))
+
+  ELSIF ST1 = T_Proc
+    THEN C:" Include an assignment to each formal parameter, ";
+	 C:" these are used to create accurate proc summaries ";
+	 C:" via dataflow analysis through the proc body: ";
+	 @WL("PROC Header " ++ @N_String(@V(HEAD(block)^1)));
+	 node := @BB_Write_Item(node, @BB_Make_Assign(@Cs(HEAD(block)^2)
+							++ @Cs(HEAD(block)^3)))
+
+  ELSIF ST2 = T_Cond OR ST2 = T_D_If OR ST1 = T_D_Do
+    THEN @WL("IF");
+	 VAR < L := < > >:
+	 FOR guard IN @Cs(LAST(block)) DO
+	   L := <guard^1> ++ L OD;
+	 node := @BB_Write_List(node, BUTLAST(block) ++ REVERSE(L)) ENDVAR
+
+  ELSIF @GT(HEAD(block)) = T_Statement AND @GT(LAST(block)) = T_Statement
+    THEN node := @BB_Write_List(node, block)
+
+    ELSE PRINT("Type1 = ", @Type_Name(ST1), " Type2 = ", @Type_Name(ST2));
+	 ERROR("Unknown types in this block!") FI;
+
+  (node) .;
+
+
+
+MW_FUNCT @BB_Write_List(node, L) == :
+  FOR I IN L DO
+    @BB_Write_Comments(I) OD;
+  @Write_Summ2(@Summ2_List(L));
+  @WL("");
+  (node) .;
+
+
+MW_FUNCT @BB_Write_Item(node, I) == :
+  @BB_Write_Comments(I);
+  @Write_Summ2(@Summ2(I));
+  @WL("");
+  (node) .;
+
+
+C:" Print out the <FermaT> comments in the given item: ";
+
+MW_PROC @BB_Write_Comments(I) ==
+  IF @ST(I) = T_Comment AND @Starts_With?(@V(I), "<FermaT>")
+    THEN @WL(SUBSTR(@V(I), 9)) FI .;
+
+
+C:" Create an assignment which assigns to the given lvalues: ";
+
+MW_FUNCT @BB_Make_Assign(L) ==
+  VAR < assigns := < >, val := @Make(T_Number, 0, < >), done := HASH_TABLE >:
+  FOR var IN L DO
+    IF EMPTY?(done.(var))
+      THEN done.(var) := 1;
+	   assigns := <@Make(T_Assign, < >, <var, val>)> ++ assigns FI OD;
+  (@Make(T_Assignment, < >, REVERSE(assigns))) .;
+
+
+
+MW_PROC @BB_Write_Node_Line(node, posn, len, targets) ==
+  @WL("Node: " ++ @String(node) ++ " posn:" ++ @Struct_To_String(posn)
+	++ " len: " ++ @String(len) ++ " --> " ++ @Struct_To_String(targets)) .;
+
+
+
+
+C:" For a proc call we need to generate three nodes: ";
+C:" (1) Copy actual pars to (renamed) formal pars ";
+C:" (2) The summary of the body with all variables renamed ";
+C:" (3) Copy (renamed) formal VAR pars to actual VAR pars. ";
+
+C:" As usual, the nodes are generated in reverse order. ";
+
+MW_FUNCT @BB_Proc_Call(block, posn, len, dest) ==
+  VAR < name := @V(HEAD(block)^1), 
+	vals :=  @Cs(HEAD(block)^2), vars := @Cs(HEAD(block)^3),
+	node := Next_Node, data := < >,
+	formal_vals := < >, formal_vars := < >, result_vars := < >,
+	prefix := @N_String(@V(HEAD(block)^1)) ++ "__",
+	formal_pars := < >, actual_pars := < > >:
+  data := Proc_Data.(name);
+  IF EMPTY?(data)
+    THEN node := @BB_Node(-1, block, posn, len, <dest>)
+    ELSE formal_vals := MAP("@Struct_Elts", @Cs(data[1]^2));
+	 formal_vars := MAP("@Struct_Elts", @Cs(data[1]^3));
+
+	 Next_Node := Next_Node + 1;
+	 @BB_Write_Node_Line(node, posn, len, <dest>);
+	 @WL("PROC CALL 3 " ++ @N_String(name));
+	 C:" Calculate the assignment statement which assigns the new values ";
+	 C:" to the actual VAR pars and print its summary: ";
+	 result_vars := MAP("@Elt_To_Expn", @S2_Prefix_List(formal_vars, prefix));
+	 dest := @BB_Write_Assign(node, vars, result_vars);
+
+	 node := Next_Node; Next_Node := Next_Node + 1;
+	 @BB_Write_Node_Line(node, posn, len, <dest>);
+	 @WL("PROC CALL 2 " ++ @N_String(name));
+	 C:" This is a placeholder for the summary of the proc body ";
+	 C:" (with the variables prefixed by the proc name): ";
+	 dest := @BB_Write_Item(node, @Skip);
+
+	 node := Next_Node; Next_Node := Next_Node + 1;
+	 @BB_Write_Node_Line(node, posn, len, <dest>);
+	 @WL("PROC CALL 1 " ++ @N_String(name));
+	 C:" Calculate the assignment statement which assigns all the actual pars ";
+	 C:" to the formal pars and print its summary: ";
+	 formal_pars := MAP("@Elt_To_Lvalue",
+			    @S2_Prefix_List(formal_vals ++ formal_vars, prefix));
+	 actual_pars := vals ++ MAP("@Lvalue_To_Expn", vars);
+	 node := @BB_Write_Assign(node, formal_pars, actual_pars) FI;
+  (node) .;
+
+
+C:" Make an assignment and print its summary: ";
+
+MW_FUNCT @BB_Write_Assign(node, vars, vals) ==
+  VAR < assigns := < >, pair := < >, done := HASH_TABLE >:
+  WHILE NOT EMPTY?(vars) AND NOT EMPTY?(vals) DO
+    pair := <HEAD(vars), HEAD(vals)>;
+    IF EMPTY?(done.(pair))
+      THEN assigns := <@Make(T_Assign, < >, pair)> ++ assigns;
+	   done.(pair) := 1 FI;
+    vars := TAIL(vars);
+    vals := TAIL(vals) OD;
+  (@BB_Write_Item(node, @Make(T_Assignment, < >, assigns))) .;
+
+
+
+C:" ----------------------------------------------------------------------- "
+

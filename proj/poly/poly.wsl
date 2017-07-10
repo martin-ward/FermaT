@@ -1,0 +1,48 @@
+
+MW_PROC @Conc_Add_Poly(P, Q) ==
+  VAR < c := 0, R1 := 0, S := 0 >:
+  DO DO IF D[P] = NIL
+          THEN WHILE D[Q] <> NIL DO Q := D[Q] OD;
+               C[Q] := C[Q] + C[P]
+          ELSE DO IF D[Q] = NIL
+                    THEN c := C[Q]; @Conc_Copy_Poly(P, Q);
+                         WHILE D[Q] <> NIL DO Q := D[Q] OD;
+                         C[Q] := C[Q] + c; EXIT(1)
+                  ELSIF @String_Less?(C[P], C[Q])
+                    THEN Q := D[Q]
+                    ELSE IF @String_Less?(C[Q], C[P])
+		           THEN C:" Insert a node below Q and convert to a const poly ";
+                                @Pop_Avail(VAR R1); S := D[Q];
+				DO U[S] := R1; S := R[S];
+				   IF E[S] = 0 THEN EXIT(1) FI OD;
+				U[R1] := Q; D[R1] := S; L[R1] := R1; R[R1] := R1;
+				C[R1] := C[Q]; E[R1] := 0; C[Q] := C[P]; D[Q] := R1 FI;
+		         P := D[P]; Q := D[Q]; EXIT(2) FI OD FI;
+        DO IF U[P] = NIL THEN EXIT(3) FI;
+           WHILE C[U[Q]] <> C[U[P]] DO Q := U[Q] OD;
+           C:" Check for a zero term with non-zero exponent ";
+	   IF E[Q] <> 0 AND D[Q] = NIL AND C[Q] = 0
+	     THEN R1 := Q; S := R[Q];
+	          Q := L[Q]; L[S] := Q; R[Q] := S;
+		  Avail := <R1> ++ Avail FI;
+           DO P := R[P];
+	      IF E[P] = 0
+	        THEN P := U[P];
+		     C:" Check for a constant poly ";
+		     IF R[Q] = Q
+		       THEN R1 := Q; Q := U[Q]; D[Q] := D[R1]; C[Q] := C[R1];
+		            Avail := <R1> ++ Avail;
+			    S := D[Q];
+			    IF S <> NIL
+			      THEN DO U[S] := Q; S := R[S];
+			              IF E[S] = 0 THEN EXIT(1) FI OD FI FI;
+                     EXIT(1)
+                ELSE Q := R[Q];
+		     WHILE E[Q] > 0 AND E[Q] < E[P] DO Q := R[Q] OD;
+                     IF E[Q] = E[P] THEN EXIT(2) FI;
+                     C:" Insert a copy of P to the left of Q ";
+		     @Pop_Avail(VAR R1);
+		     L[R1] := L[Q]; R[R1] := Q; U[R1] := U[Q]; E[R1] := E[P];
+		     R[L[Q]] := R1; L[Q] := R1; Q := R1;
+		     @Conc_Copy_Poly(P, Q) FI OD OD OD OD ENDVAR .
+

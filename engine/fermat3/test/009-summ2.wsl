@@ -1,0 +1,200 @@
+
+VAR < file := "009-summ2: ", fail := < >, n := "", a := < >, b := < > >:
+
+PRINT("Testing ...");
+
+C:" New summariser @Summ2 ";
+
+
+n := "001";
+a := @Summ2(FILL Statements
+
+IF    b1=0 THEN x1 := 1; EXIT(1)
+ELSIF b2=0 THEN x2 := 2; EXIT(2)
+ELSIF b3=0 THEN x3 := 2; EXIT(3)
+	   ELSE x4 := 0; EXIT(4) FI
+
+ENDFILL);
+
+b := FILL Statements
+
+IF    !XC test1?(b1)         THEN x1 := !XF funct1(); EXIT(1)
+ELSIF !XC test2?(b1, b2)     THEN x2 := !XF funct2(); EXIT(2)
+ELSIF !XC test3?(b1, b2, b3) THEN x3 := !XF funct3(); EXIT(3)
+			     ELSE x4 := !XF funct4(); EXIT(4) FI
+
+ENDFILL;
+@New_Program(@Summ2_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "002";
+a := @Summ2(FILL Statements
+
+IF    z = 1 THEN a := 0; EXIT(2)
+ELSIF z = 2 THEN b := 0; EXIT(1)
+	    ELSE c := 0 FI
+
+ENDFILL);
+
+b := FILL Statements
+
+IF    !XC test1?(z) THEN c := !XF funct1()
+ELSIF !XC test2?(z) THEN b := !XF funct2(); EXIT(1)
+		    ELSE a := !XF funct3(); EXIT(2) FI
+
+ENDFILL;
+@New_Program(@Summ2_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "003";
+a := @Summ2(FILL Statements
+
+IF    z = 1 THEN a := 0
+ELSIF z = 2 THEN b := 0
+	    ELSE c := 0 FI
+
+ENDFILL);
+
+b := FILL Statements
+
+IF !XC test1?(z)
+  THEN < a := !XF funct1(a),
+	 b := !XF funct2(b),
+	 c := !XF funct3(c) > FI
+
+ENDFILL;
+@New_Program(@Summ2_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "004";
+a := @Summ2(FILL Statements
+
+IF b1=0 THEN x1 := 1; EXIT(1)
+ELSIF b2=0 THEN x2 := 2; EXIT(2)
+ELSIF b3=0 THEN x3 := 2; EXIT(1)
+ELSE x4 := 0; EXIT(2) FI
+
+ENDFILL);
+
+b := FILL Statements
+
+IF !XC test1?(b1, b2, b3)
+  THEN < x1 := !XF funct1(x1), x3 := !XF funct2(x3) >;
+       EXIT(1)
+  ELSE < x2 := !XF funct3(x2), x4 := !XF funct4(x4) >;
+       EXIT(2) FI
+
+ENDFILL;
+@New_Program(@Summ2_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "005";
+a := @Summ2(FILL Statements
+
+< x := y, y := x >
+
+ENDFILL);
+
+b := FILL Statements
+
+< y := !XF funct1(x), x := !XF funct2(y) >
+
+ENDFILL;
+@New_Program(@Summ2_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "006";
+a := @Summ2(FILL Statements
+
+SKIP
+
+ENDFILL);
+
+b := FILL Statements
+
+SKIP
+
+ENDFILL;
+@New_Program(@Summ2_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+C:" ---------------------------------------------------------------- ";
+
+n := "007";
+a := @Summarise(FILL Statements
+
+IF r11 <> AUTH_SECT1
+  THEN EXIT(1) FI;
+IF ORDER = "hex 0xFF"
+  THEN exit_flag_E10150 := 1; EXIT(1)
+  ELSE exit_flag_E10150 := 1; EXIT(1) FI
+
+ENDFILL);
+
+b := FILL Statements
+
+!P update(r11, AUTH_SECT1, ORDER
+  VAR AUTH_SECT1, ORDER, exit_flag_E10150);
+EXIT(1)
+
+ENDFILL;
+
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "008";
+a := @Summarise(FILL Statements
+
+IF r11 <> AUTH_SECT1
+  THEN EXIT(1) FI;
+IF ORDER = "hex 0xFF"
+  THEN exit_flag_E10150 := 1
+  ELSE exit_flag_E10150 := 1 FI
+
+ENDFILL);
+
+b := FILL Statements
+
+IF !XC test1(r11, AUTH_SECT1, ORDER)
+  THEN !P update(r11, AUTH_SECT1, ORDER
+         VAR ORDER, exit_flag_E10150);
+       exit_flag_E10150 := 1;
+       AUTH_SECT1 := r11
+  ELSE EXIT(1) FI
+
+ENDFILL;
+
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+

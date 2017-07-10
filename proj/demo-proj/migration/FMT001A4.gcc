@@ -1,0 +1,12 @@
+FMT001A4.c: In function ‘DISPATCH_FMT001A4_a’:
+FMT001A4.c:109: error: duplicate case value
+FMT001A4.c:101: error: previously used here
+FMT001A4.c:121: error: duplicate case value
+FMT001A4.c:117: error: previously used here
+FMT001A4.c:129: error: duplicate case value
+FMT001A4.c:125: error: previously used here
+FMT001A4.c:449:40: error: macro "CALL_VIA_PTR" requires 2 arguments, but only 1 given
+FMT001A4.c: In function ‘a_00019c_FMT001A4_p’:
+FMT001A4.c:449: error: ‘CALL_VIA_PTR’ undeclared (first use in this function)
+FMT001A4.c:449: error: (Each undeclared identifier is reported only once
+FMT001A4.c:449: error: for each function it appears in.)

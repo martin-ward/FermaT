@@ -1,0 +1,141 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Join_All_Cases_Test () ==
+  C:" Check for two guards with the same statement sequence within Max_Distance ";
+  C:" of each other (the Max_Distance limit prevents the test from being O(n^2)) ";
+  IF @ST(@I) <> T_Cond
+    THEN @Fail("Not an IF statement")
+  ELSIF @Size(@I) = 2
+    THEN IF @Equal_X_Comments?(@I^1^2, @I^2^2)
+           THEN @Pass
+           ELSE @Fail("The binary IF has different statements in the two arms") FI
+    ELSE VAR < Max_Distance := 10, guard := < >, seen := < >,
+	       S := < >, tmp := < > >:
+	 FOR guard IN @Cs(@I) DO
+	   S := guard^2;
+	   tmp := seen;
+	   WHILE NOT EMPTY?(tmp) AND NOT @Passed? DO
+	     IF @Equal?(S, HEAD(tmp))
+	       THEN @Pass
+	       ELSE tmp := TAIL(tmp) FI OD;
+	   IF NOT @Passed?
+	     THEN C:" Add S to seen and trim to Max_Distance elements ";
+		  seen := <S> ++ seen;
+		  IF LENGTH(seen) > Max_Distance THEN seen := BUTLAST(seen) FI FI OD;
+	 IF NOT @Passed?
+	   THEN @Fail("The IF statement does not have a repeated guard") FI ENDVAR FI .;
+
+
+C:" Compare equality excluding comments: ";
+C:" (This one isn't used since it allows too much restructuring ";
+C:" and therefore prevents some CASE statements from being recovered ";
+C:" from the WSL). ";
+
+MW_BFUNCT @Equal_X_Comments?(I1, I2) ==
+  VAR < OK := 1 >:
+  IF @ST(I1) <> @ST(I2)
+    THEN OK := 0
+  ELSIF @Has_Value_Type?(@ST(I1))
+    THEN IF @ST(I1) <> T_Comment AND @V(I1) <> @V(I2) THEN OK := 0 FI
+    ELSE VAR < C1 := @Cs(I1), C2 := @Cs(I2) >:
+	 WHILE OK = 1 AND NOT EMPTY?(C1) AND NOT EMPTY?(C2) DO
+	   IF @ST(HEAD(C1)) = T_Comment
+	     THEN C1 := TAIL(C1)
+	   ELSIF @ST(HEAD(C2)) = T_Comment
+	     THEN C2 := TAIL(C2)
+	   ELSIF NOT @Equal_X_Comments?(HEAD(C1), HEAD(C2))
+	     THEN OK := 0
+	     ELSE C1 := TAIL(C1); C2 := TAIL(C2) FI OD;
+         WHILE NOT EMPTY?(C1) AND @ST(HEAD(C1)) = T_Comment
+	   DO C1 := TAIL(C1) OD;
+         WHILE NOT EMPTY?(C2) AND @ST(HEAD(C2)) = T_Comment
+	   DO C2 := TAIL(C2) OD;
+	 IF NOT EMPTY?(C1) OR NOT EMPTY?(C2) THEN OK := 0 FI ENDVAR FI;
+  (OK = 1) .;
+
+
+
+C:" Merge all copies of the first repeated statement encountered: ";
+
+MW_PROC @Join_All_Cases_Code(Data) ==
+  VAR < Max_Distance := 10, guards := < >, seen := < >,
+	S := < >, tmp := < >, found := 0, posn := 0, newcond := < >, fix_last := 0,
+	comments := < >, strings := < > >:
+  C:" First find the repeated statement, the first occurrence is at posn ";
+  @Edit;
+  guards := @Cs(@I);
+  DO IF EMPTY?(guards) THEN EXIT(1) FI;
+     S := HEAD(guards)^2; guards := TAIL(guards);
+     posn := posn + 1;
+     tmp := seen;
+     WHILE NOT EMPTY?(tmp) AND found = 0 DO
+       IF @Equal_X_Comments?(S, HEAD(tmp))
+	 THEN IF @Total_Size(HEAD(tmp)) > @Total_Size(S) THEN S := HEAD(tmp) FI;
+	      posn := posn - (LENGTH(seen) - LENGTH(tmp) + 1);
+	      found := 1
+	 ELSE tmp := TAIL(tmp) FI OD;
+     IF found = 1 THEN EXIT(1) FI;
+     C:" Add S to seen and trim to Max_Distance elements ";
+     seen := <S> ++ seen;
+     IF LENGTH(seen) > Max_Distance THEN seen := BUTLAST(seen) FI OD;
+  C:" Find the last guard containing S ";
+  C:" Note: if the very last guard is deleted, then change the previous guard's ";
+  C:" condition to TRUE ";
+  IF found = 0 THEN PRINT("Error in Join_All_Cases!!!") FI;
+  @Down_Last;
+  C:" Find the final occurence of the repeated statements ";
+  WHILE NOT @Equal_X_Comments?(@I^2, S) AND @Left? DO
+    @Left OD;
+  newcond := FILL Condition FALSE ENDFILL;
+  WHILE @Posn_n > posn DO
+    C:" Delete this guard after updating newcond ";
+    newcond := @Or(@I^1, newcond);
+    C:" If this is the last guard, and its cond is TRUE, then note that ";
+    C:" the new last guard will need to have its condition changed to TRUE ";
+    IF NOT @Right? AND @ST(@I^1) = T_True THEN fix_last := 1 FI;
+    FOR I IN @Cs(@I^2) DO
+      IF @ST(I) = T_Comment THEN comments := <I> ++ comments FI OD;
+    @Delete; @Left;
+    C:" Move to the next occurrence of the repeated guard, updating newcond: ";
+    WHILE NOT @Equal_X_Comments?(@I^2, S) AND @Left? DO
+      newcond := @And(@Not(@I^1), newcond);
+      @Left OD OD;
+  C:" Keep the first guard (at posn), but update the condition: ";
+  @Down; @Paste_Over(@Or(@I, newcond)); @Up;
+  IF fix_last = 1
+    THEN @To_Last; @Down; @Paste_Over(@Make(T_True, < >, < >)); @Up FI;
+  @Up; C:" back to the IF statement ";
+  C:" See which comments remain, append any from comments list which would disappear ";
+  @Down;
+  DO FOREACH Statement DO
+       IF @ST(@I) = T_Comment THEN strings := <@V(@I)> \/ strings FI OD;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up;
+  @End_Edit;
+  @Fix_Cond;
+  IF @ST(@I) = T_Statements THEN @Down FI;
+  FOR I IN comments DO
+    IF @V(I) NOTIN strings THEN @Paste_After(I) FI OD ENDVAR .;
+
+
+SKIP
+

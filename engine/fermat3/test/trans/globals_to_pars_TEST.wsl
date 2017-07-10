@@ -1,0 +1,278 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Globals_To_Pars'",
+	    (FILL Statements
+
+BEGIN
+  FOR zz := 1 TO 10 STEP 1 DO
+    foo(a VAR b) OD
+WHERE
+  PROC foo(x VAR y) ==
+    y := y + x;
+    bar(x VAR y);
+    foo1 := foo1 + y END,
+  PROC bar(x VAR y) ==
+    y := y + x;
+    bar1 := bar1 + y END
+END
+
+ENDFILL),
+	    <1>,
+	    TR_Globals_To_Pars,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  FOR zz := 1 TO 10 STEP 1 DO
+    foo(a VAR b, bar1, foo1) OD
+WHERE
+  PROC foo(x VAR y, bar1, foo1) ==
+    y := y + x; bar(x VAR y, bar1); foo1 := foo1 + y
+  END
+  PROC bar(x VAR y, bar1) ==
+    y := y + x; bar1 := bar1 + y END
+END
+
+ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Globals_To_Pars'",
+	    (FILL Statements
+
+BEGIN
+  sum := 0;
+  i := 1;
+  WHILE i <= 10 DO
+    A(VAR sum, i) OD;
+  PRINT("sum = ", sum)
+WHERE
+  PROC A(VAR x, y) ==
+    Add(y VAR x);
+    Inc(VAR y) END,
+  PROC Add(b VAR a) ==
+    a := a + b END,
+  PROC Inc(VAR z) ==
+    Add(1 VAR z) END
+END
+
+ENDFILL),
+	    <1>,
+	    TR_Globals_To_Pars,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  sum := 0;
+  i := 1;
+  WHILE i <= 10 DO A(VAR sum, i) OD;
+  PRINT("sum = ", sum)
+WHERE 
+  PROC A(VAR x, y) ==
+    Add(y VAR x);
+    Inc(VAR y) END,
+  PROC Add(b VAR a) ==
+    a := a + b END,
+  PROC Inc(VAR z) ==
+    Add(1 VAR z) END
+END
+
+ENDFILL));
+
+
+
+@Test_Trans(" 3rd test of `Globals_To_Pars'",
+	    (FILL Statements
+
+BEGIN
+  A()
+WHERE
+  PROC A() == a := 1; B(); D() END
+  PROC B() == b := 1; C() END
+  PROC C() == c := 1; A() END
+  PROC D() == d := 1 END
+END
+
+ENDFILL),
+	    <1>,
+	    TR_Globals_To_Pars,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  A( VAR a, b, c, d)
+WHERE
+  PROC A( VAR a, b, c, d) ==
+    a := 1; B( VAR a, b, c, d); D( VAR d) END
+  PROC B( VAR a, b, c, d) ==
+    b := 1; C( VAR a, b, c, d) END
+  PROC C( VAR a, b, c, d) ==
+    c := 1; A( VAR a, b, c, d) END
+  PROC D( VAR d) == d := 1 END
+END
+
+ENDFILL));
+
+
+
+@Test_Trans(" 4th test of `Globals_To_Pars'",
+	    (FILL Statements
+
+BEGIN
+  A(VAR c, b)
+WHERE
+  PROC A(VAR b, c) == x := a; B(); D() END
+  PROC B() == x := b; C() END
+  PROC C() == x := c; A(VAR b, c) END
+  PROC D() == x := d END
+END
+
+ENDFILL),
+	    <1>,
+	    TR_Globals_To_Pars,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  A(a, d VAR c, b, x)
+WHERE
+  PROC A(a, d VAR b, c, x) ==
+    x := a; B(a, d VAR b, c, x); D(d VAR x) END
+  PROC B(a, d VAR b, c, x) ==
+    x := b; C(a, d VAR b, c, x) END
+  PROC C(a, d VAR b, c, x) ==
+    x := c; A(a, d VAR b, c, x) END
+  PROC D(d VAR x) == x := d END
+END
+
+ENDFILL));
+
+
+
+@Test_Trans(" 5th test of `Globals_To_Pars'",
+	    (FILL Statements
+
+BEGIN
+  A()
+WHERE
+  PROC A() == a := 1; B(); D() END
+  PROC B() == b := 1; C() END
+  PROC C() == c := 1; E() END
+  PROC D() == d := 1 END
+  PROC E() == e := 1; C(); D() END
+END
+
+ENDFILL),
+	    <1>,
+	    TR_Globals_To_Pars,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  A( VAR a, b, c, d, e)
+WHERE
+  PROC A( VAR a, b, c, d, e) ==
+    a := 1; B( VAR b, c, d, e); D( VAR d) END
+  PROC B( VAR b, c, d, e) ==
+    b := 1; C( VAR c, d, e) END
+  PROC C( VAR c, d, e) == c := 1; E( VAR c, d, e) END
+  PROC D( VAR d) == d := 1 END
+  PROC E( VAR c, d, e) ==
+    e := 1; C( VAR c, d, e); D( VAR d) END
+END
+
+ENDFILL));
+
+
+
+@Test_Trans(" 6th test of `Globals_To_Pars'",
+	    (FILL Statements
+
+BEGIN
+  A()
+WHERE
+  PROC A() == a := 1; B(); D() END
+  PROC B() == b := 1; C() END
+  PROC C() == c := 1; E() END
+  PROC D() == a[d].x := 1; a[d].y := 1; d := 1 END
+  PROC E() == e := 1; C(); D() END
+END
+
+ENDFILL),
+	    <1>,
+	    TR_Globals_To_Pars,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  A( VAR a[d].x, a[d].y, a, b, c, d, e)
+WHERE
+  PROC A( VAR a[d].x, a[d].y, a, b, c, d, e) ==
+    a := 1;
+    B( VAR a[d].x, a[d].y, b, c, d, e);
+    D( VAR a[d].x, a[d].y, d) END
+  PROC B( VAR a[d].x, a[d].y, b, c, d, e) ==
+    b := 1; C( VAR a[d].x, a[d].y, c, d, e) END
+  PROC C( VAR a[d].x, a[d].y, c, d, e) ==
+    c := 1; E( VAR a[d].x, a[d].y, c, d, e) END
+  PROC D( VAR a[d].x, a[d].y, d) ==
+    a[d].x := 1; a[d].y := 1; d := 1 END
+  PROC E( VAR a[d].x, a[d].y, c, d, e) ==
+    e := 1;
+    C( VAR a[d].x, a[d].y, c, d, e);
+    D( VAR a[d].x, a[d].y, d) END
+END
+
+ENDFILL));
+
+
+
+
+@Test_Trans(" 7th test of `Globals_To_Pars'",
+	    (FILL Statements
+
+BEGIN
+  AUTHOK()
+WHERE
+  PROC AUTHOK() ==
+    foo := a[WORKAREA].PASOPT;
+    a[r1 + 32, 4] := r15 END
+END
+
+ENDFILL),
+	    <1>,
+	    TR_Globals_To_Pars,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  AUTHOK(a[WORKAREA].PASOPT, r1, r15 VAR a, foo)
+WHERE
+  PROC AUTHOK(a[WORKAREA].PASOPT, r1, r15 VAR a, foo) ==
+    foo := a[WORKAREA].PASOPT; a[r1 + 32, 4] := r15 END
+END
+
+ENDFILL));
+
+
+
+
+SKIP
+

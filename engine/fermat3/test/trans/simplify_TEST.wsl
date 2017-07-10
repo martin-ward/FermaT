@@ -1,0 +1,76 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans("First test of `Simplify'",
+	    (FILL Statements IF FALSE
+				THEN X := 1
+			     ELSIF A = B
+				THEN WHILE X < 10 DO
+					   !XP external ();
+					   {(X = 1)} OD
+			     ELSIF A < A + 1
+				THEN X := (A + 2) - (A - 1); SKIP; SKIP
+			     ELSIF A < B
+				THEN X := 4
+				ELSE X := 5 FI ENDFILL),
+	    <1>,
+	    TR_Simplify,
+	    < >,
+	    (FILL Statements IF A = B THEN IF X < 10 THEN ABORT FI ELSE X := 3 FI ENDFILL));
+
+@Test_Trans("Second test of `Simplify'",
+	    (FILL Statements DO WHILE A < 10 DO
+				   Y:=A; {A=5}; A:=A+X OD;
+				IF FALSE THEN ABORT FI;
+				IF Y < 8 THEN EXIT(1) FI;
+				X := A-Y OD ENDFILL),
+	     <1>,
+	     TR_Simplify,
+	     < >,
+	     (FILL Statements DO WHILE A<10 DO 
+				 Y:=A; {A=5}; A:=A+X OD;
+			      IF Y<8 THEN EXIT(1) FI;
+			      X:=A - Y OD ENDFILL));
+
+@Test_Trans("Third test of `Simplify'",
+	    (FILL Statements DO WHILE A < 10 DO
+				   Y:=A; {A=5}; A:=A+X OD;
+				IF FALSE THEN ABORT FI;
+				IF Y < 8 THEN EXIT(1)
+				ELSE X := A-Y;
+				     ACTIONS A1:
+					A1 == IF B=20 THEN CALL Z
+					      ELSIF B=30 THEN SKIP
+					      ELSE B:=B+X; CALL A FI.
+				     ENDACTIONS 
+				FI OD ENDFILL),
+	     <1>,
+	     TR_Simplify,
+	     < >,
+	     (FILL Statements DO WHILE A < 10 DO Y := A; {A = 5}; A := A + X OD;
+			      IF Y < 8
+				THEN EXIT(1)
+				ELSE X := A - Y;
+				     DO IF B = 20
+					  THEN EXIT(1)
+					ELSIF B = 30
+					  THEN EXIT(1)
+					  ELSE B := B + X FI OD FI OD ENDFILL))
+

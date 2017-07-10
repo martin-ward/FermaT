@@ -1,0 +1,552 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" @PPC_A_Proc_Call_os? returns TRUE if the given item contains an A_Proc_Call ";
+C:" with an os argument, and A_Proc_Call_Filter is not empty. ";
+C:" This is because the A_Proc_Call might use the local variable. ";
+C:" Hack: we disable this test for a top-level VAR (eg df in x86 code) ";
+
+MW_PROC @Remove_Redundant_Vars_Test() ==
+  IF EMPTY?(@Posn) AND @ST(@I) = T_Statements THEN @Down FI;
+  IF @ST(@I) = T_Var
+    THEN IF LENGTH(@Posn) >= 2 AND @ST(@GParent) = T_Where AND @Size(@Parent) = 1
+	   THEN IF @PPC_A_Proc_Call_os?(@GParent)
+	             OR T_X_Proc_Call IN @Stat_Types(@GParent)
+		  THEN @Fail("Local variables might be used in a called procedure")
+                ELSIF NOT EMPTY?(@Proc_Calls(@GParent))
+		  THEN @Fail("Local variables might be used in a local procedure")
+		  ELSE @RRV_sub_Test(@Lvars(@I^1)) FI
+	 ELSIF (@Posn <> <1> AND @PPC_A_Proc_Call_os?(@I))
+	         OR T_X_Proc_Call IN @Stat_Types(@I)
+	   THEN @Fail("Local variables might be used in a called procedure")
+         ELSIF NOT EMPTY?(@Proc_Calls(@I))
+	         AND NOT EMPTY?(@RRV_Proc_Vars /\ @Assigned(@I^1))
+	   THEN @Fail("Local variables might be used in a local procedure")
+	   ELSE @RRV_sub_Test(@Lvars(@I^1)) FI
+  ELSIF @ST(@I) IN <T_MW_Funct, T_MW_BFunct>
+    THEN @RRV_Funct_Test(@Lvars(@I^3))
+    ELSE @Fail("The selected item is not a VAR construct or function declaration.") FI .;
+
+
+MW_PROC @RRV_Funct_Test(VL) ==
+  IF NOT EMPTY?(VL \ @Used(@I^4) \ @Used(@I^5))
+    THEN @Pass
+  ELSIF NOT EMPTY?(VL /\ @Assd_To_Self(@I^4))
+    THEN @Pass
+    ELSE C:" There are references to all the local vars. See if some can be removed. ";
+	 C:" When a `stubborn' reference has been found, remove the var from VL ";
+	 @Edit;
+	 @Down_To(4); C:" to the body ";
+	 C:" Remove vars with `stubborn' references from VL, ";
+	 C:" temporarily updating the program ";
+	 @RRV_Remove_Refs(VAR VL);
+	 @Right; C:" to the expn or cond ";
+	 @RRV_Remove_Refs(VAR VL);
+	 @Undo_Edit;
+	 C:" Remaining variables are redundant ";
+	 IF NOT EMPTY?(VL)
+	   THEN @Pass
+	   ELSE @Fail("All variables have stubborn references.") FI FI .;
+
+
+MW_PROC @RRV_sub_Test(VL) ==
+  IF NOT EMPTY?(VL \ @Used(@I^2))
+    THEN @Pass
+  ELSIF NOT EMPTY?(VL /\ @Assd_To_Self(@I^2))
+    THEN @Pass
+  ELSIF @Posn = <1> AND NOT EMPTY?(@RRV_Top_Level_Redundant)
+    THEN @Pass
+    ELSE C:" There are references to all the local vars. See if some can be removed. ";
+	 C:" When a `stubborn' reference has been found, remove the var from VL ";
+	 @Edit;
+	 @RRV_Rename;
+	 VL := @Lvars(@I^1);
+	 @Down_To(2); C:" to the body ";
+         @RRV_Maybe_Expand(VL);
+	 C:" Remove vars with `stubborn' references from VL, ";
+	 C:" temporarily updating the program ";
+	 VAR < orig_VL := VL >:
+	 @RRV_Remove_Refs(VAR VL);
+	 IF VL <> orig_VL
+	   THEN @Undo_Edit; @Edit; @RRV_Rename; @Down_To(2);
+                @RRV_Maybe_Expand(VL);
+                @RRV_Remove_Refs(VAR VL) FI ENDVAR;
+	 C:" Remaining variables are redundant ";
+	 IF NOT EMPTY?(VL)
+	   THEN @Pass
+	   ELSE @Left; C:" to assigns ";
+		VAR < assigns := @Cs(@I), new := < > >:
+		@Right;
+		new := @RRV_Simple(assigns);
+		IF LENGTH(new) < LENGTH(assigns)
+		  THEN @Pass FI ENDVAR FI;
+	 @Undo_Edit;
+	 IF NOT @Passed? THEN @Fail("All variables have stubborn references.") FI FI .;
+
+
+C:" Look for a simple case where a local variable is copied to a global. ";
+C:" For each x:=e initialisation, try to match the body with: `S1; y:=x; S2' where: ";
+C:" y is not used/assigned in S1, and x is not assigned in S2 ";
+C:" and no vars in e are assigned in S1 ";
+C:" Convert to: y := e; S1[y/x]; S2[y/x] ";
+C:" Return the remaining assigns and update the body (which is current item). ";
+
+MW_FUNCT @RRV_Simple(assigns) ==
+  VAR < new := < >, x := < >, e := < >,
+        value := < >, defs := < >, assigned := < >, keep := 1 >:
+  FOR assign IN assigns DO
+    x := assign^1;
+    keep := 1;
+    IF @ST(x) = T_Var_Lvalue
+      THEN e := assign^2;
+	   IFMATCH Statements ~*S1; ~?y := ~?(x); ~*S2
+	     THEN IF @ST(y) = T_Var_Lvalue
+		       AND @V(y) NOTIN REDUCE("\\/", MAP("@Variables", S1))
+		       AND @V(x) NOTIN REDUCE("\\/", MAP("@Assigned", S2))
+		       AND EMPTY?(@Used(e) /\ REDUCE("\\/", MAP("@Assigned", S1)))
+		    THEN keep := 0;
+			 @Paste_Over(@Make(T_Statements, < >,
+					   <FILL Statement ~?y := ~?e ENDFILL>
+					      ++ S1 ++ S2));
+			 @Down;
+			 DO IF @Right? THEN @Right ELSE EXIT(1) FI;
+			    @Rename(@V(x), @V(y)) OD FI ENDMATCH;
+
+	   IFMATCH Statements ~*S1; ~?(x) := ~?val; ~*S2
+             THEN assigned := REDUCE("\\/", MAP("@Assigned", S2));
+	          IF @V(x) NOTIN REDUCE("\\/", MAP("@Variables", S1))
+	               AND @V(x) NOTIN assigned
+                       AND EMPTY?(@Variables(val) /\ assigned)
+                    THEN C:" Work around a bug: ";
+		         value := val;
+		         @Paste_Over(FILL Statements ~*S1; ~*S2 ENDFILL);
+                         FOREACH Expression DO
+			   IF @ST(@I) = T_Variable AND @V(@I) = @V(x)
+			     THEN @Paste_Over(value) FI OD;
+                         keep := 0 FI ENDMATCH;
+	   IFMATCH Statements BEGIN ~*S1; ~?(x) := ~?val; ~*S2 WHERE ~*defs END
+             THEN assigned := REDUCE("\\/", MAP("@Assigned", S2))
+	                        \/ REDUCE("\\/", MAP("@Assigned", defs));
+	          IF @V(x) NOTIN REDUCE("\\/", MAP("@Variables", S1))
+	               AND @V(x) NOTIN assigned
+                       AND EMPTY?(@Variables(val) /\ assigned)
+                    THEN C:" Work around a bug: ";
+		         value := val;
+		         @Paste_Over(FILL Statements BEGIN ~*S1; ~*S2
+		                                      WHERE ~*defs END ENDFILL);
+                         FOREACH Expression DO
+			   IF @ST(@I) = T_Variable AND @V(@I) = @V(x)
+			     THEN @Paste_Over(value) FI OD;
+                         keep := 0 FI ENDMATCH FI;
+  IF keep = 1 THEN new := <assign> ++ new FI OD;
+  (REVERSE(new)) .;
+
+
+
+C:" Update VL by deleting any variables with stubborn references. ";
+C:" Ignore assertions, and temporarily remove x from VL when in an assign to x. ";
+C:" Only called when VL is not empty and some vars in VL are used ";
+C:" NOTE: we have to actually MOVE to each variable in order to test ";
+C:" TR_Replace_With_Value. ";
+C:" Replace the references by their (found) values ";
+
+MW_PROC @RRV_Remove_Refs(VAR VL) ==
+  VAR < ST := @ST(@I) >:
+  IF ST = T_Struct
+    THEN VAR <name := HEAD(@Struct_Elts(@I)) >:
+	 IF name IN VL THEN VL := VL \ <name> FI ENDVAR FI;
+  IF ST = T_Variable
+    THEN IF @V(@I) IN VL
+	   THEN VAR < val := @Find_Value(<@V(@I)>) >:
+		IF EMPTY?(val) THEN VL := VL \ <@V(@I)>
+		ELSIF @ST(@Parent) = T_Aref AND @Posn_n = 1
+			AND @ST(val) <> T_Variable AND @ST(val) <> T_Struct
+		  THEN C:" Can't replace first component of an aref by ";
+		       C:" a complex expression: ";
+		       VL := VL \ <@V(@I)>
+		  ELSE @Paste_Over(val) FI ENDVAR FI
+  ELSIF ST = T_Assert
+    THEN SKIP
+  ELSIF ST = T_Pop
+    THEN VL := VL \ @Variables(@I)
+  ELSIF ST = T_Push
+    THEN VL := VL \ @Variables(@I^1);
+         IF NOT EMPTY?(VL)
+	   THEN @Down_To(2); C:" to the pushed expression ";
+	        @RRV_Remove_Refs(VAR VL);
+		@Up FI
+  ELSIF ST = T_Assign AND @ST(@I^1) = T_Var_Lvalue
+    THEN VAR < x := @V(@I^1) >:
+	 @Down_To(2); C:" to the expression ";
+	 IF x IN VL
+	   THEN C:" It may not matter if we can't remove these refs ";
+		C:" but we still need to try: ";
+		@RRV_Remove_Refs(VAR VL);
+		VL := <x> \/ VL
+	   ELSE @RRV_Remove_Refs(VAR VL) FI;
+	 @Up  ENDVAR
+  ELSIF ST = T_For AND @V(@I^1) IN VL
+    THEN VL := VL \ <@V(@I^1)>;
+	 @Down_To(5); C:" to body ";
+	 IF NOT EMPTY?(VL /\ @Used(@I)) THEN @RRV_Remove_Refs(VAR VL) FI;
+	 @Up;
+	 C:" Restore the variable ";
+	 VL := <@V(@I^1)> \/ VL
+  ELSIF ST = T_Var
+    THEN C:" NB: in VAR <x:=x>: ... ENDVAR the reference to x needs to be removed ";
+	 C:" since the `x' on the left is the LOCAL x, not the GLOBAL one! ";
+	 @Down; @Down; C:" to first assign ";
+	 DO @Down_To(2); C:" to expression ";
+	    IF NOT EMPTY?(VL /\ @Used(@I))
+	      THEN @RRV_Remove_Refs(VAR VL);
+		   IF EMPTY?(VL) THEN @Up; EXIT(1) FI FI;
+	    @Up; C:" back to assign ";
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up; @Up; C:" back to var ";
+	 C:" Now the shadowed globals must be temporarily removed from VL ";
+	 VAR < shadowed := VL /\ @Lvars(@I^1) >:
+	   @Down_To(2); C:" to body ";
+	   IF EMPTY?(shadowed)
+	     THEN IF NOT EMPTY?(VL /\ @Used(@I)) THEN @RRV_Remove_Refs(VAR VL) FI
+	     ELSE VL := VL \ shadowed;
+		  IF NOT EMPTY?(VL /\ @Used(@I)) THEN @RRV_Remove_Refs(VAR VL) FI;
+		  VL := VL \/ shadowed FI;
+	   @Up ENDVAR
+  ELSIF ST = T_Proc OR ST = T_Funct OR ST = T_BFunct
+    THEN C:" The formal parameters are local to the proc body ";
+         VAR < shadowed := VL /\ (@Assigned(@I^2) \/ @Assigned(@I^3)) >:
+         VL := VL \ shadowed;
+	 @Down_Last; C:" to body ";
+	 IF NOT EMPTY?(VL /\ @Used(@I)) THEN @RRV_Remove_Refs(VAR VL) FI;
+	 @Up;
+	 C:" Restore the shadowed variables: ";
+	 VL := VL \/ shadowed ENDVAR
+  ELSIF ST = T_A_Proc_Call OR ST = T_MW_Proc_Call
+    THEN C:" Any VAR parameters cannot be removed, ";
+         C:" BUT the VAR parameter may be an array ref containing references ";
+	 C:" which *can* be removed! ";
+	 VL := VL \ @Assigned(@I);
+	 IF NOT EMPTY?(VL)
+	   THEN @Down_To(2); C:" to value pars ";
+		@RRV_Remove_Refs(VAR VL);
+		@Right; C:" to var pars ";
+	        @RRV_Remove_Refs(VAR VL);
+	        @Up FI
+  ELSIF NOT @Cs?(@I)
+    THEN SKIP; C:" Base cases have already been dealt with "
+    ELSE @Down;
+	 C:" Call @RRV_Remove_Refs recursively on each component. ";
+	 C:" Stop if VL becomes empty ";
+	 DO IF NOT EMPTY?(VL /\ @Used(@I))
+	      THEN @RRV_Remove_Refs(VAR VL);
+		   IF EMPTY?(VL) THEN EXIT(1) FI FI;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up FI ENDVAR .;
+
+
+MW_PROC @Remove_Redundant_Vars_Code(Data)==
+  IF EMPTY?(@Posn) AND @ST(@I) = T_Statements THEN @Down FI;
+  IF LENGTH(@Posn) >= 2 AND @ST(@GParent) = T_Where AND @Size(@Parent) = 1
+    THEN VAR < defns := @I^1 >:
+         @Splice_Over(@Cs(@I^2));
+	 @Up; @Up; C:" to WHERE clause ";
+	 @Paste_Over(@Make(T_Var, < >,
+	                   <defns, @Make(T_Statements, < >, <@I>)>)) ENDVAR FI;
+  IF @ST(@I) = T_Var
+    THEN VAR < n := @Size(@I^1), redundant := @RRV_Top_Level_Redundant >:
+         IF NOT EMPTY?(redundant)
+           THEN @RRV_Top_Level_Remove(redundant);
+                C:" See if other variables can be removed: ";
+	        IF LENGTH(redundant) < n AND @Trans?(TR_Remove_Redundant_Vars)
+		  THEN @Trans(TR_Remove_Redundant_Vars, "") FI
+	   ELSE @RRV_Code_Var FI ENDVAR
+    ELSE @RRV_Code_Funct FI .;
+
+MW_PROC @RRV_Code_Var() ==
+  C:" If the local var is of the form v := f(v) then rename it within the body ";
+  C:" (so that we don't replace a reference to v by v itself) ";
+  @RRV_Rename;
+  @Edit;
+  C:" Find the list of vars with simple references and then remove these references ";
+  C:" The redundant variables are the Assd_To_Self plus unreferenced variables ";
+  C:" in the resulting body. ";
+  VAR < vars := @Lvars(@I^1), orig_VL := < > >:
+  @Down_To(2); C:" to the body ";
+  C:" Calculate which vars have references and are not Assd_To_Self: ";
+  VAR < VL := (vars /\ @Used(@I)) \ @Assd_To_Self(@I),
+	redundant := < > >:
+    C:" Remove vars with stubborn references from VL: ";
+    IF NOT EMPTY?(VL) 
+      THEN orig_VL := VL;
+           @RRV_Maybe_Expand(VL);
+	   @RRV_Remove_Refs(VAR VL);
+	   IF VL = orig_VL 
+	     THEN C:" All the vars were redundant and refs were removed "
+	     ELSE C:" Re-do with the smaller VL ";
+		  @Undo_Edit; @Edit; @Down_To(2);
+                  @RRV_Maybe_Expand(VL);
+		  @RRV_Remove_Refs(VAR VL) FI FI;
+    C:" The redundant variables are VL plus those not used plus the Assd_To_Self: ";
+    redundant := VL \/ (vars \ @Used(@I)) \/ (vars /\ @Assd_To_Self(@I));
+
+    PRINT("Redundant variables are: ", MAP("@N_String", redundant));
+    C:" Simple references have been removed ";
+
+    C:" Calculate the new assigns list (may be empty) ";
+    @Goto(<1>); C:" to the Assigns ";
+    VAR < assigns := @RRV_Filter_Assigns(@Cs(@I), redundant), new := < > >:
+      C:" Replace the VAR structure with its body, and update the body to remove ";
+      C:" references to redundant variables (these will be in Assertions ";
+      C:" or self-assignments) ";
+      C:" We have to do this carefully to avoid problems where a nested VAR structure ";
+      C:" shadows a redundant variable. ";
+      @Right; C:" to the body ";
+      @New_Program(@I);
+      @RRV_Delete_Refs(redundant);
+      IF NOT EMPTY?(assigns)
+	THEN new := @RRV_Simple(assigns);
+	     PRINT("Redundant variables are: ",
+		   MAP("@N_String", REDUCE("\\/", MAP("@Assigned", assigns))
+				      \ REDUCE("\\/", MAP("@Assigned", new))));
+	     assigns := new FI;
+      C:" Create a new VAR structure around the body if there are any assigns left ";
+      IF NOT EMPTY?(assigns)
+	THEN @New_Program(@Make(T_Var, < >,
+				< @Make(T_Assigns, < >, assigns),
+				  @Program >)) FI ENDVAR ENDVAR ENDVAR;
+  @End_Edit .;
+
+
+MW_PROC @RRV_Rename() ==
+  VAR < renames := < >, new := HASH_TABLE >:
+  @Down; @Down; C:" to first assign ";
+  DO IF @ST(@I^1) = T_Var_Lvalue AND @V(@I^1) IN @Used(@I^2)
+       THEN new.(@V(@I^1)) := @Make_Name("__tmp__" ++ @N_String(@V(@I^1)));
+	    @Down;
+	    @Paste_Over(@Make(T_Var_Lvalue, new.(@V(@I)), < >));
+	    @Up FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up; @Right; C:" to body ";
+  FOREACH Global Variable DO
+    IF NOT EMPTY?(new.(@V(@I)))
+      THEN @Paste_Over(@Make(@ST(@I), new.(@V(@I)), < >)) FI OD;
+  @Up; C:" back to start " ENDVAR .;
+
+
+MW_PROC @RRV_Code_Funct() ==
+  VAR < vars := @Lvars(@I^3), orig_VL := < > >:
+  @Edit;
+  C:" Calculate which vars have references and are not Assd_To_Self: ";
+  VAR < VL := (vars /\ (@Used(@I^4) \/ @Used(@I^5)))
+                  \ (@Assd_To_Self(@I^4) \ @Used(@I^5)),
+	redundant := < >, result := < > >:
+    @Down_To(4); C:" to the body ";
+    C:" Remove vars with stubborn references from VL: ";
+    IF NOT EMPTY?(VL) 
+      THEN orig_VL := VL;
+	   @RRV_Remove_Refs(VAR VL);
+	   @Goto(<5>);
+	   @RRV_Remove_Refs(VAR VL);
+	   IF VL = orig_VL 
+	     THEN C:" All the vars were redundant and refs were removed "
+	     ELSE C:" Re-do with the smaller VL ";
+		  @Undo_Edit; @Edit; @Down_To(4);
+		  @RRV_Remove_Refs(VAR VL);
+		  @Goto(<5>); @RRV_Remove_Refs(VAR VL) FI FI;
+    @Goto(<4>);
+    C:" The redundant variables are VL plus those not used plus the Assd_To_Self: ";
+    redundant := VL \/ (vars \ @Used(@I)) \/ (vars /\ @Assd_To_Self(@I));
+    C:" Any vars still in the result cond/expn are not redundant: ";
+    @Right; redundant := redundant \ @Used(@I);
+    PRINT ("Redundant variables are: ", MAP("@N_String", redundant));
+    C:" Simple references have been removed ";
+
+    C:" Calculate the new assigns list (may be empty) ";
+    @Goto(<3>); C:" to the Assigns ";
+    VAR < assigns := @RRV_Filter_Assigns(@Cs(@I), redundant) >:
+      C:" Replace the VAR structure with its body, and update the body to remove ";
+      C:" references to redundant variables (these will be in Assertions ";
+      C:" or self-assignments) ";
+      C:" We have to do this carefully to avoid problems where a nested VAR structure ";
+      C:" shadows a redundant variable. ";
+      @Right; C:" to the body ";
+      @Edit;
+      @RRV_Delete_Refs(redundant);
+      @End_Edit;
+      @Left;
+      @Paste_Over(@Make(T_Assigns, < >, assigns)) ENDVAR ENDVAR;
+  @End_Edit ENDVAR .;
+
+
+
+
+C:" Return a new list of assigns, with assigns to redundant variables filtered out: ";
+MW_FUNCT @RRV_Filter_Assigns(assigns, redundant) ==
+  VAR < new := < > >:
+  WHILE NOT EMPTY?(assigns) DO
+    IF @V(HEAD(assigns)^1) NOTIN redundant
+       THEN new := <HEAD(assigns)> ++ new FI;
+    assigns := TAIL(assigns) OD;
+  (REVERSE(new)) .;
+
+
+C:" Remove references to the redundant variables (should not touch a local variable ";
+C:" in a nested VAR which shadows a redundant variable). ";
+MW_PROC @RRV_Delete_Refs(redundant) ==
+  C:" First, rename the redundant GLOBAL variables to a dummy name, ";
+  C:" then delete all assertions and assigns which use the dummy name. ";
+  VAR < dummy := @Make(T_Variable, @Make_Name("__DUMMY__"), < >) >:
+    FOREACH Global Variable DO
+      IF @V(@I) IN redundant
+	THEN C:" It is OK to replace a global Lvalue with a variable ";
+	     C:" -- the loop will fix it for us. ";
+             @Paste_Over(dummy) FI OD ENDVAR;
+  VAR < dummy := @Make_Name("__DUMMY__") >:
+    FOREACH Statement DO
+      IF @ST(@I) = T_Assert
+	THEN IF dummy IN @Used(@I) THEN @Delete FI
+      ELSIF @ST(@I) = T_Push AND dummy IN @Assigned(@I^1)
+	THEN @Delete
+      ELSIF @ST(@I) = T_Pop AND dummy IN @Assigned(@I^2)
+	THEN @Delete
+      ELSIF @ST(@I) = T_Pop AND dummy IN @Assigned(@I^1)
+	THEN C:" We need to pop the stack, but don't care where the value goes ";
+	     C:" so in this case we leave the dummy behind ";
+	     C:" (Could do Stack := TAIL(Stack) but this would upset Push_Pop!) "
+      ELSIF @ST(@I) = T_Assignment
+	      AND dummy IN @Variables(@I)
+	THEN C:" Delete the assigns which use dummy ";
+	     IF @Size(@I) = 1
+	       THEN @Delete
+	       ELSE @Down; C:" to first assign ";
+		    DO IF dummy IN @Variables(@I)
+			 THEN @Clever_Delete
+		       ELSIF @Right?
+			 THEN @Right
+			 ELSE EXIT(1) FI OD FI FI OD ENDVAR;
+  @Trans(TR_Simplify, "") .;
+
+
+C:" Look for a simple case, which applies to a top level VAR clause: ";
+C:" the local variable is assigned a constant value ";
+C:" and the only assignments to it in the body are that value ";
+C:" Return the list of redundant vars due to this ";
+
+MW_FUNCT @RRV_Top_Level_Redundant() ==
+  VAR < redundant := < >, v := < >, e := < >, keep := 1 >:
+  SKIP;
+  FOR assign IN @Cs(@I^1) DO
+    v := assign^1;
+    e := assign^2;
+    keep := 1;
+    IF @ST(v) = T_Var_Lvalue AND (@ST(e) = T_Number OR @ST(e) = T_String)
+      THEN keep := 0;
+           @Down_To(2);
+           FOREACH Statement DO
+             IF @ST(@I) = T_Assignment
+	       THEN IF @Size(@I) = 1 AND @Equal?(@I^1^1, v) AND @Equal?(@I^1^2, e)
+	              THEN C:" This assignment is OK ";
+		    ELSIF @V(v) IN @Assigned(@I)
+		      THEN keep := 1 FI
+             ELSIF @ST(@I) IN <T_Proc_Call, T_A_Proc_Call, T_MW_Proc_Call,
+	                       T_Push, T_Pop>
+	       THEN IF @V(v) IN @Assigned(@I)
+	              THEN keep := 1 FI FI OD;
+           C:" Check that replacing the variable by a value will not give bad syntax ";
+	   ATEACH Expression DO
+	     IF @ST(@I) = T_Variable AND @V(@I) = v AND @Up?
+	       THEN IF @ST(@Parent) = T_Struct
+	              THEN keep := 1
+		    ELSIF @Posn_n = 1 AND @ST(@Parent) IN <T_Aref, T_Sub_Seg, T_Rel_Seg>
+		      THEN keep := 1 FI FI OD;
+           @Up FI;
+    IF keep = 0 THEN redundant := <@V(v)> ++ redundant FI OD;
+  (redundant) .;
+
+
+MW_PROC @RRV_Top_Level_Remove(redundant) ==
+  VAR < v := < >, e := < >, new := < >,
+        dummy := @Make(T_Variable, @Make_Name("__DUMMY__"), < >) >:
+  PRINT("Top_Level_Remove: ", MAP("@N_String", redundant));
+  FOR assign IN @Cs(@I^1) DO
+    v := assign^1;
+    e := assign^2;
+    IF @ST(v) = T_Var_Lvalue AND @V(v) IN redundant
+      THEN @Down_To(2);
+           C:" It is OK to replace a global Lvalue with a variable ";
+	   C:" -- the loop will fix it for us. ";
+           FOREACH Global Variable DO
+	     IF @V(@I) = @V(v)
+	       THEN @Paste_Over(dummy) FI OD;
+           FOREACH Expression DO
+             IF @ST(@I) = T_Variable AND @V(@I) = @V(dummy)
+	       THEN @Paste_Over(e) FI OD;
+           FOREACH Statement DO
+	     IFMATCH Statement __DUMMY__ := ~?(e)
+	       THEN @Delete
+	       ELSE IFMATCH Statement PUSH(__DUMMY__, ~?e)
+	              THEN @Delete ENDMATCH ENDMATCH OD;
+           @Trans(TR_Simplify, "");
+	   @Up
+      ELSE new := <assign> ++ new FI OD;
+  IF EMPTY?(new)
+    THEN @Splice_Over(@Cs(@I^2))
+    ELSE @Down; C:" to assigns ";
+         @Paste_Over(@Make(T_Assigns, < >, REVERSE(new)));
+	 @Up FI ENDVAR .;
+
+
+MW_PROC @RRV_Maybe_Expand(VL) ==
+  VAR < found := 0 >:
+  DO found := 0;
+     FOREACH Statements DO
+       @Down;
+       DO IF @ST(@I) = T_Cond AND @Right?
+              AND LENGTH(@Assigned(@I)) = 1
+              AND LENGTH(@Assigned(@I) /\ VL) = 1
+            THEN VAR < v := HEAD(@Assigned(@I) /\ VL) >:
+                 @Right;
+                 IF @ST(@I) = T_Cond 
+                       AND (@ST(@I^1^1) = T_Equal OR @ST(@I^1^1) = T_Not_Equal)
+                       AND @ST(@I^1^1^1) = T_Variable
+                       AND @V(@I^1^1^1) = v
+                       AND @ST(@I^1^1^2) = T_Number
+                    THEN @Trans(TR_Merge_Left, "");
+                         @Trans(TR_Constant_Propagation, "");
+			 found := 1
+                    ELSE @Left FI ENDVAR FI;
+          IF @Right? THEN @Right ELSE EXIT(1) FI OD OD;
+      IF found = 0 THEN EXIT(1) FI OD ENDVAR .;
+
+
+C:" List the variables used in local procedures: ";
+
+MW_FUNCT @RRV_Proc_Vars() ==
+  VAR < R := < >, posn := @Posn >:
+  WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+  IF @ST(@I) = T_Where THEN R := @Used(@I^2) FI;
+  @Goto(posn);
+  (R) .;
+
+
+SKIP
+
+

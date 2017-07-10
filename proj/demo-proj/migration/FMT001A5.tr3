@@ -1,0 +1,2225 @@
+Fix Assembler, Max_Passes = 35 call_budget = 4000
+Trial = 1
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 101 posn = ()
+Preserving actions: (dispatch)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 102 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+30 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 30 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 103 posn = (1)
+30 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+30 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: ......................
+Finding elementary actions
+Removing elementary actions: _start_=31 
+
+Action system type is Reg
+7 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 7 actions in the main system.
+Syntax is OK.
+
+REITERATING...
+Action system type is Reg
+Leave_Alone_Names = dispatch
+7 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+7 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 7 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 104 posn = (1)
+Reading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 105 posn = ()
+Top_Level_Remove: (len_2 len_1)
+Constant_Propagation effort = 0 budget = 200
+Migration = 1
+Call Budget = 200
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXXXXXXXX WDS2  WDS1  MODSTORE 
+7 actions
+Calculating Succs and Preds... Done.
+.xxx.c0.....
+
+Re-Scanning Action System, scan: 2
+.xxx.c0.....
+Rebuilding the action system.
+There are 7 actions in the main system.
+ 
+Simplifying the result
+
+PASS 1
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 106 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+7 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 7 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 107 posn = (1 2 1)
+Fix_Dispatch effort = 0 budget = 4000
+7 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 7 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 108 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 109 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+...... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 110 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+7 actions
+Calculating Succs and Preds... Done.
+...R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3)
+..x 
+Making a call to procedure: r15
+ returning via r14
+d9xD-142-NN 
+Unfolding a dispatch: destination=142 posn=(9)
+.
+
+Re-Scanning Action System, scan: 2
+...... 
+Making a call to procedure: r15
+ returning via r14
+d9xD-142-NN 
+Unfolding a dispatch: destination=142 posn=(9)
+.
+
+Re-Scanning Action System, scan: 3
+...... 
+Making a call to procedure: r15
+ returning via r14
+d9xD-142-NN 
+Unfolding a dispatch: destination=142 posn=(9)
+.
+Rebuilding the action system.
+There are 7 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 111 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 112 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+....... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 113 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+7 actions
+Calculating Succs and Preds... Done.
+...R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3)
+..x.
+
+Re-Scanning Action System, scan: 2
+.......
+
+Re-Scanning Action System, scan: 3
+.......
+Rebuilding the action system.
+There are 7 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 114 posn = (1 2 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 115 posn = (1 2 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+7 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 7 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 116 posn = (1 2 1)
+7 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+7 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+7 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 7 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 117 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+....... 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 118 posn = ()
+Redundant variables are: (cc)
+Redundant variables are: ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 119 posn = ()
+...................X......X..X.......X...........X......X.....................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 120 posn = (1 2 1 2 7)
+Finding accessed variables...
+Pruning dispatch...
+124 142 146 
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 121 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 122 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+7 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 7 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 123 posn = (1)
+7 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+7 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: ...
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+
+REITERATING...
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 124 posn = (1 2 1)
+Fix_Dispatch effort = 0 budget = 4000
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 125 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 126 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+
+PASS 2
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 127 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 128 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 129 posn = (1 2 1)
+Fix_Dispatch effort = 0 budget = 4000
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 130 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 131 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+....... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 132 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 133 posn = (1 2 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 134 posn = (1 2 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 135 posn = (1 2 1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 136 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 137 posn = ()
+......................X............................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 138 posn = (1 2 1 2 4)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 139 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 140 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 141 posn = (1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 142 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 143 posn = (1 2 1)
+Fix_Dispatch effort = 0 budget = 4000
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 144 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 145 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+
+PASS 3
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 146 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 147 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 148 posn = (1 2 1)
+Fix_Dispatch effort = 0 budget = 4000
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 149 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 150 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+....... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 151 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 152 posn = (1 2 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 153 posn = (1 2 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 154 posn = (1 2 1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 155 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 156 posn = ()
+......................X............................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 157 posn = (1 2 1 2 4)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 158 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 159 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 160 posn = (1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 161 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 162 posn = (1 2 1)
+Fix_Dispatch effort = 0 budget = 4000
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 163 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 164 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+--- current equals old ---
+Trial = 2
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 165 posn = ()
+Preserving actions: (dispatch)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 166 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 167 posn = (1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 168 posn = (1)
+Reading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 169 posn = ()
+
+PASS 4
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 170 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 171 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 172 posn = (1 2 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Checking entry: A_000088: LABA
+@FD_Remove_Ext_Calls on A_000088 ok = 1
+tmpl = LABA 
+...checking body action LABA
+  Found external call LABA in action A_000088
+  ...removing LABA
+  ... ok = 1 new body = (2)
+  dispatch not called after deleting external calls.
+  LABA is called by _enter_
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 173 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 174 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+....... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 175 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 176 posn = (1 2 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 177 posn = (1 2 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 178 posn = (1 2 1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 179 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+....... 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 180 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 181 posn = ()
+......................X............................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 182 posn = (1 2 1 2 4)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 183 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 184 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 185 posn = (1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 186 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 187 posn = (1 2 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Checking entry: A_000088: LABA
+@FD_Remove_Ext_Calls on A_000088 ok = 1
+tmpl = LABA 
+...checking body action LABA
+  Found external call LABA in action A_000088
+  ...removing LABA
+  ... ok = 1 new body = (2)
+  dispatch not called after deleting external calls.
+  LABA is called by _enter_
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 188 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 189 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+--- current equals old ---
+Trial = 3
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 190 posn = ()
+Preserving actions: (dispatch)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 191 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 192 posn = (1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 193 posn = (1)
+Reading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 194 posn = ()
+
+PASS 5
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 195 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 196 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 197 posn = (1 2 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Checking entry: A_000088: LABA
+@FD_Remove_Ext_Calls on A_000088 ok = 1
+tmpl = LABA 
+...checking body action LABA
+  Found external call LABA in action A_000088
+  ...removing LABA
+  ... ok = 1 new body = (2)
+  dispatch not called after deleting external calls.
+  LABA is called by _enter_
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 198 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 199 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+....... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 200 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 201 posn = (1 2 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 202 posn = (1 2 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 203 posn = (1 2 1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 204 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+....... 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 205 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 206 posn = ()
+......................X............................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 207 posn = (1 2 1 2 4)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 208 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 209 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 210 posn = (1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call dispatch...
+ 
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 211 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXX WDS2  WDS1  MODSTORE 
+4 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+.x
+
+Re-Scanning Action System, scan: 2
+....
+
+Re-Scanning Action System, scan: 3
+....
+Rebuilding the action system.
+There are 4 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 212 posn = (1 2 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+A_000088 
+Checking which entry actions are simple procedures...
+Checking entry: A_000088: LABA
+@FD_Remove_Ext_Calls on A_000088 ok = 1
+tmpl = LABA 
+...checking body action LABA
+  Found external call LABA in action A_000088
+  ...removing LABA
+  ... ok = 1 new body = (2)
+  dispatch not called after deleting external calls.
+  LABA is called by _enter_
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 213 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 214 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Actions to Procs...
+Testing transformation: Actions to Procs
+Applying transformation: Actions to Procs
+FA_nn = 215 posn = (1 2 1)
+Actions_To_Procs Leave_Alone = dispatch
+Finding actions which only call Z...
+Finding actions which call one other action...
+Action A_000088 only calls LABA
+Creating procedure `A_000088', size = 8, tv = 0
+  position = (1 2 1 2 2 2 1)
+Searching for other copies of body:  
+Finding actions which only call Z...
+Finding actions which call one other action...
+ 
+
+PASS 6
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 216 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+3 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 3 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 217 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+Summarising proc definitions... Done.
+p
+3 actions
+Calculating Succs and Preds... Done.
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+
+
+Re-Scanning Action System, scan: 2
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+
+
+Re-Scanning Action System, scan: 3
+..R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(3 1 2 3)
+
+Rebuilding the action system.
+There are 3 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 218 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+3 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 3 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+3 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 3 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 219 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 220 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+....... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 221 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+Summarising proc definitions... Done.
+p
+3 actions
+Calculating Succs and Preds... Done.
+..
+
+Re-Scanning Action System, scan: 2
+..
+
+Re-Scanning Action System, scan: 3
+..
+Rebuilding the action system.
+There are 3 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 222 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 223 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+3 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+(dispatch) 
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 224 posn = (1 2 1 1 1)
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Removing recursion in action LABA(1), dn = ()
+
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: 
+Eliminating actions which are only called once: .
+
+Action system type is Reg
+1 actions
+
+Simplifying action bodies: 
+Rebuilding the action system.
+There are 1 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 225 posn = ()
+Redundant variables are: (destination)
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 226 posn = ()
+....X...............................X.......................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Testing transformation: Find Dead Code
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 227 posn = (1)
+1 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+1 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+1 actions
+
+Simplifying action bodies: 
+Rebuilding the action system.
+There are 1 actions in the main system.
+Syntax is OK.
+Done
+Removing Action System: _enter_
+Testing transformation: Simplify Item
+Applying transformation: Simplify Item
+FA_nn = 228 posn = (1)
+Removing/Reducing superfluous loops
+.RP = (1 1 55 1 3) has n = 1
+>.
+ 
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 229 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXX WDS2  WDS1  MODSTORE 
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+
+
+Testing transformation: Unfold Proc Calls
+Applying transformation: Unfold Proc Calls
+FA_nn = 230 posn = (1)
+Unfolding Proc_Call A_000088 at (1)
+new_defns = 0
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 231 posn = ()
+
+PASS 7
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 232 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+xx 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 233 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 234 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+.xxx 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 235 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 236 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 237 posn = ()
+..X...............................................X....
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+..
+ 
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 238 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 239 posn = ()
+
+PASS 8
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 240 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 241 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 242 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 243 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 244 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 245 posn = ()
+..X...................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+..
+ 
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 246 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 247 posn = ()
+Actions to Procs...
+--- current equals old ---
+Trial = 6
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 248 posn = ()
+Preserving actions: (dispatch)
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 249 posn = ()
+
+PASS 9
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 250 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 251 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 252 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 253 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 254 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+. 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 255 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 256 posn = ()
+..X...................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+..
+ 
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 257 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 258 posn = ()
+Actions to Procs...
++
+PASS 10
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 259 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 260 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 261 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 262 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 263 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 264 posn = ()
+..X...................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+.RP = (55 1 3) has n = 1
+.
+ 
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 265 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS2) = r6
+DSECT_init(MODSTORE) = r11
+DSECT_init(WDS1) = r5
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+Found (fairly) constant DSECT: MODSTORE reg = r11 init count = 1
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+XXXXX WDS2  WDS1  MODSTORE 
+ 
+Simplifying the result
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 266 posn = ()
+Actions to Procs...
++--- current equals old ---
+
+Final simplification...
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 267 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS2 MODSTORE WDS1)
+. 
+Removing/Reducing superfluous loops
+.RP = (56 1 3) has n = 1
+.
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 268 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 269 posn = ()
+..X...................................................
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 270 posn = ()
+
+Transformation time: 50
+Transformation Count: 560
+Result is in: FMT001A5.ws4

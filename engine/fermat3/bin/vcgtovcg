@@ -1,0 +1,58 @@
+#!/usr/bin/perl
+# Process a vcg flowchart
+#
+# vcgtovcg [-start node[,node...]] [input] > output
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+use a2w;
+use VCG;
+use strict;
+
+$::S_Max_Box_Lines1 	= 8;	# Max number of lines in a label (start)
+$::S_Max_Box_Lines2 	= 2;	# Max number of lines in a label (end)
+$::S_Max_Box_Chars 	= 25;	# Max number of chars/line in a box label
+$::S_Max_Rhomb_Chars 	= 20;	# Max number of chars/line in a rhomb label
+$::S_Max_Incoming_Edges	= 5;	# Max number of edges into a node
+
+read_options();
+
+my ($myname, $Usage, $nodes, $edges);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [-start node[,node...]] [input] > output\n";
+
+my %start = ();
+if (@ARGV && ($ARGV[0] eq "-start")) {
+  shift;
+  die $Usage unless (@ARGV);
+  grep { $start{$_}++ } split(/,/, shift);
+}
+
+
+($nodes, $edges) = read_graph($ARGV[0] || "");
+
+print STDERR "There are ", $#{$nodes} + 1, " nodes and ", $#{$edges} + 1, " edges.\n";
+
+if (keys %start) {
+  find_reachable(\%start, $nodes, $edges);
+  print STDERR "Pruned graph has ", $#{$nodes} + 1, " nodes and ", $#{$edges} + 1, " edges.\n";
+
+}
+
+max_incoming($nodes, $edges);
+delete_singletons($nodes, $edges);
+dataflow_edges($nodes, $edges);
+#rename_nodes($nodes, $edges);
+
+print_flowchart($nodes, $edges);
+
+exit(0);
+
+

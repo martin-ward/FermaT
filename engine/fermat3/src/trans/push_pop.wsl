@@ -1,0 +1,199 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" Replace PUSH(stack, e); ... POP(v, stack)  by ";
+C:" VAR < tmp_N := e >: ... v := tmp_N ENDVAR ";
+C:" NB: no need to pop into __DUMMY__ ";
+C:" POP statement could be inside a VAR: put this VAR inside our VAR ";
+
+C:" The VAR clauses mess up Fix_Assembler (when it makes local procs ";
+C:" it moves up to the top, or to an enclosing VAR!) ";
+
+C:" Note: !P proc calls with os in the VAR part can clobber anything. ";
+
+MW_PROC @Push_Pop_Test() ==
+  IF @ST(@I) <> T_Push
+    THEN @Fail("Current item is not a PUSH statement")
+  ELSIF NOT @Right?
+    THEN @Fail("No statements to the right of current item ")
+  ELSIF EMPTY?(@PP_Find_Pop(@I^1, @Variables(@I^1), @Variables(@I^2)))
+    THEN @Fail("Cannot find a suitable POP")
+    ELSE @Pass FI .;
+
+
+MW_FUNCT @PP_Find_Pop(stack, vars, used) ==
+  VAR < pop := < >, all := @Variables(@I) >:
+  DO IF @Right? THEN @Right ELSE EXIT(1) FI;
+     WHILE @ST(@I) = T_Var AND EMPTY?(@Assigned(@I^1) /\ all) DO
+       @Down_To(2); @Down OD;
+     IF @ST(@I) = T_Pop AND @Equal?(@I^2, stack) THEN pop := @Posn; EXIT(1)
+     ELSIF NOT EMPTY?(@Variables(@I) /\ vars) THEN EXIT(1)
+     ELSIF NOT EMPTY?(@Assigned(@I) /\ used) THEN EXIT(1)
+     ELSIF NOT EMPTY?(@Stat_Types(@I) /\ Call_Types_Set) THEN EXIT(1)
+     ELSIF NOT @Is_Proper? THEN EXIT(1) FI OD;
+  (pop) .;
+
+
+MW_PROC @Push_Pop_Code(Data) ==
+  VAR < posn := @Posn, p1 := @Posn_n, p2 := 0,
+        stack := @I^1, vars := @Variables(@I^1),
+        pop := < >, v := < >, e := @I^2, tmp := < >, parent := @Parent,
+	body := < >, L := < >, needed := 0 >:
+  pop := @PP_Find_Pop(stack, vars, @Variables(@I^2));
+  IFMATCH Statement POP(__DUMMY__, ~?v)
+    THEN @Clever_Delete;
+         @Goto(posn);
+	 @Clever_Delete
+    ELSE v := @I^1;
+
+	 WHILE LENGTH(@Posn) > LENGTH(posn) DO @Up OD;
+	 p2 := @Posn_n;
+	 body := @Get_L(@Parent, p1 + 1, p2);
+	 @Goto(pop);
+	 IF EMPTY?(@Variables(e) /\ @Assigned(@Make(T_Statements, < >, body)))
+	   THEN needed := 0;
+	        @Paste_Over(FILL Statement ~?v := ~?e ENDFILL);		
+	   ELSE needed := 1;
+	        tmp := @PP_New_Var(@Make_Name("tmp"), parent);
+                @Paste_Over(FILL Statement ~?v := ~?tmp ENDFILL) FI;
+	 WHILE LENGTH(@Posn) > LENGTH(posn) DO @Up OD;
+	 p2 := @Posn_n;
+	 body := @Get_L(@Parent, p1 + 1, p2);
+	 @Up;
+	 L := @Cs(@I);
+	 @Paste_Over(@Make(T_Statements, < >, L[1..p1] ++ L[p2+1..LENGTH(Comps)]));
+	 @Down_To(p1);
+	 IF needed = 1
+	   THEN @Paste_Over(FILL Statement VAR < ~?tmp := ~?e >: ~*body ENDVAR ENDFILL);
+                IF @Trans?(TR_Remove_Redundant_Vars)
+                  THEN @Trans(TR_Remove_Redundant_Vars, "") FI
+           ELSE @Splice_Over(body) FI ENDMATCH ENDVAR .;
+
+
+C:" Find an unused tmp name: ";
+
+MW_FUNCT @PP_New_Var(tmp, I) ==
+  VAR < R := tmp, n := 1, vars := @Variables(I) >:
+  IF R IN vars
+    THEN WHILE @Make_Name(@N_String(tmp) ++ @String(n)) IN vars DO
+	   n := n + 1 OD;
+	 R := @Make_Name(@N_String(tmp) ++ @String(n)) FI;
+  (@Make(T_Variable, R, < >)) .;
+
+
+
+MW_PROC @Push_Pop_Test_old() ==
+  IF @ST(@I) <> T_Push
+    THEN @Fail("Current item is not a PUSH statement")
+  ELSIF @ST(@I^1) <> T_Var_Lvalue
+    THEN @Fail("Stack is not a simple variable")
+  ELSIF @ST(@I^2) <> T_Variable
+    THEN @Fail("PUSH statement does not push a simple variable")
+    ELSE @Pass FI .;
+
+
+
+MW_PROC @Push_Pop_Code_old(Data) ==
+  VAR < vars := < > >:
+  IF @ST(@I) = T_Push AND @ST(@I^1) = T_Var_Lvalue AND @ST(@I^2) = T_Variable
+       AND @Right?
+    THEN C:" Move the PUSH forwards, if possible ";
+         vars := @Used(@I);
+         @Cut;
+         WHILE @Right? AND EMPTY?(vars /\ @Assigned(@I))
+                 AND @PPC_A_Proc_Call_os?(@I)
+                 AND EMPTY?(@Stat_Types(@I) /\ Call_Types_Set)
+                 AND @Is_Proper? DO @Right OD;
+         @Paste_Before(@Buffer);
+         VAR < p1 := @Posn_n, p2 := 0, stack := @V(@I^1), v1 := @I^2, v2 := < > >:
+         C:" Look for the nearest corresponding POP with ";
+         C:" with no intervening PUSH: ";
+         DO IF NOT @Is_Proper? THEN EXIT(1) FI;
+            IF T_Call IN @Stat_Types(@I) THEN EXIT(1) FI;
+            IF @Right? THEN @Right ELSE EXIT(1) FI;
+            IF @ST(@I) = T_Push AND @ST(@I^1) = T_Var_Lvalue AND @V(@I^1) = stack
+              THEN EXIT(1) FI;
+            IF @ST(@I) = T_Push AND @ST(@I^2) = T_Variable AND @V(@I^2) = @V(v1)
+              THEN EXIT(1) FI;
+            IF @ST(@I) = T_Pop AND @ST(@I^1) = T_Var_Lvalue
+                 AND @V(@I^2) = stack
+                 AND @ST(@I^1) = T_Var_Lvalue
+              THEN p2 := @Posn_n; v2 := @I^1; EXIT(1) FI OD;
+         @To(p1);
+         IF p2 = p1 + 1
+           THEN C:" PUSH is immediately followed by POP ";
+                C:" Convert to a simple assignment if the value pushed ";
+                C:" is not popped into the same variable: ";
+                VAR < e := @I^2, v := < > >:
+                @Delete;
+                IF @LR_Equal?(@I^2, e)
+                  THEN @Clever_Delete
+                  ELSE v := @I^2;
+                       @Paste_Over(FILL Statement ~?v := ~?e ENDFILL) FI ENDVAR
+         ELSIF p2 > 0
+           THEN @Push_Pop_Doit(p1, p2, v1, v2) FI ENDVAR FI ENDVAR .;
+
+
+MW_PROC @Push_Pop_Doit(p1, p2, v1, v2) ==
+  VAR < S := @Get_L(@Parent, p1 + 1, p2 - 1), tmp := @Make_Name("__tmp") >:
+  IF NOT @PPC_A_Proc_Call_os?(@Make(T_Statements, < >, S))
+    THEN PRINT("Adding VAR for PUSH/POP at ", p1);
+	 IF @V(v1) = @V(v2) OR @V(v2) = @Make_Name("__DUMMY__")
+	   THEN @Paste_Over(FILL Statement VAR < ~?v1 := ~?v1 >: ~*S ENDVAR ENDFILL)
+	 ELSIF EMPTY?(@Stat_Types(@Make(T_Statements, < >, S)) /\ Call_Types_Set)
+	   THEN tmp := @PP_New_Var(tmp, @Make(T_Statements, < >, S));
+		@Paste_Over(FILL Statement IF TRUE THEN ~?tmp := ~?v1;
+							~*S; ~?v2 := ~?tmp FI ENDFILL)
+	   ELSE tmp := @PP_New_Var(tmp, @Program);
+		@Paste_Over(FILL Statement IF TRUE THEN ~?tmp := ~?v1;
+							~*S; ~?v2 := ~?tmp FI ENDFILL) FI;
+	 IF p2 > p1
+	   THEN @Right;
+		FOR i := p1 + 1 TO p2 STEP 1 DO
+		  @Clever_Delete OD FI;
+	 @To(p1) FI ENDVAR;
+  IF @Trans?(TR_Remove_Redundant_Vars)
+    THEN @Trans(TR_Remove_Redundant_Vars, "") FI .;
+
+
+C:" Check if item contains an A_Proc_Call with os argument ";
+C:" (and A_Proc_Call_Filter is not empty): ";
+
+A_Proc_Call_Filter := < >;
+
+MW_BFUNCT @PPC_A_Proc_Call_os?(I) ==
+  VAR < Found := 0 >:
+  IF NOT EMPTY?(A_Proc_Call_Filter)
+    THEN IF T_A_Proc_Call IN @Stat_Types(I)
+	   THEN @Edit;
+		@New_Program(I);
+		FOREACH Statement DO
+		  IF @ST(@I) = T_A_Proc_Call AND os_name IN @Assigned(@I^3)
+		    THEN Found := 1 FI OD;
+		@Undo_Edit FI FI;
+  (Found = 1) .;
+
+
+
+SKIP
+
+
+

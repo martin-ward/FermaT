@@ -1,0 +1,148 @@
+
+@Test_Trans(" 1st test of `Reduce_Loop'",
+	    (FILL Statements
+
+DO DO X := X + 1;
+      IF X = 10
+	THEN EXIT(2)
+      ELSIF X = 11
+	THEN EXIT(1)
+      ELSIF X = 12
+	THEN I := 2
+	ELSE I := 1 FI;
+      IF J = 1 THEN K := K + 1 ELSE L := L - 2 FI OD OD
+
+ENDFILL),
+	    <1, 1, 1>,
+	    TR_Reduce_Loop,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  DO DO X := X + 1;
+	IF X = 10
+	  THEN EXIT(2)
+	ELSIF X = 11
+	  THEN EXIT(1)
+	ELSIF X = 12
+	  THEN I := 2; p_1()
+	  ELSE I := 1; p_1() FI OD OD
+WHERE
+  PROC p_1() ==
+    IF J = 1 THEN K := K + 1 ELSE L := L - 2 FI END
+END
+
+ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Reduce_Loop'",
+	    (FILL Statements
+
+DO DO X := X + 1;
+      Y := Y + 1;
+      IF X = 10
+	THEN EXIT(2)
+      ELSIF X = 11
+	THEN EXIT(1)
+      ELSIF X = 12
+	THEN IF Y = 10
+	       THEN EXIT(2)
+	     ELSIF Y = 11
+	       THEN EXIT(1)
+	     ELSIF Y = 12
+	       THEN I := 2 
+	       ELSE I := 1 FI;
+	     IF J1 = 1 THEN K := K + 1 ELSE L := L - 2 FI
+	ELSE I := 1 FI;
+      IF J = 1 THEN K := K + 1 ELSE L := L - 2 FI OD OD
+
+ENDFILL),
+	    <1, 1, 1>,
+	    TR_Reduce_Loop,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  DO DO X := X + 1;
+	Y := Y + 1;
+	IF X = 10
+	  THEN EXIT(2)
+	ELSIF X = 11
+	  THEN EXIT(1)
+	ELSIF X = 12 AND Y = 10
+	  THEN EXIT(2)
+	ELSIF X = 12 AND Y = 11
+	  THEN EXIT(1)
+	ELSIF X = 12 AND Y = 12
+	  THEN I := 2; p_1(); p_2()
+	ELSIF X = 12
+	  THEN I := 1; p_1(); p_2()
+	  ELSE I := 1; p_2() FI OD OD
+WHERE
+  PROC p_1() ==
+    IF J1 = 1 THEN K := K + 1 ELSE L := L - 2 FI END
+  PROC p_2() ==
+    IF J = 1 THEN K := K + 1 ELSE L := L - 2 FI END
+END
+
+ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Reduce_Loop'",
+	    (FILL Statements
+
+DO DO X := X + 1;
+      Y := Y + 1;
+      IF X = 10
+	THEN EXIT(2)
+      ELSIF X = 11
+	THEN EXIT(1)
+      ELSIF X = 12
+	THEN IF Y = 10
+	       THEN EXIT(2)
+	     ELSIF Y = 11
+	       THEN EXIT(1)
+	     ELSIF Y = 12
+	       THEN I := 2 
+	       ELSE I := 1 FI;
+	     IF J = 1 THEN K := K + 1 ELSE L := L - 2 FI
+	ELSE I := 1 FI;
+      IF J = 1 THEN K := K + 1 ELSE L := L - 2 FI OD OD
+
+ENDFILL),
+	    <1, 1, 1>,
+	    TR_Reduce_Loop,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  DO DO X := X + 1;
+	Y := Y + 1;
+	IF X = 10
+	  THEN EXIT(2)
+	ELSIF X = 11
+	  THEN EXIT(1)
+	ELSIF X = 12 AND Y = 10
+	  THEN EXIT(2)
+	ELSIF X = 12 AND Y = 11
+	  THEN EXIT(1)
+	ELSIF X = 12 AND Y = 12
+	  THEN I := 2; p_1(); p_1()
+	ELSIF X = 12
+	  THEN I := 1; p_1(); p_1()
+	  ELSE I := 1; p_1() FI OD OD
+WHERE
+  PROC p_1() ==
+    IF J = 1 THEN K := K + 1 ELSE L := L - 2 FI END
+END
+
+ENDFILL));
+
+
+
+
+
+SKIP
+
+
+

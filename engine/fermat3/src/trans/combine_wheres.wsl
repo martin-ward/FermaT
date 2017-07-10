@@ -1,0 +1,76 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+MW_PROC @Combine_Wheres_Test() == 
+VAR <orig_pos:=@Posn,o_where:="",double:=0>: 
+  IF (@Spec_Type (@Item) <> T_Where) THEN @Fail("Not WHERE") FI;
+  IF ((NOT @Failed?) AND @Up?) THEN @Up;
+	IF @Up? THEN @Up;
+		IF (@Spec_Type(@Item)=T_Where) THEN
+			double:=1; o_where:=@Posn FI FI FI;
+   @Goto(orig_pos); 
+   IF ((double=0) AND (NOT @Failed?) AND @Down?) THEN @Down;
+	IF @Down? THEN @Down;
+		IF (@Spec_Type(@Item)=T_Where) THEN
+			double:=1;o_where:=orig_pos FI FI FI;
+
+ IF (double = 1) THEN @Goto (o_where);
+	VAR <outer:=< >, inner:= < >>:
+	    @Down;@Right;
+	    FOR i:=1 TO @Size(@Item) STEP 1 DO
+	     outer:=outer++<@V((@I^i)^1)> OD;
+	     @Goto (o_where);@Down;@Down;
+	    @Down;@Right;
+	    FOR i:=1 TO @Size(@Item) STEP 1 DO
+	     IF MEMBER?(@V((@I^i)^1), outer) THEN
+		@Fail("Name Clash")FI OD
+	   ENDVAR FI;
+ IF (double=0) THEN @Fail("Not nested WHEREs") FI;
+ IF (NOT @Failed?) THEN @Pass FI
+
+ENDVAR 
+ .;
+
+   
+MW_PROC @Combine_Wheres_Code(Data) ==   
+VAR <o_where:=@Posn,  S1:="", S2:="", d1:="", d2:=""> :
+   IF @Up? THEN @Up;
+	IF @Up? THEN @Up;
+		IF (@Spec_Type(@Item) = T_Where) THEN 
+			o_where := @Posn FI FI FI;
+   @Goto (o_where);
+   d1:=@Get_L(@Get_n(@Item,2),1,@Size(@Get_n(@Item,2)));
+   S1:=@Get_L(@Get_n(@Item,1),2,@Size(@Get_n(@Item,1)));
+   @Down;@Down;
+   S2:=@Get_n(@Item,1);
+   d2:=@Get_n(@Item,2);
+   @Goto (o_where);
+   @Paste_Over(@Make(T_Where, < >, <S2++S1,d2++d1>))
+
+ENDVAR
+.    
+
+
+
+
+  
+  

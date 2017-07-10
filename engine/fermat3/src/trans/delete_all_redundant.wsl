@@ -1,0 +1,99 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Delete_All_Redundant_Test() ==
+  IF @ST(@I) <> T_Assign AND EMPTY?(@Stat_Types(@I))
+      THEN @Fail("The selected item does not include any statements")
+      ELSE @Pass FI .;
+
+MW_PROC @Delete_All_Redundant_Code(Data)==     
+  IF @Trans?(TR_Delete_Redundant_Statement)
+    THEN @Trans(TR_Delete_Redundant_Statement, "")
+    ELSE VAR < posn := @Posn, save := HASH_TABLE,
+               flag_save := DRS_Globals_To_Pars_Done >:
+         @Goto(< >);
+         @DRS_Fix_Procs(VAR save);
+	 @Goto(posn);
+         ATEACH Statement DO
+	   IF @ST(@I) = T_Skip OR @ST(@I) = T_Comment
+	     THEN C:" Skip SKIPs "
+           ELSIF @ST(@I) = T_A_Proc_Call AND @V(@I^1) = @Make_Name("init_NOP_flag")
+	     THEN C:" Keep init functions: these become static declarations "
+	   ELSIF @Trans?(TR_Delete_Redundant_Statement)
+	     THEN PRINFLUSH("X");
+		  @Paste_Over(@Skip)
+	   ELSIF @ST(@I) = T_Assignment AND @Size(@I) > 1
+	     THEN @Down;
+		  DO IF @Trans?(TR_Delete_Redundant_Statement)
+		       THEN PRINFLUSH("X"); @Delete;
+			    IF @Posn_n > @Size(@Parent) THEN EXIT(1) FI
+		     ELSIF @Right?
+		       THEN @Right
+		       ELSE EXIT(1) FI OD;
+		  @Up;
+		  IF @Size(@I) = 0 THEN @Paste_Over(@Skip) FI
+	     ELSE PRINFLUSH(".") FI OD;
+	 @Goto(< >);
+	 @DRS_Restore_Procs(VAR save);
+	 @Goto(posn);
+	 IF @Trans?(TR_Delete_All_Skips)
+	   THEN @Trans(TR_Delete_All_Skips, "") FI;
+	 PRINT("");
+	 DRS_Globals_To_Pars_Done := flag_save ENDVAR FI .;
+
+
+MW_PROC @DRS_Fix_Procs(VAR save) ==
+   C:" Save all proc call and defn parameters (using the posn as key) ";
+   ATEACH Statement DO
+     IF @ST(@I) = T_Proc_Call
+       THEN save.(@Posn) := @I FI OD;
+   ATEACH Statement DO
+     IF @ST(@I) = T_Where
+       THEN @Down_Last; @Down; C:" to first defn ";
+            DO IF @ST(@I) = T_Proc
+                 THEN save.(@Posn) := <@I^2, @I^3> FI;
+               IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+            @Up; @Up; C:" back to WHERE ";
+	    IF @Trans?(TR_Globals_To_Pars)
+	      THEN DRS_Globals_To_Pars_Done := 1;
+                   @Trans(TR_Globals_To_Pars, "") FI FI OD .;
+
+
+MW_PROC @DRS_Restore_Procs(VAR save) ==
+  VAR < pair := < > >:
+  ATEACH Statement DO
+     IF @ST(@I) = T_Proc_Call AND NOT EMPTY?(save.(@Posn))
+       THEN @Paste_Over(save.(@Posn))
+     ELSIF @ST(@I) = T_Where
+       THEN @Down_Last; @Down; C:" to first defn ";
+            DO IF @ST(@I) = T_Proc AND NOT EMPTY?(save.(@Posn))
+                 THEN pair := save.(@Posn);
+		      @Paste_Over(@Make(T_Proc, < >, <@I^1, pair[1], pair[2], @I^4>)) FI;
+	       IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	    @Up; @Up FI OD ENDVAR .;
+
+
+
+
+SKIP
+
+
+

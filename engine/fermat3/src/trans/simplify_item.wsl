@@ -1,0 +1,290 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+MW_PROC @Simplify_Item_Test () ==
+  IF @ST(@I) = T_Cond
+    THEN C: "An `If' statement can be simplified if any of the conditions";
+         C: "(except the last one) are either TRUE or FALSE.";
+         @Down;
+         DO IF @Right?
+               THEN IF MEMBER?(@ST(@I^1), <T_True, T_False>) THEN @Pass; EXIT(1) FI;
+                    @Right
+               ELSE @Fail("The `If' statement should have a TRUE or FALSE condition");
+                    EXIT(1) FI OD
+  ELSIF @ST(@I) = T_D_If
+   THEN @Down;
+        DO IF @ST(@I^1) = T_False
+             THEN @Pass; EXIT(1)
+           ELSIF @Right?
+             THEN @Right
+             ELSE @Fail("The `D_If' statement should have a FALSE condition");
+                  EXIT(1) FI OD
+  ELSIF @ST(@I) = T_Floop
+    THEN C: "A `Do-Od' loop can be simplified if it has no terminal statements ";
+         C:" or it contains two copies of the same statements.";
+         C:" Old version: IFMATCH Statement DO ~*S; ~*=S OD ";
+         IF EMPTY?(@TVs)
+           THEN @Pass
+         ELSIF @Trans?(TR_Remove_Dummy_Loop)
+	   THEN @Pass
+         ELSIF EVEN?(@Size(@I^1))
+           THEN VAR < S := @Cs(@I^1), mid := @Size(@I^1) DIV 2 >:
+                IF @Seq_Equal?(S[1..mid], S[mid+1..])
+                  THEN @Pass
+                  ELSE @Fail("The `Do-Od' loop is as simple as possible.") FI ENDVAR
+           ELSE @Fail("The `Do-Od' loop is as simple as possible.") FI
+  ELSIF @ST(@I) = T_A_S
+    THEN IF @Size(@I^2) = 1
+            THEN @Pass
+            ELSE @Fail("The action system must have just a single action.") FI
+  ELSIF @ST(@I) = T_Var AND EMPTY?(@Assigned(@I^1) /\ @Variables(@I^2))
+     THEN @Pass
+  ELSIF @ST(@I) = T_Var
+     THEN VAR < vars := < > >:
+          FOR assign IN @Cs(@I^1) DO
+            IF @ST(assign^1) = T_Var_Lvalue
+              THEN vars := <@V(assign^1)> ++ vars FI OD;
+          @Down_To(2); @Down;
+          IF @ST(@I) = T_Assignment AND @Size(@I) = 1
+                AND @ST(@I^1^1) = T_Var_Lvalue AND @V(@I^1^1) IN vars
+		AND @V(@I^1^1) NOTIN @Used(@I^1)
+		AND EMPTY?(@Used(@I^1^2) /\ @Assigned(@GParent^1))
+             THEN @Pass
+             ELSE @Fail("This VAR cannot be simplified") FI ENDVAR
+  ELSIF @ST(@I) = T_Where
+    THEN VAR <OK := 1, Names := MAP("@V1", @Cs(@I^2))> :
+             WHILE (OK = 1) AND NOT EMPTY?(Names) DO
+                   IF (@Proc_Called?(HEAD(Names), @I^1) OR
+                       @Funct_Called?(HEAD(Names), @I^1))
+                      THEN OK := 0 FI;
+                   Names := TAIL(Names) OD;
+             IF OK = 1
+                THEN @Pass
+                ELSE @Fail("One of the procedures of functions is called.") FI ENDVAR
+  ELSIF @ST(@I) = T_While AND @ST(@I^1) = T_True
+    THEN @Pass
+  ELSIF @ST(@I) = T_While AND @ST(LAST(@Cs(@I^2))) = T_Assert
+          AND @Implies?(@Get_n(LAST(@Cs(@I^2)), 1), @I^1)
+    THEN @Pass
+  ELSIF @ST(@I) = T_Assign AND @Up? AND @ST(@Parent) = T_Assignment
+          AND @LR_Equal?(@I^1, @I^2)
+    THEN @Pass
+  ELSIF @ST(@I) = T_Assignment
+    THEN FOR assign IN @Cs(@I) DO
+           IF @LR_Equal?(assign^1, assign^2)
+             THEN @Pass FI OD;
+         IF NOT @Passed? THEN @Fail("Cannot simplify this assignment") FI
+
+  ELSIF @ST(@I) = T_Funct AND @Size(@I^3) = 1 AND @ST(@I^3^1^1) = T_Var_Lvalue
+          AND @V(@I^3^1^1) IN @Used(@I^5)
+	  AND SUBSET?(@Stat_Types(@I^4), @Make_Set(<T_Cond, T_Skip, T_Assignment>))
+    THEN C:" Check that all assignments are to the assigned variable ";
+         VAR < v := @V(@I^3^1^1) >:
+	 @Down_To(4);
+	 FOREACH Statement DO
+	   IF @ST(@I) = T_Assignment
+	        AND (@Size(@I) > 1 OR @ST(@I^1^1) <> T_Var_Lvalue OR @V(@I^1^1) <> v)
+             THEN @Fail("Bad statement in the FUNCT definition") FI OD;
+         FOREACH Statements DO
+	   IF @Size(@I) > 1
+             THEN @Fail("Bad statements in the FUNCT definition") FI OD;
+         IF NOT @Failed? THEN @Pass FI ENDVAR
+  ELSIF @GT(@I) = T_Guarded AND @Size(@I^2) = 1 AND @ST(@I^2^1) = T_Cond
+    THEN C: "We can simplify using `Align_Nested_Statements' if ";
+         C: "there is a single `IF' statement in the guard.     ";
+         @Pass
+  ELSIF @GT(@I) = T_Expression OR @GT(@I) = T_Condition
+    THEN @Pass
+    ELSE @Fail("The selected item is not of an appropriate type.") FI .;
+
+
+MW_PROC @Simplify_Item_Code(Data) ==
+  IF @ST(@I) = T_Cond
+    THEN @Down;
+         DO IF @ST(@I^1) = T_False
+              THEN @Delete
+            ELSIF @Right?
+              THEN IF @ST(@I^1) = T_True
+                     THEN @Delete_Rest; EXIT(1)
+                     ELSE @Right FI
+              ELSE EXIT(1) FI OD;
+         @Up;
+         @Fix_Cond
+  ELSIF @ST(@I) = T_D_If
+   THEN @Down;
+        DO IF EMPTY?(@I) THEN EXIT(1)
+           ELSIF @ST(@I^1) = T_False THEN @Delete
+           ELSIF @Right? THEN @Right ELSE EXIT(1) FI OD;
+        @Up;
+        IF @Size(@I) = 0
+          THEN @Paste_Over(@Make(T_Abort, < >, < >))
+        ELSIF @Size(@I) = 1
+          THEN IF @ST(@I^1^1) = T_True
+                 THEN @Splice_Over(@Cs(@I^1^2))
+                 ELSE @Splice_Over(<@Make(T_Assert, < >, <@I^1^1>)> ++ @Cs(@I^1^2)) FI FI
+  ELSIF @ST(@I) = T_Floop
+    THEN IF EMPTY?(@TVs)
+           THEN @Paste_Over(@Make(T_Abort, < >, < >))
+         ELSIF @Trans?(TR_Remove_Dummy_Loop)
+           THEN @Trans(TR_Remove_Dummy_Loop, "")
+           ELSE VAR < S := @Cs(@I^1), mid := @Size(@I^1) DIV 2 >:
+                S := S[1..mid];
+                @Paste_Over(FILL Statement DO ~*S OD ENDFILL) ENDVAR FI
+  ELSIF @ST(@I) = T_A_S
+    THEN IF NOT @Regular?(@I^2^1)
+           THEN @Down_To(2); @Down; @Down_Last; @Down_Last;
+	        @Paste_After(@Make(T_Call, @Make_Name("Z"), < >));
+		@Up; @Up; @Up; @Up FI;
+         FOREACH NAS DO
+           IF @ST(@I) = T_Call
+              THEN IF @Value(@I) = @Make_Name("Z")
+                      THEN @Paste_Over(@Make(T_Exit, Depth + 2, < >))
+                      ELSE @Paste_Over(@Make(T_Exit, Depth + 1, < >)) FI FI OD;
+         @Put_AS_In_Double_Loop
+  ELSIF @ST(@I) = T_Var AND EMPTY?(@Assigned(@I^1) /\ @Variables(@I^2))
+     THEN @Splice_Over(@Cs(@I^2))
+  ELSIF @ST(@I) = T_Var
+    THEN C:" Look for an initial assignment to a variable ";
+         VAR < vars := < >, var := @I^2^1^1^1, val := @I^2^1^1^2 >:
+	 @Down; @Down; C:" to first assign ";
+         DO IF @ST(@I^1) = T_Var_Lvalue AND @V(@I^1) = @V(var)
+              THEN @Paste_Over(FILL Assign ~?var := ~?val ENDFILL);
+                   EXIT(1) FI;
+            IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+         @Up; @Right; @Down; C:" to first statement ";
+	 @Clever_Delete ENDVAR	 
+  ELSIF @ST(@I) = T_Where
+    THEN @Splice_Over(@Cs(@I^1))
+  ELSIF @ST(@I) = T_While AND @ST(@I^1) = T_True
+    THEN @Paste_Over(@Make(T_Abort, < >, < >))
+  ELSIF @ST(@I) = T_While AND @ST(LAST(@Cs(@I^2))) = T_Assert
+          AND @Equal?(@I^1, LAST(@Cs(@I^2)))
+    THEN VAR < B := @I^1 >:
+         @Paste_Over(FILL Statement IF ~?B THEN ABORT FI ENDFILL) ENDVAR
+  ELSIF @ST(@I) = T_While AND @ST(LAST(@Cs(@I^2))) = T_Assert
+          AND @Implies?(@Get_n(LAST(@Cs(@I^2)), 1), @I^1)
+   THEN VAR < B := @I^1 >:
+        @Paste_Over(FILL Statement IF ~?B THEN ABORT FI ENDFILL) ENDVAR
+  ELSIF @ST(@I) = T_Assign AND @LR_Equal?(@I^1, @I^2)
+    THEN @Clever_Delete
+  ELSIF @ST(@I) = T_Assignment
+    THEN VAR < new := < > >:
+         FOR assign IN @Cs(@I) DO
+           IF NOT @LR_Equal?(assign^1, assign^2)
+             THEN new := <assign> ++ new FI OD;
+         IF EMPTY?(new)
+           THEN @Clever_Delete
+           ELSE @Paste_Over(@Make(T_Assignment, < >, REVERSE(new))) FI ENDVAR
+
+  ELSIF @ST(@I) = T_Funct AND @Size(@I^3) = 1 AND @ST(@I^3^1^1) = T_Var_Lvalue
+          AND @V(@I^3^1^1) IN @Used(@I^5)
+	  AND SUBSET?(@Stat_Types(@I^4), @Make_Set(<T_Cond, T_Skip, T_Assignment>))
+    THEN C:" All assignments are to the assigned variable ";
+         C:" Delete the assigns and convert T_Cond statements to T_If ";
+	 VAR < S := @I^4, expn := < >, v := @Lvalue_To_Expn(@I^3^1^1) >:
+	 @Down_To(3);
+	 @Paste_Over(@Make(T_Assigns, < >, < >));
+	 @Right;
+	 @Paste_Over(@Skips);
+	 @Right; C:" To the expression ";
+	 expn := @SI_Stats_To_Expn(S, v);
+         FOREACH Global Variable DO
+	   IF @ST(@I) = @ST(v)
+	     THEN @Paste_Over(expn) FI OD;
+	 SKIP ENDVAR
+	 
+	 
+
+  ELSIF @GT(@I) = T_Guarded
+    THEN WHILE @Trans?(TR_Move_To_Right) DO
+           @Trans(TR_Move_To_Right, "") OD;
+         @Trans(TR_Align_Nested_Statements, "");
+	 @Up; @Trans(TR_Delete_All_Skips, ""); @Down_Last; @Left
+  ELSIF @GT(@I) = T_Expression
+    THEN @Paste_Over(@Simplify_Expn(@I))
+    ELSE @Paste_Over(@Simplify_Cond(@I)) FI .;
+
+
+C:" Put the action system body in a double loop and then simplify the loops. ";
+C:" Special case: If the first statement is a D_IF on entry_point, ";
+C:" then put each entry point body in a double loop. ";
+
+MW_PROC @Put_AS_In_Double_Loop() ==
+  VAR < S := @I >:
+  @Edit;
+  @New_Program(S^2^1^2);
+  IF @ST(@I^1) = T_D_If AND @Make_Name("entry_point") IN @Variables(@I^1^1^1)
+    THEN @Down;
+	 IF @Trans?(TR_Fully_Absorb_Right)
+	   THEN @Trans(TR_Fully_Absorb_Right, "") FI;
+	 @Down; C:" to first guarded ";
+	 DO @Down_To(2);
+	    S := @Cs(@I);
+	    @Paste_Over(FILL Statements DO DO ~*S OD OD ENDFILL);
+	    @Down;
+	    IF @Trans?(TR_Double_To_Single_Loop)
+	      THEN @Trans(TR_Double_To_Single_Loop, "") FI;
+	    IF @Trans?(TR_Remove_Dummy_Loop)
+	      THEN @Trans(TR_Remove_Dummy_Loop, "") FI;
+	    @Up; @Up; C:" back to guarded ";
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+    ELSE S := @Cs(@I);
+	 @Paste_Over(FILL Statements DO DO ~*S OD OD ENDFILL);
+	 @Down;
+	 IF @Trans?(TR_Double_To_Single_Loop)
+	   THEN @Trans(TR_Double_To_Single_Loop, "") FI;
+	 IF @Trans?(TR_Remove_Dummy_Loop)
+	   THEN @Trans(TR_Remove_Dummy_Loop, "") FI FI;
+  @Goto(< >);
+  @Trans(TR_Delete_All_Skips, "");
+  S := @Cs(@Program);
+  @Undo_Edit;
+  @Splice_Over(S) ENDVAR .;
+
+
+
+MW_FUNCT @SI_Stats_To_Expn(S, v) ==
+  VAR < I := v >:
+  IF @GT(S) = T_Statements
+    THEN I := @SI_Stats_To_Expn(S^1, v)
+  ELSIF @ST(S) = T_Cond AND  @Size(S) = 2
+    THEN I := @Make(T_If, < >, 
+                    <S^1^1,
+                     @SI_Stats_To_Expn(S^1^2, v),
+                     @SI_Stats_To_Expn(S^2^2, v)>)
+  ELSIF @ST(S) = T_Cond
+    THEN I := @Make(T_If, < >,
+                    <S^1^1,
+                     @SI_Stats_To_Expn(S^1^2, v),
+                     @SI_Stats_To_Expn(@Make(T_Cond, < >, TAIL(@Cs(S))), v)>)
+  ELSIF @ST(S) = T_Assignment
+    THEN I := S^1^2
+  ELSIF @ST(S) = T_Skip
+    THEN I := v
+    ELSE @Print_WSL(I, "");
+         ERROR("@SI_Stats_To_Expn: Unexpected statement!") FI;
+  (I) .;
+
+SKIP
+
+
+

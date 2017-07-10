@@ -1,0 +1,192 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2015 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Add a POP at the end of the procedure body to pop the value ";
+C:" from the stack into a VAR parameter. ";
+C:" Modify each call to PUSH the returned value back onto the stack. ";
+C:" Hopefully we can then merge the pushes and pops. ";
+C:" 
+    dotrans z-1.wsl Stack_To_Return posn=1,2,1,2,2
+";
+
+
+MW_PROC @Stack_To_Return_Test() ==
+  IF @ST(@I) <> T_Proc
+    THEN @Fail("Selected item is not a procedure definition")
+  ELSIF @Size(@I^3) > 0
+    THEN @Fail("Procedure already has VAR parameters")
+  ELSIF EMPTY?(@SRT_Find_Stack(@I^4))
+    THEN @Fail("No suitable stack PUSH in the procedure body")
+    ELSE @Pass FI .;
+
+
+
+MW_PROC @Stack_To_Return_Code(Data) ==
+  VAR < posn := @Posn, name := @V(@I^1), OK := 1, stack := @SRT_Find_Stack(@I^4),
+        str := @String(data), n := 1, var := < >, all := @Variables(@Program),
+	locals := < >, assigns := < >, done := 0 >:
+  IF str = "" THEN str := @N_String(name) ++ "_Return" FI;
+  var := @Make_Name(str);
+  WHILE var IN all DO
+    var := @Make_Name(str ++ "_" ++ n);
+    n := n + 1 OD;
+  n := 1;
+  par := var;
+  locals := <par>;
+
+  C:" Add the return parameter to the definition: ";
+  @Down_To(3); C:" to var pars ";
+  @Paste_Over(@Make(T_Lvalues, < >, <@Make(T_Var_Lvalue, par, < >)>));
+  @Up;
+
+  C:" Pop the stacked value into the parameter just before returning: ";
+  @Down_To(4);
+  @Down_Last; C:" last statement in body ";
+  @Paste_After(@Make(T_Pop, < >, <@Make(T_Var_Lvalue, par, < >), stack>));
+  @Up; @Up;
+
+  C:" Find all the calls and fix them: ";
+  @Up; @Up; C:" to WHERE clause ";
+  @Edit;
+
+  C:" The outer loop is needed because ATEACH terminates early ";
+  C:" when a VAR structure is inserted above the current position: ";
+
+  DO done := 1;
+     ATEACH Statement DO
+       IF @ST(@I) = T_Proc_Call AND @V(@I^1) = name AND @Size(@I^3) = 0
+         THEN var := @Make_Name(@N_String(par) ++ "_" ++ n);
+              locals := <var> ++ locals;
+              n := n + 1;
+              C:" Add the return parameter and push it onto the stack ";
+              @Down_To(3);
+              @Paste_Over(@Make(T_Lvalues, < >,
+                                <@Make(T_Var_Lvalue, var, < >)>));
+              @Up;
+              @Paste_After(@Make(T_Push, < >,
+                                 <stack, @Make(T_Variable, var, < >)>));
+              done := 0;
+              @STR_Make_Local(var) FI OD;
+
+     C:" Absorb a proc call into a VAR which references the parameter ";
+     ATEACH Statement DO
+       IF @Left? AND @ST(@I) = T_Var
+         THEN VAR < used := @Used(@I^2) >:
+              @Left;
+              IF @ST(@I) = T_Proc_Call AND NOT EMPTY?(@Assigned(@I^3) /\ used)
+                   AND @Trans?(TR_Merge_Right)
+                THEN @Trans(TR_Merge_Right, ""); done := 0
+              ELSIF @ST(@I) = T_Push AND NOT EMPTY?(@Assigned(@I) /\ used)
+                   AND @Trans?(TR_Merge_Right)
+                THEN @Trans(TR_Merge_Right, ""); done := 0
+                ELSE @Right FI ENDVAR FI OD;
+
+     C:" Absorb a POP into a preceding structure which contains a PUSH: ";
+        ATEACH Statement DO
+          IF @Left? AND @ST(@I) = T_Pop AND @ST(@I^1) = T_Var_Lvalue
+            THEN VAR < stack := @V(@I^2) >:
+                 @Left;
+                 IF T_Push IN @Stat_Types(@I) AND stack IN @Assigned(@I)
+                      AND @Trans?(TR_Absorb_Right)
+                   THEN @Trans(TR_Absorb_Right, ""); done := 0
+                   ELSE @Right FI ENDVAR FI OD;
+
+     ATEACH Statement DO
+       IF @ST(@I) = T_Push AND @Trans?(TR_Move_To_Right)
+         THEN @Trans(TR_Move_To_Right, ""); done := 0 FI;
+       IF @ST(@I) = T_Push AND @Trans?(TR_Push_Pop)
+         THEN @Trans(TR_Push_Pop, ""); done := 0 FI OD;
+
+     IF done = 1 THEN EXIT(1) FI OD;
+
+  IF FALSE
+    THEN PRINT("locals are: ", MAP("@N_String", @Sort_List(locals))) FI;
+
+  @End_Edit;
+
+  @Goto(< >);
+  @Trans(TR_Remove_All_Redundant_Vars, "");
+  IF @Valid_Posn?(@Program, posn) THEN @Goto(posn) FI ENDVAR .;
+
+
+
+C:" Look for a PUSH at the end of the given item ";
+
+MW_FUNCT @SRT_Find_Stack(I) ==
+  VAR < stack := < >, OK := 1 >:
+  IF @GT(I) = T_Statements
+    THEN stack := @SRT_Find_Stack(I^@Size(I))
+  ELSIF @GT(I) <> T_Statement
+    THEN ERROR("Unexpected type in @SRT_Find_Stack " ++ @Type_Name(@ST(I)))
+  ELSIF @ST(I) = T_Var
+    THEN stack := @SRT_Find_Stack(I^2)
+  ELSIF @ST(I) = T_Push
+    THEN stack := I^1
+  ELSIF @ST(I) = T_Cond OR @ST(I) = T_D_If
+    THEN FOR I IN @Cs(I) DO
+           IF EMPTY?(stack)
+	     THEN stack := @SRT_Find_Stack(I^2)
+           ELSIF NOT @Equal?(stack, @SRT_Find_Stack(I^2))
+	     THEN OK := 0 FI OD;
+         IF OK = 0 THEN stack := < > FI FI;
+  (stack) .;
+
+
+MW_PROC @STR_Make_Local(var) ==
+  VAR < rel_posn := < >,
+        assign := @Make(T_Assign, < >, <@Make(T_Var_Lvalue, var, < >),
+	                                Mth_0>) >:
+  WHILE @Up? AND @ST(@I) <> T_Var
+          AND @ST(@Parent) <> T_Proc AND @ST(@Parent) <> T_Where DO
+    rel_posn := <@Posn_n> ++ rel_posn;
+    @Up OD;
+  IF @ST(@I) <> T_Var
+    THEN C:" Add an enclosing VAR clause ";
+         IF @GT(@I) = T_Statements
+	   THEN @Paste_Over(@Make(T_Statements, < >,
+                                  <@Make(T_Var, < >,
+				         <@Make(T_Assigns, < >, < >), @I>)>));
+                @Down;
+	        rel_posn := <2> ++ rel_posn
+         ELSIF @GT(@I) = T_Statement
+	   THEN @Paste_Over(@Make(T_Var, < >,
+	                          <@Make(T_Assigns, < >, < >),
+	                           @Make(T_Statements, < >, <@I>)>));
+	        rel_posn := <2, 1> ++ rel_posn
+           ELSE ERROR("Stack_To_Return expecting a statement or statements!") FI FI;
+  C:" Insert the assignment into this VAR ";
+  @Down;
+  @Paste_Over(@Make(T_Assigns, < >, @Cs(@I) ++ <assign>));
+  @Up;
+  C:" Go back to original position ";
+  WHILE NOT EMPTY?(rel_posn) DO
+    @Down_To(HEAD(rel_posn));
+  rel_posn := TAIL(rel_posn) OD ENDVAR .;
+
+
+
+
+SKIP
+
+
+
+
+
+

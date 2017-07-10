@@ -1,0 +1,43 @@
+
+Statements:  number of WSL statements in the program (nodes of type
+Statement in the parse tree);
+
+Expressions: number of WSL expresssions in the program;
+
+Effective Size:  see below.
+
+McCabe:  McCabe's cyclometric complexity measure.
+
+CFDF:  Control Flow / Data Flow metric:  count 1 for each variable,
+array reference or lvalue plus one for each procedure call
+or action call.
+
+Branch-Loop: Count one for each loop plus one for each procedure
+call or action call.
+
+Structural:  A weighted sum over the program:  +, * counts 1,
+-, /, **, MOD, DIV, ABS, SGN, FRAC, INT, AND, OR count 2,
+any other expression counts 4, any conditional counts 5 per arm,
+an action call counts 10, an EXIT counts 5 times the exit value,
+and any other statement counts 5.
+
+
+
+How to calculate the effective size of a WHERE clause or action system
+using a depth-first search of the call graph, ignoring recursion.
+ 
+Let M be the set of modules (actions or procs+functions). Then:
+
+		ES = ESM(root, M \ {root}) / #M
+
+where ESM(x, M) (the effective size in modules) is defined:
+
+	ESM(x, M) = 1 + SUM_{y in M is called by x} ESM(y, M \ {y})
+		      + #{y is not in M and is called by x}
+ 
+(note that for a recursive call, we don't look any deeper)
+
+
+ 
+
+

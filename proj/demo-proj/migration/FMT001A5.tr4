@@ -1,0 +1,60 @@
+Adding a dummy reference at the end of the program
+Computing Basic Blocks...
+Computing Deletion List...
+SSA Preprocessing... 
+SSA bulding ADT... 
+Constructing Roman Chariots problem... 
+Constructing APT structure... 
+Control Dependence Equivalence Classes... 
+Control Dependence calculation... 
+Computing Proc Summaries... 
+Calculating SSA... 
+Finding redundant assignments...
+
+Generating new WSL...
+Reading deletion list...
+Moving to: (55 1 3 2 2 25) length = 2
+r14 := NOTUSED_142
+Moving to: (55 1 3 2 2 12) length = 13
+r1 := !XF address_of(MFI0008)
+Moving to: (55 1 3 2 2 12) length = 13
+r15 := a[136, 4]
+Moving to: (44) length = 1
+Moving to: (37) length = 5
+r15 := result_code
+Moving to: (36) length = 1
+Moving to: (29) length = 5
+r15 := result_code
+Moving to: (28) length = 1
+Moving to: (6) length = 17
+r4 := __r4_init__
+Moving to: (6) length = 17
+r5 := __r5_init__
+Moving to: (6) length = 17
+r9 := __r9_init__
+Moving to: (6) length = 17
+r6 := __r6_init__
+Moving to: (6) length = 17
+r13 := __r13_init__
+Moving to: (6) length = 17
+r3 := 2
+Moving to: (6) length = 17
+r8 := __r8_init__
+Moving to: (6) length = 17
+r2 := __r2_init__
+Moving to: (6) length = 17
+r14 := __r14_init__
+Moving to: (6) length = 17
+r12 := __r12_init__
+Moving to: (6) length = 17
+r10 := __r10_init__
+Moving to: (6) length = 17
+r7 := __r7_init__
+Finished deleting.
+Removing parameters from local procs
+Restoring local vars
+Removing dummy reference
+
+Transformation time: 1
+Transformation Count: 2
+Result is in: FMT001A5.ws5

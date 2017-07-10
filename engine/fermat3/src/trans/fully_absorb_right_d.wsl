@@ -1,0 +1,29 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+TR_Fully_Absorb_Right := @New_TR_Number;
+TRs_Name[TR_Fully_Absorb_Right] := "Fully Absorb Right";
+TRs_Proc_Name[TR_Fully_Absorb_Right] := "Fully_Absorb_Right";
+TRs_Test[TR_Fully_Absorb_Right]:=!XF funct(@Fully_Absorb_Right_Test);
+TRs_Code[TR_Fully_Absorb_Right]:=!XF funct(@Fully_Absorb_Right_Code);
+TRs_Keywords[TR_Fully_Absorb_Right] := <"Join">;
+TRs_Help[TR_Fully_Absorb_Right] := "This transformation will absorb into the selected statement all the statements that follow it.";
+TRs_Prompt[TR_Fully_Absorb_Right] := "";
+TRs_Data_Gen_Type[TR_Fully_Absorb_Right] := ""

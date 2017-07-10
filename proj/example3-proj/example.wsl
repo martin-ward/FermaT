@@ -1,0 +1,7 @@
+VAR < x := 0, y := 0 >:
+DO DO IF x = 0 
+        THEN PRINT("Hello World")
+      ELSIF x > (2 + x) - 1
+        THEN PRINT("Goodby cruel world")
+        ELSE EXIT(2) FI;
+      x := x + 1 OD OD ENDVAR

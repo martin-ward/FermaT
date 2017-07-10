@@ -1,0 +1,632 @@
+
+VAR < file := "004-foreach: ", fail := < >, n := "", a := < >, b := < > >:
+
+PRINT("Testing FOREACH and ATEACH...");
+
+
+n := "001";
+@New_Program(FILL Statements
+  IF x = 1 THEN y := 2; z := 3 ELSE w := 4 FI
+ENDFILL);
+A := < >;
+ATEACH Statement DO
+  A := A ++ <@ST(@I)> OD;
+IF A = <114, 110, 110, 110>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "002";
+@New_Program(FILL Statements IF x1 = y1 THEN x1 := z1; EXIT(1) ELSE EXIT(1) FI;
+			     IF x2 = y2 THEN x2 := z2 FI ENDFILL);
+FOREACH Terminal Statement DO
+  IF @ST(@I) = T_Cond THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statements SKIP; IF x2 = y2 THEN x2 := z2 FI ENDFILL;
+b:= FILL Statements SKIP; SKIP ENDFILL;
+IF @Equal?(a, @Program) OR @Equal?(b, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "003";
+@New_Program(FILL Statements IF x1 = y1 THEN x1 := z1 ELSE EXIT(1) FI;
+			     IF x2 = y2 THEN x2 := z2 FI ENDFILL);
+FOREACH Terminal Statement DO
+  IF @ST(@I) = T_Cond THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statements IF x1 = y1 THEN x1 := z1 ELSE EXIT(1) FI;
+		     SKIP ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "004";
+@New_Program(FILL Statements IF x1 = y1 THEN x1 := z1 ELSE EXIT(1) FI;
+			     IF x2 = y2 THEN x2 := z2 FI ENDFILL);
+@Down;
+FOREACH Terminal Statement DO
+  IF @ST(@I) = T_Cond THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statements SKIP;
+		     IF x2 = y2 THEN x2 := z2 FI ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "005";
+@New_Program(FILL Statements DO IF x1 = y1 THEN x1 := z1 ELSE EXIT(1) FI;
+				IF x2 = y2 THEN x2 := z2; EXIT(2) FI OD ENDFILL);
+FOREACH STS DO
+  IF @ST(@I) = T_Exit AND @Value(@I) = Depth
+    THEN @Splice_Over(@Increment(@I, @AS_Type, Depth, 0)) FI OD;
+a := FILL Statements DO IF x1 = y1 THEN x1 := z1 ELSE EXIT(2) FI;
+			IF x2 = y2 THEN x2 := z2; EXIT(2) FI OD ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "006";
+@New_Program(FILL Statements
+	ACTIONS start:
+	start == x := 1; ACTIONS start2:
+			 start2 == y := 1; CALL Z END ENDACTIONS;
+		 z := 1; CALL end END
+	end == IF z = 1 THEN y1 := 1; CALL Z
+			ELSE y2 := 1; CALL start FI END ENDACTIONS
+ENDFILL);
+FOREACH NAS DO
+  IF @ST(@I) = T_Assignment THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statements
+	ACTIONS start:
+	start == x := 1; ACTIONS start2:
+			 start2 == y := 1; CALL Z END ENDACTIONS;
+		 z := 1; CALL end END
+	end == IF z = 1 THEN y1 := 1; CALL Z
+			ELSE y2 := 1; CALL start FI END ENDACTIONS
+ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "007";
+@New_Program(FILL Statement
+	ACTIONS start:
+	start == x := 1; ACTIONS start2:
+			 start2 == y := 1; CALL Z END ENDACTIONS;
+		 z := 1; CALL end END
+	end == IF z = 1 THEN y1 := 1; CALL Z
+			ELSE y2 := 1; CALL start FI END ENDACTIONS
+ENDFILL);
+FOREACH NAS DO
+  IF @ST(@I) = T_Assignment THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statement
+	ACTIONS start:
+	start == SKIP; ACTIONS start2:
+		       start2 == y := 1; CALL Z END ENDACTIONS;
+		 SKIP; CALL end END
+	end == IF z = 1 THEN SKIP; CALL Z
+			ELSE SKIP; CALL start FI END ENDACTIONS
+ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "008";
+@New_Program(FILL Statement
+	ACTIONS start:
+	start == x := 1; ACTIONS start2:
+			 start2 == y := 1; CALL Z END ENDACTIONS;
+		 z := 1; CALL end END
+	end == IF z = 1 THEN y1 := 1; CALL Z
+			ELSE y2 := 1; CALL start FI END ENDACTIONS
+ENDFILL);
+FOREACH Statement DO
+  IF @ST(@I) = T_Assignment THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statement
+	ACTIONS start:
+	start == SKIP; ACTIONS start2:
+		       start2 == SKIP; CALL Z END ENDACTIONS;
+		 SKIP; CALL end END
+	end == IF z = 1 THEN SKIP; CALL Z
+			ELSE SKIP; CALL start FI END ENDACTIONS
+ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+C:" These two tests show the difference between the post-order FOREACH ";
+C:" and the pre-order ATEACH loop. FOREACH processes the components ";
+C:" of an item before processing the item itself. ";
+
+n := "009";
+@New_Program(FILL Statements
+IF FALSE
+  THEN z := 1
+  ELSE IF FALSE THEN z := 2 FI FI
+ENDFILL);
+FOREACH Statement DO
+  IF @ST(@I) = T_Cond AND @ST(@I^1^1) = T_False
+    THEN @Down; @Clever_Delete FI OD;
+a := FILL Statements
+SKIP
+ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "010";
+@New_Program(FILL Statements
+IF FALSE
+  THEN z := 1
+  ELSE IF FALSE THEN z := 2 FI FI
+ENDFILL);
+ATEACH Statement DO
+  IF @ST(@I) = T_Cond AND @ST(@I^1^1) = T_False
+    THEN @Down; @Clever_Delete FI OD;
+a := FILL Statements
+IF FALSE THEN z := 2 FI
+ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "011";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "012";
+@New_Program(FILL Statements IF x1 = y1 THEN x1 := z1; EXIT(1) ELSE EXIT(1) FI;
+			     IF x2 = y2 THEN x2 := z2 FI ENDFILL);
+ATEACH Terminal Statement DO
+  IF @ST(@I) = T_Cond THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statements SKIP; SKIP ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "013";
+@New_Program(FILL Statements IF x1 = y1 THEN x1 := z1 ELSE EXIT(1) FI;
+			     IF x2 = y2 THEN x2 := z2 FI ENDFILL);
+ATEACH Terminal Statement DO
+  IF @ST(@I) = T_Cond THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statements IF x1 = y1 THEN x1 := z1 ELSE EXIT(1) FI;
+		     SKIP ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "014";
+@New_Program(FILL Statements IF x1 = y1 THEN x1 := z1 ELSE EXIT(1) FI;
+			     IF x2 = y2 THEN x2 := z2 FI ENDFILL);
+@Down;
+ATEACH Terminal Statement DO
+  IF @ST(@I) = T_Cond THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statements SKIP;
+		     IF x2 = y2 THEN x2 := z2 FI ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "015";
+@New_Program(FILL Statements DO IF x1 = y1 THEN x1 := z1 ELSE EXIT(1) FI;
+				IF x2 = y2 THEN x2 := z2; EXIT(2) FI OD ENDFILL);
+ATEACH STS DO
+  IF @ST(@I) = T_Exit AND @Value(@I) = Depth
+    THEN @Splice_Over(@Increment(@I, @AS_Type, Depth, 0)) FI OD;
+a := FILL Statements DO IF x1 = y1 THEN x1 := z1 ELSE EXIT(2) FI;
+			IF x2 = y2 THEN x2 := z2; EXIT(2) FI OD ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "016";
+@New_Program(FILL Statements
+	ACTIONS start:
+	start == x := 1; ACTIONS start2:
+			 start2 == y := 1; CALL Z END ENDACTIONS;
+		 z := 1; CALL end END
+	end == IF z = 1 THEN y1 := 1; CALL Z
+			ELSE y2 := 1; CALL start FI END ENDACTIONS
+ENDFILL);
+ATEACH NAS DO
+  IF @ST(@I) = T_Assignment THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statements
+	ACTIONS start:
+	start == x := 1; ACTIONS start2:
+			 start2 == y := 1; CALL Z END ENDACTIONS;
+		 z := 1; CALL end END
+	end == IF z = 1 THEN y1 := 1; CALL Z
+			ELSE y2 := 1; CALL start FI END ENDACTIONS
+ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "017";
+@New_Program(FILL Statement
+	ACTIONS start:
+	start == x := 1; ACTIONS start2:
+			 start2 == y := 1; CALL Z END ENDACTIONS;
+		 z := 1; CALL end END
+	end == IF z = 1 THEN y1 := 1; CALL Z
+			ELSE y2 := 1; CALL start FI END ENDACTIONS
+ENDFILL);
+C:" Currently an ATEACH _does_ process the whole item with the body: ";
+@Down_Last;
+ATEACH NAS DO
+  IF @ST(@I) = T_Assignment THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statement
+	ACTIONS start:
+	start == SKIP; ACTIONS start2:
+		       start2 == y := 1; CALL Z END ENDACTIONS;
+		 SKIP; CALL end END
+	end == IF z = 1 THEN SKIP; CALL Z
+			ELSE SKIP; CALL start FI END ENDACTIONS
+ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "018";
+@New_Program(FILL Statement
+	ACTIONS start:
+	start == x := 1; ACTIONS start2:
+			 start2 == y := 1; CALL Z END ENDACTIONS;
+		 z := 1; CALL end END
+	end == IF z = 1 THEN y1 := 1; CALL Z
+			ELSE y2 := 1; CALL start FI END ENDACTIONS
+ENDFILL);
+ATEACH Statement DO
+  IF @ST(@I) = T_Assignment THEN @Paste_Over(@Skip) FI OD;
+a := FILL Statement
+	ACTIONS start:
+	start == SKIP; ACTIONS start2:
+		       start2 == SKIP; CALL Z END ENDACTIONS;
+		 SKIP; CALL end END
+	end == IF z = 1 THEN SKIP; CALL Z
+			ELSE SKIP; CALL start FI END ENDACTIONS
+ENDFILL;
+IF @Equal?(a, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+
+n := "019";
+@New_Program(FILL Statements
+
+VAR < x := x, y := x + y >:
+  x := x + 1; y := y + 1; z := x + y ENDVAR;
+x := x + 1;
+FOR x := 1 TO x STEP x DO
+  x := x + 1; y := y + 1; z := x + y OD
+
+ENDFILL);
+
+FOREACH Global Variable DO
+  IF @V(@I) = @Make_Name("x")
+    THEN @Paste_Over(@Make(@ST(@I), @Make_Name("x2"), < >)) FI OD;
+
+a := FILL Statements
+VAR < x2 := x2, y := x2 + y >:
+  x := x + 1; y := y + 1; z := x + y ENDVAR;
+x2 := x2 + 1;
+FOR x := 1 TO x2 STEP x2 DO
+  x := x + 1; y := y + 1; z := x + y OD ENDFILL;
+
+b := FILL Statements
+VAR < x := x2, y := x2 + y >:
+  x := x + 1; y := y + 1; z := x + y ENDVAR;
+x2 := x2 + 1;
+FOR x := 1 TO x2 STEP x2 DO
+  x := x + 1; y := y + 1; z := x + y OD ENDFILL;
+
+IF @Equal?(a, @Program) OR @Equal?(b, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "020";
+@New_Program(FILL Statements
+
+VAR < x := x, y := x + y >:
+  x := x + 1; y := y + 1; z := x + y ENDVAR;
+x := x + 1;
+FOR x := 1 TO x STEP x DO
+  x := x + 1; y := y + 1; z := x + y OD
+
+ENDFILL);
+
+FOREACH Variable DO
+  IF @V(@I) = @Make_Name("x")
+    THEN @Paste_Over(@Make(@ST(@I), @Make_Name("x2"), < >)) FI OD;
+
+a := FILL Statements
+VAR < x2 := x2, y := x2 + y >:
+  x2 := x2 + 1; y := y + 1; z := x2 + y ENDVAR;
+x2 := x2 + 1;
+FOR x := 1 TO x2 STEP x2 DO
+  x2 := x2 + 1; y := y + 1; z := x2 + y OD ENDFILL;
+b := FILL Statements
+VAR < x2 := x2, y := x2 + y >:
+  x2 := x2 + 1; y := y + 1; z := x2 + y ENDVAR;
+x2 := x2 + 1;
+FOR x2 := 1 TO x2 STEP x2 DO
+  x2 := x2 + 1; y := y + 1; z := x2 + y OD ENDFILL;
+
+IF @Equal?(a, @Program) OR @Equal?(b, @Program)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "021";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "022";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+IF FALSE THEN
+
+n := "023";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "024";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "025";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "026";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "027";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "028";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "029";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "030";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "031";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "032";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "033";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "034";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "035";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "036";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "037";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "038";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "039";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "040";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "041";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "042";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "043";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "044";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "045";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "046";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "047";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "048";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "049";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "050";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "051";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "052";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "053";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "054";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "055";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "056";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "057";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "058";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "059";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "060";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+SKIP FI;
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+

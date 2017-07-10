@@ -1,0 +1,49 @@
+Adding a dummy reference at the end of the program
+Computing Basic Blocks...
+Computing Deletion List...
+SSA Preprocessing... 
+SSA bulding ADT... 
+Constructing Roman Chariots problem... 
+Constructing APT structure... 
+Control Dependence Equivalence Classes... 
+Control Dependence calculation... 
+Computing Proc Summaries... 
+Calculating SSA... 
+Finding redundant assignments...
+
+Generating new WSL...
+Reading deletion list...
+Moving to: (1 1 2 6) length = 18
+r11 := __r11_init__
+Moving to: (1 1 2 6) length = 18
+r10 := __r10_init__
+Moving to: (1 1 2 6) length = 18
+r8 := __r8_init__
+Moving to: (1 1 2 6) length = 18
+r3 := 2
+Moving to: (1 1 2 6) length = 18
+r13 := __r13_init__
+Moving to: (1 1 2 6) length = 18
+r12 := __r12_init__
+Moving to: (1 1 2 6) length = 18
+r5 := __r5_init__
+Moving to: (1 1 2 6) length = 18
+r6 := __r6_init__
+Moving to: (1 1 2 6) length = 18
+r14 := __r14_init__
+Moving to: (1 1 2 6) length = 18
+r7 := __r7_init__
+Moving to: (1 1 2 6) length = 18
+r9 := __r9_init__
+Moving to: (1 1 2 6) length = 18
+r2 := __r2_init__
+Moving to: (1 2 2 1) length = 6
+r3 := 46
+Finished deleting.
+Removing parameters from local procs
+Restoring local vars
+Removing dummy reference
+
+Transformation time: 0
+Transformation Count: 2
+Result is in: FMT001A6.ws5

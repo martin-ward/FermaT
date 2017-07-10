@@ -1,0 +1,16 @@
+VAR < SW1 := 0, SW2 := 0 >:
+!P Produce_Heading( VAR sys);
+!P read( VAR stuff, sys);
+WHILE NOT (!XC eof(stuff)) DO
+  IF !XC First_Record_In_Group?(stuff)
+    THEN IF SW1 = 1
+           THEN !P Process_End_Of_Group( VAR sys) FI;
+         SW1 := 1;
+         !P Process_Start_Of_New_Group( VAR sys);
+         !P Process_Record( VAR sys);
+         SW2 := 1
+    ELSE !P Process_Record( VAR sys); SW2 := 1 FI;
+  !P read( VAR stuff) OD;
+IF SW2 = 1
+  THEN !P Process_End_Of_Group( VAR sys) FI;
+!P Produce_Summary( VAR sys) ENDVAR

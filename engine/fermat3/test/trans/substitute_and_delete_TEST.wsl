@@ -1,0 +1,220 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+@Test_Trans(" 1st test of `Substitute_And_Delete'",
+	    (FILL Statements ACTIONS A1:
+				A1 == IF B=10 THEN CALL Z
+				      ELSIF B=20 THEN CALL B1
+					ELSE B:=B+X; CALL A1 FI.
+				B1 == X:=B;
+				      DO X:=X-1;
+					 IF X < 20 THEN CALL A1 
+					  ELSE B := B-4 FI OD.
+			      ENDACTIONS  ENDFILL),
+	     <1,2,2>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     (FILL Statements ACTIONS A1:
+				A1 == IF B=10 THEN CALL Z
+				      ELSIF B=20 
+				       THEN X:=B;
+					    DO X:=X-1;
+					      IF X < 20 THEN CALL A1 
+						ELSE B := B-4 FI OD
+					ELSE B:=B+X; CALL A1 FI.
+			      ENDACTIONS  ENDFILL));
+
+
+
+@Test_Trans(" 2nd test of `Substitute_And_Delete'",
+	    (FILL Statements ACTIONS PROG:
+				   PROG == <line:= "", m:=0, I:=1>;
+					   CALL INHERE.
+				      L == i := i+1;
+					   IF i = (n+1) THEN CALL ALLDONE FI;
+					   m := 1;
+					   IF item[i] <> last 
+					     THEN write(line); line := ""; m:= 0;
+						  CALL INHERE FI.
+				  INHERE == p:=number[i]; line := item[i]; line := line++" "++p;
+					    CALL MORE.
+				    MORE == IF m=1 THEN p:=number[i]; line:=line++", "++p FI;
+					    last:=item[i]; CALL L.
+				 ALLDONE == write(line); CALL Z.
+			      ENDACTIONS  ENDFILL),
+	     <1,2,3>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     (FILL Statements ACTIONS PROG:
+				   PROG == <line:= "", m:=0, I:=1>;
+					   p:=number[i]; line := item[i]; line := line++" "++p;
+					   CALL MORE.
+				      L == i := i+1;
+					   IF i = (n+1) THEN CALL ALLDONE FI;
+					   m := 1;
+					   IF item[i] <> last 
+					     THEN write(line); line := ""; m:= 0;
+						  p:=number[i]; line := item[i]; line := line++" "++p;
+						  CALL MORE FI.
+				    MORE == IF m=1 THEN p:=number[i]; line:=line++", "++p FI;
+					    last:=item[i]; CALL L.
+				 ALLDONE == write(line); CALL Z.
+			      ENDACTIONS  ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Substitute_And_Delete'",
+	    (FILL Statements ACTIONS A1:
+				A1 == IF B=10 THEN CALL Z
+				      ELSIF B=20 THEN CALL B1
+					ELSE B:=B+X FI.
+				B1 == X:=B;
+				      X:=X-1;
+				      IF X < 20 THEN CALL B1; X:=X-1; CALL A1
+					ELSE B := B-4 FI.
+			      ENDACTIONS  ENDFILL),
+	     <1,2,2>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     "Fail");
+
+
+@Test_Trans(" 4th test of `Substitute_And_Delete'",
+	    (FILL Statements ACTIONS A1:
+				A1 == IF B=10 THEN CALL Z
+				      ELSIF B=20 THEN CALL B1
+					ELSE B:=B+X FI.
+				B1 == X:=B;
+				      X:=X-1;
+				      IF X < 20 THEN CALL B1; X:=X-1; CALL A1
+					ELSE B := B-4 FI.
+			      ENDACTIONS  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     "Fail");
+
+
+@Test_Trans(" 5th test of `Substitute_And_Delete'",
+	    (FILL Statements BEGIN A := 3;
+				   P (A VAR B);
+				   B := 4
+			     WHERE PROC P (X VAR Y) == Y := Y + X END
+			     END  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     (FILL Statements A := 3; 
+			      VAR <X:=A, Y:=B>: Y := Y + X; B:=Y ENDVAR;
+			      B := 4 ENDFILL));
+
+@Test_Trans(" 6th test of `Substitute_And_Delete'",
+	    (FILL Statements BEGIN A := 3;
+				   P ( VAR );
+				   B := 4
+			     WHERE PROC P ( VAR ) == A := B + A END,
+				   PROC Q (X VAR Y) == X := X + Y END
+			     END  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     (FILL Statements BEGIN A := 3;
+				    A := B + A;
+				    B := 4
+			      WHERE PROC Q (X VAR Y) == X := X + Y END
+			      END  ENDFILL));
+
+
+@Test_Trans(" 7th test of `Substitute_And_Delete'",
+	    (FILL Statements BEGIN A := 3;
+				   P (A VAR B);
+				   B := 4
+			     WHERE PROC P ( VAR ) == A := B + A;
+						     IF A <50 THEN P( VAR ) FI END,
+				   PROC Q (X VAR Y) == X := X + Y END
+			     END  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     "Fail");
+
+@Test_Trans(" 8th test of `Substitute_And_Delete'",
+	    (FILL Statements BEGIN A := 3;
+				   P (A VAR B);
+				   B := 4
+			     WHERE PROC P ( VAR ) == A := B + A END,
+				   PROC Q (X VAR Y) == X := X + Y; P (VAR ) END
+			     END  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     (FILL Statements BEGIN A := 3;
+				    A := B + A;
+				    B := 4
+			      WHERE PROC Q (X VAR Y) == X := X + Y;
+							A := B + A  END
+			      END  ENDFILL));
+
+
+
+
+
+@Test_Trans(" 9th test of `Substitute_And_Delete'",
+	    (FILL Statements BEGIN A := 3;
+				   B := inc(A)
+			     WHERE FUNCT inc (X) == : (X+1) END
+			     END  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     (FILL Statements A:=3; B:=A+1 ENDFILL) );
+
+@Test_Trans("10th test of `Substitute_And_Delete'",
+	    (FILL Statements BEGIN A := 3;
+				   B := fact(A)
+			     WHERE FUNCT fact (X) == : (IF X>0 THEN X * fact(X-1) ELSE 1 FI) END
+			     END  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     "Fail");
+
+
+@Test_Trans("11th test of `Substitute_And_Delete'",
+	    (FILL Statements BEGIN A := 3;
+				   B := fact(A)
+			     WHERE FUNCT fact (X) == : (IF X>0 THEN X*fact1(X-1) ELSE 1 FI) END,
+				   FUNCT fact1(Y) == : (IF Y=0 THEN 1 ELSE Y*fact(Y-1) FI)  END
+			     END  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     (FILL Statements BEGIN
+                                A := 3; B := IF A > 0 THEN fact1(A - 1) * A ELSE 1 FI
+                              WHERE
+                                FUNCT fact1(Y) ==
+                                  VAR <  >:
+                                  (IF Y = 0
+                                    THEN 1
+                                    ELSE IF Y > 1 THEN fact1(Y - 2) * (Y - 1) ELSE 1 FI * Y
+                                  FI) END
+                              END ENDFILL ) )
+
+

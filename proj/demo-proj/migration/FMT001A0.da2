@@ -1,0 +1,192 @@
+# Written on Sat May 31 01:13:54 2008
+# Data reorganised on Sat May 31 01:13:54 2008
+# Written on Sat May 31 01:13:52 2008
+
+Label_Locn fmt001a0 = 000000
+Op fmt001a0 = EXPORT
+Orig_Sequence fmt001a0 = 0
+Repeat fmt001a0 = 1
+Value fmt001a0 = 0
+
+Full_Length filler_CSECT001_0001 = 104
+Off_Dec filler_CSECT001_0001 = 0
+Op filler_CSECT001_0001 = FILLER
+Parent filler_CSECT001_0001 = CSECT001
+Repeat filler_CSECT001_0001 = 1
+Sibling filler_CSECT001_0001 = WDUB
+Type filler_CSECT001_0001 = C
+
+Child CSECT001 = filler_CSECT001_0001
+Full_Length CSECT001 = 196
+Off_Dec CSECT001 = 0
+Op CSECT001 = CSECT
+Orig_Sequence CSECT001 = 1
+Type CSECT001 = CSECT
+
+Init R0 = 0
+Label_Locn R0 = 000000
+Op R0 = EQU
+Orig_Sequence R0 = 2
+Value R0 = 0
+
+Init R1 = 1
+Label_Locn R1 = 000000
+Op R1 = EQU
+Orig_Sequence R1 = 3
+Value R1 = 1
+
+Init R2 = 2
+Label_Locn R2 = 000000
+Op R2 = EQU
+Orig_Sequence R2 = 4
+Value R2 = 2
+
+Init R3 = 3
+Label_Locn R3 = 000000
+Op R3 = EQU
+Orig_Sequence R3 = 5
+Value R3 = 3
+
+Init R4 = 4
+Label_Locn R4 = 000000
+Op R4 = EQU
+Orig_Sequence R4 = 6
+Value R4 = 4
+
+Init R5 = 5
+Label_Locn R5 = 000000
+Op R5 = EQU
+Orig_Sequence R5 = 7
+Value R5 = 5
+
+Init R6 = 6
+Label_Locn R6 = 000000
+Op R6 = EQU
+Orig_Sequence R6 = 8
+Value R6 = 6
+
+Init R7 = 7
+Label_Locn R7 = 000000
+Op R7 = EQU
+Orig_Sequence R7 = 9
+Value R7 = 7
+
+Init R8 = 8
+Label_Locn R8 = 000000
+Op R8 = EQU
+Orig_Sequence R8 = 10
+Value R8 = 8
+
+Init R9 = 9
+Label_Locn R9 = 000000
+Op R9 = EQU
+Orig_Sequence R9 = 11
+Value R9 = 9
+
+Init R10 = 10
+Label_Locn R10 = 000000
+Op R10 = EQU
+Orig_Sequence R10 = 12
+Value R10 = A
+
+Init R11 = 11
+Label_Locn R11 = 000000
+Op R11 = EQU
+Orig_Sequence R11 = 13
+Value R11 = B
+
+Init R12 = 12
+Label_Locn R12 = 000000
+Op R12 = EQU
+Orig_Sequence R12 = 14
+Value R12 = C
+
+Init R13 = 13
+Label_Locn R13 = 000000
+Op R13 = EQU
+Orig_Sequence R13 = 15
+Value R13 = D
+
+Init R14 = 14
+Label_Locn R14 = 000000
+Op R14 = EQU
+Orig_Sequence R14 = 16
+Value R14 = E
+
+Init R15 = 15
+Label_Locn R15 = 000000
+Op R15 = EQU
+Orig_Sequence R15 = 17
+Value R15 = F
+
+Label_Locn FMT001A0_ = 000000
+Op FMT001A0_ = CSECT
+Orig_Sequence FMT001A0_ = 18
+Type FMT001A0_ = CSECT
+Value FMT001A0_ = 0
+
+Full_Length WDUB = 8
+Label_Locn WDUB = 000068
+Off_Dec WDUB = 104
+Op WDUB = DS
+Orig_Parent WDUB = CSECT001
+Orig_Sequence WDUB = 19
+Parent WDUB = CSECT001
+Repeat WDUB = 1
+Sibling WDUB = WSAVE
+Type WDUB = D
+Value WDUB = 68
+
+Full_Length WSAVE = 72
+Init WSAVE = 0
+Label_Locn WSAVE = 000070
+Off_Dec WSAVE = 112
+Op WSAVE = DC
+Orig_Parent WSAVE = CSECT001
+Orig_Sequence WSAVE = 20
+Parent WSAVE = CSECT001
+Repeat WSAVE = 18
+Sibling WSAVE = WCT
+Type WSAVE = F
+Value WSAVE = 70
+
+Comment WCT = COUNT
+Full_Length WCT = 4
+Init WCT = 0
+Label_Locn WCT = 0000B8
+Off_Dec WCT = 184
+Op WCT = DC
+Orig_Parent WCT = CSECT001
+Orig_Sequence WCT = 21
+Parent WCT = CSECT001
+Repeat WCT = 1
+Sibling WCT = WNUM
+Type WCT = P
+Value WCT = B8
+
+Comment WNUM = "NO OF CREDIT TRANS"
+Full_Length WNUM = 4
+Init WNUM = 0
+Label_Locn WNUM = 0000BC
+Off_Dec WNUM = 188
+Op WNUM = DC
+Orig_Parent WNUM = CSECT001
+Orig_Sequence WNUM = 22
+Parent WNUM = CSECT001
+Repeat WNUM = 1
+Sibling WNUM = WTOTAL
+Type WNUM = P
+Value WNUM = BC
+
+Comment WTOTAL = AMOUNT
+Full_Length WTOTAL = 4
+Init WTOTAL = 0
+Label_Locn WTOTAL = 0000C0
+Off_Dec WTOTAL = 192
+Op WTOTAL = DC
+Orig_Parent WTOTAL = CSECT001
+Orig_Sequence WTOTAL = 23
+Parent WTOTAL = CSECT001
+Repeat WTOTAL = 1
+Type WTOTAL = P
+Value WTOTAL = C0

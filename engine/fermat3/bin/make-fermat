@@ -1,0 +1,948 @@
+#!/usr/bin/perl -w
+# Build a Scheme version of FermaT
+# Usage: make-fermat [options] [filename.scm]
+#
+# -force   runs wsl2scm on all the WSL files
+# -debug   adds print statements as each file is loaded
+# -gambit  generates code for gambit (include and defmacro)
+# -comp    compiles everything with hobbit and builds SCM-fermat-comp
+# -install compiles and installs SCM-fermat-comp (this is the default)
+# -big     put all the code in ALL.scm
+# -bigloo  call make-fermat-bigloo
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g; #"
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+
+sub read_dir($);
+sub quit;
+sub alarm_clock;
+sub make_stubs(@);
+sub make_stub($$$);
+sub diff($$);
+sub gcc($$$);
+sub make_hobbit();
+sub read_file($);
+
+($myname = $0) =~ s|(.*/)*||;   # strip path component from name
+$Usage = "$myname [options] [filename.scm] \n";
+
+my $HOME = $ENV{'HOME'} || $ENV{'LOGDIR'} ||
+		(getpwuid($<))[7] || die "You're homeless!\n" unless ($dos);
+
+$output = "ALL.scm";			# default output file
+$scm_base = "$FermaT${ds}scm";
+$scm_comp = "SCM-fermat-comp";
+$scmfmt   = "scmfmt";
+$expand_macros = 1;
+$ldflags = "";
+ $optimise = "-O2 -finline-functions";
+#$optimise = "   ";
+#$optimise = "-g ";
+%done_stub = ();
+%args = ();
+$proc_num = ($$ % 32768);
+$tmpfile = "$tmpdir${ds}h$proc_num.scm";
+$warn = "-Wno-implicit-function-declaration -Wno-return-type -Wno-empty-body"
+         . " -Wno-incompatible-pointer-types-discards-qualifiers"
+         . " -Wno-incompatible-pointer-types"
+         . " -Wno-deprecated-declarations"
+         . " -Wno-tautological-compare"
+         . " -Wno-shift-negative-value"
+         . " -Wno-unused-value" if $arch eq "Darwin";
+
+$optimise .= " -m32" if ($arch eq "Linux") || ($arch eq "Darwin");
+$optimise =~ s/-finline-functions// if $arch eq "Darwin";
+$optimise .= " $warn" if $arch eq "Darwin";
+
+# Functions called in perl scripts which may need to be stubified:
+%extern = ();
+grep { $extern{$_}++ } qw(
+	@BL_Metric @CFDF_Metric @CRP_Item @Call_Graph @Effective_Size
+	@Fail_Message @Find_Type @Flowchart @Gen_Type_Count @I @Item
+	@McCabe @New_Program @PP_Item @Parse_File @Print_Assigns @Program
+	@Stat_Count @Struct_Metric @Summ_To_WSL @Summarise @Syntax_OK @Trans
+	@WSL_To_C @WSL_To_Cx86 @WSL_To_COBOL @WSL_To_Scheme
+	@Print_Summ2 @Print_Proc_Summ2);
+
+$gcc = "gcc";
+$gcc2 = "gcc";
+$strip = "strip";
+if ($dos) {
+  foreach my $dir (split(/;/, $ENV{PATH})) {
+    $gcc2 = "gcc-2" if -f "$dir${ds}gcc-2.exe";
+  }
+}
+
+# We can't use a hobbit-compiled hobbit since we are
+# modifying some of hobbit's internal variables.
+# Also hobbit-compiled hobbit requires floats to be built in.
+$hobbit = "$FermaT${ds}$arch${ds}scmlit";
+$scmlit = "$FermaT${ds}$arch${ds}scmlit";
+
+if ($exe) {
+  $scm_comp .= ".exe";
+  $hobbit   .= ".exe";
+  $scmlit   .= ".exe";
+  $scmfmt   .= ".exe";
+}
+
+$defs1 = "defs1.scm";	# List of functions defined in compiled code
+$defs2 = "defs2.scm";	# List of variables needing to be defined in compiled code
+
+# scm5b1 objects:
+#@objects = qw(time.o repl.o scl.o sys.o eval.o subr.o unif.o ramap.o continue.o
+#	      gsubr.o ecrt0.o ioext.o rgx.o script.o posix.o rope.o socket.o
+#	      unexelf.o findexec.o sc2.o gmalloc.o record.o unix.o);
+
+# scm4e2 objects:
+#@objects = qw(repl.o sys.o unif.o eval.o ramap.o scl.o subr.o time.o);
+
+# scm5b2 objects:
+#@objects = qw(continue.o scl.o subr.o unif.o eval.o repl.o
+#	       sys.o findexec.o rope.o script.o time.o);
+
+# scm5d4 objects:
+#@objects = qw(continue.o findexec.o rope.o script.o sys.o unif.o
+#	       eval.o repl.o scl.o scmmain.o subr.o time.o);
+
+# scm5d6 to scm5e7 objects:
+@objects = qw(time.o repl.o scl.o sys.o eval.o subr.o unif.o rope.o
+	      continue.o findexec.o script.o debug.o scmmain.o);
+
+#$libs = "-lm -lsocket -lnsl";
+$libs = "";	# Libraries for the final link step
+
+$big = 0;
+$force = 0;
+$debug = 0;
+$gambit = 0;
+$comp = 1;
+$install = 1;
+$stubs = 0;
+
+$| = 1;			# unbuffered output
+$PID = 0;		# sub-process PID
+$outfile = "";		# output file of mysystem process
+$SIG{'ALRM'} = \&alarm_clock;
+$SIG{'PIPE'} = 'IGNORE';
+
+END {
+  if (-f $outfile) {
+    print "Deleting $outfile\n";
+    unlink($outfile);
+  }
+}
+
+for $arg (@ARGV) {
+  if ($arg eq "-force") {
+    $force = 1;
+  } elsif ($arg eq "-debug") {
+    $debug = 1;
+    $optimise .= " -g";
+  } elsif ($arg eq "-gambit") {
+    $gambit = 1;
+    $expand_macros = 0;
+    $big = 0;
+    $comp = 0;
+    $install = 0;
+    $output = "gambit.scm";
+  } elsif (($arg eq "-guile") || ($arg eq "-scm")) {
+    $big = 0;
+    $comp = 0;
+    $install = 0;
+  } elsif ($arg eq "-big") {
+    $big = 1;
+  } elsif ($arg eq "-comp") {
+    $comp = 1;
+  } elsif ($arg eq "-nocomp") {
+    $comp = 0;
+    $expand_macros = 0;
+  } elsif ($arg eq "-install") {
+    $comp = 1;
+    $install = 1;
+  } elsif ($arg eq "-noopt") {
+    $optimise = "";
+  } elsif ($arg eq "-gprof") {
+    $optimise = "-pg -g -O2";
+    $ldflags = "-pg -g -O2";
+    $gprof = 1;
+    $comp = 1;
+    $install = 0;
+    @objects = grep { s/^/gprof\Q$ds\E/ } @objects;
+  } elsif ($arg eq "-mingw") {
+    $comp = 1;
+    #$gcc    = "i586-pc-mingw32-gcc";
+    #$gcc2   = "i586-pc-mingw32-gcc";
+    #$strip  = "i586-pc-mingw32-strip";
+    $gcc    = "i686-w64-mingw32-gcc";
+    $gcc2   = "i686-w64-mingw32-gcc";
+    $strip  = "i686-w64-mingw32-strip";
+    $arch   = "MinGW";
+    $scmfmt = "scmfmt.exe";
+    $optimise =~ s/\s*-m32//g;
+  } elsif (($arg eq "-32bit") || ($arg eq "-m32")) {
+    # Note: currently the default is to use -m32 for Linux_x86_64
+    $comp = 1;
+    $gcc    = "gcc -m32";
+    $gcc2   = "gcc -m32";
+    $arch   = "Linux";
+    $optimise =~ s/\s*-m32//g;
+    $hobbit = "$FermaT${ds}$arch${ds}scmlit";
+    $scmlit = "$FermaT${ds}$arch${ds}scmlit";
+  } elsif ($arg =~ /^-/) {
+    die $Usage;
+  } else {
+    $output = $arg;
+  }
+}
+if ($dos) {
+  $comp = 1;
+}
+if (!-d "$FermaT${ds}$arch") {
+  mkdir "$FermaT${ds}$arch" or die "Can't mkdir $FermaT${ds}$arch: $!\n";
+}
+$objdir = "$FermaT${ds}$arch${ds}obj";
+
+chdir "$FermaT${ds}src" or die "Cannot chdir to $FermaT${ds}src: $!\n";
+
+# Get the subdirectories:
+@dirs = ("adt", "scheme", "trans", "wslib");
+
+if (! -d $objdir) {
+  mkdir $objdir or die "Cannot mkdir $objdir: $!\n";
+}
+
+# Put the scheme directory first:
+@dirs = ("scheme", grep($_ ne "scheme", @dirs));
+$root = cwd();
+@badfiles = ();
+@links = ();
+
+if (defined($ENV{SCM_IMPL}) && ($ENV{SCM_IMPL} eq "bigloo")) {
+  $expand_macros = 0;
+} else {
+  # Compile the SCM files if necessary:
+  chdir "..${ds}scm" or die "Can't chdir to scm directory: $!\n";
+  foreach my $obj (@objects) {
+    ($src = $obj) =~ s/\.o$/\.c/;
+    $obj = "$objdir${ds}scm-$obj";
+    gcc("scm", $src, $obj);
+  }
+  die "Some files failed to compile.\n" if (@badfiles);
+
+  make_hobbit();
+}
+
+chdir $root;
+
+# Check if we need to run Meta_Trans:
+if (-f "adt${ds}maths2-1.src"
+         && !newer("adt${ds}maths2-2.wsl", "adt${ds}maths2-1.src")) {
+  chdir "adt" or die "Can't chdir to adt: $!\n";
+  print "dotrans maths2-1.src maths2-2.wsl Meta_Trans ... ";
+  $ok = 1;
+  $outfile = "maths2-2.wsl";
+  unlink($outfile) if (-f $outfile);
+  mysystem("dotrans maths2-1.src maths2-2.wsl Meta_Trans", "maths2-1.log");
+  $log = read_file("maths2-1.log");
+  $outfile = "";
+  if (!(-f "maths2-2.wsl" && -s _)) {
+    # no output file, or empty output file,
+    # so keep the log file
+    $ok = 0;
+  } elsif ($ok) {
+    if ($log =~ /ERROR|!!!!|Too many/) {
+      $ok = 0; # keep the log file
+    } else {
+      unlink("maths2-1.log");
+    }
+  }
+  if (!$ok) {
+    push(@badfiles, "adt${ds}maths2-1.src");
+    print "failed!\n";
+    print $log;
+  } else {
+    print "succeeded.\n";
+  }
+}
+
+chdir $root;
+
+# Run wsl2scm where necessary:
+@badfiles = ();
+foreach $dir (@dirs) {
+  chdir $dir or die "Can't chdir to `$dir': $!\n";
+  foreach $base (grep(s/\.wsl$//, read_dir("."))) {
+    $wsl = "$base.wsl";
+    $scm = "$base.scm";
+    if (!$comp && ($base eq "ADT2")) {
+      $wsl = "ADT2.debug";
+      $scm = "ADT2.debugs";
+    }
+    $ok = 1;
+    # If the -force option was given, or the wsl file has changed,
+    # or there is a log file (previous wsl2scm failed),
+    # then run wsl2scm:
+    if ($force || !newer($scm, $wsl) || -f "$base.log") {
+      print "wsl2scm $dir${ds}$wsl ... ";
+      $outfile = $scm;
+      unlink($outfile) if (-f $outfile);
+      mysystem("wsl2scm $wsl $scm", "$base.log");
+      $log = read_file("$base.log");
+      $outfile = "";
+      if (!(-f $scm && -s _)) {
+	# no output file, or empty output file,
+	# so keep the log file
+	$ok = 0;
+      } elsif ($ok) {
+	if ($log =~ /ERROR|!!!!|Too many/) {
+	  $ok = 0; # keep the log file
+	} else {
+	  unlink("$base.log");
+	}
+      }
+      if (!$ok) {
+	push(@badfiles, "$dir${ds}$base.wsl");
+	print "failed!\n";
+	print $log;
+      } else {
+	print "succeeded.\n";
+      }
+    }
+  } # next file
+  chdir $root or die "Can't chdir to `$root': $!\n";
+} # next dir
+
+# Add the Scheme files to @src and get the list of global variables:
+@src = ();
+%globals = ();
+foreach $dir (@dirs) {
+  foreach $file (grep(/\.scm$/, read_dir($dir))) {
+    next if (($file eq "patch.scm") || ($file eq $defs2));
+    if (!$comp && ($file eq "ADT2.scm")) {
+      $file = "ADT2.debugs";
+    }
+    push(@src, "$dir${ds}$file");
+    find_globals("$dir${ds}$file", \%globals);
+  } # next file
+} # next dir
+
+if (@badfiles) {
+  print "The following files failed wsl2scm:\n";
+  print join(" ", @badfiles), "\n";
+  print "The output file $output will not be created.\n";
+  exit(1);
+}
+
+print "All Scheme files OK.\n";
+
+print "Expanding macros in source files ... \n";
+
+@macros = grep(/-mac\.scm$/, @src);
+@int_macros = ();
+@src = grep(!/-mac\.scm$/, @src);
+
+# Create config/macros.scm:
+open(MAC, ">..${ds}config${ds}macros.scm")
+  or die "Can't write to config${ds}macros.scm: $!\n";
+foreach $mac (@macros) {
+  open(IN, $mac) or die "Can't read macro file $mac: $!\n";
+  while (<IN>) {
+    s/;.*$//;
+    print MAC unless (/^\s*$/);
+  }
+  close(IN);
+}
+close(MAC);
+
+
+if ($expand_macros) {
+  # Expand macros:
+  $macros = join(" ", @macros);
+  foreach $file (@src) {
+    ($out = $file) =~ s/\.scm$/\.scx/;
+    $out =~ s/debugs$/debugs.scx/;
+    if ($force || !newer($out, $file)) {
+      print "Expanding $file ... ";
+      $outfile = $out;
+      mysystem("expand-macros $file $out $macros");
+      $outfile = "";
+      print "done.\n";
+    }
+    $file = $out;
+  }
+  @int_macros = @macros;
+  @macros = ();
+  $macros = "";
+} else {
+  # Move any macro files (filename-mac.scm) to the beginning of src:
+  @src = (@macros, @src);
+}
+
+if (defined($ENV{SCM_IMPL}) && ($ENV{SCM_IMPL} = "bigloo")) {
+  mysystem "make-fermat-bigloo @ARGV";
+  exit(0);
+}
+
+if (!$comp || $big) {
+  print "Creating output file `$output' ... ";
+
+  # Write the output file:
+  open(OUT, ">$output") or die "Can't open output file `$output': $!\n";
+
+  print OUT qq[(display "Start of file\\n")\n] if ($debug);
+  print OUT <<'EOF' if ($gambit);
+
+; Special code for gambit Scheme:
+
+(##readtable-char-class-set! ##main-readtable #\\ #f ##read-number/keyword/symbol)
+
+(define-macro (defmacro name args . body)
+  `(define-macro (,name ,@args) ,@body))
+
+(define (system line) (##shell-command line))
+
+(define get-internal-run-time cpu-time)
+
+(define print pp)
+
+(define MAX max)
+
+(define MIN min)
+
+(define integer-expt expt)
+
+; End of special code for gambit Scheme.
+
+EOF
+#` xemacs hack
+
+  foreach $name (sort keys %globals) {
+    $name =~ tr/A-Z/a-z/ unless $gambit || ($comp == 0);
+    print OUT "(define $name '())\n";
+  }
+  print OUT "\n";
+
+  @stubs = ();
+  foreach $file ((@int_macros, @src)) {
+    if ($stubs && $gambit && !$big && ($file =~ /^trans.*_d\.scm$/)) {
+      # Make stubs for transformation functions
+      # (The definitions of @Foo_Test and @Foo_Code must appear before
+      # the foo_d.scm file can be loaded):
+      open(FILE, $file);
+      while (<FILE>) {
+	if (/\(funct \((@[^ \(\)]+)/) {
+	  $func = $1;
+	  if ($func =~ /_Code$/) {
+	    $args{$func} = " //Data";
+	  } else {
+	    $args{$func} = "";
+	  }
+	  ($main = $file) =~ s/_d\.scm$/\.scm/;
+	  make_stub($func, $main, $file);
+	}
+      }
+    } elsif ($stubs && $gambit && !$big && ($file =~ /^(trans|wslib)/)) {
+      push(@stubs, $file);
+      next;
+    }
+    print OUT qq[(display "Loading $file\\n")\n] if ($debug);
+    if ($big) {
+      # Copy in the whole file contents
+      # Don't copy macros if they have been expanded:
+      next if $expand_macros && ($file =~ /-mac\.scm$/);
+      open(IN, $file) or die "Can't open source file `$file': $!\n";
+      print OUT <IN>;
+      close(IN);
+    } else {
+      if ($gambit && ($file =~ /-mac\.scm$/)) {
+	print OUT qq[(include "$root${ds}$file")\n];
+      } else {
+	print OUT qq[(load "$root${ds}$file")\n];
+      }
+    }
+  } # next source file
+
+  make_stubs(@stubs) if (@stubs);
+
+  print OUT qq[(display "All files loaded\\n")\n] if ($debug);
+  close(OUT);
+
+  print "Done.\n";
+
+}
+
+exit(0) unless ($comp);
+
+# Compilation section:
+
+$macros = "";
+$load_macros = "";
+for $macro (@macros) {
+  $macros .= qq[ "..${ds}$macro"];
+  $load_macros .= qq[(load "..${ds}$macro")\n];
+}
+
+if ($big) {
+  @comp = ($output);
+  $load_hobbit = qq[(load "$scm_base${ds}hobbit.scm")];
+  if (-f "$FermaT${ds}$arch${ds}hobbit") {
+    # hobbit-compiled hobbit is available
+    $load_hobbit = "";
+    $hobbit = "$FermaT${ds}$arch${ds}hobbit";
+  }
+  # Compile the big $output we just created
+  ($base = $output) =~ s/\.scm$//;
+  $data = <<EOF;
+(define (user-interrupt . args) (exit 1)) ; Cause ^C to force an exit
+$load_macros
+$load_hobbit
+(hobbit "$output" $macros)
+(exit)
+EOF
+  # Protect \'s in data:
+  $data =~ s/\\/\\\\/g;
+  $tmpfile = tmpfile($data);
+  print "Compiling $output... ";
+  mysystem qq["$hobbit" -p1 -f $tmpfile], "$base.clog";
+  unlink($tmpfile);
+  $log = read_file("$base.clog");
+  if (($log =~ /C source file $base\.c is built/)
+         && ($log =~ /C header file $base\.h is built/)) {
+    print "succeeded.\n";
+    unlink("$base.clog");
+  } else {
+    print "failed!\n";
+    print $log;
+    exit(1);
+  }
+  # Compile the C file and add the object to @links:
+  gcc(".", "$base.c", "$objdir${ds}$base.o");
+
+} else {
+
+  @comp = @src;
+  # File $defs2 will be created from the other Scheme files:
+  print "Building $defs2 ...\n";
+  rename("scheme${ds}$defs2", "scheme${ds}$defs2.orig");
+  open(DEFS2, ">scheme${ds}$defs2") or die "Can't write to $defs2: $!\n";
+  foreach $name (sort keys %globals) {
+    print DEFS2 "(define $name '())\n";
+  }
+  print DEFS2 "\n";
+  close(DEFS2);
+  if (diff("scheme${ds}$defs2", "scheme${ds}$defs2.orig")) {
+    # Use the new one:
+    unlink("scheme${ds}$defs2.orig");
+    my $defs2scm = $defs2;
+    $defs2 =~ s/\.scm$/\.scx/;
+    # This really just converts everything to lower case:
+    mysystem("expand-macros scheme${ds}$defs2scm scheme${ds}$defs2");
+  } else {
+    # Keep the old one:
+    print "Using old $defs2\n";
+    rename("scheme${ds}$defs2.orig", "scheme${ds}$defs2");
+    my $defs2scm = $defs2;
+    $defs2 =~ s/\.scm$/\.scx/;
+    mysystem("expand-macros scheme${ds}$defs2scm scheme${ds}$defs2")
+      unless -f "scheme${ds}$defs2";
+  }
+
+  # Prepend $defs2 to @comp list:
+  unshift(@comp, "scheme${ds}$defs2");
+
+  ### Build and compile separate C files: ###
+
+  print "Building $defs1 ...\n";
+  %defs = ();
+  foreach $file (@comp) {
+    open(IN, $file) or die "Can't open $file: $!\n";
+    while (<IN>) {
+      $defs{$1} = 1 if (/^\(define \(([^\(\) ]+)/);
+    }
+    close(IN);
+  }
+
+  open(DEFS1, ">$defs1") or die "Can't write to $defs1: $!\n";
+  # was: *special-scm->c-functions*
+  print DEFS1 "(set! *internal-c-functions* (append *internal-c-functions* '(\n";
+  foreach $name (sort(keys(%defs))) {
+    print DEFS1 "$name\n";
+  }
+  print DEFS1 ")))\n";
+  close(DEFS1);
+
+  print "Compiling files ...\n";
+  foreach $file (@comp) {
+    next if ($file =~ /-mac\.scm$/);
+    next if ($file =~ /_d\.sc[mx]$/);
+    ($dir, $base, $ext) = ($file =~ m!^(.*?)\Q$ds\E(.*)\.(sc[mx])$!);
+    if ($ext eq "scm") {
+      $cbase = $base;
+    } else {
+      $cbase = "$base.$ext";
+    }
+    chdir $dir or die "Can't chdir to `$dir': $!\n";
+    # If the -force option was given, or the scm file has changed,
+    # or there is a log file (previous compile failed),
+    # then run hobbit:
+    if ($force || !newer("$cbase.c", "$base.$ext") || -f "$base.clog") {
+      print "hobbit $dir${ds}$base.$ext ...   ";
+
+      # Add a prefix so that local vars/consts are unique accross files:
+      ($pref = $base) =~ s/-/_/g;
+      # Check for a foo_d file and compile it with the base file:
+      $files = qq["$base.$ext"];
+      $files .= qq[ "${base}_d.$ext"] if (-f "${base}_d.$ext");
+      $data = <<EOF;
+
+(define (user-interrupt . args) (exit 1)) ; Cause ^C to force an exit
+$load_macros
+; Cannot use hobbit-compiled hobbit because we need to
+; change some internal variables for each file:
+(load "$scm_base${ds}hobbit.scm")
+; Add $pref to these defines:
+
+(define *local-var-infix* "__$pref")
+(define *new-var-name* "new_var$pref")
+(define *tmp-var-name* "tmp_var$pref")
+(define *new-parameter-prefix* "npar__$pref")
+(define *new-fun-infix* "_aux$pref")
+(define *new-letfun-infix* "_fn$pref")
+(define *new-instfun-infix* "_inst$pref")
+(define *new-constant-prefix* "const_$pref")
+(define *closure-name-suffix* "_cl$pref")
+(define *closure-vector-name* "clargsv_$pref")
+
+(load "..${ds}$defs1")
+;(define (unknown-function? fn args) #f) ; Assume external fns are also compiled
+(hobbit $files $macros)
+(exit)
+
+EOF
+
+      # Protect \'s in data:
+      $data =~ s/\\/\\\\/g;
+      $tmpfile = tmpfile($data);
+      mysystem qq["$hobbit" -p1 -f $tmpfile], "$base.clog";
+      unlink($tmpfile);
+      $log = read_file("$base.clog");
+      if (    ($log =~ /C source file ${base}\.${ext}\.c is built/)
+           && ($log =~ /C header file ${base}\.${ext}\.h is built/)) {
+        $ok = 1;
+        unlink("$base.clog");
+      } elsif (    ($log =~ /C source file ${base}\.c is built/)
+                && ($log =~ /C header file ${base}\.h is built/)) {
+        $ok = 1;
+        unlink("$base.clog");
+      } else {
+        $ok = 0;
+      }
+      if (!$ok) {
+        push(@badfiles, "$dir${ds}$base.$ext");
+        print "failed!\n$log";
+      } else {
+        print "succeeded.\n";
+      }
+    }
+    gcc($dir, "$cbase.c", "$objdir${ds}$dir-$cbase.o");
+    chdir $root or die "Can't chdir to `$root': $!\n";
+  } # next file
+
+  if (@badfiles) {
+    print "The following files failed to compile:\n";
+    print join(" ", @badfiles), "\n";
+    print "The output file `$scm_comp' will not be created.\n";
+    exit(0);
+  }
+}
+
+print "All .o files ready.\n";
+
+# Load all the object files into an executable:
+
+print "Building scm.c ...\n";
+
+$scmobj = "$objdir${ds}scm-init-scm.o";
+if (-f $scmobj && -f "scm.c" && newer($scmobj, "scm.c")) {
+  # Save existing .c file in case existing .o file can be used
+  # (It only changes when a new file is added to or removed from the build)
+  rename("scm.c", "scm.c.orig");
+} else {
+  unlink("scm.c.orig");
+}
+
+# Get a list of all init functions:
+$inits = "";
+foreach $file (@comp) {
+  if ($file =~ /\.scm$/) {
+    ($cfile = $file) =~ s/\.scm/.c/;
+  } else {
+    $cfile = "$file.c";
+  }
+  open(IN, $cfile) || next;
+  while (<IN>) {
+    next unless (/^SCM (init_\D\w*)\(\)$/);
+    $inits .= "printf(\"$1()\\n\");\n" if ($debug);
+    $inits .= "$1();\n";
+  }
+}
+
+open(IN, "$scm_base${ds}scm.c") or die "Can't open $scm_base${ds}scm.c: $!\n";
+open(OUT, ">scm.c") or die "Can't write to scm.c: $!\n";
+while (<IN>) {
+  s/^\s*COMPILED_INITS;/$inits/;
+  print OUT;
+}
+close(IN);
+close(OUT);
+
+if ((-f "scm.c.orig") && !diff("scm.c", "scm.c.orig")) {
+  print "Using old scm.o\n";
+  rename("scm.c.orig", "scm.c");
+} else {
+  print "Compiling scm.c ... ";
+  my $opt = $optimise;
+  mysystem qq[$gcc2 -I"$scm_base" -DCOMPILED_INITS $opt -c scm.c -o "$scmobj"];
+  if (!-f $scmobj) {
+    print "failed!\n";
+    exit(0)
+  } else {
+    print "succeeded.\n";
+  }
+}
+push(@links, $scmobj);
+
+foreach (@links) {
+  s/^\Q$objdir${ds}\E//;
+}
+
+unlink("$root${ds}$scm_comp");
+chdir $objdir or die "Can't chdir $objdir: $!\n";
+
+my $link = $force;
+$link = 1 unless -f "..${ds}$scmfmt";
+if (!$link) {
+  foreach my $obj (@links) {
+    if (!newer("..${ds}$scmfmt", $obj)) {
+      $link = 1;
+      last;
+    }
+  }
+}
+if ($link) {
+  print "Linking $scm_comp ... \n";
+  $line = qq[$gcc $optimise -o "$root${ds}$scm_comp" ] . join(" ", @links) . " $libs";
+  #print "$line\n";
+  mysystem($line);
+  chdir $root;
+  if (-f $scm_comp) {
+    print "\nExecutable $scm_comp successfully built.\n";
+    mysystem("$strip $scm_comp") unless ($gprof || $optimise =~ /-g/);
+    if ($install) {
+      rename("..${ds}$arch${ds}$scmfmt", "..${ds}$arch${ds}$scmfmt.old");
+      rename($scm_comp, "..${ds}$arch${ds}$scmfmt");
+      chmod(0755, "..${ds}$arch${ds}$scmfmt");
+      print "  $scmfmt installed to $arch.\n";
+    }
+  } else {
+    print "\nFailed to create $scm_comp.\n";
+  }
+} else {
+  print "\n$scmfmt is up to date.\n\n";
+}
+
+exit(0);
+
+
+# Get a sorted list of files in a directory, skipping "." and ".."
+# and sccs-create files (,filename):
+
+sub read_dir($) {
+  my ($dir) = @_;
+  my @files = ();
+  local(*DIR);
+  opendir(DIR, $dir) or die "Can't read directory `$dir': $!\n";
+  @files = sort grep { !/^\./ && !/^,/ } readdir(DIR);
+  closedir(DIR);
+  return(@files);
+}
+
+
+
+sub alarm_clock {
+  print "!!! Alarm clock call: the current process is taking too long...\n";
+  if ($PID) {
+    print "!!! Killing job: $PID... ";
+    $result = kill -15, $PID;
+    if ($result) {
+      print "succeeded.\n";
+      if (-f $outfile) {
+	print "Deleting $outfile\n";
+	unlink($outfile);
+      }
+    } else {
+      print "failed\n";
+    }
+    # Ensure that the process is really dead:
+    sleep(10);
+    kill -9, $PID;
+  }
+}
+
+
+# Find all functions defined in these files and called from another file
+# (including transformation files @xxx_Test @xxx_Code)
+# and make a stub definition which loads the file:
+
+sub make_stubs(@) {
+  my (@files) = @_;
+  my ($file, $func);
+  local $_;
+  print "making stub definitions ... ";
+  # Ignore calls to functions in the adt files:
+  %ignore = ();
+  foreach $file (@src) {
+    next unless ($file =~ /^adt/);
+    open(FILE, $file);
+    while (<FILE>) {
+      $ignore{$1}++ if (/^\(define \((@[^ \(\)]+) /);
+    }
+    close(FILE);
+  }
+  # Record which files call which functions
+  # and which functions are defined in each file
+  %called_in = ();
+  %defined_in = ();
+  foreach $file (@src) {
+    open(FILE, $file);
+    while (<FILE>) {
+      while (s/\(define \((@[^ \(\)]+)([^\(\)]*)\)/ /) {
+	next if ($ignore{$1});
+	$args{$1} = $2;
+	$defined_in{$file}{$1}++;
+      }
+      while (s/\((@[^ \(\)]+)/ /) {
+	next if ($ignore{$1});
+	$called_in{$1}{$file}++;
+      }
+    }
+    close(FILE);
+  }
+  # Make stubs for functions defined in a stub file and called elsewhere:
+  foreach $file (@files) {
+    foreach $func (keys %{$defined_in{$file}}) {
+      if ($extern{$func} || grep { $_ ne $file } keys %{$called_in{$func}}) {
+	make_stub($func, $file, "");
+      }
+    }
+  }
+}
+
+sub make_stub($$$) {
+  my ($func, $file, $dfile) = @_;
+  return() if ($done_stub{$func}++);
+  my $call = "($func" . "$args{$func})";
+  #print "Stubifying $func, $file\n";
+  print OUT "(define $call\n";
+  print OUT "  (display \"Loading $file\\n\")\n" if ($debug);
+  print OUT "  (load \"$FermaT${ds}src${ds}$file\")\n";
+  print OUT "  (load \"$FermaT${ds}src${ds}$dfile\")\n" if ($dfile ne "");
+  print OUT "  $call)\n";
+}
+
+
+# Compare two files:
+
+sub diff($$) {
+  my ($file1, $file2) = @_;
+  my ($buf1, $buf2, $n1, $n2);
+  die "Can't read `$file1': $!\n" unless (-r $file1);
+  $n1 = -s _;
+  die "Can't read `$file2': $!\n" unless (-r $file2);
+  $n2 = -s _;
+  # Compare sizes first:
+  return(1) unless ($n1 == $n2);
+  local (*F1, *F2);
+  open(F1, $file1);
+  open(F2, $file2);
+  my $blksize = (stat F1)[11] || 8192;
+  for (;;) {
+    $n1 = sysread(F1, $buf1, $blksize);
+    $n2 = sysread(F2, $buf2, $blksize);
+    last if (($n1 < $blksize) || ($n2 < $blksize));
+    last if ($buf1 ne $buf2);
+  }
+  close(F1);
+  close(F2);
+  return($buf1 ne $buf2);
+}
+
+
+# Compile a C file if necessary and add the object file to @links:
+
+sub gcc($$$) {
+  my ($dir, $src, $obj) = @_;
+  if (!newer($obj, $src)) {
+    print "   $gcc $dir${ds}$src ... ";
+    $outfile = $obj;
+    mysystem qq[$gcc -I"$scm_base" $optimise -c "$src" -o "$obj"];
+    if (!-f $obj) {
+      push(@badfiles, $src);
+      print "failed!\n";
+    } else {
+      print "succeeded.\n";
+      $outfile = "";
+    }
+  }
+  push(@links, $obj);
+}
+
+# Ensure scmlit and hobbit are up to date
+# We are currently in the scm directory
+sub make_hobbit() {
+  return() if (-f $hobbit);
+  if (!-f $scmlit) {
+    unlink("$FermaT${ds}scm${ds}slibcat");
+    # Link scmlit:
+    print "Compiling scm.c ...\n";
+    mysystem qq[$gcc2 -I"$scm_base" $optimise -c scm.c -o "$objdir${ds}scm-scm.o"];
+    print "Linking scmlit ...\n";
+    mysystem qq[$gcc $optimise -o "$scmlit" "$objdir${ds}scm-scm.o" ]
+		 . join(" ", map { qq["$_"] } @objects) . " $libs";
+    die "Build of $scmlit failed!\n" unless (-f $scmlit);
+  }
+  return() if (-f $hobbit); # in case $hobbit eq $scmlit
+  # Compile hobbit:
+  $tmpfile = tmpfile(qq[(load "hobbit.scm")(hobbit "hobbit.scm")\n]);
+  print "Compiling hobbit.scm ...\n";
+  mysystem qq["$scmlit" -f $tmpfile];
+  unlink($tmpfile);
+  die "Hobbit compile of hobbit failed!\n" unless (-f "hobbit.c");
+  print "Compiling hobbit.c ...\n";
+  mysystem qq[$gcc -I"$scm_base" $optimise -c hobbit.c -o "$objdir${ds}h-hobbit.o"];
+  print "Compiling scm.c ...\n";
+  mysystem qq[$gcc2 -I"$scm_base" $optimise -c scm.c ]
+	    . qq[-DCOMPILED_INITS="init_hobbit();" -o "$objdir${ds}h-scm.o"];
+  print "Linking hobbit ...\n";
+  mysystem qq[$gcc -o $hobbit $objdir${ds}h-scm.o $objdir${ds}h-hobbit.o ]
+	       . join(" ", map { qq["$_"] } @objects) . " $libs";
+}
+
+
+sub read_file($) {
+  my ($file) = @_;
+  my $fh;
+  open($fh, $file) or die "Can't read $file: $!\n";
+  my $r = join("", <$fh>);
+  close($fh);
+  return($r);
+}
+

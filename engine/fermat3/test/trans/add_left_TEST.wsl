@@ -1,0 +1,102 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Add Left'",
+            (FILL Statements IF (X=1) THEN A:=2
+                             ELSIF (X=2) THEN
+                                 DO A:=A+X;
+                                    IF (A>10) THEN EXIT(2)
+                                    ELSIF(A>5) THEN EXIT(1) FI
+                                 OD
+                             ELSE A:=A+10 FI;
+                             X:=X+A ENDFILL),
+            <2>,
+            TR_Add_Left,
+            < >,
+            (FILL Statements IF (X=1) THEN A:=2; X:=X+A
+                             ELSIF (X=2) THEN
+                                 DO A:=A+X;
+                                    IF (A>10) THEN EXIT(2)
+                                    ELSIF(A>5) THEN  EXIT(1) FI
+                                 OD; X:=X+A
+                             ELSE A:=A+10; X:=X+A FI ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Add Left'",
+            (FILL Statements IF (X=1) THEN A:=2
+                             ELSIF (X=2) THEN
+                                  A:=A+X;
+                                  IF (A>10) THEN EXIT(2)
+                                  ELSIF(A>5) THEN EXIT(1) FI   
+                                ELSE A:=A+10 FI;
+                             X:=X+A ENDFILL),
+            <2>,
+            TR_Add_Left,
+            < >,
+            (FILL Statements IF (X=1) THEN A:=2; X:=X+A
+                             ELSIF (X=2) THEN
+                                 A:=A+X;
+                                 IF (A>10) THEN EXIT(2)
+                                 ELSIF(A>5) THEN  EXIT(1) FI;
+                                 X:=X+A
+                             ELSE A:=A+10; X:=X+A FI ENDFILL));
+
+
+@Test_Trans(" 3nd test of `Add Left'",
+            (FILL Statements WHILE (X=1) DO 
+                                  A:=A+X;
+                                  IF (A>10) THEN EXIT(2)
+                                  ELSIF(A>5) THEN EXIT(1) FI OD;
+                             X:=X+A ENDFILL),
+            <2>,
+            TR_Add_Left,
+            < >,
+            "Fail");
+
+
+C:" Random piece of code :) ";
+@Test_Trans(" 4th test of `Add Left'",
+            (FILL Statements  V := @Assigned(@Item);
+                              FOR I IN C1 DO
+                                  IF @Value(I^1) NOTIN V
+                                    THEN New := <I> ++ New FI OD;
+                              @Down_Last ENDFILL),
+
+            <3>,
+            TR_Add_Left,
+            < >,
+            "Fail");
+
+@Test_Trans(" 5nd test of `Add Left'",
+            (FILL Statements D_IF (X=1) -> A:=2
+                               [] (X=2) -> A:=A+X;
+                                           IF (A>10) THEN EXIT(2)
+                                           ELSIF(A>5) THEN EXIT(1) FI   
+                               [] (X<>2) -> A:=A+10 FI;
+                             X:=X+A ENDFILL),
+            <2>,
+            TR_Add_Left,
+            < >,
+            (FILL Statements D_IF (X=1) -> A:=2; X:=X+A
+                               [] (X=2) -> A:=A+X;
+                                           IF (A>10) THEN EXIT(2)
+                                           ELSIF(A>5) THEN  EXIT(1) FI;
+                                           X:=X+A
+                               [] (X<>2) -> A:=A+10; X:=X+A FI ENDFILL))

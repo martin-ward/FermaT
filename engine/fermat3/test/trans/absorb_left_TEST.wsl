@@ -1,0 +1,397 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Absorb Left'",
+	    (FILL Statements J := 0; J := J + 1 ENDFILL),
+	    <1>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail" );
+
+
+@Test_Trans(" 2nd test of `Absorb Left'",
+	    (FILL Statements <J := 0, Y := X+15>; <J := J + 1, X := 25> ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+@Test_Trans(" 3rd test of `Absorb Left'",
+	    (FILL Statements <J := Z+1, Y := Z+15, X:=P+Q>; 
+			     <K := J+Y, Q := Z+1, R:=X+J> ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+@Test_Trans(" 4th test of `Absorb Left'",
+	    (FILL Statements <J := J+1, Y := Z+15>; <J := J + 1, X := 25> ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements <J := J + 2, X := 25, Y:=Z+15> ENDFILL));
+
+
+@Test_Trans(" 5th test of `Absorb Left'",
+	    (FILL Statements <J := J+1, Y := Z+15>; <J := Y + Z, X := 25> ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements <J := 2 * Z + 15, X := 25, Y:=Z+15> ENDFILL));
+
+@Test_Trans(" 6th test of `Absorb Left'",
+	    (FILL Statements X := 7 + J;
+			     VAR <A := 0, B := C> :
+				 SKIP;
+				 A := A + B ENDVAR ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements VAR <A := 0, B := C> :
+				 X := 7 + J;
+				 SKIP;
+				 A := A + B ENDVAR ENDFILL));
+
+
+@Test_Trans(" 7th test of `Absorb Left'",
+	    (FILL Statements X := A;
+			     VAR <A := 0, B := C> :
+				 SKIP;
+				 A := A + B ENDVAR ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 8th test of `Absorb Left'",
+	    (FILL Statements C := 0;
+			     VAR <A := 0, B := C> :
+				 SKIP;
+				 A := A + B ENDVAR ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements VAR <A := 0, B := 0> :
+				 C := 0;
+				 SKIP;
+				 A := A + B ENDVAR ENDFILL));
+
+
+@Test_Trans(" 9th test of `Absorb Left'",
+	    (FILL Statements IF Q = 9 THEN C := 0 FI;
+			     VAR <A := 0, B := C> :
+				 SKIP;
+				 A := A + B ENDVAR ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("10th test of `Absorb Left'",
+	    (FILL Statements IF A = 1 THEN John(2 VAR P) ELSE Mary(3 VAR Q) FI;
+			     BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y)
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements BEGIN IF A = 1 THEN John(2 VAR P) ELSE Mary(3 VAR Q) FI;
+				   Increment(1 VAR X);
+				   Decrement(2 VAR Y)
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END ENDFILL));
+
+
+@Test_Trans("11th test of `Absorb Left'",
+	    (FILL Statements IF A = 1 THEN John(2 VAR P) ELSE Increment(3 VAR Q) FI;
+			     BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y)
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("12th test of `Absorb Left'",
+	    (FILL Statements K := 1;
+			     FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP OD ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 K := 1;
+				 J := J + I;
+				 SKIP OD ENDFILL));
+
+
+@Test_Trans("13th test of `Absorb Left'",
+	    (FILL Statements K := K + 1;
+			     FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP OD ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("14th test of `Absorb Left'",
+	    (FILL Statements K := I;
+			     FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP OD ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("15th test of `Absorb Left'",
+	    (FILL Statements K := 1;
+			     FOR I := 0 TO 10 STEP (A * B) DO
+				 J := J + I;
+				 SKIP OD ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("16th test of `Absorb Left'",
+	    (FILL Statements {(X <> 10)};
+			     K := 1;
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD ENDFILL),
+	    <3>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   K := 1;
+				   X := X + A;
+				   SKIP OD ENDFILL));
+
+
+@Test_Trans("17th test of `Absorb Left'",
+	    (FILL Statements K := 1;
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("18th test of `Absorb Left'",
+	    (FILL Statements {(X <> 1)};
+			     K := 1;
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD ENDFILL),
+	    <3>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("19th test of `Absorb Left'",
+	    (FILL Statements {(X <> 10)};
+			     K := K + 1;
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("20th test of `Absorb Left'",
+	    (FILL Statements A := 1;
+			     IF Q = A
+				THEN X := 2
+			     ELSIF Q = B
+				THEN X := 3
+				ELSE ABORT FI ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements IF Q = 1
+				THEN A := 1; X := 2
+			     ELSIF Q = B
+				THEN A := 1; X := 3
+				ELSE A := 1; ABORT FI ENDFILL));
+
+
+@Test_Trans("21st test of `Absorb Left'",
+	    (FILL Statements <A := 1, B := B + 1>;
+			     IF Q = A
+				THEN X := 2
+			     ELSIF Q = B
+				THEN X := 3
+				ELSE ABORT FI ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements IF Q = 1
+				THEN <A := 1, B := B + 1>; X := 2
+			     ELSIF Q = B + 1
+				THEN <A := 1, B := B + 1>; X := 3
+				ELSE <A := 1, B := B + 1>; ABORT FI ENDFILL));
+
+
+@Test_Trans("22nd test of `Absorb Left'",
+	    (FILL Statements IF Q = 7 THEN A := 1 FI;
+			     IF Q = A
+				THEN X := 2
+			     ELSIF Q = B
+				THEN X := 3
+				ELSE ABORT FI ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+@Test_Trans("23rd test of `Absorb Left'",
+	    (FILL Statements A := 1;
+			     D_IF Q = A -> X := 2
+			       [] Q = B -> X := 3
+			       [] Q = C -> ABORT FI ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements D_IF Q = 1 -> A := 1; X := 2
+			       [] Q = B -> A := 1; X := 3
+			       [] Q = C -> A := 1; ABORT FI ENDFILL));
+
+@Test_Trans("24th test of `Absorb Left'",
+	    (FILL Statements A := 1;
+			     D_IF Q = A -> X := 2
+			       [] A = 2 -> X := 3
+			       [] Q = C -> ABORT FI ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements D_IF Q = 1 -> A := 1; X := 2
+			       [] 1 = 2 -> A := 1; X := 3
+			       [] Q = C -> A := 1; ABORT FI ENDFILL));
+
+
+@Test_Trans("25th test of `Absorb Left'",
+	    (FILL Statements A := 1;
+			     D_IF Q = A  -> X := 2
+			       [] A = 2  -> X := 3
+			       [] Q <> A -> ABORT FI ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements D_IF Q = 1  -> A := 1; X := 2
+			       [] 1 = 2  -> A := 1; X := 3
+			       [] Q <> 1  -> A := 1; ABORT FI ENDFILL));
+
+
+@Test_Trans("26th test of `Absorb Left'",
+	    (FILL Statements
+
+IF card[name] <> last[name] OR i = 1
+  THEN IF sw1 = 1
+         THEN !P write(last[name], total VAR os) FI;
+       sw1 := 1;
+       total := 0 FI;
+DO total := card[number] + total;
+   last := card;
+   i := i + 1;
+   card := cards[i];
+   IF i > n THEN EXIT(1) FI;
+   IF card[name] <> last[name] OR i = 1
+     THEN IF sw1 = 1
+            THEN !P write(last[name], total VAR os) FI;
+          sw1 := 1;
+          total := 0 FI OD
+
+            ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements
+
+DO IF card[name] <> last[name] OR i = 1
+     THEN IF sw1 = 1
+            THEN !P write(last[name], total VAR os) FI;
+          sw1 := 1;
+          total := 0 FI;
+   total := card[number] + total;
+   last := card;
+   i := i + 1;
+   card := cards[i];
+   IF i > n THEN EXIT(1) FI OD
+
+            ENDFILL));
+
+
+@Test_Trans("27th test of `Absorb Left'",
+	    (FILL Statements
+
+IF i > 0 THEN i := i - 1 ELSE EXIT(1) FI;
+DO IF i > 0 THEN i := i - 1 ELSE EXIT(2) FI OD
+
+            ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    (FILL Statements
+
+DO IF i > 0 THEN i := i - 1 ELSE EXIT(2) FI OD
+
+            ENDFILL));
+
+
+
+@Test_Trans("28th test of `Absorb Left'",
+	    (FILL Statements
+
+mjvm_locals := ARRAY(4, 0);
+mjvm_locals[1] := tmp
+
+            ENDFILL),
+	    <2>,
+	    TR_Absorb_Left,
+	    < >,
+	    "Fail");
+
+
+
+
+C:" End of tests "
+
+
+

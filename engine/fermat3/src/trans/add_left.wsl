@@ -1,0 +1,46 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+MW_PROC @Add_Left_Test() ==
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right?
+    THEN @Up FI;
+  IF @GT(@I) <> T_Statement
+    THEN @Fail("The selected item is not a Statement.")
+  ELSIF NOT @Left?
+    THEN @Fail("There is no statement to the left of this one.")
+    ELSE @Left;
+	 IF @Trans?(TR_Expand_Forward)
+	   THEN @Pass
+	   ELSE @Fail("It was not possible to `Expand Forward on the previous statement.") FI FI .;
+
+MW_PROC @Add_Left_Code(Data) ==
+  VAR < Span := @Span, C := < > >:
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? 
+    THEN @Up FI;
+  @Left;
+  IF @Trans?(TR_Expand_Forward)
+    THEN DO @Trans(TR_Expand_Forward, "");
+	    Span := Span - 1;
+	    IF Span < 0 OR NOT @Trans?(TR_Expand_Forward)
+	      THEN EXIT(1) FI OD FI ENDVAR .;
+
+SKIP
+
+

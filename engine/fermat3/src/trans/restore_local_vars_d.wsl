@@ -1,0 +1,40 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+TR_Restore_Local_Vars := @New_TR_Number();
+
+TRs_Name[TR_Restore_Local_Vars] := "Restore_Local_Vars";
+
+TRs_Proc_Name[TR_Restore_Local_Vars] := "Restore_Local_Vars";
+TRs_Test[TR_Restore_Local_Vars]:=!XF funct(@Restore_Local_Vars_Test);
+TRs_Code[TR_Restore_Local_Vars]:=!XF funct(@Restore_Local_Vars_Code);
+
+TRs_Keywords[TR_Restore_Local_Vars] := < "Hidden" >;
+
+TRs_Help[TR_Restore_Local_Vars] := "Try to restore the local var clauses
+that were converted to global variables by Rename_Local_Vars";
+
+TRs_Prompt[TR_Restore_Local_Vars] := "Enter a prefix for the local variables [var]:";
+
+TRs_Data_Gen_Type[TR_Restore_Local_Vars] := ""
+
+
+

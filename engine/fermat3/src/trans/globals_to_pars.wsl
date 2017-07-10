@@ -1,0 +1,172 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Convert global variables in procedures to parameters (including ";
+C:" varables used indirectly via called procedures) ";
+
+C:" (1) Compute transitive closure of call graph ";
+C:" (2) Compute variables used/assigned directly and in called procedures ";
+C:" (3) Update parameter list ";
+
+C:" If Data is given, then only convert global vars in Data to pars (eg registers!) ";
+
+
+MW_PROC @Globals_To_Pars_Test() ==
+  IF @ST(@I) = T_Where
+    THEN @Pass
+    ELSE @Fail("Select a WHERE clause to process all the procedures.") FI .;
+
+
+MW_PROC @Globals_To_Pars_Code(Data) ==
+  VAR < bodies := HASH_TABLE, calls := HASH_TABLE, new := < >,
+        assigned := < >, used := < >, pars := < >,
+	glob_assigned := HASH_TABLE, glob_used := HASH_TABLE,
+	new_vars := HASH_TABLE, new_vals := HASH_TABLE,
+	name := < >, succs := HASH_TABLE, p := 0, vars := < >, elts := < > >:
+  IF STRING?(Data)
+    THEN @Parse_Words(Data VAR p, vars);
+         C:" Convert the list of SSA elements (list of strings) to a set of items ";
+	 FOR elt IN vars DO
+	   elts := <MAP("@SSA_Make_Name", elt)> ++ elts OD;
+         elts := @Make_Set(elts)
+  ELSIF NOT EMPTY?(Data) AND NOT SEQUENCE?(HEAD(Data))
+    THEN FOR var IN Data DO
+           elts := <<var>> ++ elts OD;
+         elts := @Make_Set(elts)
+    ELSE elts := @Make_Set(Data) FI;
+  IF NOT EMPTY?(elts)
+    THEN PRINT("Converting only these global vars:");
+         @Print_Elts(elts) FI;
+  @Edit;
+  C:" Set up the bodies and succs tables ";
+  FOR I IN @Cs(@I^2) DO
+    IF @ST(I) = T_Proc
+      THEN name := @V(I^1);
+           bodies.(name) := I;
+           succs.(name) := @Make_Set(MAP("HEAD", @Proc_Calls(I^4)));
+	   C:" Find the global elements used and assigned directly in the body ";
+	   C:" We don't use @Elt_Subtract here because we want to preserve ";
+	   C:" as much information as possible for datflow analysis. ";
+	   C:" For example, if FOO is assigned and a[FOO].BAR is used ";
+	   C:" then we want to keep the a[FOO].BAR parameter. ";
+	   pars := @Elts_Assigned(I^2) \/ @Elts_Assigned(I^3);
+	   glob_assigned.(name) := @Elts_Assigned(I^4) \ pars;
+	   glob_used.(name) := @Elements(I^4) \ (@Elts_Assigned(I^4) \/ pars);
+	   IF NOT EMPTY?(elts)
+	     THEN glob_assigned.(name) := glob_assigned.(name) /\ elts;
+	          glob_used.(name) := glob_used.(name) /\ elts FI FI OD;
+
+  C:" Compute direct and indirect calls: ";
+  calls := @Transitive_Closure(succs);
+
+  C:" Compute the new vars and new values for each proc. ";
+  C:" Find all assigned/used elements in the body and all called procs, ";
+  C:" if there are clashes, then take the larger element, ";
+  C:" then take out any existing var/val parameters. ";
+
+  FOR I IN @Cs(@I^2) DO
+    IF @ST(I) = T_Proc
+      THEN name := @V(I^1);
+           assigned := @Elts_Assigned(I^4);
+	   used := @Elts_Used(I^4);
+	   FOR call IN calls.(name) DO
+	     assigned := assigned \/ glob_assigned.(call);
+	     used := used \/ glob_used.(call) OD;
+           used := @GTP_Trim(used \ (assigned \/ @Elements(I^2)));
+	   assigned := @GTP_Trim(assigned \ @Elements(I^3));
+	   IF NOT EMPTY?(elts)
+	     THEN used := used /\ elts; assigned := assigned /\ elts FI;
+	   new_vals.(name) := @Mth_Sort(MAP("@Elt_To_Expn", used));
+	   new_vars.(name) := @Mth_Sort(MAP("@Elt_To_Lvalue", assigned)) FI OD;
+
+  C:" Update the proc calls in the main block ";
+  @Down;
+  @GTP_Update_Calls(new_vars, new_vals);
+
+  C:" Update the proc definitions and calls in the bodies: ";
+  @Right; @Down; C:" to first defn ";
+  DO IF @ST(@I) = T_Proc
+       THEN name := @V(@I^1);
+            @Down_To(2); C:" to val pars ";
+            @Down_Last; @Splice_After(MAP("@Expn_To_Lvalue", new_vals.(name)));
+	    @Up; @Right; C:" to var pars ";
+	    @Down_Last; @Splice_After(new_vars.(name));
+	    @Up; @Right; C:" to body ";
+	    @GTP_Update_Calls(new_vars, new_vals);
+	    @Up; C:" back to defn " FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+
+  @End_Edit ENDVAR .;
+
+
+C:" Add the new parameters to each proc call in the current item ";
+MW_PROC @GTP_Update_Calls(new_vars, new_vals) ==
+  VAR < name := < > >:
+  FOREACH Statement DO
+    IF @ST(@I) = T_Proc_Call
+      THEN name := @V(@I^1);
+	   IF NOT EMPTY?(new_vars.(name))
+	     THEN @Down_To(3);
+		  @Paste_Over(@Make(T_Lvalues, < >, @Cs(@I) ++ new_vars.(name)));
+		  @Up FI;
+	   IF NOT EMPTY?(new_vals.(name))
+	     THEN @Down_To(2);
+		  @Paste_Over(@Make(T_Expressions, < >,
+				    @Cs(@I) ++ MAP("@Lvalue_To_Expn", new_vals.(name))));
+		  @Up FI FI OD ENDVAR .;
+
+
+C:" Trim a parameter list: remove NOTUSED_nnn elements and if there are ";
+C:" a large number of DSECT elements, then just include the whole DSECT name ";
+
+MW_FUNCT @GTP_Trim(elts) ==
+  VAR < new := < >, dsects := < >, dsect_count := HASH_TABLE, p := 0, str := "" >:
+  C:" Delete byte offset references, either FOO.nnn or FOO__nnn ";
+  FOR elt IN elts DO
+    IF NUMBER?(LAST(elt)) AND LAST(elt) < 0
+      THEN elt := BUTLAST(elt) FI;
+    IF NUMBER?(LAST(elt)) AND LAST(elt) > 0
+      THEN p := INDEX("__", @N_String(LAST(elt)))
+      ELSE p := -1 FI;
+    IF p > 0
+      THEN str := @N_String(LAST(elt));
+           IF @Digits?(SUBSTR(str, p + 2))
+	     THEN str := SUBSTR(@N_String(LAST(elt)), 0, p);
+	          elt := BUTLAST(elt) ++ <@Make_Name(str)> FI FI;
+    new := <elt> ++ new OD;
+  elts := @Make_Set(new);
+  new := < >;
+  FOR elt IN elts DO
+    IF elt[1] = a_name AND LENGTH(elt) > 1
+      THEN IF EMPTY?(dsect_count.(elt[2]))
+             THEN dsect_count.(elt[2]) := 1
+	     ELSE dsect_count.(elt[2]) := dsect_count.(elt[2]) + 1 FI FI OD;
+  FOR elt IN elts DO
+    IF @Starts_With?(@N_String(elt[1]), "NOTUSED_")
+      THEN SKIP
+    ELSIF elt[1] = a_name AND LENGTH(elt) > 1 AND dsect_count.(elt[2]) > 10
+      THEN dsects := <<elt[2]>> \/ dsects
+      ELSE new := <elt> ++ new FI OD;
+  (@Make_Set(new) \/ dsects) .;
+
+
+
+SKIP

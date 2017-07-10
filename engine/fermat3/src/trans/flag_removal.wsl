@@ -1,0 +1,330 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+
+MW_PROC @Flag_Removal_Test () ==
+  IF @ST(@I) <> T_Var
+    THEN @Fail("Current item is not a VAR clause")
+  ELSIF EMPTY?(@FR_Check_For_Flags)
+    THEN @Fail("None of the variables in this VAR is a flag")
+    ELSE @Pass FI .;
+
+
+MW_PROC @Flag_Removal_Code (Data) ==
+  VAR < flags := < >, change := 0, unroll := 0, assigned := 0, orig := < >,
+        posn := @Posn >:
+  DO @Goto(posn);
+     flags := @FR_Check_For_Flags;
+     IF EMPTY?(flags) THEN EXIT(1) FI;
+     orig := @Program;
+     PRINT("flags = ", MAP("@N_String", flags));
+     @FR_Preprocess_Flags(flags);
+     FOREACH Statement DO
+       IF @Trans?(TR_Separate_Right)
+         THEN PRINT("Separating right...");
+              @Trans(TR_Separate_Right, "") FI OD;
+     FOR flag IN flags DO
+       unroll := 0;
+       DO change := 0;
+          C:" Look for a statement which sets the flag, followed by ";
+          C:" a statement which tests the flag ";
+          ATEACH Statements DO
+            @Down;
+            assigned := 0;
+            DO IF flag IN @Assigned(@I)
+                 THEN assigned := @Posn_n
+               ELSIF flag IN @UBA(@I) AND assigned > 0
+                 THEN @FR_Process1(flag, assigned, @Posn_n VAR change, unroll) FI;
+               IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+            @Up OD;
+          @Trans(TR_Simplify, "");
+          IF @Trans?(TR_Remove_Redundant_Vars)
+            THEN @Trans(TR_Remove_Redundant_Vars, "") FI;
+
+          C:" Look for an opportunity for entire loop unrolling ";
+          C:" so that the first iteration of the remainder will set the flag ";
+          IF unroll = 0
+            THEN @FR_Entire_Loop_Flag(flag VAR change, unroll);
+                 IF unroll > 0
+                   THEN @FR_Find_Values(flag VAR change) FI FI;
+
+          C:" Look for a possible first time through flag: ";
+          IF unroll = 0
+            THEN @FR_Loop_Flag(flag VAR change, unroll);
+                 IF unroll > 0
+                   THEN @FR_Find_Values(flag VAR change);
+                        @Goto(< >);
+                        @Trans(TR_Constant_Propagation, "") FI FI;
+
+          C:" Check if a loop can be rolled up. ";
+          C:" Simple loop rolling won't work if there was a `first time through' flag ";
+          C:" so also try converting a WHILE to an FLOOP and absorbing left ";
+          VAR < old := < > >:
+          ATEACH Statement DO
+            IF @ST(@I) = T_While
+              THEN old := @I;
+                   @Trans(TR_While_To_Floop, "")
+              ELSE old := < > FI;
+            WHILE @ST(@I) = T_Floop AND @Trans?(TR_Absorb_Left) DO
+              old := < >;
+              change := 1;
+              @Trans(TR_Absorb_Left, "") OD;
+            IF @ST(@I) = T_Floop AND NOT EMPTY?(old)
+              THEN @Paste_Over(old) FI OD ENDVAR;
+
+          IF change = 0 THEN EXIT(1) FI;
+
+          C:" It should be safer to do a constant propagation *after* ";
+          C:" rolling up loops: ";
+          @Trans(TR_Simplify, "");
+          @Trans(TR_Constant_Propagation, "") OD OD;
+        IF @Equal?(@Program, orig) THEN EXIT(1) FI OD ENDVAR .;
+
+
+C:" flag is used before assigned in current statement ";
+C:" and is assigned in the statement as position n ";
+
+MW_PROC @FR_Process1(flag, n1, n2 VAR change, unroll) ==
+  VAR < val := < >, orig := @Program, posn := @Posn >:
+  @To(n1);
+  IF (@ST(@I) = T_While OR @ST(@I) = T_Floop) AND unroll = 0
+    THEN unroll := 1;
+         PRINT("Unrolling loop...");
+         @Trans(TR_Unroll_Loop, "") FI;
+  IF @ST(@I) = T_Cond
+    THEN WHILE n2 > n1 DO
+           IF @Trans?(TR_Absorb_Right)
+	     THEN PRINT("Absorbing into Cond...");
+	          @Trans(TR_Absorb_Right, "") FI;
+	   n2 := n2 - 1 OD;
+         C:" See if some references to flag can be removed. ";
+	 C:" This should remove references in the WHILE if the flag is assigned ";
+	 C:" a constant value in the body of the loop (eg first time through switch) ";
+	 @FR_Find_Values(flag VAR change)
+    ELSE @To(n2) FI;
+
+  IF change = 0
+    THEN @New_Program(orig); @Goto(posn) FI;
+
+  SKIP ENDVAR .;
+
+
+MW_FUNCT @FR_Check_For_Flags() ==
+  VAR < flags := < >, values := < >, OK := 1, var := < > >:
+  IF @ST(@I) = T_Var
+    THEN FOR assign IN @Cs(@I^1) DO
+           OK := 1;
+           var := assign^1;
+           IF @ST(var) = T_Var_Lvalue AND @ST(assign^2) IN <T_Number, T_String>
+             THEN values := <@V(assign^2)>;
+                  @FR_Get_Values(var VAR values, OK);
+                  IF LENGTH(values) <> 2 THEN OK := 0 FI
+             ELSE OK := 0 FI;
+           IF OK = 1 THEN flags := <@V(var)> ++ flags FI OD FI;
+  (REVERSE(flags)) .;
+
+
+
+MW_FUNCT @FR_Check_For_Flags_Orig() ==
+  VAR < flags := < >, values := < >, OK := 1, var := < > >:
+  FOR assign IN @Cs(@I^1) DO
+    OK := 1;
+    var := assign^1;
+    IF @ST(var) = T_Var_Lvalue AND @ST(assign^2) IN <T_Number, T_String>
+      THEN values := <@V(assign^2)>;
+           @FR_Get_Values(var VAR values, OK);
+           IF LENGTH(values) <> 2
+	     THEN OK := 0
+	     ELSE @Down_To(2); C:" to body ";
+	          @Edit;
+	          ATEACH Expression DO
+		    IF @ST(@I) = T_Variable AND @V(@I) = @V(var)
+		      THEN IF @Posn_n <> 1
+		             THEN OK := 0
+			     ELSE @Up;
+                                  IF @ST(@I) NOTIN <T_Equal, T_Not_Equal>
+                                    THEN OK := 0
+                                  ELSIF @ST(@I^2) NOTIN <T_Number, T_String>
+                                    THEN OK := 0
+                                    ELSE values := <@V(@I^2)> \/ values FI;
+                                  @Down FI FI OD;
+                  @Undo_Edit;
+		  @Up FI
+      ELSE OK := 0 FI;
+    IF OK = 1 AND LENGTH(values) = 2
+      THEN flags := <@V(var)> ++ flags FI OD;
+  (REVERSE(flags)) .;
+
+
+
+C:" Look for a possible first time through flag. ";
+C:" This is a test of the flag in a loop, followed by code which sets the flag. ";
+
+MW_PROC @FR_Loop_Flag(flag VAR change, unroll) ==
+  VAR < tested := 0, posn := < > >:
+PRINT("-------------- Loop_Flag -------------");
+  ATEACH Statements DO
+    @Down;
+    tested := 0;
+    DO IF flag IN @UBA(@I)
+         THEN tested := @Posn_n FI;
+       IF flag IN @Assigned(@I) AND tested > 0 AND unroll = 0
+         THEN posn := @Posn;
+              WHILE @Up? AND @ST(@I) NOTIN <T_While, T_Floop> DO @Up OD;
+              IF @Trans?(TR_Unroll_Loop)
+                THEN unroll := 1;
+		     change := 1;
+PRINT("  ======== unrolling, flag = ", @N_String(flag));
+@PP_Item(@I, 80, "");
+                     @Trans(TR_Unroll_Loop, "");
+                     EXIT(1)
+		ELSE @Goto(posn) FI FI;
+       IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+    @Up OD ENDVAR .;
+
+
+MW_PROC @FR_Find_Values(flag VAR change) ==
+  VAR < val := < > >:
+  ATEACH Expression DO
+    IF @ST(@I) = T_Variable AND @V(@I) = flag
+      THEN val := @Find_Value(<flag>);
+           IF NOT EMPTY?(val)
+             THEN PRINFLUSH(@N_String(flag), " at ", @Posn, " has value = ");
+                  @PP_Item(val, 80, ""); 
+                  @Paste_Over(val);
+                  change := 1 FI FI OD ENDVAR .;
+
+
+C:" Look for a loop of the form: ";
+C:" WHILE B DO IF ... ELSIF Bx THEN flag := C ... FI; ... OD ";
+C:" Compute the condition under which to split the loop so that ";
+C:" the first loop does not assign flag and the first iteration of the second loop ";
+C:" (if any) will set the flag. ";
+
+MW_PROC @FR_Entire_Loop_Flag(flag VAR change, unroll) ==
+  VAR < posn := @Posn, orig := @Program, done := 0, B := < >, B1 := < >,
+        G := < >, G1 := < >, S := < >, S1 := < > >:
+  ATEACH Statement DO
+    IF @ST(@I) = T_Floop AND @Trans?(TR_Floop_To_While)
+      THEN done := 1;
+           @Trans(TR_Floop_To_While, "") FI;
+    IF @ST(@I) = T_While AND @ST(@I^2^1) = T_Cond AND flag IN @Assigned(@I^2^1)
+         AND unroll = 0
+      THEN @Down_To(2);
+           @Down;
+	   @Down; C:" to first guarded ";
+	   C:" B is the condition we are building, ";
+	   C:" B1 is the condition under which this branch of the cond is reached ";
+	   B := @Make(T_False, < >, < >);
+	   B1 := @Make(T_True, < >, < >);
+	   G := < >;
+	   G1 := < >;
+	   S := < >;
+	   DO IF flag NOTIN @Assigned(@I^2)
+	        THEN B := @Or(B, @And(B1, @I^1));
+		     G := <@I> ++ G
+		ELSE G1 := <@I> ++ G1 FI;
+              B1 := @And(B1, @Not(@I^1));
+	      IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	   @Up; C:" back to guarded ";
+	   WHILE @Right? DO
+	     @Right;
+	     S := <@I> ++ S OD;
+	   @Up; @Up; C:" back to WHILE ";
+	   B := @And(@I^1, B);
+	   B1 := @I^1;
+	   IF LENGTH(G) > 1
+	     THEN G := <@Make(T_Cond, < >, REVERSE(G))>
+	   ELSIF LENGTH(G) = 1
+	     THEN G := @Cs(HEAD(G)^2) FI;
+	   IF LENGTH(G1) > 1
+	     THEN G1 := <@Make(T_Cond, < >, REVERSE(G1))>
+	   ELSIF LENGTH(G1) = 1
+	     THEN G1 := @Cs(HEAD(G1)^2) FI;
+	   S := REVERSE(S);
+	   S1 := @I;
+	   @Splice_Over(<FILL Statement WHILE ~?B DO ~*G; ~*S OD ENDFILL,
+	                 FILL Statement IF ~?B1 THEN ~*G1; ~*S; ~?S1 FI ENDFILL>);
+           unroll := 1;
+	   change := 1;
+	   @To_Last FI OD;
+  IF unroll = 0 AND done = 1
+    THEN @New_Program(orig); @Goto(posn) FI ENDVAR .;
+
+
+C:" Preprocess tests so that only the two known values are tested for, ";
+C:" eg if the values are 0 and 1 then x > 0 becomes x = 1 and so on. ";
+
+MW_PROC @FR_Preprocess_Flags(flags) ==
+  VAR < values := < >, OK := 1, var := < >, B1 := < >, B2 := < >, v1 := < >, v2 := < > >:
+  FOR assign IN @Cs(@I^1) DO
+    OK := 1;
+    var := assign^1;
+    IF @ST(var) = T_Var_Lvalue AND @ST(assign^2) IN <T_Number, T_String>
+      THEN values := <@V(assign^2)>;
+           @FR_Get_Values(var VAR values, OK);
+           IF LENGTH(values) <> 2 THEN OK := 0 FI
+      ELSE OK := 0 FI;
+    IF OK = 1
+      THEN PRINT("Preprocessing: ", @N_String(@V(var)), " with values: ", values);
+           ATEACH Condition DO
+             IF @GT(@Parent) <> T_Condition AND @V(var) IN @Variables(@I)
+	       THEN C:" top level condition ";
+		    v1 := @Make(IF NUMBER?(values[1]) THEN T_Number ELSE T_String FI,
+		                values[1], < >);
+		    v2 := @Make(IF NUMBER?(values[2]) THEN T_Number ELSE T_String FI,
+		                values[2], < >);
+	            B1 := @FR_Replace(@I, var, v1);
+		    B2 := @FR_Replace(@I, var, v2);
+		    @Paste_Over(FILL Condition ~?var = ~?v1 AND ~?B1
+                                                   OR ~?var = ~?v2 AND ~?B2
+				ENDFILL) FI OD FI OD;
+  @Trans(TR_Simplify, "");
+  @Trans(TR_Remove_All_Redundant_Vars, "") ENDVAR .;
+
+
+
+MW_PROC @FR_Get_Values(var VAR values, OK) ==
+  FOREACH Statement DO
+   IFMATCH Statement ~?(var) := ~?e
+     THEN IF @ST(e) IN <T_Number, T_String>
+            THEN values := <@V(e)> \/ values
+            ELSE OK := 0 FI
+     ELSE IF @ST(@I) = T_A_Proc_Call AND @V(var) IN @Assigned(@I)
+            THEN OK := 0 FI ENDMATCH OD .;
+
+
+C:" Replace given variable with given value and simplify the condition ";
+
+MW_FUNCT @FR_Replace(I, var, value) ==
+  VAR < R := < > >:
+  @Edit;
+  @New_Program(I);
+  FOREACH Expression DO
+    IF @LR_Equal?(@I, var) THEN @Paste_Over(value) FI OD;
+  R := @Simplify_Cond(@I);
+  @Undo_Edit;
+  (R) .;
+
+
+
+SKIP
+

@@ -1,0 +1,29 @@
+i := 1;
+posprod := 1;
+negprod := 1;
+possum := 0;
+negsum := 0;
+WHILE i <= n DO
+  a := input[i];
+  {a > 0};
+  IF a > 0
+    THEN possum := possum + a;
+         posprod := posprod * a
+  ELSIF a < 0
+    THEN negsum := negsum - a;
+         negprod := negprod * (-a)
+  ELSIF test0 = 1
+    THEN IF possum >= negsum
+           THEN possum := 0;
+           ELSE negsum := 0 FI;
+         IF posprod >= negprod
+           THEN posprod := 1
+           ELSE negprod := 1 FI FI;
+  i := i + 1 OD;
+IF possum >= negsum
+  THEN sum := possum
+  ELSE sum := negsum FI;
+IF posprod >= negprod
+  THEN prod := posprod
+  ELSE prod := negprod FI
+

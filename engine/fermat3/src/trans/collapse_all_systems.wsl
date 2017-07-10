@@ -1,0 +1,45 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+ 
+MW_PROC @Collapse_All_Systems_Test() ==
+       IF(( @Spec_Type(@Item)=T_Where) AND (@Posn = <1>)) THEN @Pass
+       ELSE @Fail("Not a suitable structure") FI.;
+
+MW_PROC @Collapse_All_Systems_Code(Data)==
+VAR <n:=0>:
+   @Goto (<1,2>);n:=@Size(@Item);
+   @Goto (<1,1,1>);
+   IF (@Spec_Type(@Item)=T_A_S) 
+       THEN PRINT(" ");PRINT("+++++++++++++++++++++++++++++++++++++++++ ");
+	    PRINT("Collapsing Action System ",@Value(@Item));
+	    PRINT("+++++++++++++++++++++++++++++++++++++++++ ");
+	    @Trans(TR_Collapse_Action_System,"")FI; 
+   FOR i:=1 TO n STEP 1 DO
+       @Goto(<1,2> ++ <i> ++ <3,1,2,1>);
+       IF (@Spec_Type(@Item)=T_A_S) 
+	       THEN PRINT(" ");PRINT("+++++++++++++++++++++++++++++++++++++++++ ");
+		    PRINT("Collapsing Action System ",@Value(@Item));
+			    PRINT("+++++++++++++++++++++++++++++++++++++++++ ");
+		    @Trans(TR_Collapse_Action_System,"") FI OD ENDVAR.
+
+
+
+   

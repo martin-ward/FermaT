@@ -1,0 +1,44 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+ 
+MW_PROC @For_To_While_Test() ==
+  IF @ST(@I) <> T_For
+    THEN @Fail("Selected item is not a FOR loop.")
+    ELSE @Pass FI .;
+
+
+MW_PROC @For_To_While_Code(Data) ==
+  VAR < var := @I^1, init := @I^2, final := @I^3, step := @I^4, body := @Cs(@I^5),
+	B := < > >:
+  B := @Simplify_Cond(FILL Condition
+	  ~?step > 0 AND ~?var <= ~?final OR ~?step < 0 AND ~?var >= ~?final ENDFILL);
+  step := @Simplify_Expn(FILL Expression ~?var + ~?step ENDFILL);
+  @Paste_Over(FILL Statement
+    VAR < ~?var := ~?init >:
+      WHILE ~?B DO
+	~*body;
+	~?var := ~?step OD ENDVAR ENDFILL) ENDVAR .;
+
+
+
+SKIP
+
+

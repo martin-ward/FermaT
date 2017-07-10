@@ -1,0 +1,45 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+C:" Delete_Redundant_Statement keeps an `agenda' of elt lists and posns ";
+C:" which still need to be checked, and a `done list' of elts/posns which have ";
+C:" been accounted for (either fully explored, or already on the agenda). ";
+C:" Only need to check/record `join points' on the done list. ";
+C:" (ie after a loop, start of loop body, start of an action, after a COND or D_IF, ";
+C:" start of a procedure body etc.) ";
+
+TR_Delete_All_Redundant := @New_TR_Number();
+
+TRs_Name[TR_Delete_All_Redundant] := "Delete All Redundant";
+TRs_Proc_Name[TR_Delete_All_Redundant] := "Delete_All_Redundant";
+TRs_Test[TR_Delete_All_Redundant]:=!XF funct(@Delete_All_Redundant_Test);
+TRs_Code[TR_Delete_All_Redundant]:=!XF funct(@Delete_All_Redundant_Code);
+
+TRs_Keywords[TR_Delete_All_Redundant] := < "Delete" >;
+
+TRs_Help[TR_Delete_All_Redundant] := "Delete All Redundant searches for redundant statements
+and deletes all the ones it finds. A statement is `Redundant' if it calls nothing external
+and the variables it modifies will all be assigned again before their values are accessed. ";
+
+TRs_Prompt[TR_Delete_All_Redundant] := ""; 
+
+TRs_Data_Gen_Type[TR_Delete_All_Redundant] := ""
+

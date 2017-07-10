@@ -1,0 +1,22 @@
+<FME_Project name="poly">
+  <Project_Contents>
+    <File name="poly.wsl" />
+    <File name="conc.wsl" />
+  </Project_Contents>
+  <Project_History current_file="conc-15.wsl">
+    <Item key="conc-9.wsl" event="QuickSave#conc-10.wsl" />
+    <Item key="conc-14.wsl" event="Transformation#conc-15.wsl#//T/R_/Delete_/All_/Skips#Data##6" />
+    <Item key="conc-3.wsl" event="Transformation#conc-4.wsl#//T/R_/Separate_/Right#Data##28" />
+    <Item key="conc-8.wsl" event="QuickSave#conc-9.wsl" />
+    <Item key="conc.wsl" event="Transformation#conc-0.wsl#//T/R_/Simplify_/Action_/System#Data##6" />
+    <Item key="conc-6.wsl" event="Transformation#conc-7.wsl#//T/R_/Separate_/Right#Data##129" />
+    <Item key="conc-7.wsl" event="Transformation#conc-8.wsl#//T/R_/Separate_/Right#Data##138" />
+    <Item key="conc-4.wsl" event="Transformation#conc-5.wsl#//T/R_/Separate_/Right#Data##30" />
+    <Item key="conc-11.wsl" event="Transformation#conc-12.wsl#//T/R_/Separate_/Right#Data##10" />
+    <Item key="conc-12.wsl" event="Transformation#conc-13.wsl#//T/R_/Constant_/Propagation#Data##6;Transformation#conc-14.wsl#//T/R_/Delete_/All_/Redundant#Data##6" />
+    <Item key="conc-0.wsl" event="Transformation#conc-2.wsl#//T/R_/Simplify_/Item#Data##6" />
+    <Item key="conc-2.wsl" event="Transformation#conc-3.wsl#//T/R_/Separate_/Right#Data##10" />
+    <Item key="conc-10.wsl" event="Transformation#conc-11.wsl#//T/R_/Reduce_/Loop#Data##8" />
+    <Item key="conc-5.wsl" event="Transformation#conc-6.wsl#//T/R_/Separate_/Right#Data##87" />
+  </Project_History>
+</FME_Project>

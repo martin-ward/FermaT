@@ -1,0 +1,38 @@
+
+FermaT Migration Assembler to C.
+RCS $Revision: 1.5 $ $Date: 2004/09/15 13:02:07 $ 
+Started by root at Sat May 31 01:13:50 2008
+Files to process in this run:
+FMT001A0.lst   FMT001A2.lst   FMT001A4.lst   FMT001A6.lst   FMT200P9.lst
+FMT001A1.lst   FMT001A3.lst   FMT001A5.lst   FMT001A7.lst   
+
+FMT001A0.lst (1/9)
+... processed FMT001A0 to Level 5 in 4 secs, Sat May 31 01:14:01 
+FMT001A1.lst (2/9)
+... processed FMT001A1 to Level 5 in 5 secs, Sat May 31 01:14:12 
+FMT001A2.lst (3/9)
+... processed FMT001A2 to Level 5 in 3 secs, Sat May 31 01:14:19 
+FMT001A3.lst (4/9)
+... processed FMT001A3 to Level 5 in 3 secs, Sat May 31 01:14:27 
+FMT001A4.lst (5/9)
+... processed FMT001A4 to Level 5 in 11 secs, Sat May 31 01:14:51 
+FMT001A5.lst (6/9)
+... processed FMT001A5 to Level 5 in 3 secs, Sat May 31 01:14:58 
+FMT001A6.lst (7/9)
+... processed FMT001A6 to Level 5 in 2 secs, Sat May 31 01:15:04 
+FMT001A7.lst (8/9)
+... processed FMT001A7 to Level 5 in 2 secs, Sat May 31 01:15:10 
+FMT200P9.lst (9/9)
+... processed FMT200P9 to Level 5 in 2 secs, Sat May 31 01:15:15 
+
+SUMMARY:
+
+     9 files processed to Level 5
+---------------------------------
+     9 files processed altogether
+---------------------------------
+
+FermaT Migration
+Finished at Sat May 31 01:15:15 2008
+CPU time used: 34.14 seconds.
+

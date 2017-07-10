@@ -1,0 +1,854 @@
+Fix Assembler, Max_Passes = 35 call_budget = 4000
+Trial = 1
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 101 posn = ()
+Preserving actions: (GETREC dispatch)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 102 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+60 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 60 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 103 posn = (1)
+60 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, GETREC
+60 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: .........................................
+Removing recursion in action L10A(40), dn = 60
+......
+Removing recursion in action L10C(48), dn = 60
+
+Finding elementary actions
+Removing elementary actions: _start_=61 
+
+Action system type is Reg
+12 actions
+
+Simplifying action bodies: ...
+Eliminating actions which are only called once: ..
+
+Action system type is Reg
+10 actions
+
+Simplifying action bodies: 
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK.
+
+REITERATING...
+Action system type is Reg
+Leave_Alone_Names = dispatch, GETREC
+10 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+10 actions
+
+Simplifying action bodies: ...
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 104 posn = (1)
+Reading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 105 posn = ()
+Top_Level_Remove: (EODAD_UNKNOWN EODAD_DDIN len_2 len_1)
+Constant_Propagation effort = 0 budget = 200
+Migration = 1
+Call Budget = 200
+No constant DSECTs found
+10 actions
+Calculating Succs and Preds... Done.
+..D-132-N 
+Unfolding a dispatch: destination=132 posn=(19 1 2 3)
+./B<1>/B<1>/B<1>d1.xR
+Unfolding a dispatch: destination = __r14_init__
+ posn=(32)
+..c0....
+
+Re-Scanning Action System, scan: 2
+..D-132-N 
+Unfolding a dispatch: destination=132 posn=(19 1 2 3)
+./B<1>/B<1>/B<1>d1.xR
+Unfolding a dispatch: destination = __r14_init__
+ posn=(32)
+..c0....
+Rebuilding the action system.
+There are 10 actions in the main system.
+ 
+Simplifying the result
+
+PASS 1
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 106 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+10 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 10 actions in the main system.
+Finding actions which only call Z...
+Creating procedure `LAB140', size = 31, tv = 0
+  position = (1 2 1 2 7 2 1)
+Searching for other copies of body:  
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 107 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 0 budget = 4000
+9 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+GETREC 
+Checking which entry actions are simple procedures...
+Checking entry: GETREC: A_0000C6
+--> Checking if action GETREC sends r10 to destination...
+2 actions
+Calculating Succs and Preds... Done.
+.N.c0c0c0xc0x
+
+Re-Scanning Action System, scan: 2
+.N.c0c0c0xc0x
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+<-- Succeeded for action GETREC register r10
+Found a simple procedure: GETREC
+Body consists of 2 actions: GETREC A_0000C6 
+Unfolding GETREC
+...return code = 50 at (1 1 2 46)
+...return code = 58 at (4)
+
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = 
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: .
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+1 actions
+
+Simplifying action bodies: .
+Rebuilding the action system.
+There are 1 actions in the main system.
+Syntax is OK.
+Done
+Removing action system: GETREC
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 7 actions in the main system and 1 procedure(s).
+Syntax is OK
+Looking for action systems in proc bodies...
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 108 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 0 budget = 4000
+7 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 7 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 109 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 110 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................................x........x......x.............. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 111 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+pNc0c0c0p
+7 actions
+Calculating Succs and Preds... Done.
+......
+
+Re-Scanning Action System, scan: 2
+......
+Rebuilding the action system.
+There are 7 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 112 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 113 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+................................................................ 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 114 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+pNp
+7 actions
+Calculating Succs and Preds... Done.
+......
+
+Re-Scanning Action System, scan: 2
+......
+Rebuilding the action system.
+There are 7 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 115 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 116 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+7 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+(dispatch) 
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 6 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 117 posn = (1 2 1 1 1)
+6 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, GETREC
+6 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: ...
+Removing recursion in action LAB130(6), dn = ()
+ Using absorption to reduce loop body...a
+
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+3 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: .
+Removing recursion in action LAB110(5), dn = ()
+
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: 
+Eliminating actions which are only called once: .
+
+Action system type is Reg
+1 actions
+
+Simplifying action bodies: 
+Rebuilding the action system.
+There are 1 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 118 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+................................................................ 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 119 posn = ()
+Redundant variables are: (cc destination)
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 120 posn = ()
+........................X.........X...................................................X..X..X....
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Testing transformation: Find Dead Code
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 121 posn = (1)
+1 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, GETREC
+1 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+1 actions
+
+Simplifying action bodies: .
+Rebuilding the action system.
+There are 1 actions in the main system.
+Syntax is OK.
+Done
+Removing Action System: _enter_1
+Testing transformation: Simplify Item
+Applying transformation: Simplify Item
+FA_nn = 122 posn = (1)
+Removing/Reducing superfluous loops
+..>.RP = (1 2 1 4 19 2 2 6 1 5) has n = 1
+.RP = (1 2 1 4 19 2 2 19 1 5) has n = 1
+.RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>..
+ 
+Testing transformation: Unfold Dynamic Calls
+
+
+Testing transformation: Unfold Proc Calls
+Applying transformation: Unfold Proc Calls
+FA_nn = 123 posn = (1)
+Unfolding Proc_Call LAB140 at (1)
+new_defns = 1
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 124 posn = ()
+
+PASS 2
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 125 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 126 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 127 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+............................................... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 128 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 129 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 130 posn = ()
+..........................................................X............................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+.RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>...RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>..
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 131 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 132 posn = ()
+
+PASS 3
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 133 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 134 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 135 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+............................................... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 136 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 137 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 138 posn = ()
+......................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+.RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>...RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>..
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 139 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 140 posn = ()
+--- current equals old ---
+Trial = 6
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 141 posn = ()
+Preserving actions: (dispatch)
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 142 posn = ()
+
+PASS 4
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 143 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 144 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 145 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+............................................... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 146 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 147 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+............................................... 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 148 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 149 posn = ()
+......................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+.RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>...RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>..
+ 
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 150 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 151 posn = ()
+Actions to Procs...
+++++
+Testing transformation: Unfold Proc Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 152 posn = (1)
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+
+PASS 5
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 153 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 154 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 155 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+............................................... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 156 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 157 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 158 posn = ()
+......................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+.RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.RP = (1 1 1 1 2 44 1 2 2 1 13 1 29) has n = 1
+The loop is neither proper nor improper.
+>.RP = (1 2 1 4 19 2 2 6 1 5) has n = 1
+.RP = (1 2 1 4 19 2 2 18 1 5) has n = 1
+.RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>..
+ 
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 159 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 160 posn = ()
+
+PASS 6
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 161 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 162 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 163 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+............................................... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 164 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 165 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 166 posn = ()
+......................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+.RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>...RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>..
+ 
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 167 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 168 posn = ()
+Actions to Procs...
+++++
+Testing transformation: Unfold Proc Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 169 posn = (1)
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+--- current equals v_old ---
+
+Final simplification...
+Aligning nested IF statements 
+Joining cases in IF statements ++
+Testing transformation: Unfold Proc Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 170 posn = (1)
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+Summarising proc definitions... Done.
+p
+
+ 
+Simplifying the result
+
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 171 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+............................................... 
+Removing/Reducing superfluous loops
+.RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.RP = (1 1 1 1 2 44 1 2 2 1 13 1 29) has n = 1
+The loop is neither proper nor improper.
+>.RP = (1 2 1 4 19 2 2 6 1 5) has n = 1
+.RP = (1 2 1 4 19 2 2 18 1 5) has n = 1
+.RP = (1 1 1 1 2 44 1 2 2 1 13) has n = 1
+.>..
+Testing transformation: Unfold Proc Calls
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 172 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 173 posn = ()
+......................................................................................
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 174 posn = ()
+
+Transformation time: 86
+Transformation Count: 495
+Result is in: FMT001A1.ws4

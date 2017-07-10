@@ -1,0 +1,869 @@
+# Written on Sat May 31 01:14:21 2008
+# Data reorganised on Sat May 31 01:14:21 2008
+# Written on Sat May 31 01:14:20 2008
+
+Full_Length filler_CSECT001_0003 = 26
+Off_Dec filler_CSECT001_0003 = 88
+Op filler_CSECT001_0003 = FILLER
+Parent filler_CSECT001_0003 = CSECT001
+Repeat filler_CSECT001_0003 = 1
+Sibling filler_CSECT001_0003 = unnamed__0003
+Type filler_CSECT001_0003 = C
+
+Full_Length filler_CSECT001_0002 = 26
+Off_Dec filler_CSECT001_0002 = 60
+Op filler_CSECT001_0002 = FILLER
+Parent filler_CSECT001_0002 = CSECT001
+Repeat filler_CSECT001_0002 = 1
+Sibling filler_CSECT001_0002 = unnamed__0002
+Type filler_CSECT001_0002 = C
+
+Label_Locn fmt001a3 = 000000
+Op fmt001a3 = EXPORT
+Orig_Sequence fmt001a3 = 0
+Repeat fmt001a3 = 1
+Value fmt001a3 = 0
+
+Full_Length filler_CSECT001_0012 = 2
+Off_Dec filler_CSECT001_0012 = 618
+Op filler_CSECT001_0012 = FILLER
+Parent filler_CSECT001_0012 = WREP4
+Repeat filler_CSECT001_0012 = 1
+Sibling filler_CSECT001_0012 = WXDAT8
+Type filler_CSECT001_0012 = C
+
+Full_Length filler_CSECT001_0001 = 58
+Off_Dec filler_CSECT001_0001 = 0
+Op filler_CSECT001_0001 = FILLER
+Parent filler_CSECT001_0001 = CSECT001
+Repeat filler_CSECT001_0001 = 1
+Sibling filler_CSECT001_0001 = unnamed__0001
+Type filler_CSECT001_0001 = C
+
+Full_Length filler_CSECT001_0010 = 2
+Off_Dec filler_CSECT001_0010 = 602
+Op filler_CSECT001_0010 = FILLER
+Parent filler_CSECT001_0010 = WREP4
+Repeat filler_CSECT001_0010 = 1
+Sibling filler_CSECT001_0010 = WXDAT6
+Type filler_CSECT001_0010 = C
+
+Full_Length filler_CSECT001_0005 = 100
+Off_Dec filler_CSECT001_0005 = 192
+Op filler_CSECT001_0005 = FILLER
+Parent filler_CSECT001_0005 = CSECT001
+Repeat filler_CSECT001_0005 = 1
+Sibling filler_CSECT001_0005 = WSAVE
+Type filler_CSECT001_0005 = C
+
+Full_Length filler_CSECT001_0006 = 2
+Off_Dec filler_CSECT001_0006 = 570
+Op filler_CSECT001_0006 = FILLER
+Parent filler_CSECT001_0006 = WREP4
+Repeat filler_CSECT001_0006 = 1
+Sibling filler_CSECT001_0006 = WXENT2
+Type filler_CSECT001_0006 = C
+
+Full_Length filler_CSECT001_0007 = 2
+Off_Dec filler_CSECT001_0007 = 578
+Op filler_CSECT001_0007 = FILLER
+Parent filler_CSECT001_0007 = WXENT2
+Repeat filler_CSECT001_0007 = 1
+Type filler_CSECT001_0007 = C
+
+Full_Length filler_CSECT001_0011 = 2
+Off_Dec filler_CSECT001_0011 = 610
+Op filler_CSECT001_0011 = FILLER
+Parent filler_CSECT001_0011 = WREP4
+Repeat filler_CSECT001_0011 = 1
+Sibling filler_CSECT001_0011 = WXDAT7
+Type filler_CSECT001_0011 = C
+
+Full_Length filler_CSECT001_0008 = 2
+Off_Dec filler_CSECT001_0008 = 586
+Op filler_CSECT001_0008 = FILLER
+Parent filler_CSECT001_0008 = WREP4
+Repeat filler_CSECT001_0008 = 1
+Sibling filler_CSECT001_0008 = WXDAT4
+Type filler_CSECT001_0008 = C
+
+Full_Length filler_CSECT001_0004 = 74
+Off_Dec filler_CSECT001_0004 = 116
+Op filler_CSECT001_0004 = FILLER
+Parent filler_CSECT001_0004 = CSECT001
+Repeat filler_CSECT001_0004 = 1
+Sibling filler_CSECT001_0004 = unnamed__0004
+Type filler_CSECT001_0004 = C
+
+Full_Length filler_CSECT001_0014 = 5
+Off_Dec filler_CSECT001_0014 = 639
+Op filler_CSECT001_0014 = FILLER
+Parent filler_CSECT001_0014 = WREP4
+Repeat filler_CSECT001_0014 = 1
+Type filler_CSECT001_0014 = C
+
+Full_Length filler_CSECT001_0013 = 2
+Off_Dec filler_CSECT001_0013 = 626
+Op filler_CSECT001_0013 = FILLER
+Parent filler_CSECT001_0013 = WREP4
+Repeat filler_CSECT001_0013 = 1
+Sibling filler_CSECT001_0013 = WYAMT1
+Type filler_CSECT001_0013 = C
+
+Full_Length filler_CSECT001_0009 = 2
+Off_Dec filler_CSECT001_0009 = 594
+Op filler_CSECT001_0009 = FILLER
+Parent filler_CSECT001_0009 = WREP4
+Repeat filler_CSECT001_0009 = 1
+Sibling filler_CSECT001_0009 = WXDAT5
+Type filler_CSECT001_0009 = C
+
+Child CSECT001 = filler_CSECT001_0001
+Full_Length CSECT001 = 733
+Off_Dec CSECT001 = 0
+Op CSECT001 = CSECT
+Orig_Sequence CSECT001 = 1
+Type CSECT001 = CSECT
+
+Init R0 = 0
+Label_Locn R0 = 000000
+Op R0 = EQU
+Orig_Sequence R0 = 2
+Value R0 = 0
+
+Init R1 = 1
+Label_Locn R1 = 000000
+Op R1 = EQU
+Orig_Sequence R1 = 3
+Value R1 = 1
+
+Init R2 = 2
+Label_Locn R2 = 000000
+Op R2 = EQU
+Orig_Sequence R2 = 4
+Value R2 = 2
+
+Init R3 = 3
+Label_Locn R3 = 000000
+Op R3 = EQU
+Orig_Sequence R3 = 5
+Value R3 = 3
+
+Init R4 = 4
+Label_Locn R4 = 000000
+Op R4 = EQU
+Orig_Sequence R4 = 6
+Value R4 = 4
+
+Init R5 = 5
+Label_Locn R5 = 000000
+Op R5 = EQU
+Orig_Sequence R5 = 7
+Value R5 = 5
+
+Init R6 = 6
+Label_Locn R6 = 000000
+Op R6 = EQU
+Orig_Sequence R6 = 8
+Value R6 = 6
+
+Init R7 = 7
+Label_Locn R7 = 000000
+Op R7 = EQU
+Orig_Sequence R7 = 9
+Value R7 = 7
+
+Init R8 = 8
+Label_Locn R8 = 000000
+Op R8 = EQU
+Orig_Sequence R8 = 10
+Value R8 = 8
+
+Init R9 = 9
+Label_Locn R9 = 000000
+Op R9 = EQU
+Orig_Sequence R9 = 11
+Value R9 = 9
+
+Init R10 = 10
+Label_Locn R10 = 000000
+Op R10 = EQU
+Orig_Sequence R10 = 12
+Value R10 = A
+
+Init R11 = 11
+Label_Locn R11 = 000000
+Op R11 = EQU
+Orig_Sequence R11 = 13
+Value R11 = B
+
+Init R12 = 12
+Label_Locn R12 = 000000
+Op R12 = EQU
+Orig_Sequence R12 = 14
+Value R12 = C
+
+Init R13 = 13
+Label_Locn R13 = 000000
+Op R13 = EQU
+Orig_Sequence R13 = 15
+Value R13 = D
+
+Init R14 = 14
+Label_Locn R14 = 000000
+Op R14 = EQU
+Orig_Sequence R14 = 16
+Value R14 = E
+
+Init R15 = 15
+Label_Locn R15 = 000000
+Op R15 = EQU
+Orig_Sequence R15 = 17
+Value R15 = F
+
+Label_Locn FMT001A3_ = 000000
+Op FMT001A3_ = CSECT
+Orig_Sequence FMT001A3_ = 18
+Type FMT001A3_ = CSECT
+Value FMT001A3_ = 0
+
+Full_Length unnamed__0001 = 2
+Init unnamed__0001 = 0
+Label_Locn unnamed__0001 = 00003A
+Off_Dec unnamed__0001 = 58
+Op unnamed__0001 = DC
+Orig_Parent unnamed__0001 = CSECT001
+Orig_Sequence unnamed__0001 = 19
+Parent unnamed__0001 = CSECT001
+Repeat unnamed__0001 = 0
+Sibling unnamed__0001 = filler_CSECT001_0002
+Type unnamed__0001 = H
+
+Full_Length unnamed__0002 = 2
+Init unnamed__0002 = 0
+Label_Locn unnamed__0002 = 000056
+Off_Dec unnamed__0002 = 86
+Op unnamed__0002 = DC
+Orig_Parent unnamed__0002 = CSECT001
+Orig_Sequence unnamed__0002 = 20
+Parent unnamed__0002 = CSECT001
+Repeat unnamed__0002 = 0
+Sibling unnamed__0002 = filler_CSECT001_0003
+Type unnamed__0002 = H
+
+Full_Length unnamed__0003 = 2
+Init unnamed__0003 = 0
+Label_Locn unnamed__0003 = 000072
+Off_Dec unnamed__0003 = 114
+Op unnamed__0003 = DC
+Orig_Parent unnamed__0003 = CSECT001
+Orig_Sequence unnamed__0003 = 21
+Parent unnamed__0003 = CSECT001
+Repeat unnamed__0003 = 0
+Sibling unnamed__0003 = filler_CSECT001_0004
+Type unnamed__0003 = H
+
+Full_Length unnamed__0004 = 2
+Init unnamed__0004 = 0
+Label_Locn unnamed__0004 = 0000BE
+Off_Dec unnamed__0004 = 190
+Op unnamed__0004 = DC
+Orig_Parent unnamed__0004 = CSECT001
+Orig_Sequence unnamed__0004 = 22
+Parent unnamed__0004 = CSECT001
+Repeat unnamed__0004 = 0
+Sibling unnamed__0004 = filler_CSECT001_0005
+Type unnamed__0004 = H
+
+Full_Length WSAVE = 72
+Label_Locn WSAVE = 000124
+Off_Dec WSAVE = 292
+Op WSAVE = DS
+Orig_Parent WSAVE = CSECT001
+Orig_Sequence WSAVE = 23
+Parent WSAVE = CSECT001
+Repeat WSAVE = 18
+Sibling WSAVE = WTOTAL
+Type WSAVE = F
+Value WSAVE = 124
+
+Full_Length WTOTAL = 5
+Init WTOTAL = 0
+Label_Locn WTOTAL = 00016C
+Off_Dec WTOTAL = 364
+Op WTOTAL = DC
+Orig_Parent WTOTAL = CSECT001
+Orig_Sequence WTOTAL = 24
+Parent WTOTAL = CSECT001
+Repeat WTOTAL = 1
+Sibling WTOTAL = WPRT
+Type WTOTAL = P
+Value WTOTAL = 16C
+
+Full_Length WPRT = 80
+Init WPRT = " "
+Label_Locn WPRT = 000171
+Off_Dec WPRT = 369
+Op WPRT = DC
+Orig_Parent WPRT = CSECT001
+Orig_Sequence WPRT = 25
+Parent WPRT = CSECT001
+Repeat WPRT = 1
+Sibling WPRT = WSPACES
+Type WPRT = C
+Value WPRT = 171
+
+Full_Length WSPACES = 80
+Init WSPACES = " "
+Label_Locn WSPACES = 0001C1
+Off_Dec WSPACES = 449
+Op WSPACES = DC
+Orig_Parent WSPACES = CSECT001
+Orig_Sequence WSPACES = 26
+Parent WSPACES = CSECT001
+Repeat WSPACES = 1
+Sibling WSPACES = WREP1
+Type WSPACES = C
+Value WSPACES = 1C1
+
+Full_Length WREP1 = 14
+Init WREP1 = "REPORT HEADING"
+Label_Locn WREP1 = 000211
+Off_Dec WREP1 = 529
+Op WREP1 = DC
+Orig_Parent WREP1 = CSECT001
+Orig_Sequence WREP1 = 27
+Parent WREP1 = CSECT001
+Repeat WREP1 = 1
+Sibling WREP1 = WREP2
+Type WREP1 = C
+Value WREP1 = 211
+
+Full_Length WREP2 = 1
+Init WREP2 = " "
+Label_Locn WREP2 = 00021F
+Off_Dec WREP2 = 543
+Op WREP2 = DC
+Orig_Parent WREP2 = CSECT001
+Orig_Sequence WREP2 = 28
+Parent WREP2 = CSECT001
+Repeat WREP2 = 1
+Sibling WREP2 = WREP3
+Type WREP2 = C
+Value WREP2 = 21F
+
+Full_Length WREP3 = 20
+Init WREP3 = "FIRST LINE OF REPORT"
+Label_Locn WREP3 = 000220
+Off_Dec WREP3 = 544
+Op WREP3 = DC
+Orig_Parent WREP3 = CSECT001
+Orig_Sequence WREP3 = 29
+Parent WREP3 = CSECT001
+Repeat WREP3 = 1
+Sibling WREP3 = WREP4
+Type WREP3 = C
+Value WREP3 = 220
+
+Child WREP4 = WXDAT1
+Full_Length WREP4 = 80
+Init WREP4 = " "
+Label_Locn WREP4 = 000234
+Off_Dec WREP4 = 564
+Op WREP4 = DC
+Orig_Parent WREP4 = CSECT001
+Orig_Sequence WREP4 = 30
+Parent WREP4 = CSECT001
+Repeat WREP4 = 1
+Sibling WREP4 = WKTOT1
+Type WREP4 = C
+Value WREP4 = 234
+
+Init unnamed__0005 = WREP4
+Label_Locn unnamed__0005 = 000284
+Op unnamed__0005 = ORG
+Orig_Parent unnamed__0005 = CSECT001
+Orig_Sequence unnamed__0005 = 31
+
+Comment WXDAT1 = "DATE 1"
+Full_Length WXDAT1 = 6
+Label_Locn WXDAT1 = 000234
+Off_Dec WXDAT1 = 564
+Op WXDAT1 = DS
+Orig_Parent WXDAT1 = CSECT001
+Orig_Sequence WXDAT1 = 32
+Parent WXDAT1 = WREP4
+Repeat WXDAT1 = 1
+Sibling WXDAT1 = filler_CSECT001_0006
+Type WXDAT1 = C
+Value WXDAT1 = 234
+
+Child WXENT2 = WXDAT2
+Comment WXENT2 = "ENTRY A"
+Full_Length WXENT2 = 8
+Label_Locn WXENT2 = 00023C
+Off_Dec WXENT2 = 572
+Op WXENT2 = DS
+Orig_Parent WXENT2 = CSECT001
+Orig_Sequence WXENT2 = 33
+Parent WXENT2 = WREP4
+Repeat WXENT2 = 0
+Sibling WXENT2 = WXDAT3
+Type WXENT2 = C
+Value WXENT2 = 23C
+
+Comment WXDAT2 = "DATE 2"
+Full_Length WXDAT2 = 6
+Label_Locn WXDAT2 = 00023C
+Off_Dec WXDAT2 = 572
+Op WXDAT2 = DS
+Orig_Parent WXDAT2 = CSECT001
+Orig_Sequence WXDAT2 = 34
+Parent WXDAT2 = WXENT2
+Repeat WXDAT2 = 1
+Sibling WXDAT2 = filler_CSECT001_0007
+Type WXDAT2 = C
+Value WXDAT2 = 23C
+
+Comment WXDAT3 = "DATE 3"
+Full_Length WXDAT3 = 6
+Label_Locn WXDAT3 = 000244
+Off_Dec WXDAT3 = 580
+Op WXDAT3 = DS
+Orig_Parent WXDAT3 = CSECT001
+Orig_Sequence WXDAT3 = 35
+Parent WXDAT3 = WREP4
+Repeat WXDAT3 = 1
+Sibling WXDAT3 = filler_CSECT001_0008
+Type WXDAT3 = C
+Value WXDAT3 = 244
+
+Comment WXDAT4 = "DATE 4"
+Full_Length WXDAT4 = 6
+Label_Locn WXDAT4 = 00024C
+Off_Dec WXDAT4 = 588
+Op WXDAT4 = DS
+Orig_Parent WXDAT4 = CSECT001
+Orig_Sequence WXDAT4 = 36
+Parent WXDAT4 = WREP4
+Repeat WXDAT4 = 1
+Sibling WXDAT4 = filler_CSECT001_0009
+Type WXDAT4 = C
+Value WXDAT4 = 24C
+
+Full_Length WXDAT5 = 6
+Label_Locn WXDAT5 = 000254
+Off_Dec WXDAT5 = 596
+Op WXDAT5 = DS
+Orig_Parent WXDAT5 = CSECT001
+Orig_Sequence WXDAT5 = 37
+Parent WXDAT5 = WREP4
+Repeat WXDAT5 = 1
+Sibling WXDAT5 = filler_CSECT001_0010
+Type WXDAT5 = C
+Value WXDAT5 = 254
+
+Full_Length WXDAT6 = 6
+Label_Locn WXDAT6 = 00025C
+Off_Dec WXDAT6 = 604
+Op WXDAT6 = DS
+Orig_Parent WXDAT6 = CSECT001
+Orig_Sequence WXDAT6 = 38
+Parent WXDAT6 = WREP4
+Repeat WXDAT6 = 1
+Sibling WXDAT6 = filler_CSECT001_0011
+Type WXDAT6 = C
+Value WXDAT6 = 25C
+
+Full_Length WXDAT7 = 6
+Label_Locn WXDAT7 = 000264
+Off_Dec WXDAT7 = 612
+Op WXDAT7 = DS
+Orig_Parent WXDAT7 = CSECT001
+Orig_Sequence WXDAT7 = 39
+Parent WXDAT7 = WREP4
+Repeat WXDAT7 = 1
+Sibling WXDAT7 = filler_CSECT001_0012
+Type WXDAT7 = C
+Value WXDAT7 = 264
+
+Full_Length WXDAT8 = 6
+Label_Locn WXDAT8 = 00026C
+Off_Dec WXDAT8 = 620
+Op WXDAT8 = DS
+Orig_Parent WXDAT8 = CSECT001
+Orig_Sequence WXDAT8 = 40
+Parent WXDAT8 = WREP4
+Repeat WXDAT8 = 1
+Sibling WXDAT8 = filler_CSECT001_0013
+Type WXDAT8 = C
+Value WXDAT8 = 26C
+
+Comment WYAMT1 = INTEREST
+Full_Length WYAMT1 = 4
+Label_Locn WYAMT1 = 000274
+Off_Dec WYAMT1 = 628
+Op WYAMT1 = DS
+Orig_Parent WYAMT1 = CSECT001
+Orig_Sequence WYAMT1 = 41
+Parent WYAMT1 = WREP4
+Repeat WYAMT1 = 1
+Sibling WYAMT1 = WYRATE
+Type WYAMT1 = P
+Value WYAMT1 = 274
+
+Comment WYRATE = "INTEREST RATE"
+Full_Length WYRATE = 3
+Label_Locn WYRATE = 000278
+Off_Dec WYRATE = 632
+Op WYRATE = DS
+Orig_Parent WYRATE = CSECT001
+Orig_Sequence WYRATE = 42
+Parent WYRATE = WREP4
+Repeat WYRATE = 1
+Sibling WYRATE = WYAMT2
+Type WYRATE = P
+Value WYRATE = 278
+
+Comment WYAMT2 = AMOUNT
+Full_Length WYAMT2 = 4
+Label_Locn WYAMT2 = 00027B
+Off_Dec WYAMT2 = 635
+Op WYAMT2 = DS
+Orig_Parent WYAMT2 = CSECT001
+Orig_Sequence WYAMT2 = 43
+Parent WYAMT2 = WREP4
+Repeat WYAMT2 = 1
+Sibling WYAMT2 = filler_CSECT001_0014
+Type WYAMT2 = P
+Value WYAMT2 = 27B
+
+Full_Length star__0001 = 0
+Init star__0001 = WKTOT1
+Label_Locn star__0001 = 000284
+Off_Dec star__0001 = 644
+Op star__0001 = EQU
+Orig_Parent star__0001 = CSECT001
+Orig_Sequence star__0001 = 44
+Repeat star__0001 = 0
+Value star__0001 = 000284
+
+Init WDATA = star__0001
+Label_Locn WDATA = 000284
+Op WDATA = EQU
+Orig_Sequence WDATA = 45
+Value WDATA = 0284
+
+Comment WKTOT1 = AMOUNT
+Full_Length WKTOT1 = 4
+Init WKTOT1 = 0
+Label_Locn WKTOT1 = 000284
+Off_Dec WKTOT1 = 644
+Op WKTOT1 = DC
+Orig_Parent WKTOT1 = CSECT001
+Orig_Sequence WKTOT1 = 46
+Parent WKTOT1 = CSECT001
+Repeat WKTOT1 = 1
+Sibling WKTOT1 = WKTOT2
+Type WKTOT1 = P
+Value WKTOT1 = 284
+
+Comment WKTOT2 = RATE
+Full_Length WKTOT2 = 4
+Init WKTOT2 = 0
+Label_Locn WKTOT2 = 000288
+Off_Dec WKTOT2 = 648
+Op WKTOT2 = DC
+Orig_Parent WKTOT2 = CSECT001
+Orig_Sequence WKTOT2 = 47
+Parent WKTOT2 = CSECT001
+Repeat WKTOT2 = 1
+Sibling WKTOT2 = WKTOT3
+Type WKTOT2 = P
+Value WKTOT2 = 288
+
+Comment WKTOT3 = CREDIT
+Full_Length WKTOT3 = 4
+Init WKTOT3 = 0
+Label_Locn WKTOT3 = 00028C
+Off_Dec WKTOT3 = 652
+Op WKTOT3 = DC
+Orig_Parent WKTOT3 = CSECT001
+Orig_Sequence WKTOT3 = 48
+Parent WKTOT3 = CSECT001
+Repeat WKTOT3 = 1
+Sibling WKTOT3 = WKTOT4
+Type WKTOT3 = P
+Value WKTOT3 = 28C
+
+Comment WKTOT4 = AMOUNT
+Full_Length WKTOT4 = 4
+Init WKTOT4 = 0
+Label_Locn WKTOT4 = 000290
+Off_Dec WKTOT4 = 656
+Op WKTOT4 = DC
+Orig_Parent WKTOT4 = CSECT001
+Orig_Sequence WKTOT4 = 49
+Parent WKTOT4 = CSECT001
+Repeat WKTOT4 = 1
+Sibling WKTOT4 = WKTOT5
+Type WKTOT4 = P
+Value WKTOT4 = 290
+
+Full_Length WKTOT5 = 4
+Init WKTOT5 = 0
+Label_Locn WKTOT5 = 000294
+Off_Dec WKTOT5 = 660
+Op WKTOT5 = DC
+Orig_Parent WKTOT5 = CSECT001
+Orig_Sequence WKTOT5 = 50
+Parent WKTOT5 = CSECT001
+Repeat WKTOT5 = 1
+Sibling WKTOT5 = WJTOT1
+Type WKTOT5 = P
+Value WKTOT5 = 294
+
+Comment WJTOT1 = AMOUNT
+Full_Length WJTOT1 = 4
+Init WJTOT1 = 0
+Label_Locn WJTOT1 = 000298
+Off_Dec WJTOT1 = 664
+Op WJTOT1 = DC
+Orig_Parent WJTOT1 = CSECT001
+Orig_Sequence WJTOT1 = 51
+Parent WJTOT1 = CSECT001
+Repeat WJTOT1 = 1
+Sibling WJTOT1 = WJTOT2
+Type WJTOT1 = P
+Value WJTOT1 = 298
+
+Comment WJTOT2 = RATE
+Full_Length WJTOT2 = 4
+Init WJTOT2 = 0
+Label_Locn WJTOT2 = 00029C
+Off_Dec WJTOT2 = 668
+Op WJTOT2 = DC
+Orig_Parent WJTOT2 = CSECT001
+Orig_Sequence WJTOT2 = 52
+Parent WJTOT2 = CSECT001
+Repeat WJTOT2 = 1
+Sibling WJTOT2 = WJTOT3
+Type WJTOT2 = P
+Value WJTOT2 = 29C
+
+Comment WJTOT3 = CREDIT
+Full_Length WJTOT3 = 4
+Init WJTOT3 = 0
+Label_Locn WJTOT3 = 0002A0
+Off_Dec WJTOT3 = 672
+Op WJTOT3 = DC
+Orig_Parent WJTOT3 = CSECT001
+Orig_Sequence WJTOT3 = 53
+Parent WJTOT3 = CSECT001
+Repeat WJTOT3 = 1
+Sibling WJTOT3 = WJTOT4
+Type WJTOT3 = P
+Value WJTOT3 = 2A0
+
+Comment WJTOT4 = AMOUNT
+Full_Length WJTOT4 = 4
+Init WJTOT4 = 0
+Label_Locn WJTOT4 = 0002A4
+Off_Dec WJTOT4 = 676
+Op WJTOT4 = DC
+Orig_Parent WJTOT4 = CSECT001
+Orig_Sequence WJTOT4 = 54
+Parent WJTOT4 = CSECT001
+Repeat WJTOT4 = 1
+Sibling WJTOT4 = WJTOT5
+Type WJTOT4 = P
+Value WJTOT4 = 2A4
+
+Full_Length WJTOT5 = 4
+Init WJTOT5 = 0
+Label_Locn WJTOT5 = 0002A8
+Off_Dec WJTOT5 = 680
+Op WJTOT5 = DC
+Orig_Parent WJTOT5 = CSECT001
+Orig_Sequence WJTOT5 = 55
+Parent WJTOT5 = CSECT001
+Repeat WJTOT5 = 1
+Sibling WJTOT5 = WLTOT1
+Type WJTOT5 = P
+Value WJTOT5 = 2A8
+
+Comment WLTOT1 = AMOUNT
+Full_Length WLTOT1 = 4
+Init WLTOT1 = 0
+Label_Locn WLTOT1 = 0002AC
+Off_Dec WLTOT1 = 684
+Op WLTOT1 = DC
+Orig_Parent WLTOT1 = CSECT001
+Orig_Sequence WLTOT1 = 56
+Parent WLTOT1 = CSECT001
+Repeat WLTOT1 = 1
+Sibling WLTOT1 = WLTOT2
+Type WLTOT1 = P
+Value WLTOT1 = 2AC
+
+Comment WLTOT2 = RATE
+Full_Length WLTOT2 = 4
+Init WLTOT2 = 0
+Label_Locn WLTOT2 = 0002B0
+Off_Dec WLTOT2 = 688
+Op WLTOT2 = DC
+Orig_Parent WLTOT2 = CSECT001
+Orig_Sequence WLTOT2 = 57
+Parent WLTOT2 = CSECT001
+Repeat WLTOT2 = 1
+Sibling WLTOT2 = WLTOT3
+Type WLTOT2 = P
+Value WLTOT2 = 2B0
+
+Comment WLTOT3 = CREDIT
+Full_Length WLTOT3 = 4
+Init WLTOT3 = 0
+Label_Locn WLTOT3 = 0002B4
+Off_Dec WLTOT3 = 692
+Op WLTOT3 = DC
+Orig_Parent WLTOT3 = CSECT001
+Orig_Sequence WLTOT3 = 58
+Parent WLTOT3 = CSECT001
+Repeat WLTOT3 = 1
+Sibling WLTOT3 = WLTOT4
+Type WLTOT3 = P
+Value WLTOT3 = 2B4
+
+Comment WLTOT4 = AMOUNT
+Full_Length WLTOT4 = 4
+Init WLTOT4 = 0
+Label_Locn WLTOT4 = 0002B8
+Off_Dec WLTOT4 = 696
+Op WLTOT4 = DC
+Orig_Parent WLTOT4 = CSECT001
+Orig_Sequence WLTOT4 = 59
+Parent WLTOT4 = CSECT001
+Repeat WLTOT4 = 1
+Sibling WLTOT4 = WLTOT5
+Type WLTOT4 = P
+Value WLTOT4 = 2B8
+
+Full_Length WLTOT5 = 4
+Init WLTOT5 = 0
+Label_Locn WLTOT5 = 0002BC
+Off_Dec WLTOT5 = 700
+Op WLTOT5 = DC
+Orig_Parent WLTOT5 = CSECT001
+Orig_Sequence WLTOT5 = 60
+Parent WLTOT5 = CSECT001
+Repeat WLTOT5 = 1
+Sibling WLTOT5 = WNEW1
+Type WLTOT5 = P
+Value WLTOT5 = 2BC
+
+Full_Length WNEW1 = 4
+Init WNEW1 = 0
+Label_Locn WNEW1 = 0002C0
+Off_Dec WNEW1 = 704
+Op WNEW1 = DC
+Orig_Parent WNEW1 = CSECT001
+Orig_Sequence WNEW1 = 61
+Parent WNEW1 = CSECT001
+Repeat WNEW1 = 1
+Sibling WNEW1 = WNEW9
+Type WNEW1 = P
+Value WNEW1 = 2C0
+
+Full_Length WNEW9 = 4
+Init WNEW9 = 9999999
+Label_Locn WNEW9 = 0002C4
+Off_Dec WNEW9 = 708
+Op WNEW9 = DC
+Orig_Parent WNEW9 = CSECT001
+Orig_Sequence WNEW9 = 62
+Parent WNEW9 = CSECT001
+Repeat WNEW9 = 1
+Sibling WNEW9 = KKTOT1
+Type WNEW9 = P
+Value WNEW9 = 2C4
+
+Comment KKTOT1 = AMOUNT
+Full_Length KKTOT1 = 4
+Init KKTOT1 = 0
+Label_Locn KKTOT1 = 0002C8
+Off_Dec KKTOT1 = 712
+Op KKTOT1 = DC
+Orig_Parent KKTOT1 = CSECT001
+Orig_Sequence KKTOT1 = 63
+Parent KKTOT1 = CSECT001
+Repeat KKTOT1 = 1
+Sibling KKTOT1 = KKTOT2
+Type KKTOT1 = P
+Value KKTOT1 = 2C8
+
+Comment KKTOT2 = RATE
+Full_Length KKTOT2 = 4
+Init KKTOT2 = 0
+Label_Locn KKTOT2 = 0002CC
+Off_Dec KKTOT2 = 716
+Op KKTOT2 = DC
+Orig_Parent KKTOT2 = CSECT001
+Orig_Sequence KKTOT2 = 64
+Parent KKTOT2 = CSECT001
+Repeat KKTOT2 = 1
+Sibling KKTOT2 = KKTOT3
+Type KKTOT2 = P
+Value KKTOT2 = 2CC
+
+Comment KKTOT3 = CREDIT
+Full_Length KKTOT3 = 4
+Init KKTOT3 = 0
+Label_Locn KKTOT3 = 0002D0
+Off_Dec KKTOT3 = 720
+Op KKTOT3 = DC
+Orig_Parent KKTOT3 = CSECT001
+Orig_Sequence KKTOT3 = 65
+Parent KKTOT3 = CSECT001
+Repeat KKTOT3 = 1
+Sibling KKTOT3 = KKTOT4
+Type KKTOT3 = P
+Value KKTOT3 = 2D0
+
+Comment KKTOT4 = AMOUNT
+Full_Length KKTOT4 = 4
+Init KKTOT4 = 0
+Label_Locn KKTOT4 = 0002D4
+Off_Dec KKTOT4 = 724
+Op KKTOT4 = DC
+Orig_Parent KKTOT4 = CSECT001
+Orig_Sequence KKTOT4 = 66
+Parent KKTOT4 = CSECT001
+Repeat KKTOT4 = 1
+Sibling KKTOT4 = KKTOT5
+Type KKTOT4 = P
+Value KKTOT4 = 2D4
+
+Full_Length KKTOT5 = 4
+Init KKTOT5 = 0
+Label_Locn KKTOT5 = 0002D8
+Off_Dec KKTOT5 = 728
+Op KKTOT5 = DC
+Orig_Parent KKTOT5 = CSECT001
+Orig_Sequence KKTOT5 = 67
+Parent KKTOT5 = CSECT001
+Repeat KKTOT5 = 1
+Sibling KKTOT5 = WKG
+Type KKTOT5 = P
+Value KKTOT5 = 2D8
+
+Full_Length WKG = 1
+Init WKG = 0
+Label_Locn WKG = 0002DC
+Off_Dec WKG = 732
+Op WKG = DC
+Orig_Parent WKG = CSECT001
+Orig_Sequence WKG = 68
+Parent WKG = CSECT001
+Repeat WKG = 1
+Type WKG = P
+Value WKG = 2DC

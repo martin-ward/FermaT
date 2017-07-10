@@ -1,0 +1,104 @@
+#!/usr/bin/perl
+# Convert a FermaT callgraph to a textual format
+# Usage: cgtotext input [output]
+#
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname input [output]\n";
+# Check one or two arguments:
+die $Usage if (($#ARGV < 0) || ($#ARGV > 1));
+
+$input = shift;
+open(IN, $input) or die "Can't open input file `$input': $!\n";
+if (@ARGV) {
+  $output = shift;
+  open(OUT, ">$output") or die "Can't write to $output: $!\n";
+  select OUT;
+}
+
+$debug = 0;
+@nodes = ();	# List of nodes in original order in file
+%nodes = ();	# Hash table of all nodes in file
+
+$nestlevel = 0;	# Nestings of calls
+$lineno = 0;	# Output line no
+%calls = ();	# subroutine name -> (list of called subroutines)
+%calln = ();	# subroutine name -> (called sub -> count)
+%visited = ();	# Calls that have been expanded
+
+
+while (<IN>) {
+  next if (/^#/);
+  next unless (/:/);
+  chop;
+  # If "(" is present, read up to ")":
+  while (/\(/ && !m/\)/) {
+    die "No closing bracket found!\n" if eof();
+    $_ .= " " . <>;
+    chop;
+  }
+  # remove brackets
+  s/\(|\)//g;
+  next unless (s/^\s*(\S*)\s*:\s*//);
+  $from = "$1";
+  # If there are no no-of-calls items, add default values (1):
+  s/\b(\S+)\b/$1 1/g unless (/\b\d+\b/);
+  @succslist = split;
+  print STDERR "$from -> " . join(",", @succslist) . "\n" if $debug > 2;
+
+  node($from);
+  $done{$from}++;
+  while(@succslist) {
+    $to = shift(@succslist);
+    $nodes{$to}++;
+    $num = shift(@succslist);
+    $num = "" if ($num == "1");
+    edge($from, $to, $num);
+  }
+}
+
+foreach $node (keys %nodes) {
+  node($node) unless ($done{$node});
+}
+
+foreach $node (@nodes) {
+  printcalls("", $node) unless ($visited{$node});
+}
+
+exit (0);
+
+
+sub node($) {
+  my ($name) = @_;
+  push(@nodes, $name) unless ($done{$name});
+}
+
+
+sub edge($$) {
+  my ($from, $to, $label) = @_;
+  push(@{$calls{$from}}, $to) unless ($calln{$from}{$to});
+  $calln{$from}{$to} = $label || 1;
+}
+
+
+
+sub printcalls($$) {
+  my ($callee, $caller) = @_;
+  my $called;
+  $lineno++;
+  print "$lineno\t", "|  " x $nestlevel, $caller;
+  my $n = $calln{$callee}{$caller};
+  print " [x $n]" if (defined($n) && ($n > 1));
+  if ($visited{$caller}) {
+    print " $visited{$caller}\n";
+    return;
+  }
+  print "\n";
+  $visited{$caller} = $lineno;
+  $nestlevel++;
+  foreach $called (@{$calls{$caller}}) {
+    printcalls($caller, $called);
+  }
+  $nestlevel--;
+}
+

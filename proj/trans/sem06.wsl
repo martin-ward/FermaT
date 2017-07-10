@@ -1,0 +1,41 @@
+{blind = 1};
+{married = 0};
+{widow = 1};
+{age > 68};
+
+IF age >= 75 
+  THEN personal := 5980
+  ELSE IF age >= 65
+         THEN personal := 5720
+         ELSE personal := 4335 FI FI;
+IF age >= 65 AND income > 16800
+    THEN VAR < t := personal - ((income-16800)/2) >:
+         IF t > 4335
+           THEN personal := t
+           ELSE personal := 4335 FI ENDVAR FI;
+IF blind = 1 THEN personal := personal + 1380 FI;
+VAR < pc10 := 0 >:
+IF married = 1 AND age >= 75
+  THEN pc10 := 6692
+  ELSE IF married = 1 AND age >= 65
+         THEN pc10 := 6625
+         ELSE IF married = 1 OR widow = 1
+                THEN pc10 := 3470
+                ELSE pc10 := 1500 FI FI FI;
+IF married = 1 AND age >= 65 AND income > 16800
+  THEN VAR < t := pc10 - ((income-16800)/2) >:
+       IF t > 3740
+         THEN pc10 := t
+         ELSE pc10 := 3740 FI ENDVAR FI;
+IF income <= personal
+  THEN tax := 0
+  ELSE income := income - personal;
+       IF income <= pc10
+         THEN tax := income * rate10
+         ELSE tax := pc10 * rate10;
+              income := income - pc10;
+              IF income <= 28000
+                THEN tax := tax + income * rate23
+                ELSE tax := tax + 28000 * rate23;
+                     income := income - 28000;
+                     tax := tax + income * rate40 FI FI FI ENDVAR

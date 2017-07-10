@@ -1,0 +1,80 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+# bbtoess [input] [output]
+# Prune a basic blocks file by recursively replacing structured subcomponents
+# by a single node: the result is the remaining unstructured components
+# from which we can compute the McCabe Essential Complexity.
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/\"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+use Blocks;
+use warnings;
+use strict;
+
+my ($myname, $Usage);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [input] [output]\n";
+
+my ($input, $output);
+
+my $V = 0;
+if (@ARGV && ($ARGV[0] eq "-v")) {
+  $V = 1;
+  shift(@ARGV);
+}
+
+# Check zero to two arguments:
+shift while (@ARGV && ($ARGV[0] =~ /^-/));
+if (@ARGV == 2) {
+  ($input, $output) = @ARGV;
+} elsif (@ARGV == 1) {
+  $input = $ARGV[0];
+  $output = $input;
+  $output .= ".ess" unless ($output =~ s/\.bb$/\.ess/);
+} elsif (@ARGV == 0) {
+  ($input, $output) = ("-", "-");
+} else {
+  die $Usage;
+}
+
+my ($bb, $start, $end);
+
+($bb, $start, $end) = bb_read($input);
+
+prune_structured($bb, $start, $V);
+
+bb_write($bb, $output);
+
+exit(0);
+
+
+sub cpu {
+  my ($user,$system,$cuser,$csystem) = times;
+  return($user + $system + $cuser + $csystem);
+}
+

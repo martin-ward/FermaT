@@ -1,0 +1,327 @@
+VAR < cc := 0, len_1 := 0, len_2 := 0, destination := 0 >:
+BEGIN
+  ACTIONS _enter_:
+    _start_ == CALL Z END
+    FMT001A3 ==
+      C:"*********************************************************************";
+      CALL A_000000 END
+    A_000000 ==
+      C:"<FermaT> 00000035 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+      !P push_regs(r0,
+                    r1,
+                    r2,
+                    r3,
+                    r4,
+                    r5,
+                    r6,
+                    r7,
+                    r8,
+                    r9,
+                    r10,
+                    r11,
+                    r12,
+                    r13,
+                    r14
+        VAR reg_stack);
+      !P chain_reg( VAR r13, os);
+      CALL A_000004 END
+    A_000004 ==
+      C:"<FermaT> 00000036 r3 r15";
+      r3 := r15;
+      CALL A_000006 END
+    A_000006 ==
+      C:"<FermaT> 00000038 WSAVE WSAVE[5] WSAVE[6] WSAVE[7] WSAVE[8] r3 r13";
+      a[dib(WSAVE + 4, 0, r3), 4] := r13;
+      CALL A_00000A END
+    A_00000A ==
+      C:"<FermaT> 00000039 WSAVE r14 r3";
+      r14 := dib(WSAVE, 0, r3);
+      CALL A_00000E END
+    A_00000E ==
+      C:"<FermaT> 00000040 r13 r14";
+      a[dib(8, r13, 0), 4] := r14;
+      CALL A_000012 END
+    A_000012 ==
+      C:"<FermaT> 00000041 WSAVE r13 r3";
+      r13 := dib(WSAVE, 0, r3);
+      CALL A_000016 END
+    A_000016 ==
+      C:"*";
+      C:"<FermaT> 00000043 PRINT2 r15";
+      result_code := NOT_USED;
+      !P OPEN(PRINT2, "OUTPUT" VAR result_code, os);
+      r15 := result_code;
+      CALL A_000034 END
+    A_000034 ==
+      C:"<FermaT> 00000055 WREP1 WPRT r3";
+      !P mvc(a[db(WREP1, r3), 14] VAR a[db(WPRT, r3), 14]);
+      CALL A_00003A END
+    A_00003A ==
+      C:"* MVS VERSION";
+      C:"<FermaT> 00000057 PRINT2 r1";
+      r1 := v_dcb_PRINT2;
+      CALL A_00003E END
+    A_00003E ==
+      C:"* MVS VERSION";
+      C:"<FermaT> 00000058 WPRT r0 r3";
+      r0 := dib(WPRT, 0, r3);
+      CALL A_000042 END
+    A_000042 ==
+      C:"GET MF370EFO QSAM VECTOR TABLE ADDRESS";
+      C:"<FermaT> 00000059 r15 r1";
+      r15 := a[dib(64, 0, r1), 4];
+      CALL A_000046 END
+    A_000046 ==
+      C:"GET=+0, PUT=+4, PUTX=+8, PUTX OUT=+12";
+      C:"FIXME: No jump table found: assuming this jumps over data";
+      C:"FIXME: was: r14 := 74; destination := r15 + 4; CALL dispatch;";
+      C:"<FermaT> 00000060 ";
+      CALL A_00004A END
+    A_00004A ==
+      C:"<FermaT> 00000061 WPRT WSPACES r3";
+      !P mvc(a[db(WSPACES, r3), 80]
+        VAR a[db(WPRT, r3), 80]);
+      CALL A_000050 END
+    A_000050 ==
+      C:"<FermaT> 00000063 WREP2 WPRT WPRT[1] r3";
+      !P mvc(a[db(WREP2, r3), 1] VAR a[db(WPRT, r3), 1]);
+      CALL A_000056 END
+    A_000056 ==
+      C:"* MVS VERSION";
+      C:"<FermaT> 00000065 PRINT2 r1";
+      r1 := v_dcb_PRINT2;
+      CALL A_00005A END
+    A_00005A ==
+      C:"* MVS VERSION";
+      C:"<FermaT> 00000069 WPRT r0 r3";
+      r0 := dib(WPRT, 0, r3);
+      CALL A_00005E END
+    A_00005E ==
+      C:"GET MF370EFO QSAM VECTOR TABLE ADDRESS";
+      C:"<FermaT> 00000070 r15 r1";
+      r15 := a[dib(64, 0, r1), 4];
+      CALL A_000062 END
+    A_000062 ==
+      C:"GET=+0, PUT=+4, PUTX=+8, PUTX OUT=+12";
+      C:"FIXME: No jump table found: assuming this jumps over data";
+      C:"FIXME: was: r14 := 102; destination := r15 + 4; CALL dispatch;";
+      C:"<FermaT> 00000071 ";
+      CALL A_000066 END
+    A_000066 ==
+      C:"<FermaT> 00000072 WPRT WSPACES r3";
+      !P mvc(a[db(WSPACES, r3), 80]
+        VAR a[db(WPRT, r3), 80]);
+      CALL A_00006C END
+    A_00006C ==
+      C:"<FermaT> 00000074 WREP3 WPRT r3";
+      !P mvc(a[db(WREP3, r3), 20] VAR a[db(WPRT, r3), 20]);
+      CALL A_000072 END
+    A_000072 ==
+      C:"* MVS VERSION";
+      C:"<FermaT> 00000076 PRINT2 r1";
+      r1 := v_dcb_PRINT2;
+      CALL A_000076 END
+    A_000076 ==
+      C:"* MVS VERSION";
+      C:"<FermaT> 00000077 WPRT r0 r3";
+      r0 := dib(WPRT, 0, r3);
+      CALL A_00007A END
+    A_00007A ==
+      C:"GET MF370EFO QSAM VECTOR TABLE ADDRESS";
+      C:"<FermaT> 00000078 r15 r1";
+      r15 := a[dib(64, 0, r1), 4];
+      CALL A_00007E END
+    A_00007E ==
+      C:"GET=+0, PUT=+4, PUTX=+8, PUTX OUT=+12";
+      C:"FIXME: No jump table found: assuming this jumps over data";
+      C:"FIXME: was: r14 := 130; destination := r15 + 4; CALL dispatch;";
+      C:"<FermaT> 00000079 ";
+      CALL A_000082 END
+    A_000082 ==
+      C:"<FermaT> 00000080 WPRT WSPACES r3";
+      !P mvc(a[db(WSPACES, r3), 80]
+        VAR a[db(WPRT, r3), 80]);
+      CALL A_000088 END
+    A_000088 ==
+      C:"<FermaT> 00000081 WXDAT1 r3";
+      !P mvc(!XF c_lit(1, 6, "AAAAAA")
+        VAR a[db(WXDAT1, r3), 6]);
+      CALL A_00008E END
+    A_00008E ==
+      C:"<FermaT> 00000082 WXDAT2 r3";
+      !P mvc(!XF c_lit(1, 6, "BBBBBB")
+        VAR a[db(WXDAT2, r3), 6]);
+      CALL A_000094 END
+    A_000094 ==
+      C:"<FermaT> 00000083 WXDAT3 r3";
+      !P mvc(!XF c_lit(1, 6, "CCCCCC")
+        VAR a[db(WXDAT3, r3), 6]);
+      CALL A_00009A END
+    A_00009A ==
+      C:"<FermaT> 00000084 WXDAT4 r3";
+      !P mvc(!XF c_lit(1, 6, "DDDDDD")
+        VAR a[db(WXDAT4, r3), 6]);
+      CALL A_0000A0 END
+    A_0000A0 ==
+      C:"<FermaT> 00000085 WXDAT5 r3";
+      !P mvc(!XF c_lit(1, 6, "EEEEEE")
+        VAR a[db(WXDAT5, r3), 6]);
+      CALL A_0000A6 END
+    A_0000A6 ==
+      C:"<FermaT> 00000086 WXDAT6 r3";
+      !P mvc(!XF c_lit(1, 6, "FFFFFF")
+        VAR a[db(WXDAT6, r3), 6]);
+      CALL A_0000AC END
+    A_0000AC ==
+      C:"<FermaT> 00000087 WXDAT7 r3";
+      !P mvc(!XF c_lit(1, 6, "GGGGGG")
+        VAR a[db(WXDAT7, r3), 6]);
+      CALL A_0000B2 END
+    A_0000B2 ==
+      C:"<FermaT> 00000088 WXDAT8 r3";
+      !P mvc(!XF c_lit(1, 6, "HHHHHH")
+        VAR a[db(WXDAT8, r3), 6]);
+      CALL A_0000B8 END
+    A_0000B8 ==
+      C:"<FermaT> 00000090 WREP4 WPRT r3";
+      !P mvc(a[db(WREP4, r3), 80] VAR a[db(WPRT, r3), 80]);
+      CALL A_0000BE END
+    A_0000BE ==
+      C:"* MVS VERSION";
+      C:"<FermaT> 00000092 PRINT2 r1";
+      r1 := v_dcb_PRINT2;
+      CALL A_0000C2 END
+    A_0000C2 ==
+      C:"* MVS VERSION";
+      C:"<FermaT> 00000093 WPRT r0 r3";
+      r0 := dib(WPRT, 0, r3);
+      CALL A_0000C6 END
+    A_0000C6 ==
+      C:"GET MF370EFO QSAM VECTOR TABLE ADDRESS";
+      C:"<FermaT> 00000094 r15 r1";
+      r15 := a[dib(64, 0, r1), 4];
+      CALL A_0000CA END
+    A_0000CA ==
+      C:"GET=+0, PUT=+4, PUTX=+8, PUTX OUT=+12";
+      C:"FIXME: No jump table found: assuming this jumps over data";
+      C:"FIXME: was: r14 := 206; destination := r15 + 4; CALL dispatch;";
+      C:"<FermaT> 00000095 ";
+      CALL A_0000CE END
+    A_0000CE ==
+      C:"<FermaT> 00000096 WPRT WSPACES r3";
+      !P mvc(a[db(WSPACES, r3), 80]
+        VAR a[db(WPRT, r3), 80]);
+      CALL A_0000D4 END
+    A_0000D4 ==
+      C:"<FermaT> 00000097 WTOTAL WYAMT1 r3";
+      !P zap(a[db(WYAMT1, r3), 4] VAR a[db(WTOTAL, r3), 5]);
+      IF !XC dec_eq(
+           a[db(WTOTAL, r3), 5], !XF p_lit(1, 1, "0"))
+        THEN cc := 0
+      ELSIF !XC dec_less(
+              a[db(WTOTAL, r3), 5], !XF p_lit(1, 1, "0"))
+        THEN cc := 1
+        ELSE cc := 2 FI;
+      CALL A_0000DA END
+    A_0000DA ==
+      C:"<FermaT> 00000098 WTOTAL WYAMT2 r3";
+      !P ap(a[db(WYAMT2, r3), 4] VAR a[db(WTOTAL, r3), 5]);
+      IF !XC dec_eq(
+           a[db(WTOTAL, r3), 5], !XF p_lit(1, 1, "0"))
+        THEN cc := 0
+      ELSIF !XC dec_less(
+              a[db(WTOTAL, r3), 5], !XF p_lit(1, 1, "0"))
+        THEN cc := 1
+        ELSE cc := 2 FI;
+      CALL A_0000E0 END
+    A_0000E0 ==
+      C:"<FermaT> 00000099 WTOTAL WYRATE r3";
+      !P mp(a[db(WYRATE, r3), 3] VAR a[db(WTOTAL, r3), 5]);
+      CALL A_0000E6 END
+    A_0000E6 ==
+      C:"<FermaT> 00000100 WTOTAL r3";
+      !P div_modp(a[db(WTOTAL, r3), 5], !XF p_lit(1, 2, "100")
+        VAR a[db(WTOTAL, r3), 3], a[db(WTOTAL, r3) + 3, 2]);
+      CALL A_0000EC END
+    A_0000EC ==
+      C:"<FermaT> 00000101 PRINT2 r15";
+      result_code := NOT_USED;
+      !P CLOSE(PRINT2 VAR result_code, os);
+      r15 := result_code;
+      CALL A_000108 END
+    A_000108 ==
+      C:"*";
+      C:"<FermaT> 00000113 r15";
+      result_code := NOT_USED;
+      !P FMT001A4( VAR call_macro, result_code, os);
+      !P dummy( VAR regs, os);
+      r15 := result_code;
+      CALL A_000116 END
+    A_000116 ==
+      C:"*";
+      C:"<FermaT> 00000121 WSAVE WSAVE[5] WSAVE[6] WSAVE[7] WSAVE[8] r13 r3";
+      r13 := a[dib(WSAVE + 4, 0, r3), 4];
+      CALL A_00011A END
+    A_00011A ==
+      C:"<FermaT> 00000122 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+      !P pop_regs(
+        VAR r0, r1,
+          r2,
+          r3,
+          r4,
+          r5,
+          r6,
+          r7,
+          r8,
+          r9,
+          r10,
+          r11,
+          r12,
+          r13,
+          r14,
+          reg_stack);
+      CALL A_00011E END
+    A_00011E ==
+      C:"<FermaT> 00000123 r15";
+      r15 := 0;
+      IF r15 = 0 THEN cc := 0 ELSE cc := 2 FI;
+      CALL A_000120 END
+    A_000120 ==
+      C:"<FermaT> 00000127 r14";
+      destination := r14;
+      CALL dispatch END
+    _enter_ ==
+      C:" <ENTRY POINT> ";
+      C:" <NAME=FMT001A3> ";
+      r1 := __r1_init__;
+      r2 := __r2_init__;
+      r3 := __r3_init__;
+      r4 := __r4_init__;
+      r5 := __r5_init__;
+      r6 := __r6_init__;
+      r7 := __r7_init__;
+      r8 := __r8_init__;
+      r9 := __r9_init__;
+      r10 := __r10_init__;
+      r11 := __r11_init__;
+      r12 := __r12_init__;
+      r13 := __r13_init__;
+      r14 := __r14_init__;
+      CALL FMT001A3 END
+    dispatch ==
+      IF destination = 0
+        THEN CALL Z
+      ELSIF destination = 74
+        THEN CALL A_00004A
+      ELSIF destination = 102
+        THEN CALL A_000066
+      ELSIF destination = 130
+        THEN CALL A_000082
+      ELSIF destination = 206
+        THEN CALL A_0000CE
+        ELSE C:"FIXME: Unknown destination "; CALL Z FI
+    END ENDACTIONS
+WHERE
+  FUNCT dib(d, i, b) == VAR <  >: (d + i + b) END
+  FUNCT db(d, b) == VAR <  >: (d + b) END
+END ENDVAR

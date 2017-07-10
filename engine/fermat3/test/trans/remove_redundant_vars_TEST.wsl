@@ -1,0 +1,301 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+@Test_Trans(" 1st test of `Remove Redundant Vars'",
+	     (FILL Statements
+
+VAR < ax := ax >:
+ax[2] := check_krit;
+fd_s0xrs := ax;
+fd_s0xgs := ax;
+!P fd_s0bloc( VAR fd_s0bloc_al, fd_s0bloc_bx, os) ENDVAR
+
+ENDFILL),
+	     <1>,
+	     TR_Remove_Redundant_Vars,
+	     < >,
+	     (FILL Statements
+
+fd_s0xrs := ax;
+fd_s0xrs[2] := check_krit;
+fd_s0xgs := fd_s0xrs;
+!P fd_s0bloc( VAR fd_s0bloc_al, fd_s0bloc_bx, os)
+
+ENDFILL));
+
+
+
+@Test_Trans(" 2nd test of `Remove Redundant Vars'",
+	     (FILL Statements
+
+VAR < ax := foo >:
+ax[2] := check_krit;
+fd_s0xrs := ax;
+fd_s0xgs := ax;
+!P fd_s0bloc( VAR fd_s0bloc_al, fd_s0bloc_bx, os) ENDVAR
+
+ENDFILL),
+	     <1>,
+	     TR_Remove_Redundant_Vars,
+	     < >,
+	     (FILL Statements
+
+fd_s0xrs := foo;
+fd_s0xrs[2] := check_krit;
+fd_s0xgs := fd_s0xrs;
+!P fd_s0bloc( VAR fd_s0bloc_al, fd_s0bloc_bx, os)
+
+ENDFILL));
+
+
+
+@Test_Trans(" 3rd test of `Remove Redundant Vars'",
+	     (FILL Statements
+
+VAR < ax := foo >:
+ax[2] := check_krit;
+fd_s0xrs := ax + fd_s0xrs;
+fd_s0xgs := ax;
+!P fd_s0bloc( VAR fd_s0bloc_al, fd_s0bloc_bx, os) ENDVAR
+
+ENDFILL),
+	     <1>,
+	     TR_Remove_Redundant_Vars,
+	     < >,
+	     (FILL Statements
+
+fd_s0xgs := foo;
+fd_s0xgs[2] := check_krit;
+fd_s0xrs := fd_s0xgs + fd_s0xrs;
+!P fd_s0bloc( VAR fd_s0bloc_al, fd_s0bloc_bx, os)
+
+ENDFILL));
+
+
+
+@Test_Trans(" 4th test of `Remove Redundant Vars'",
+	     (FILL Statements
+
+VAR < ax := foo >:
+ax[2] := check_krit;
+foo := foo + 1;
+fd_s0xrs := ax + fd_s0xrs;
+fd_s0xgs := ax;
+!P fd_s0bloc( VAR fd_s0bloc_al, fd_s0bloc_bx, os) ENDVAR
+
+ENDFILL),
+	     <1>,
+	     TR_Remove_Redundant_Vars,
+	     < >,
+	     "Fail");
+
+
+
+@Test_Trans(" 4th test of `Remove Redundant Vars'",
+	     (FILL Statements
+
+VAR < ax := foo >:
+foo := foo + 1;
+!P fd_s0bloc( VAR fd_s0bloc_al, fd_s0bloc_bx, os) ENDVAR
+
+ENDFILL),
+	     <1>,
+	     TR_Remove_Redundant_Vars,
+	     < >,
+	     (FILL Statements
+
+foo := foo + 1;
+!P fd_s0bloc( VAR fd_s0bloc_al, fd_s0bloc_bx, os)
+
+ENDFILL));
+
+
+
+
+@Test_Trans(" 5th test of `Remove Redundant Vars'",
+	     (FILL Statements
+
+VAR < pad := 0,
+      len1
+        := !XF bit_and(
+             !XF address_of(a[KTC].F230END)
+               - !XF address_of(a[KTC].F230LN1.F230),
+             "hex 0x00FFFFFF"),
+      len2 := !XF bit_and(0, "hex 0x00FFFFFF") >:
+IF len2 > r0 AND r0 > 0
+  THEN cc := 3
+  ELSE IF len1 = len2
+         THEN cc := 0
+       ELSIF len1 < len2
+         THEN cc := 1
+         ELSE cc := 2; !P fill(0 VAR a[len2 + r0, len1 - len2])
+       FI;
+       r0 := len1 + r0;
+       r14 := len2 FI ENDVAR
+
+ENDFILL),
+	     <1>,
+	     TR_Remove_Redundant_Vars,
+	     < >,
+	     (FILL Statements
+
+IF !XF bit_and(
+         !XF address_of(a[KTC].F230END)
+           - !XF address_of(a[KTC].F230LN1.F230),
+         "hex 0x00FFFFFF")
+     = 0
+  THEN cc := 0
+ELSIF !XF bit_and(
+            !XF address_of(a[KTC].F230END)
+              - !XF address_of(a[KTC].F230LN1.F230),
+            "hex 0x00FFFFFF")
+        < 0
+  THEN cc := 1
+  ELSE cc := 2;
+       !P fill(0
+         VAR a[r0,
+             !XF bit_and(
+               !XF address_of(a[KTC].F230END)
+                 - !XF address_of(a[KTC].F230LN1.F230),
+               "hex 0x00FFFFFF")]) FI;
+r0 := !XF bit_and(
+           !XF address_of(a[KTC].F230END)
+             - !XF address_of(a[KTC].F230LN1.F230),
+           "hex 0x00FFFFFF")
+       + r0;
+r14 := 0
+
+ENDFILL));
+
+
+
+@Test_Trans(" 6th test of `Remove Redundant Vars'",
+	     (FILL Statements
+
+VAR < tempa := 0 >:
+  tempa := mjvm_locals[1]; PUSH(mjvm_estack, tempa) ENDVAR
+
+ENDFILL),
+	     <1>,
+	     TR_Remove_Redundant_Vars,
+	     < >,
+	     (FILL Statements
+
+PUSH(mjvm_estack, mjvm_locals[1])
+
+ENDFILL));
+
+
+
+@Test_Trans(" 7th test of `Remove Redundant Vars'",
+	     (FILL Statements
+
+BEGIN
+  VAR < mjvm_locals := ARRAY(1, 0),
+        mjvm_statics := ARRAY(0, 0),
+        mjvm_arrays := < >,
+        mjvm_flag_jump := 0,
+        mjvm_objects := < >,
+        mjvm_estack := < >,
+        mjvm_mstack := < > >:
+  PUSH(mjvm_mstack, mjvm_locals);
+  mjvm_locals := ARRAY(1, 0);
+  mjvm_locals[1] := 0;
+  a19() ENDVAR
+WHERE
+  PROC a19() ==
+    IF mjvm_locals[1] >= 5
+      THEN mjvm_flag_jump := 1; POP(mjvm_locals, mjvm_mstack)
+      ELSE mjvm_flag_jump := 0;
+           PRINFLUSH(mjvm_locals[1]);
+           mjvm_locals[1] := mjvm_locals[1] + 1;
+           a19() FI END
+END
+
+ENDFILL),
+	     <1, 1, 1>,
+	     TR_Remove_Redundant_Vars,
+	     < >,
+	     (FILL Statements
+
+VAR < mjvm_locals := ARRAY(1, 0), mjvm_mstack := < > >:
+BEGIN
+  PUSH(mjvm_mstack, mjvm_locals);
+  mjvm_locals := ARRAY(1, 0);
+  mjvm_locals[1] := 0;
+  a19()
+WHERE
+  PROC a19() ==
+    IF mjvm_locals[1] >= 5
+      THEN POP(mjvm_locals, mjvm_mstack)
+      ELSE PRINFLUSH(mjvm_locals[1]);
+           mjvm_locals[1] := mjvm_locals[1] + 1;
+           a19() FI END
+END ENDVAR
+
+ENDFILL));
+
+
+
+@Test_Trans(" 8th test of `Remove Redundant Vars'",
+	     (FILL Statements
+
+BEGIN
+  VAR < mjvm_locals := ARRAY(1, 0),
+        mjvm_statics := ARRAY(0, 0),
+        mjvm_arrays := < >,
+        mjvm_flag_jump := 0,
+        mjvm_objects := < >,
+        mjvm_estack := < >,
+        mjvm_mstack := < > >:
+  PUSH(mjvm_mstack, mjvm_locals);
+  VAR < tempa := 0, tempb := 0 >:
+  tempb := 50; Print_MJ(tempb, tempa) ENDVAR ENDVAR
+WHERE
+  PROC Print_MJ(val, format) ==
+    IF format > 1
+      THEN FOR i := 2 TO format STEP 1 DO PRINFLUSH(" ") OD FI;
+    PRINFLUSH(val) END
+END
+
+ENDFILL),
+	     <1, 1, 1>,
+	     TR_Remove_Redundant_Vars,
+	     < >,
+	     (FILL Statements
+
+BEGIN
+  VAR < tempa := 0, tempb := 50 >:
+  Print_MJ(tempb, tempa) ENDVAR
+WHERE
+  PROC Print_MJ(val, format) ==
+    IF format > 1
+      THEN FOR i := 2 TO format STEP 1 DO PRINFLUSH(" ") OD FI;
+    PRINFLUSH(val) END
+END
+
+ENDFILL));
+
+
+SKIP
+
+
+

@@ -1,0 +1,251 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Take Out Right'",
+	    (FILL Statements J := 0; J := J + 1 ENDFILL),
+	    <1>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 2nd test of `Take Out Right'",
+	    (FILL Statements IF X = 1
+				THEN B := 1; A := 3
+			     ELSIF X = 2
+				THEN B := 2; A := 3
+				ELSE B := 3; A := 3 FI ENDFILL),
+	    <1, 2, 2, 2>,
+	    TR_Take_Out_Right,
+	    < >,
+	    (FILL Statements IF X = 1
+				THEN B := 1
+			     ELSIF X = 2
+				THEN B := 2
+				ELSE B := 3 FI;
+			     A := 3 ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Take Out Right'",
+	    (FILL Statements IF X = 1
+				THEN A := 3
+			     ELSIF X = 2
+				THEN A := 3
+				ELSE A := 3 FI ENDFILL),
+	    <1, 1, 2, 1>,
+	    TR_Take_Out_Right,
+	    < >,
+	    (FILL Statements A := 3 ENDFILL));
+
+
+@Test_Trans(" 4th test of `Take Out Right'",
+	    (FILL Statements IF X = 1
+				THEN A := 3845
+			     ELSIF X = 2
+				THEN A := 3
+				ELSE A := 3 FI ENDFILL),
+	    <1, 1, 2, 1>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 5th test of `Take Out Right'",
+	    (FILL Statements IF X = 1
+				THEN A := 3
+			     ELSIF X = 2
+				THEN A := 398; EXIT(1)
+				ELSE A := 3 FI ENDFILL),
+	    <1, 3, 2, 1>,
+	    TR_Take_Out_Right,
+	    < >,
+	    (FILL Statements IF (X = 2)
+				THEN A := 398; EXIT(1) FI;
+			     A := 3 ENDFILL));
+
+
+@Test_Trans(" 6th test of `Take Out Right'",
+	    (FILL Statements IF X = 1
+				THEN A := 3
+			     ELSIF X = 2
+				THEN A := 3 FI ENDFILL),
+	    <1, 1, 2, 1>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 7th test of `Take Out Right'",
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP;
+				 K := 1 OD ENDFILL),
+	    <1, 5, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP OD;
+			     K := 1 ENDFILL));
+
+
+@Test_Trans(" 8th test of `Take Out Right'",
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP;
+				 K := K + 1 OD ENDFILL),
+	    <1, 5, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 9th test of `Take Out Right'",
+	    (FILL Statements FOR I := 0 TO 10 STEP (A * B) DO
+				 J := J + I;
+				 SKIP;
+				 K := 1 OD ENDFILL),
+	    <1, 5, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("10th test of `Take Out Right'",
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP;
+				 K := I OD ENDFILL),
+	    <1, 5, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("11th test of `Take Out Right'",
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP;
+				   K := 1 OD ENDFILL),
+	    <2, 2, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD;
+			     K := 1 ENDFILL));
+
+
+@Test_Trans("12th test of `Take Out Right'",
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP;
+				   K := K + 1 OD ENDFILL),
+	    <2, 2, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("13th test of `Take Out Right'",
+	    (FILL Statements {(X <> 1)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP;
+				   K := 1 OD ENDFILL),
+	    <2, 2, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("14th test of `Take Out Right'",
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP;
+				   K := X OD ENDFILL),
+	    <2, 2, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD;
+			     K := X ENDFILL));
+
+
+@Test_Trans("15th test of `Take Out Right'",
+	    (FILL Statements {(X <> B)};
+			     WHILE X <> B DO
+				   X := X + A;
+				   SKIP;
+				   B := 1 OD ENDFILL),
+	    <2, 2, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail");
+
+@Test_Trans("16th test of `Take Out Right'",
+	    (FILL Statements {(X <> B)};
+			     WHILE X <> B DO
+				   X := X + A;
+				   SKIP;
+				   A := 1 OD ENDFILL),
+	    <2, 2, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("17th test of `Take Out Right'",
+	    (FILL Statements BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y);
+				   IF A = 1 THEN John(2 VAR P) ELSE Mary(3 VAR Q) FI
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END ENDFILL),
+	    <1, 1, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    (FILL Statements BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y)
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END;
+			     IF A = 1 THEN John(2 VAR P) ELSE Mary(3 VAR Q) FI ENDFILL));
+
+
+@Test_Trans("18th test of `Take Out Right'",
+	    (FILL Statements BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y);
+				   IF A = 1 THEN John(2 VAR P) ELSE Increment(3 VAR Q) FI
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END ENDFILL),
+	    <1, 1, 3>,
+	    TR_Take_Out_Right,
+	    < >,
+	    "Fail")
+
+

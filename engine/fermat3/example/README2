@@ -1,0 +1,162 @@
+> I have some questions and concerns about my recent experiences with FermaT.
+>
+> When running the TR_Reverse_If transformation in the example/ directory,
+> with "% dotrans test_reverse_ifr-1.wsl TR_Reverse_If type=Cond",
+> on the following WSL code, only the first IF is transformed.
+>
+> IF x = 0 THEN y := 1 ELSE y := 2 FI; IF s  = 0 THEN s := 1 ELSE t := 2 FI
+>
+> I get the same output when I run the Reverse_Order transformation, i.e.,
+> % dotrans test_reverse_ifr-1.wsl Reverse_Order type=Cond
+>
+> Am I executing these transformations incorrectly? Must I write some extra
+> MetaWSL code to walk the parse tree and invoke this transformation on
+> every IF statement?
+
+Yes, as written, the transformation applies to a single IF statement.
+The extra MetaWSL code is simply a FOREACH loop.
+
+Here's an example of a FOREACH loop, put these lines into
+a file called test_reverse_if_multi.wsl:
+
+
+@New_Program(FILL Statements 
+IF x = 0 THEN y := 1 ELSE y := 2 FI; IF s  = 0 THEN s := 1 ELSE t := 2 FI
+ENDFILL);
+
+FOREACH Statement DO
+  IF @Trans?(TR_Reverse_If)
+    THEN @Trans(TR_Reverse_If, "") FI OD;
+
+@Checkpoint("")
+
+
+Then run:
+
+% wsl test_reverse_if_multi.wsl
+
+The output should look like this:
+
+Reading patch.tr
+Writing: /tmp/t111862.scm
+Starting Execution... 
+
+IF x <> 0 THEN y := 2 ELSE y := 1 FI;
+IF s <> 0 THEN t := 2 ELSE s := 1 FI
+
+Execution time: 0
+
+
+The @Checkpoint(file) procedure writes the current WSL program
+to a file, or to standard output if the filename is the empty string.
+
+
+> Also, the Align_Nested_Statements transformation is quite helpful for
+> supporting my Consolidate/Unconsolidate operator (see p. 63 of prelim doc.)
+>
+> % dotrans unconsolidated.wsl Align_Nested_Statements consolidated.wsl
+> posn=1,1,2,1,1
+>
+> This transformation is not successful unless I include "posn=1,1,2,1,1" on
+> the command line.  What is the effect of setting posn to 1,1,2,1,1? I
+> believe it has something to do with the @Posn function but have been unable
+> to figure out its precise purpose. 
+
+The posn= argument moves the current position to the given position
+before running the transformation. It is equivalent to adding
+
+(@Goto '(1 1 2 1 1 ))
+
+to the end of the patch.tr file.
+
+The @Posn function returns the current position.
+The "movement" procedures @Left, @Right, @Up,
+@Down, @To, @Goto, @Down_To, @Down_Last
+and @To_Last change the current position.
+
+For example, with the file:
+
+IF x = 0 THEN y := 1 ELSE y := 2 FI; IF s  = 0 THEN s := 1 ELSE t := 2 FI
+
+the second IF statement is at position (2), so:
+
+dotrans file-1.wsl file-2.wsl Reverse_If posn=2
+
+will reverse the second IF statement only.
+
+> I understand dotrans also may take many
+> other command line arguments (e.g., type), but I am not sure which it
+> accepts. 
+
+The type= option searches for the first item of the given type:
+it saves you having to work out the position when you want
+to apply a transformation to the first item of a particular type.
+Eg the first T_Cond or T_While statement, or the first T_Plus
+expression. For example:
+
+
+IF x = 0 THEN y := 1 ELSE y := 2 FI; 
+IF s  = 0 THEN s := x*(y+z) ELSE t := 2 FI
+
+To convert the y+z to z+y you just need:
+
+dotrans test-1.wsl Reverse_Order type=T_Plus
+
+
+
+> Akin to the reverse transformation above, this
+> transformation also is only performed on the first occurrence of an IF
+> statement.
+>
+> I am also concerned about the application of FermaT for my needs
+> since none of my proposed operators, except Consolidate/Unconsolidate,
+> require semantic-preserving transformations.
+> While backward/forward slicing (used to accommodate my zoom operator)
+> typically yield a syntactically-preserved (and executable) segment of the
+> code, the resulting slice is not semantically equivalent to the original
+> program. Moreover, the What May I Say? and Generating Interaction operators
+> just require a transformation to
+> extract the conditional variables from IF statements (which thus does not
+> even result in a legal WSL program).
+
+There is nothing in FermaT to guarantee that a transformation 
+is semantics-preserving (that is up to the author!).
+Of course, a transformation which is composed of existing
+semantics-preserving transformations is semantics-preserving
+by construction.
+
+The MetaWSL editing operations have to be syntax preserving
+(You can create syntactically incorrect programs by using 
+@Delete, @Paste_Over etc. but this will typically crash the system).
+
+However, you can write WSL code which analyses a program 
+and prints out any results of the analysis: for example,
+a list of all the conditional variables from IF statements.
+@PP_Item is useful for printing fragments of WSL:
+@PP_Item(wsl_item, width, filename)
+width is the line width in characters, filename can be ""
+to print to standard output.
+
+For example:
+
+
+@New_Program(@Parse_File("test,wsl", T_Statements));
+
+PRINT("Variables assigned: ", MAP("@N_String", @Assigned(@Program)));
+PRINT("Variables used:     ", MAP("@N_String", @Used(@Program)))
+
+
+> And lastly, I have noticed that bin/ contains many programs.
+> ssa_slice peeked my interest for obvious reasons.  It appears
+> as if it conducts backward and forward slices.  How does that program
+> interface with the FermaT catalog of transformations in src/trans?
+> or is ssa_slice a program internal to FermaT and not to be invoked by
+> users?
+
+ssa_slice can be invoked by users, but it is also used by the Syntactic_Slice
+transformation which does backwards and forwards slices.
+See fermat3/test/trans/syntactic_slice_TEST.wsl
+for slicing examples using Syntactic_Slice.
+
+
+

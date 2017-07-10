@@ -1,0 +1,459 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Delete_Redundant_Statement_Test() ==
+  IF NOT (@GT(@I) = T_Statement OR (@GT(@I) = T_Assign AND @ST(@Parent) = T_Assignment))
+    THEN @Fail("The selected item is neither a Statement nor an Assign.")
+    ELSE IF NOT EMPTY?(@Stat_Types(@I)
+			/\ @Make_Set(<T_Comment, T_Assert, T_Print, T_Prinflush,
+			              T_Abort, T_Error>))
+	   THEN @Fail("This transformation will not delete comments, assertions, print, ABORT or ERROR statements")
+	 ELSIF NOT EMPTY?(@Stat_Types(@I) /\ Call_Types_Set)
+	   THEN @Fail("The Statement contains a call")
+	 ELSIF NOT @Is_Proper?
+	   THEN @Fail("The Statement has a non-zero terminal value")
+	 ELSIF EMPTY?(@Assigned(@I))
+	   THEN @Pass
+	 ELSIF @Spec_Type(@I) = T_Assignment AND @Size(@I) = 1
+		 AND @LR_Equal?(@I^1^1, @I^1^2)
+	   THEN C:" An assignment x:=x is redundant "; @Pass
+	 ELSIF @Spec_Type(@I) = T_Assign AND @LR_Equal?(@I^1, @I^2)
+	   THEN C:" An assignment x:=x is redundant "; @Pass
+	 ELSIF NOT @Up?
+	   THEN @Fail("There are no statements after this one to clobber the assigned variables.") 
+         ELSIF @ST(@I) = T_Assignment
+	         AND @ST(@I^1^1) IN <T_Sub_Seg_Lvalue, T_Rel_Seg_Lvalue>
+           THEN @Fail("Statement may assign outside defined size of variable")
+	 ELSIF NOT @DRS_Scan_OK?(@Elts_Assigned(@I))
+	   THEN @Fail("Some assigned variable may be used.")
+	   ELSE @Pass FI FI .;
+
+
+MW_PROC @Delete_Redundant_Statement_Code(Data) ==
+  @Clever_Delete .;
+
+
+C:" V is the set of elements assigned in the Statement. ";
+C:" An element is a list of the form: <name, field1, field2, ...> ";
+
+C:" The @DRS_Scan function checks that all the given variables are assigned before ";
+C:" they are accessed -- ie the values of the variables are redundant. ";
+C:" It searches forwards from the current position. ";
+C:" @DRS_Scan is only called at a statement within a statement sequence ";
+C:" (ie @Up? is true) and with V non-empty. ";
+
+C:" Done_List is a list of <P, V> pairs showing which positions (with their var sets) ";
+C:" have been processed or are currently being processed. ";
+C:" Agenda is the list of postponed <P, V> pairs which still need to be dealt with. ";
+C:" Agenda contains no duplicates, and does not overlap with Done_List. ";
+C:" Before a statement is processed, its posn is added to Done_List ";
+C:" (if it is a join posn) ";
+
+C:" If A_Proc_Call_Filter is non-empty then when a !P call is reached, ";
+C:" assume that anything not in it may be referenced. ";
+
+C:" The final value of r15 is preserved so that it can be used in !P RETURN ";
+
+C:" Hack: Set this flag if Globals_To_Pars has been executed: ";
+
+DRS_Globals_To_Pars_Done := 0;
+
+MW_BFUNCT @DRS_Scan_OK?(V) ==
+  VAR < OK := 1, v := < >,
+	Done_List := < >, Agenda := < >,
+	Call_Depth := 0, Max_Call_Depth := 5,
+	Posn_List := < >, P := < >, type := 0, End_OK := 1,
+	accs := @Make_Set(MAP("@Make_Name", <"a0", "a1", "a2", "a3",
+					     "a4", "a5", "a6", "a7",
+					     "a8", "a9", "a10","a11",
+					     "a12","a13","a14","a15",
+					     "x0", "x1", "x2", "x3",
+					     "x4", "x5", "x6", "x7",
+					     "x8", "x9", "x10","x11",
+					     "x12","x13","x14","x15",
+					     "r0", "r1", "r2", "r3",
+					     "r4", "r5", "r6", "r7",
+					     "r8", "r9", "r10","r11",
+					     "r12", "r13","r14",
+					     "cc" >)),
+        sysmacs := @Make_Set(MAP("@Make_Name",
+	            <"OPEN", "CLOSE", "AOPEN", "ACLOSE", "GET", "AGET", "READ", "ARD",
+                     "PUT", "APUT", "WRITE", "OSCOM_GET", "OSCOM_PUT",
+                     "GET_DTF", "PUT_DTF", "PUT_DTF_UPD", "OPEN_DTF", "CLOSE_DTF",
+                     "OSCOM_GET", "OSCOM_PUT", "GETV", "GET_FIXED", "GET_VARIABLE",
+                     "PUT_FIXED", "PUT_VARIABLE", "PUT_CONSOLE", "GET_CONSOLE",
+                     "pack", "unpk", "zap", "ap", "sp", "mp", "dp", "fill", "ed",
+                     "chain_reg", "init_NOP_flag">)),        
+        regs := @Make_Name("regs"),
+	cc_name := @Make_Name("cc"),
+	loops := 0 >:
+
+  FOR v IN V DO
+    IF NOT(LENGTH(v) = 1 AND HEAD(v) IN accs)
+      THEN End_OK := 0 FI OD;
+
+  DO C:" If we are about to leave a VAR clause or FOR loop, update V ";
+     C:" to remove the local variable(s) ";
+     C:" TODO: check for reaching the end of a procedure body ";
+
+     IF NOT @Right? AND LENGTH(@Posn) >= 2 AND @Is_Proper?
+       THEN P := @Posn; type := @Spec_Type(@Get(@Program, P[1..LENGTH(P)-2]));
+	    IF type = T_Var OR type = T_For
+              THEN @Up; @Up;
+                   IF type = T_Var
+                     THEN V := @Elt_Subtract(V,
+                                 @Elt_Subtract(@Elt_Lvars(@I^1),
+                                               @Elts_Used(@I^1)))
+                     ELSE V := @Elt_Remove(V, <@Value(@I^1)>) FI FI FI;
+     C:" If V is empty, then pop a posn and new V from the agenda ";
+     C:" Otherwise, move to the next statement (updating Agenda if necessary) ";
+
+     IF EMPTY?(V)
+       THEN IF EMPTY?(Agenda)
+	      THEN OK := 1; EXIT(1)
+	      ELSE @Goto(Agenda[1][1]); V := Agenda[1][2];
+		   Agenda := TAIL(Agenda) FI
+       ELSE C:" If we can move right, and the current statement is a proper sequence ";
+	    C:" then simply process the next statement and continue: ";
+	    IF @Right? AND @Is_Proper?
+	      THEN @Right
+	      ELSE C:" Find the list of `next' statements: ";
+		   Posn_List := @Next_Stats;
+		   C:" Check if the end of a definition or the program has been reached: ";
+		   IF -2 IN Posn_List
+		     THEN OK := 0; EXIT(1)
+		   ELSIF -1 IN Posn_List
+		     THEN IF End_OK = 0 OR Call_Depth >= Max_Call_Depth
+			    THEN OK := 0; EXIT(1)
+			    ELSE Posn_List := @Make_Set(Posn_List) \ <-1> FI FI;
+		   IF EMPTY?(Posn_List)
+		     THEN IF EMPTY?(Agenda)
+			    THEN C:" All paths have been fully traced ";
+				 OK := 1; EXIT(1)
+			    ELSE C:" Get the next posn and var list from the agenda: ";
+				 @Goto(Agenda[1][1]); V := Agenda[1][2];
+				 Agenda := TAIL(Agenda) FI
+		     ELSE C:" Go to first posn in Posn_List ";
+			  @Goto(HEAD(Posn_List)); Posn_List := TAIL(Posn_List);
+                          C:" Check for re-iterating WHILE loop: ";
+			  IF LENGTH(@Posn) > 1 AND @Posn_n = 1
+			    THEN IF @ST(@GParent) = T_While
+			           THEN IF @Elt_Clash_List?(@Elts_Used(@GParent^1), V)
+				          THEN V := < >; OK := 0; EXIT(1) FI FI FI;
+			  C:" Add any remaining positions to the agenda ";
+			  WHILE NOT EMPTY?(Posn_List) DO
+			    Agenda := @DRS_Put(Agenda, HEAD(Posn_List), V);
+			    Posn_List := TAIL(Posn_List) OD FI FI FI;
+    C:" Process the statement: if this clears V then keep processing the agenda ";
+    C:" until a statement doesn't clear V (and a further scan is needed) ";
+    DO @DRS_Process(VAR V, OK, Agenda);
+       IF NOT EMPTY?(V) THEN EXIT(1) FI;
+       C:" Check if a variable was used: ";
+       IF OK = 0 THEN EXIT(2) FI;
+       IF EMPTY?(Agenda) THEN OK := 1; EXIT(2) FI;
+       loops := loops + 1;
+       IF loops > 100 THEN PRINFLUSH("-"); OK := 0; EXIT(2) FI;
+       @Goto(Agenda[1][1]); V := Agenda[1][2];
+       Agenda := TAIL(Agenda) OD OD;
+  (OK = 1) .;  
+
+
+C:" Process the currently-selected statement, updating V as appropriate. ";
+C:" May need to look inside the statement, and add to the Agenda. ";
+C:" Set V := < > and OK := 0 if a variable in V is used before assigned. ";
+C:" Remove a variable from V if it is redefined (and set OK := 1) ";
+C:" Set V := < > and OK := 1 if the current position and var list are ";
+C:" in the Done_List (this is to avoid infinite loops) ";
+
+C:" Notice the difference between processing a CALL and an EXIT: ";
+C:" A CALL is `processed' by doing nothing ";
+C:" (the next statement is the start of the action body which is a Join Point) ";
+C:" An EXIT is `processed' by moving up to the appropriate loop ";
+C:" (ready for further forward scanning). ";
+C:" After a CALL, @Next_Stats will give the next statement to process, ";
+C:" (ie the start of the appropriate action body), while after an EXIT ";
+C:" we have finished processing the enclosing loop and (after moving up to it) ";
+C:" are ready to move right. ";
+
+MW_PROC @DRS_Process(VAR V, OK, Agenda) ==
+  VAR < ST := @Spec_Type(@I), calls_ok := 0 >:
+  C:" Check the Done_List if the current posn is a Join Point ";
+  IF @Join_Point?
+    THEN C:" Check if this posn (and vars) has been done, if not, add it to Done_List: ";
+	 IF EMPTY?(V \ @DRS_Get(Done_List, @Posn))
+	   THEN V := < >; OK := 1
+	   ELSE Done_List := @DRS_Put(Done_List, @Posn, V) FI FI;
+  IF NOT EMPTY?(V)
+    THEN C:" Check for !P with regs or A_Proc_Call_Filter: ";
+
+         IF SUBSET?(@Make_Set(MAP("HEAD", @A_Proc_Calls(@I))), sysmacs)
+	   THEN calls_ok := 1 FI;
+
+	 IF calls_ok = 0 AND T_A_Proc_Call IN @Stat_Types(@I) AND regs IN @Assigned(@I)
+	      AND NOT EMPTY?(@Make_Set(MAP("HEAD", V)) /\ (accs \ <cc_name>))
+           THEN V := < >; OK := 0
+
+	 ELSIF calls_ok = 0 AND T_A_Proc_Call IN @Stat_Types(@I)
+	         AND NOT EMPTY?(A_Proc_Call_Filter)
+                 AND os_name IN @Assigned(@I)
+                 AND NOT EMPTY?(V \ A_Proc_Call_Filter)
+	   THEN V := < >; OK := 0
+
+	 ELSIF calls_ok = 0 AND T_A_Proc_Call IN @Stat_Types(@I)
+	         AND EMPTY?(A_Proc_Call_Filter)
+                 AND os_name IN @Assigned(@I)
+	   THEN V := < >; OK := 0
+
+         ELSIF @ST(@I) = T_A_Proc_Call AND @V(@I^1) IN sysmacs
+	   THEN IF @Elt_Clash_List?(@Elts_UBA(@I) \ @Elts_Assd_To_Self(@I), V)
+		  THEN C:" Found a reference, so fail: ";
+		       V := < >; OK := 0
+		  ELSE V := V \ @Elts_Redefined(@I) FI
+
+         ELSIF @Is_Proper? AND EMPTY?(@Stat_Types(@I) /\ Call_Types_Set)
+	   THEN C:" If there are no calls and the item is proper, then use @Elts_UBA: ";
+		IF @Elt_Clash_List?(@Elts_UBA(@I) \ @Elts_Assd_To_Self(@I), V)
+		  THEN C:" Found a reference, so fail: ";
+		       V := < >; OK := 0
+		  ELSE V := V \ @Elts_Redefined(@I);
+
+                       C:" If we take the address of an element in and save it ";
+		       C:" then any reference to that address may be a reference to ";
+		       C:" the element in V. So add the assigned elements to V: ";
+                       IF @ST(@I) = T_Assignment AND @Elt_Clash_List?(@Elts_Addr(@I), V)
+		         THEN V := V \/ @Elts_Assigned(@I) FI;
+
+		       IF EMPTY?(V) THEN OK := 1 FI FI
+	 ELSIF ST = T_Exit
+	   THEN C:" Move up to the right loop ";
+		VAR < n := @Value(@I) >:
+		  WHILE n > 0 AND @Up? DO
+		    @Up;
+		    IF @Spec_Type(@I) = T_Floop THEN n := n - 1 FI OD;
+		  IF n > 0
+		    THEN C:" the exit leaves the whole program, so fail: ";
+			 V := < >; OK := 0 FI ENDVAR
+	 ELSIF ST = T_Call OR ST = T_Skip OR ST = T_Comment
+	   THEN C:" Do nothing "
+         ELSIF ST = T_Proc_Call AND DRS_Globals_To_Pars_Done = 1
+	   THEN C:" Assume we have converted globals to pars: so this is OK! ";
+	        C:" Note: we have to assume that *all* elements are assigned ";
+		C:" due to the way Globals_To_Pars is implemented! ";
+		C:" Hence, we cannot assume any element is killed. ";
+                IF <os_name> IN @Elements(@I)
+                  THEN V := < >; OK := 0
+                ELSIF @Elt_Clash_List?(@Elements(@I), V)
+		  THEN V := < >; OK := 0 FI
+	 ELSIF ST IN Call_Types_Set
+	   THEN V := < >; OK := 0
+	 ELSIF T_Proc_Call NOTIN @Stat_Types(@I) AND @Elt_Clash_List?(@Elts_UBA(@I), V)
+	   THEN C:" If the statement uses any variable before it is assigned ";
+		C:" then we can fail. Otherwise, we have to check each component ";
+		C:" (to trace the calls and exits) ";
+		V := < >; OK := 0
+	   ELSE @DRS_Process_Comps(ST VAR V, OK, Agenda) FI FI ENDVAR .;
+
+
+C:" The current item doesn't use any of the variables itself, but does contain ";
+C:" some calls or exits. So we need to trace each of its components. ";
+C:" We only need to consider specific types which have statements as components. ";
+
+MW_PROC @DRS_Process_Comps(ST VAR V, OK, Agenda) ==
+  IF ST = T_Cond OR ST = T_D_If OR ST = T_D_Do
+    THEN C:" Add all the clause bodies to the agenda in L to R order ";
+	 @Down_Last; C:" to last clause ";
+	 DO Agenda := <<@Posn ++ <2, 1>, V>> ++ Agenda;
+            IF @Elt_Clash_List?(@Elements(@I^1), V)
+	      THEN V := < >; OK := 0; EXIT(1) FI;
+	    IF @Left? THEN @Left ELSE EXIT(1) FI OD;
+	 @Up; C:" back to the statement ";
+	 C:" For a D_Do we also need to scan forwards, ";
+	 C:" otherwise we only need to process the agenda ";
+	 IF ST <> T_D_Do AND OK = 1 THEN V := < > FI
+  ELSIF ST = T_A_S
+    THEN C:" Add the first statement of the starting action to the agenda ";
+	 C:" and stop scanning from here (set V := < >; OK := 1) ";
+	 VAR < start := @Value(@I^1) >:
+	   @Down_Last; @Down; C:" to first action ";
+	   WHILE @Value(@I^1) <> start AND @Right? DO
+	     @Right OD;
+	   Agenda := <<@Posn ++ <2, 1>, V>> ++ Agenda;
+	   V := < >; OK := 1;
+	   C:" Ready to process the starting action " ENDVAR
+  ELSIF ST = T_For
+    THEN C:" Add the body (with the local var removed from V) to the Agenda ";
+	 C:" (unless all globals are shadowed) and continue scanning ";
+	 IF V <> <@Value(@I^1)>
+	   THEN Agenda := <<@Posn ++ <5, 1>, V \ <@V(@I^1)>>> ++ Agenda FI
+  ELSIF ST = T_Var
+    THEN C:" Add the body (with the local vars removed from V) to the Agenda ";
+	 C:" (unless all globals are shadowed) and continue scanning ";
+	 IF NOT EMPTY?(V \ @Lvars(@I^1))
+	   THEN Agenda := <<@Posn ++ <2, 1>, V \ @Elt_Lvars(@I^1)>> ++ Agenda FI
+  ELSIF ST = T_Floop
+    THEN C:" Add the loop body to the agenda for processing ";
+	 Agenda := <<@Posn ++ <1, 1>, V>> ++ Agenda;
+	 V := < >; OK := 1
+  ELSIF ST = T_Where
+    THEN C:" Add the where body to the agenda ";
+	 Agenda := <<@Posn ++ <1, 1>, V>> ++ Agenda;
+	 V := < >; OK := 1
+  ELSIF ST = T_While
+    THEN C:" Add the loop body to the agenda and continue scanning ";
+	 Agenda := <<@Posn ++ <2, 1>, V>> ++ Agenda
+    ELSE V := < >; OK := 0 FI .;
+
+
+C:" Return the V where <P, V> is in L (if not found, then return < >) ";
+MW_FUNCT @DRS_Get(L, P) ==
+  VAR < V := < > >:
+  WHILE NOT EMPTY?(L) DO
+    IF L[1][1] = P THEN V := L[1][2]; L := < >
+		   ELSE L := TAIL(L) FI OD;
+  (V) .;
+
+
+C:" Return a new L which contains <P, V> (overwriting any existing smaller V component) ";
+MW_FUNCT @DRS_Put(L, P, V) ==
+  VAR < R := < > >:
+  WHILE NOT EMPTY?(L) DO
+    IF L[1][1] = P
+      THEN IF SUBSET?(V, L[1][2])
+	     THEN R := REVERSE(L) ++ R
+	     ELSE R := REVERSE(TAIL(L)) ++ <<P, V>> ++ R FI;
+	   L := < >; V := < >
+      ELSE R := <HEAD(L)> ++ R; L := TAIL(L) FI OD;
+  C:" If V has been dealt with (by overwriting), then it will be empty. ";
+  C:" Otherwise, add a new element to the list: ";
+  IF NOT EMPTY?(V)
+    THEN R := <<P, V>> ++ R FI;
+  (R) .;
+
+
+C:" Returns true if the currently selected statement may have two or more previous statements ";
+C:" ie it is the statement after a Cond, D_If, D_Do or Floop, ";
+C:" OR it is the first statement in an action body, a Floop, a While body, ";
+C:" a For body or a D_Do body ";
+
+Join_Types1 := @Make_Set(<T_Cond, T_D_If, T_D_Do, T_Floop>);
+Join_Types2 := @Make_Set(<T_Floop, T_While, T_For, T_D_Do>);
+
+
+MW_BFUNCT @Join_Point?() ==
+  VAR < JP := 0 >:
+  IF NOT @Up?
+    THEN JP := 0
+    ELSE IF @Left?
+	   THEN @Left; C:" to the previous statement ";
+		IF NOT EMPTY?(@Stat_Types(@I) /\ Join_Types1)
+		  THEN JP := 1
+		  ELSE JP := 0 FI;
+		@Right; C:" back to the orig posn "
+	   ELSE C:" We are at the beginning of a sequence, so check the enclosing statement ";
+		VAR < orig_posn := @Posn >:
+		  @Up; C:" to the sequence ";
+		  WHILE @Up? AND @GT(@I) <> T_Statement
+			     AND @GT(@I) <> T_Action DO
+		    @Up OD;
+		  IF @GT(@I) = T_Action
+		    THEN JP := 1
+		  ELSIF @Spec_Type(@I) IN Join_Types2
+		    THEN JP := 1
+		    ELSE JP := 0 FI;
+		  @Goto(orig_posn) ENDVAR FI FI;
+  (JP = 1) .;
+  
+
+C:" Return the list of possible next statements from the current statement. ";
+C:" The current statement is not an EXIT (they are dealt with in @DRS_Process) ";
+C:" The next statement for a CALL is the body of the destination action, ";
+C:" otherwise it is the next statement in the normal execution sequence. ";
+C:" If we could reach the end of the program, then return -1 as a posn. ";
+C:" If we have to give up (ie the vars could be used), then return -2 as a posn. ";
+C:" This function is allowed to clobber the current position. ";
+
+MW_FUNCT @Next_Stats() ==
+  VAR < PL := < > >:
+  IF @Spec_Type(@I) = T_Call
+    THEN IF Call_Depth >= Max_Call_Depth
+	   THEN PL := <-1>
+	   ELSE Call_Depth := Call_Depth + 1;
+		C:" For a CALL, the next statement is the first in the action body. ";
+		C:" So find the right action: ";
+		VAR < name := @Value(@I) >:
+		  C:" move up to the action system ";
+		  WHILE @Up? AND @Spec_Type(@I) <> T_A_S DO
+		    @Up OD;
+		  IF @Spec_Type(@I) <> T_A_S
+		    THEN PL := <-1>
+		    ELSE C:" For CALL Z, execution continues after the action system, ";
+			 C:" otherwise, we need to look for the action: ";
+			 IF name = @Make_Name("Z")
+			   THEN PL := @Next_Stats
+			 ELSIF name = @Make_Name("dispatch")
+			   THEN PL := <-2>
+			   ELSE @Down_Last; @Down; C:" to first action ";
+				WHILE @Right? AND @Value(@I^1) <> name DO
+				  @Right OD;
+				IF @V(@I^1) <> name
+				  THEN PL := <-1>
+				  ELSE C:" Return posn of first statement in action body: ";
+				       PL := <@Posn ++ <2, 1>> FI FI FI ENDVAR FI
+  ELSIF @Right?
+    THEN @Right; PL := <@Posn>
+  ELSIF NOT @Up?
+    THEN C:" Have reached the top of the program: ";
+	 PL := <-1>
+    ELSE C:" End of sequence reached, move up to the enclosing statement or action ";
+	 @Up;
+	 WHILE @GT(@I) NOTIN <T_Statement, T_Action, T_Definition> AND @Up? DO
+	   @Up OD;
+	 IF @GT(@I) = T_Definition
+	   THEN PL := <-2>
+	 ELSIF @GT(@I) = T_Action
+	   THEN C:" The next statements after an action are the statements after each call ";
+		C:" For now we will ignore these (for a regular action system, we will ";
+		C:" never reach the end of an action body anyway). TODO: improve this. ";
+		PL := <-2>
+	 ELSIF @GT(@I) <> T_Statement OR NOT @Up?
+	   THEN C:" Must have reached the top of the program: ";
+		PL := <-1>
+	   ELSE C:" We are now sitting on the enclosing statement. ";
+		C:" Check for loops (the next statement could restart the loop) ";
+		C:" and add the list of next statements after THIS statement. ";
+		IF @Spec_Type(@I) = T_Floop
+		  THEN C:" Next statement after the end of a Floop is the body ";
+		       C:" The next statement CANNOT be the one after the loop ";
+		       PL := <@Posn ++ <1, 1>>
+		  ELSE IF @Spec_Type(@I) = T_While
+			 THEN PL := <@Posn ++ <2, 1>>
+		       ELSIF @Spec_Type(@I) = T_For
+			 THEN PL := <@Posn ++ <5, 1>>
+		       ELSIF @Spec_Type(@I) = T_D_Do
+			 THEN C:" Any arm of the loop could be executed next ";
+			      @Down; C:" to first arm ";
+			      DO PL := <@Posn ++ <2, 1>>;
+				 IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+			      @Up; C:" back to loop " FI;
+		       C:" Execution could continue after this statement ";
+		       PL := PL ++ @Next_Stats FI FI FI;
+  (PL) .
+

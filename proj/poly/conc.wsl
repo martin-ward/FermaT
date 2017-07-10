@@ -1,0 +1,27 @@
+
+MW_PROC @add() ==
+  ACTIONS A:
+  A == IF D[P] = NIL
+        THEN @add_const; CALL hatA
+        ELSE CALL A1 FI .
+  A1 == IF D[Q] = NIL
+       THEN @copy_and_add; CALL hatA
+      ELSIF C[Q] > C[P]
+        THEN Q := D[Q]; CALL A1
+        ELSE @insert_below_Q;
+            P := D[P]; Q := D[Q];
+            CALL B1 FI .
+  B1 == CALL A .
+  A3 == P := R[P];
+      IF E[P] = 0
+       THEN P := U[P]; @check_for_const_poly; CALL hatA
+        ELSE Q := R[Q];
+            WHILE E[Q] > 0 AND E[Q] < E[P] DO Q := R[Q] OD;
+            IF E[Q] = E[P] THEN CALL B1 FI;
+            @insert_copy;
+            CALL A3 FI . 
+  hatA == IF U[P] = NIL
+           THEN CALL Z
+           ELSE WHILE C[U[Q]] <> C[U[P]] DO Q := U[Q] OD;
+               @check_for_zero_term; CALL A3 FI . ENDACTIONS .
+

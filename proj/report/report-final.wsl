@@ -1,0 +1,14 @@
+!P Produce_Heading( VAR sys);
+!P read( VAR stuff,sys);
+WHILE NOT !XC eof?(stuff) DO
+ !P Process_Start_Of_New_Group( VAR sys);
+ DO
+   !P Process_Record( VAR sys);
+   !P read( VAR stuff);
+   IF !XC First_Record_In_Group?(stuff) OR !XC eof?(stuff) THEN
+      EXIT(1)
+   FI
+ OD;
+ !P Process_End_Of_Group( VAR sys)
+OD;
+!P Produce_Summary( VAR sys)

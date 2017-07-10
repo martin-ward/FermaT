@@ -1,0 +1,167 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+ 
+
+MW_PROC @Expand_Call_Test() ==
+   IF @ST(@I) = T_Call
+      THEN IF @V(@I) = @Make_Name("Z")
+	      THEN @Fail("A call to the action Z is a special statement which terminates the action system.")
+	      ELSE VAR < N := @V(@I) >:
+		   WHILE @ST(@I) <> T_Actions AND @Up? DO @Up OD;
+		   IF @ST(@I) <> T_Actions
+		     THEN @Fail("Action system not found")
+		     ELSE @Down;
+			  DO IF @V(@I^1) = N
+			       THEN @Pass; EXIT(1)
+			     ELSIF @Right?
+			       THEN @Right
+			       ELSE EXIT(1) FI OD FI;
+		   IF NOT(@Passed?)
+		     THEN @Fail("Action definition not found") FI ENDVAR FI 
+    ELSIF @ST(@I) = T_Proc_Call
+      THEN @Goto_Defn(@V(@I^1), T_Proc);
+	   IF @ST(@I) = T_Proc
+	     THEN @Pass
+	     ELSE @Fail("Procedure definition not found") FI
+    ELSIF @ST(@I) = T_Funct_Call
+      THEN @Goto_Defn(@V(@I^1), T_Funct);
+	   IF @ST(@I) = T_Funct AND (@Size(@I^4) > 1 OR @ST(@I^4^1) <> T_Skip)
+	     THEN @Fail("Function definition includes statements")
+	   ELSIF @ST(@I) = T_Funct
+	     THEN @Pass
+	     ELSE @Fail("Function definition not found") FI
+      ELSE @Fail("The selected item is not any kind of call.") FI .;
+
+   
+MW_PROC @Expand_Call_Code(Data) ==
+  VAR < Orig_Pos := @Posn, S:=< > > :
+  IF @ST(@I) = T_Call
+    THEN C:" Selected item is an action call";
+	 VAR < N := @V(@I) >:
+	 WHILE @ST(@I) <> T_Actions DO @Up OD;
+         @Down;
+         WHILE @V(@I^1) <> N DO @Right OD;
+         S := @I^2;
+         @Goto(Orig_Pos);
+         @Splice_Over(@Cs(S)) ENDVAR
+	 
+  ELSIF @ST(@I) = T_Proc_Call
+    THEN @Goto_Defn(@V(@I^1), T_Proc);
+
+	 VAR < FParams := @Cs(@I^2),
+	       Var_FParams := @Cs(@I^3),
+	       Stmnts := @I^4, Assigs:=< >, Assigs2:=< > >:
+	     
+	 @Goto(Orig_Pos);
+	 
+	 Params := @Cs(@I^2);
+	 Var_Params := @Cs(@I^3);
+	 C:"Assign values of actual params to formal params";
+	 WHILE LENGTH(FParams) > 0 DO
+	   Assigs := <@Make(T_Assign, < >, <FParams[1],Params[1]>)> ++ Assigs;
+	   FParams := TAIL(FParams); Params := TAIL(Params) OD;
+	 WHILE LENGTH(Var_FParams) > 0 DO
+	   C:"Need to make var params (LValues) into Variables";
+           IF NOT @LR_Equal?(Var_Params[1], Var_FParams[1])
+	     THEN Assigs := <@Make(T_Assign, < >,
+			           <Var_FParams[1],
+                                    @Var_To_Expn(Var_Params[1])>)> ++ Assigs;
+	          Assigs2 := <@Make(T_Assign, < >,
+                                    <Var_Params[1],
+                                     @Var_To_Expn(Var_FParams[1])>)> ++ Assigs2 FI;
+	   Var_FParams := TAIL(Var_FParams); 
+	   Var_Params := TAIL(Var_Params) OD;
+
+	 @Edit;
+	 @Paste_Over(@Make(T_Var,< >,
+			   <@Make(T_Assigns,< >, REVERSE(Assigs)), Stmnts>));
+	 @Down_Last;
+	 @Down_Last;
+
+	 C:"At the end of the proc, assign values of formal var params to actual params";
+	 IF NOT EMPTY?(Assigs2)
+	   THEN @Paste_After(@Make(T_Assignment,< >,REVERSE(Assigs2))) FI;
+
+	 @Up; @Up;
+	 @End_Edit;
+	 IF @Trans?(TR_Separate_Right) 
+	   THEN @Trans(TR_Separate_Right,"") FI;
+	 IF @Trans?(TR_Separate_Left)
+	   THEN @Trans(TR_Separate_Left,"") FI ENDVAR
+
+ ELSIF @ST(@I) = T_Funct_Call
+    THEN VAR < Exps := @Cs(@I^2), Replacement_Expression := < > >:
+
+	 @Goto_Defn(@V(@I^1), T_Funct);
+
+	 VAR < The_Assigns := < >, FPars := @Cs(@I^2) >:
+	 @Down_To(3);
+	 @Edit_Parent;
+
+	 The_Assigns := MAP("@Components", @Components(@I));
+	 @Right; @Right;
+	 @Substitute_Parameter_Values(The_Assigns);
+
+	 The_Assigns:=< >;
+	 WHILE NOT(EMPTY?(FPars)) DO
+	   The_Assigns := The_Assigns ++ <<HEAD(FPars),HEAD(Exps)>>;
+	   FPars := TAIL(FPars);
+	   Exps := TAIL(Exps) OD;
+ 
+	 @Substitute_Parameter_Values(The_Assigns);
+
+
+	 Replacement_Expression := @I;
+	 @Undo_Edit;
+
+	 @Goto(Orig_Pos);
+	 @Paste_Over(Replacement_Expression) ENDVAR ENDVAR FI ENDVAR .;
+
+
+MW_PROC @Substitute_Parameter_Values(The_Assigns)==
+  IF NOT(EMPTY?(The_Assigns))
+    THEN VAR <Temp:=< >>:
+	 FOREACH Variable DO
+	 Temp := The_Assigns;
+	 DO IF @Value(@I) = @Value(HEAD(HEAD(Temp)))
+	      THEN @Paste_Over(HEAD(TAIL(HEAD(Temp)))); EXIT(1) FI;
+	    Temp := TAIL(Temp);
+	    IF EMPTY?(Temp) THEN EXIT(1) FI OD OD ENDVAR FI .;
+
+
+C:" Move from a proc/funct/bfunct call to the corresponding definition ";
+C:" (which may be several WHERE clauses up) ";
+
+MW_PROC @Goto_Defn(name, type) ==
+  DO IF NOT @Up? THEN EXIT(1) FI;
+     @Up;
+     DO IF @ST(@I) = T_Where THEN EXIT(1) FI;
+	IF @Up? THEN @Up ELSE EXIT(2) FI OD;
+     @Down_Last; @Down;
+     DO IF @ST(@I) = type AND @V(@I^1) = name
+	  THEN EXIT(2) FI;
+	IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+     @Up; @Up OD .;
+
+
+SKIP
+
+

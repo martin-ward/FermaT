@@ -1,0 +1,36 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+TR_Else_If_To_Elsif := @New_TR_Number;
+
+TRs_Name[TR_Else_If_To_Elsif] := "`Else If' To `Elsif'";
+
+TRs_Proc_Name[TR_Else_If_To_Elsif] := "Else_If_To_Elsif";
+TRs_Test[TR_Else_If_To_Elsif]:=!XF funct(@Else_If_To_Elsif_Test);
+TRs_Code[TR_Else_If_To_Elsif]:=!XF funct(@Else_If_To_Elsif_Code);
+
+TRs_Keywords[TR_Else_If_To_Elsif] := < "Rewrite">;
+
+TRs_Help[TR_Else_If_To_Elsif] := "This transformation will replace an `Else' clause which contains an `If' statement with an `Elsif' clause.  The transformation can be selected with either the outer `If' statement, or the `Else' clause selected.";
+
+TRs_Prompt[TR_Else_If_To_Elsif] := ""; 
+
+TRs_Data_Gen_Type[TR_Else_If_To_Elsif] := "" 
+

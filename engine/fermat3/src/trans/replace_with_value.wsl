@@ -1,0 +1,251 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Replace_With_Value_Test () ==
+  IF @ST(@I) <> T_Variable AND @ST(@I) <> T_Struct 
+       AND NOT(@ST(@I) = T_Aref AND @Size(@I^2) = 1 AND @ST(@I^2^1) = T_Number)
+    THEN @Fail("The selected item is not a variable in an expression.")
+    ELSE VAR < val := @Find_Value(@Struct_Elts(@I)) >:
+         IF EMPTY?(val)
+           THEN @Fail("Cannot easily determine the value.")
+         ELSIF @Posn_n > 1
+           THEN @Pass
+         ELSIF @ST(@Parent) IN <T_Aref, T_Sub_Seg, T_Rel_Seg>
+                 AND @ST(val) <> T_Variable
+           THEN @Fail("Replacement would lead to bad syntax.")
+         ELSIF @ST(@Parent) IN <T_Aref_Lvalue, T_Sub_Seg_Lvalue, T_Rel_Seg_Lvalue>
+                 AND @ST(val) <> T_Var_Lvalue
+           THEN @Fail("Replacement would lead to bad syntax.")
+           ELSE @Pass FI ENDVAR FI .;
+
+
+MW_PROC @Replace_With_Value_Code (Data) ==
+  VAR < val := @Find_Value(@Struct_Elts(@I)) >:
+  IF EMPTY?(val) THEN PRINT("ERROR in Replace_With_Value!!!")
+		 ELSE @Paste_Over(val) FI ENDVAR .;
+
+
+C:" Find the current value of the given variable name. ";
+C:" Return an item, or < > if the value cannot be found ";
+MW_FUNCT @Find_Value(V) ==
+  VAR < E := @Elt_To_Expn(V), Orig_Posn := @Posn, move := 1,
+        Result := < >, clobbered := < >, found := 0,
+        Calls := @Make_Set(<T_MW_Proc_Call, T_X_Proc_Call, T_Proc_Call>),
+        registers := @Make_Set(MAP("@Make_Name",
+                                    <"r0", "r1", "r2", "r3", "r4", "r5",
+                                     "r6", "r7", "r8", "r9", "r10", "r11",
+                                     "r12", "r13", "r14", "r15">)) >:
+
+  C:" Repeated move left and up until we get a value for the variable. ";
+  C:" If the variable is defined in terms of clobbered variables, then give up. ";
+  DO IF @GT(@I) = T_Statement THEN EXIT(1) FI;
+     IF @Posn_n = 5 AND @ST(@Parent) IN <T_MW_Funct, T_MW_BFunct>
+       THEN @Left; @Down_Last; move := 0; EXIT(1) FI;
+     IF @Up? THEN @Up ELSE EXIT(1) FI OD;
+
+  DO IF move = 1 AND @ST(@I) IN <T_Floop, T_While, T_A_S>
+       THEN C:" If there are no calls and V is not assigned in the loop or system, ";
+	    C:" then we can safely get its value from outside: ";
+	    IF NOT EMPTY?(@Stat_Types(@I) /\ Calls)
+	         OR @Elt_Clash?(@Elts_Assigned(@I), V)
+	      THEN Result := < >; EXIT(1) FI FI;
+     IF @GT(@I) <> T_Statement 
+       THEN Result := < >; EXIT(1) FI;
+     IF move = 0 OR @Left?
+       THEN IF move = 0
+              THEN move := 1
+              ELSE @Left FI;
+	    WHILE @ST(@I) = T_Var AND NOT @Elt_Clash?(@Elts_Assigned(@I^1), V)
+		    AND @Elt_Clash?(@Elts_Assigned(@I), V) DO
+	      C:" V is not a local var and is assigned in the VAR, so look inside: ";
+	      clobbered := clobbered \/ @Elts_Assigned(@I^1);
+	      @Down_Last; @Down_Last OD;
+	    IF @ST(@I) = T_Assert
+	      THEN IFMATCH Statement {~?(E) = ~?X}
+		     THEN Result := X;
+			  found := 1
+		     ELSE IFMATCH Statement {~?X = ~?(E)}
+			    THEN Result := X;
+				 found := 1
+			    ELSE found := 0 ENDMATCH ENDMATCH;
+		   IF found = 1 THEN EXIT(1) FI
+	    ELSIF @ST(@I) = T_Assignment AND V IN @Elts_Assigned(@I)
+	      THEN clobbered := clobbered \/ (@Elts_Assigned(@I) \ <V>);
+		   @Down; C:" to first assign ";
+		   DO IF V = @Struct_Elts(@I^1) 
+			THEN Result := @I^2; EXIT(1) FI;
+
+C:" TODO: Fix this hack! (Check for foo[n] := exp when we are looking for foo[n]) ";
+IF @ST(@I^1) = T_Aref_Lvalue AND @ST(@I^1^1) = T_Var_Lvalue AND @Size(@I^1^2) = 1
+     AND @ST(@I^1^2^1) = T_Number AND V = <@V(@I^1^1), -@V(@I^1^2^1)>
+  THEN Result := @I^2; EXIT(1) FI;
+
+		      IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+		   @Up;
+		   IF NOT EMPTY?(Result) 
+		     THEN C:" Check if V is defined in terms of itself ";
+			  IF HEAD(V) IN @Used(Result)
+			    THEN @FV_Self_Assign(V, clobbered VAR Result) FI;
+			  EXIT(1) FI
+
+            ELSIF @ST(@I) = T_Assignment AND @Equal?(@I^1^2, E)
+	            AND NOT(@ST(@I^1^1) = T_Var_Lvalue AND @V(@I^1^1) IN registers) 
+	      THEN C:" The variable we are interested in was saved in a non-reg ";
+	           Result := @Lvalue_To_Expn(@I^1^1); found := 1
+
+	    ELSIF @Elt_Clash?(@Elts_Assigned(@I), V)
+		    OR NOT EMPTY?(@Stat_Types(@I) /\ Calls)
+		THEN Result := < >; EXIT(1) FI;
+	    clobbered := clobbered \/ @Elts_Assigned(@I);
+
+            C:" Hack: record an assignment to a[a[...]] or a[rx...] ";
+	    IF @ST(@I) = T_Assignment
+	         AND (@ST(@I^1^1) = T_Sub_Seg_Lvalue OR @ST(@I^1^1) = T_Rel_Seg_Lvalue)
+                 AND @ST(@I^1^1^1) = T_Var_Lvalue AND @V(@I^1^1^1) = a_name
+                 AND (a_name IN @Used(@I^1^1^2)
+		        OR NOT EMPTY?(registers /\ @Used(@I^1^1^2)))
+	      THEN clobbered := clobbered \/ <<a_name, a_name>> FI;
+
+            C:" Hack: record an assignment to a[a[...]] or a[rx...] ";
+	    IF @ST(@I) = T_Assignment
+	         AND (@ST(@I^1^1) = T_Mem_Seg_Lvalue OR @ST(@I^1^1) = T_Mem_Rel_Lvalue)
+                 AND ((@ST(@I^1^1^1) = T_Mem_Seg OR @ST(@I^1^1^1) = T_Mem_Rel
+		         OR @ST(@I^1^1^1) = T_Mem)
+		       OR NOT EMPTY?(registers /\ @Used(@I^1^1^1)))
+	      THEN clobbered := clobbered \/ <<a_name, a_name>> FI;
+
+            C:" Hack: record an assignment to a[v_xxx...] as if it assigned to v_xxx ";
+	    IF @ST(@I) = T_Assignment
+	         AND (@ST(@I^1^1) = T_Sub_Seg_Lvalue OR @ST(@I^1^1) = T_Rel_Seg_Lvalue)
+                 AND @ST(@I^1^1^1) = T_Var_Lvalue AND @V(@I^1^1^1) = a_name
+                 AND @ST(@I^1^1^2) = T_Variable
+		 AND (@Starts_With?(@V(@I^1^1^2), "V_")
+		        OR @Starts_With?(@V(@I^1^1^2), "v_")) 
+	      THEN clobbered := clobbered \/ <<@V(@I^1^1^2)>> FI;
+
+	    IF T_A_Proc_Call IN @Stat_Types(@I) AND NOT EMPTY?(A_Proc_Call_Filter)
+	      THEN IF HEAD(V) NOTIN A_Proc_Call_Filter
+		     THEN Result := < >; EXIT(1) FI FI;
+
+       ELSE IF NOT @Up? THEN Result := < >; EXIT(1) FI;
+	    @Up;
+	    IF NOT @Up? THEN Result := < >; EXIT(1) FI;
+	    @Up; C:" to item containing the statement sequence ";
+	    IF @ST(@I) = T_Var AND V IN @Elt_Lvars(@I^1)
+	      THEN C:" V is a local variable ";
+		   @Down; @Down; C:" to the first assign ";
+		   WHILE @Struct_Elts(@I^1) <> V DO @Right OD;
+		   Result := @I^2;
+		   C:" Can't do a recursive search if this V is defined ";
+		   C:" in terms of itself. ";
+		   IF @Elt_Clash?(@Elts_Used(Result), V) THEN Result := < > FI;
+		   EXIT(1)
+	    ELSIF @ST(@I) IN <T_MW_Funct, T_MW_BFunct> AND V IN @Elt_Lvars(@I^3)
+	      THEN C:" V is a local variable ";
+		   @Down_To(3); @Down; C:" to the first assign ";
+		   WHILE @Struct_Elts(@I^1) <> V DO @Right OD;
+		   Result := @I^2;
+		   C:" Can't do a recursive search if this V is defined ";
+		   C:" in terms of itself. ";
+		   IF @Elt_Clash?(@Elts_Used(Result), V) THEN Result := < > FI;
+		   EXIT(1)
+	    ELSIF @ST(@I) = T_Var
+	      THEN C:" V is global to the var clause, keep scanning left "
+	    ELSIF (@GT(@I) = T_Guarded) AND @Up?
+	      THEN @Up
+	    ELSIF @ST(@I) IN <T_Floop, T_While, T_A_S> AND @Up?
+	      THEN C:" If V is not assigned in the loop or system, ";
+		   C:" and there are no proc calls in the loop (which could modify V) ";
+		   C:" then get its value from outside. ";
+		   IF NOT EMPTY?(@Stat_Types(@I) /\ Calls)
+		     THEN Result := < >; EXIT(1) FI;
+		   IF @Elt_Clash?(@Elts_Assigned(@I), V)
+		     THEN Result := < >; EXIT(1) FI;
+		   clobbered := clobbered \/ @Elts_Assigned(@I)
+	    ELSIF @ST(@I) = T_Action AND LENGTH(@Posn) > 2
+	      THEN @Up; @Up; C:" to the action system "
+	    ELSIF @ST(@I) = T_Where AND V NOTIN @Assigned(@I)
+	      THEN C:" keep scanning left "
+	      ELSE Result := < >; EXIT(1) FI FI OD;
+  @Goto(Orig_Posn);
+  C:" If a variable in the expression has been clobbered, then give up ";
+
+IF FALSE THEN
+PRINT(" V = ", MAP("@N_String", V), " ");
+PRINFLUSH("Result = ");
+IF EMPTY?(Result)
+  THEN PRINT(< >) ELSE @PP_Item(Result, 80, "");
+       PRINFLUSH("Used      = "); @Print_Elts(@Elts_Used(Result));
+       PRINFLUSH("clobbered = "); @Print_Elts(clobbered) FI FI;
+
+  C:" Take <a_name> from clobbered since this is too broad? ";
+
+  IF <a_name, a_name> IN clobbered AND NOT EMPTY?(Result)
+    THEN IF (@ST(Result) = T_Sub_Seg OR @ST(Result) = T_Rel_Seg)
+              AND @ST(Result^1) = T_Variable AND @V(Result^1) = a_name
+              AND (a_name IN @Used(Result^2)
+	             OR NOT EMPTY?(registers /\ @Used(Result^2)))
+           THEN Result := < >
+           ELSE clobbered := clobbered \ <<a_name, a_name>> FI FI;
+
+  IF NOT EMPTY?(Result) AND @Elt_Clash_List?(@Elts_Used(Result), clobbered \ <<a_name>>)
+    THEN Result := < > FI;
+
+  (Result) .;
+
+
+C:" The variable name in V appears somewhere in the result. ";
+C:" If a proper prefix of V, or an extension of V is used, then fail. ";
+C:" If V itself is used, try a recursive call to @Find_Value to get rid of V in Result ";
+C:" Otherwise, we are OK (only the other components of the structure are used) ";
+C:" NB: also check for foo := a[foo].bar ";
+
+MW_PROC @FV_Self_Assign(V, clobbered VAR Result) ==
+  VAR < used := @Elts_Used(Result), recurse := 0 >:
+  WHILE NOT EMPTY?(used) AND NOT EMPTY?(Result) DO
+    IF HEAD(used) = V THEN recurse := 1
+    ELSIF @Prefix?(HEAD(used), V) THEN Result := < >
+    ELSIF @Prefix?(V, HEAD(used)) THEN Result := < >
+    ELSIF HEAD(V) IN HEAD(used) THEN Result := < > FI;
+    used := TAIL(used) OD;
+  IF NOT EMPTY?(Result) AND recurse = 1
+    THEN IF @Elt_Clash_List?(clobbered, used)
+	   THEN Result := < >
+	   ELSE VAR < R2 := @Find_Value(V) >:
+		  C:" Replace V by R2 in Result ";
+		  IF EMPTY?(R2)
+		    THEN Result := < >
+		    ELSE @Edit; @New_Program(Result);
+			 IF LENGTH(V) = 1
+			   THEN FOREACH Variable DO
+				  IF @V(@I) = HEAD(V) THEN @Paste_Over(R2) FI OD
+			   ELSE FOREACH Expression DO
+				  IF @ST(@I) = T_Struct
+				    THEN IF @Struct_Elts(@I) = V
+					   THEN @Paste_Over(R2) FI FI OD FI;
+			 Result := @Program;
+			 @Undo_Edit FI ENDVAR FI FI ENDVAR .;
+
+
+
+SKIP
+
+

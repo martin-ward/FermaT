@@ -1,0 +1,56 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Rename_Local_Vars'",
+	    (FILL Statements
+
+x := y;
+VAR < foo := foo, bar := baz >:
+  foo := foo + 1;
+  VAR < foo := foo >:
+    z := foo + bar;
+    !P foo(bar VAR foo) ENDVAR;
+  out := foo + bar ENDVAR;
+VAR < x := x >:
+  y := y + x ENDVAR
+
+ENDFILL),
+	    < >,
+	    TR_Rename_Local_Vars,
+	    < >,
+	    (FILL Statements
+
+x := y;
+var_2__foo := foo;
+var_2__bar := baz;
+var_2__foo := var_2__foo + 1;
+var_1__foo := var_2__foo;
+z := var_1__foo + var_2__bar;
+!P foo(var_2__bar VAR var_1__foo);
+out := var_2__foo + var_2__bar;
+var_3__x := x;
+y := y + var_3__x
+
+ENDFILL));
+
+
+
+SKIP
+

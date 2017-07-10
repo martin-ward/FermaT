@@ -1,0 +1,94 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Increment_Statement_Test() ==
+  VAR < tvs := < >, posn := < >, min := 0 >:
+  IF (@GT(@Item) = T_Assign) AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF @GT(@I) = T_Statements THEN @Down_Last FI;
+  tvs := @Sort_Num(@TVs);
+  IF @GT(@I) <> T_Statement
+    THEN @Fail("Current item is not a statement")
+  ELSIF NOT @Up?
+    THEN @Fail("Statement is not in an enclosing loop")
+  ELSIF EMPTY?(tvs)
+    THEN @Fail("Statement is an infinite loop")
+    ELSE min := HEAD(tvs);
+         @Up_To_Loop(VAR posn);
+	 WHILE min > 0 AND NOT EMPTY?(posn) DO
+	   min := min - 1;
+	   @Up_To_Loop(VAR posn) OD;
+         IF EMPTY?(posn)
+	   THEN @Fail("Statement is not in an enclosing loop")
+	 ELSIF LENGTH(@Posn) < 2
+	   THEN @Fail("Statement is not in an enclosing double loop")
+	 ELSIF @ST(@GParent) <> T_Floop OR @Size(@Parent) > 1
+	   THEN @Fail("Statement is not in an enclosing double loop")
+         ELSIF LENGTH(tvs) > 1 AND NOT @IS_Enclosing_Loops?(LAST(tvs) - HEAD(tvs) + 1)
+	   THEN @Fail("Statement is not surrounded by enough nested loops")
+         ELSIF NOT @Gen_Terminal?(@I^1, TAIL(posn), @AS_Type)
+	   THEN @Fail("Statement is not in a terminal position in enclosing double loop")
+	   ELSE @Pass FI FI ENDVAR .;
+
+
+
+MW_PROC @Increment_Statement_Code(Data) ==
+  IF @GT(@Item) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF @GT(@I) = T_Statements THEN @Down_Last FI;
+  @Splice_Over(@Increment(@I, @AS_Type, 1, 0)) .;
+
+
+C:" Move up to the next enclosing loop, prepend relative position to posn ";
+
+MW_PROC @Up_To_Loop(VAR posn) ==
+  VAR < len := LENGTH(posn) >:
+  IF NOT @Up?
+    THEN posn := < >
+    ELSE DO posn := <@Posn_n> ++ posn;
+            @Up;
+	    IF @ST(@I) = T_Floop OR NOT @Up? THEN EXIT(1) FI OD;
+	 IF @ST(@I) <> T_Floop
+	   THEN VAR < n := LENGTH(posn) - len >:
+	        WHILE n > 0 DO
+		  @Down_To(HEAD(posn));
+		  posn := TAIL(posn);
+		  n := n - 1 OD;
+		posn := < > ENDVAR FI FI ENDVAR .;
+
+
+C:" Check that the current item is enclosed in at least n nested loops ";
+
+MW_BFUNCT @IS_Enclosing_Loops?(n) ==
+  VAR < orig := @Posn, posn := < > >:
+  WHILE n > 0 DO
+    @Up_To_Loop(VAR posn);
+    n := n - 1 OD;
+  @Goto(orig);
+  (NOT EMPTY?(posn)) .;
+
+
+
+SKIP
+
+
+
+
+
+

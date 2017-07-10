@@ -1,0 +1,152 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans("First test of `Align Nested Statements'",
+	    (FILL Statements IF (A = 1) OR (A = 2)
+				THEN IF (A = 1) THEN X := 1
+				     ELSIF (A = 2) THEN X := 2 FI
+			     ELSIF (A = 3)
+				THEN X := 3 FI
+	     ENDFILL),
+	    <1, 1>,
+	    TR_Align_Nested_Statements,
+	    < >,
+	    (FILL Statements IF (A = 1) 
+				THEN X := 1
+			     ELSIF (A = 2)
+				THEN X := 2
+			     ELSIF (A = 3)
+				THEN X := 3 FI
+	     ENDFILL));
+
+
+@Test_Trans("Second test of `Align Nested Statements'",
+	    (FILL Statements IF (A = 1) OR (A = 2)
+				THEN IF (A = 1) THEN X := 1
+				     ELSIF (A = 2) THEN X := 2 FI;
+				     J := J + 1;
+				     CALL Z
+			     ELSIF (A = 3)
+				THEN X := 3 FI
+	     ENDFILL),
+	    <1, 1>,
+	    TR_Align_Nested_Statements,
+	    < >,
+	    (FILL Statements IF (A = 1) 
+				THEN X := 1; J := J + 1; CALL Z
+			     ELSIF (A = 2)
+				THEN X := 2; J := J + 1; CALL Z
+			     ELSIF (A = 3)
+				THEN X := 3 FI
+	     ENDFILL));
+
+@Test_Trans("Third test of `Align Nested Statements'",
+	    (FILL Statements IF (A = 1) 
+				THEN IF (B = 1) THEN X := 1
+				     ELSIF (C = 1) THEN X := 2 FI;
+				     J := J + 1;
+				     CALL Z
+			     ELSIF (A = 3)
+				THEN X := 3 FI
+	     ENDFILL),
+	    <1, 1>,
+	    TR_Align_Nested_Statements,
+	    < >,
+	    (FILL Statements IF (A=1) AND (B = 1)
+				THEN X := 1; J := J + 1; CALL Z
+			     ELSIF (A=1) AND (C = 1)
+				THEN X := 2; J := J + 1; CALL Z
+			     ELSIF (A=1)
+				THEN J:=J+1; CALL Z
+			     ELSIF (A = 3)
+				THEN X := 3 FI
+	     ENDFILL));
+
+
+@Test_Trans("Fourth test of `Align Nested Statements'",
+	    (FILL Statements
+
+IF TBLADDR = 0
+  THEN IF !XF bit_and(MSSG[49], "hex 0x10") <> 0
+	 THEN !P CLOSE(MSSG_DDNAME VAR os) FI
+  ELSE THISID := "hex 0xFFFFFF";
+       RECORD := !XF address_of(WORKREC);
+       a[RECORD].RPC[1..4] := "hex 0xFFFFFF";
+       RECTBLDS := TBLADDR;
+       a[RECTBLDS].RGRP := "hex 0xFF";
+       r2 := NOTUSED_1704;
+       CHGRECID();
+       destination := NOTUSED_1704;
+       IF exit_flag <> 1 THEN A_0006A8() FI FI
+
+ENDFILL),
+	    <1, 1>,
+	    TR_Align_Nested_Statements,
+	    < >,
+	    (FILL Statements
+
+IF !XF bit_and(MSSG[49], "hex 0x10") <> 0
+     AND TBLADDR = 0
+  THEN !P CLOSE(MSSG_DDNAME VAR os)
+ELSIF TBLADDR = 0
+  THEN SKIP
+  ELSE THISID := "hex 0xFFFFFF";
+       RECORD := !XF address_of(WORKREC);
+       a[RECORD].RPC[1..4] := "hex 0xFFFFFF";
+       RECTBLDS := TBLADDR;
+       a[RECTBLDS].RGRP := "hex 0xFF";
+       r2 := NOTUSED_1704;
+       CHGRECID();
+       destination := NOTUSED_1704;
+       IF exit_flag <> 1 THEN A_0006A8() FI FI
+
+ENDFILL));
+
+ 
+@Test_Trans("Fifth test of `Align Nested Statements'",
+	    (FILL Statements
+
+IF !XC eof(DISK2)
+  THEN FS91000_Return := 2530; EXIT(1)
+  ELSE IF !XC syserr(DISK2)
+	 THEN EXIT(1)
+	 ELSE ZDISK2 := !XF ap(ZDISK2, 1);
+	      r14 := NOTUSED_2522 FI FI
+
+ENDFILL),
+	    <1, 2>,
+	    TR_Align_Nested_Statements,
+	    < >,
+	    (FILL Statements
+
+IF !XC eof(DISK2)
+  THEN FS91000_Return := 2530; EXIT(1)
+ELSIF !XC syserr(DISK2)
+  THEN EXIT(1)
+  ELSE ZDISK2 := !XF ap(ZDISK2, 1); r14 := NOTUSED_2522 FI
+
+ENDFILL));
+
+
+
+
+SKIP
+
+

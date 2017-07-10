@@ -1,0 +1,35 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+TR_Delete_What_Follows := @New_TR_Number();
+
+TRs_Proc_Name[TR_Delete_What_Follows] := "Delete_What_Follows";
+TRs_Test[TR_Delete_What_Follows]:=!XF funct(@Delete_What_Follows_Test);
+TRs_Code[TR_Delete_What_Follows]:=!XF funct(@Delete_What_Follows_Code);
+TRs_Name[TR_Delete_What_Follows] := "Delete What Follows";
+
+TRs_Keywords[TR_Delete_What_Follows] := < "Use/Apply" >;
+
+TRs_Help[TR_Delete_What_Follows] := "Delete What Follows will delete the code which follows the selected item if it can never be executed";
+
+TRs_Prompt[TR_Delete_What_Follows] := ""; 
+
+TRs_Data_Gen_Type[TR_Delete_What_Follows] := "" 

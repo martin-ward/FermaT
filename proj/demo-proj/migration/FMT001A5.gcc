@@ -1,0 +1,4 @@
+FMT001A5.c: In function ‘fmt001a5’:
+FMT001A5.c:48: error: ‘A’ undeclared (first use in this function)
+FMT001A5.c:48: error: (Each undeclared identifier is reported only once
+FMT001A5.c:48: error: for each function it appears in.)

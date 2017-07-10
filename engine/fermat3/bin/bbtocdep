@@ -1,0 +1,197 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+# bbtocdep [input] [output]
+# Convert a list of basic blocks into a VCG call graph of control dependencies
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+use Blocks;
+use Control_Dep;
+use VCG;
+use warnings;
+use strict;
+
+sub equal_conds($$);
+sub sort_conds($);
+
+$| = 1;
+
+read_options();
+
+my ($myname, $Usage, @succslist, $num);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [input] [output]\n";
+
+my ($input, $output);
+
+# Check zero to two arguments:
+shift while (@ARGV && ($ARGV[0] =~ /^-/));
+if (@ARGV == 2) {
+  ($input, $output) = @ARGV;
+} elsif (@ARGV == 1) {
+  $input = $ARGV[0];
+  $output = $input;
+  $output .= ".vg" unless ($output =~ s/\.bb/\.vg/);
+} elsif (@ARGV == 0) {
+  ($input, $output) = ("-", "-");
+} else {
+  die $Usage;
+}
+
+my ($bb, $start, $end, $cpu);
+
+($bb, $start, $end) = bb_read($input);
+
+$cpu = cpu();
+
+
+my ($A, $E, $edge_index) = construct_roman_chariots($bb, $end);
+
+print "construct_roman_chariots took ", cpu() - $cpu, " secs.\n";
+
+my $bfs = breadth_first_list($start, "succs", "cd_bfs_num");
+foreach my $u (@$bfs) {
+  foreach my $v (@{$u->{succs}}) {
+    my ($un, $vn) = ($u->{num}, $v->{num});
+    my $i = $$edge_index{$un,$vn};
+    if (defined($i)) {
+      print "cd($un -> $vn) \t= A[$i] = ";
+      print "[$$A[$i][0]->{num}, $$A[$i][1]->{num})\n";
+      print "\t\t= ", join(", ", map { $_->{num} } @{cd_set($u, $v)}), "\n";
+    }
+  }
+}
+
+
+print "Constructing APT structure:\n";
+
+conds_preprocessing($bb, $end, $A, 1);
+
+foreach my $n (@$bb) {
+  printf "%3i: ", $n->{num};
+  if (!defined($n->{cd_L})) {
+    print "-";
+  } else {
+    print join(", ", map { "E[$_] = $$E[$_][0]->{num} -> $$E[$_][1]->{num}" } @{$n->{cd_L}}); 
+  }
+  print "\n";
+}
+
+
+
+foreach my $n (@$bb) {
+  printf "conds(%3i) = ", $n->{num};
+  my $output = conds_query($n, $A);
+  print join(", ", map { "E[$_] = $$E[$_][0]->{num} -> $$E[$_][1]->{num}" } @$output);
+  print "\n";
+}
+
+
+# Set up cdequiv_header and cdequiv_next keys for all nodes:
+
+print "Control Dependence Equivalence Classes:\n";
+
+cdequiv_preprocessing($bb, $end, $A);
+
+my %done = ();
+my $group = 0;
+foreach my $n (@$bb) {
+  next if ($done{$n->{num}});
+  my $node = $n->{cdequiv_header};
+  print "$node->{num}";
+  $done{$node->{num}}++;
+  $group++;
+  $node->{group} = $group;
+  while (defined($node->{cdequiv_next})) {
+    $node = $node->{cdequiv_next};
+    $done{$node->{num}}++;
+    print ", $node->{num}";
+    $node->{group} = $group;
+  }
+  print "\n";
+}
+
+print "\n";
+
+print "Computing cdequiv classes the slow way and comparing:\n";
+
+# Compute the group number of each node the slow way (order n^2)
+# and compare with the output of conds_preprocessing:
+
+%done = ();
+$group = 0;
+foreach my $n (@$bb) {
+  next if ($done{$n->{num}});
+  print $n->{num};
+  $done{$n->{num}}++;
+  $group++;
+  die unless ($n->{group} == $group);
+  my $cd = sort_conds(conds_query($n, $A));
+  foreach my $n2 (@$bb) {
+    next if ($done{$n2->{num}});
+    if (equal_conds($cd, sort_conds(conds_query($n2, $A)))) {
+      $done{$n2->{num}}++;
+      print ", ", $n2->{num};
+      die unless ($n2->{group} == $group);
+    }
+  }
+  print "\n";
+}
+
+
+
+sub sort_conds($) {
+  my ($L) = @_;
+  return [ sort { $a <=> $b } @$L ];
+}
+
+
+
+
+# Compare two array refs to sorted lists of numbers:      
+sub equal_conds($$) {
+  my ($L1, $L2) = @_;
+  my @L1 = @$L1;
+  my @L2 = @$L2;
+  return(0) if (@L1 != @L2);
+  while (@L1) {
+    my $x = pop(@L1);
+    my $y = pop(@L2);
+    return(0) if ($x ne $y);
+  }
+  return(1);
+}
+  
+
+
+
+
+sub cpu {
+  my ($user,$system,$cuser,$csystem) = times;
+  return($user + $system + $cuser + $csystem);
+}
+

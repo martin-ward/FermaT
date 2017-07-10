@@ -1,0 +1,10 @@
+<FME_Project name="slicing1">
+  <Project_Contents>
+    <File name="syntactic_slice_TEST.wsl" />
+    <File name="example1.wsl" />
+    <File name="example2.wsl" />
+    <File name="example3.wsl" />
+  </Project_Contents>
+  <Project_History current_file="syntactic_slice_TEST.wsl">
+  </Project_History>
+</FME_Project>

@@ -1,0 +1,50 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+ 
+MW_PROC @Move_Comment_Left_Test() ==
+  IF @Spec_Type(@Item) <> T_Comment
+    THEN @Fail("Selected item is not a comment.")
+    ELSE IF @Left? 
+	   THEN @Pass
+	 ELSIF NOT @Up?
+	   THEN @Fail("Can't move it any further left")
+	   ELSE @Up;
+		WHILE @Gen_Type(@Item) <> T_Statement AND @Up? DO
+		  @Up OD;
+		IF @Gen_Type(@Item) = T_Statement
+		  THEN @Pass
+		  ELSE @Fail("Can't move it any further left") FI FI FI .;
+
+MW_PROC @Move_Comment_Left_Code(Data) ==
+  VAR < comment := @Item >:
+  IF @Left? 
+    THEN @Cut; @Left; @Paste_Before(@Buffer)
+    ELSE @Clever_Delete;
+	 IF @Up? THEN @Up FI;
+	 WHILE @Gen_Type(@Item) <> T_Statement AND @Up? DO 
+	   @Up OD;
+	 IF @Gen_Type(@Item) = T_Statement 
+	   THEN @Paste_Before(comment) FI FI ENDVAR .
+
+
+
+
+

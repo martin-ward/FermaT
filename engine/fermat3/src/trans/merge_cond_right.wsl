@@ -1,0 +1,69 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Merge a Cond with a subsequent one which uses the same (or inverted) test ";
+C:" provided the variables in the test are not modified ";
+
+
+MW_PROC @Merge_Cond_Right_Test() ==
+  C:" Look for a pair of binary IF statements with the same (or opposite) test ";
+  C:" where the code in the first statement doesn't change the test. ";
+  IF @ST(@I) <> T_Cond
+    THEN @Fail("Current item is not a Cond (IF statement)")
+  ELSIF @Size(@I) <> 2
+    THEN @Fail("IF statement must have exactly two branches")
+  ELSIF EMPTY?(@Variables(@I^1^1) /\ (@Assigned(@I^1^2) \/ @Assigned(@I^2^2)))
+	  AND EMPTY?(Call_Types_Set /\ @Stat_Types(@I))
+    THEN VAR < n := @Posn_n, B := @I^1^1, notB := @Not(@I^1^1) >:
+	 DO IF @Right? THEN @Right ELSE @Fail("No suitable Cond found"); EXIT(1) FI;
+	    IF @ST(@I) = T_Comment OR @ST(@I) = T_Skip
+	      THEN SKIP
+	    ELSIF @ST(@I) = T_Cond AND @Size(@I) = 2
+	      THEN IF @Equal?(B, @I^1^1) OR @Equal?(notB, @I^1^1)
+		     THEN @Pass
+		     ELSE @Fail("The next Cond does not have the same (or opposite) test") FI;
+		   EXIT(1)
+	      ELSE @Fail("No suitable Cond found"); EXIT(1) FI OD;
+	 @To(n) ENDVAR
+    ELSE @Fail("The condition could be modified in the body") FI .;
+
+
+MW_PROC @Merge_Cond_Right_Code(Data) ==
+  VAR < B := @I^1^1, notB := @Not(@I^1^1), n := @Posn_n, S1 := < >, S2 := < > >:
+  @Right;
+  WHILE @ST(@I) <> T_Cond DO @Right OD;
+  IF @Equal?(B, @I^1^1)
+    THEN S1 := @Cs(@I^1^2); S2 := @Cs(@I^2^2)
+  ELSIF @Equal?(notB, @I^1^1)
+    THEN S2 := @Cs(@I^1^2); S1 := @Cs(@I^2^2)
+    ELSE ERROR("@Merge_Cond_Right_Code: next Cond has a different condition!") FI;
+  IF NOT EMPTY?(S1)
+    THEN @Delete;
+	 @To(n);
+	 @Down;
+	 @Down_Last; @Down_Last; C:" to end of THEN ";
+	 @Splice_After(S1);
+	 @Up; @Up; @Right;
+	 @Down_Last; @Down_Last; C:" to end of ELSE ";
+	 @Splice_After(S2);
+	 @Up; @Up; @Up; C:" back to IF " FI ENDVAR .;
+
+
+SKIP

@@ -1,0 +1,449 @@
+#!/usr/bin/perl
+#############################################################################
+## Copyright (C) 2008 Martin Ward.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+# Reads an ASCII WSL file and generates a LaTeX file.
+# Usage: wsl2tex [-n|-h|-nonum] [file...]
+# -n option doesn't include the \documentstyle etc. lines
+# -h option includes the header and footer
+# -nonum option adds * to the \section command.
+#
+# NB: You may need to fold long lines first, eg:
+# fold -s -w 100
+
+use warnings;
+use strict;
+
+sub print_header();
+sub print_footer();
+sub set_meta($);
+sub clear_meta($);
+sub fix_spec($);
+
+(my $myname = $0) =~ s|(.*/)*||;	# strip path component from name
+my $Usage = "Usage: $myname [-n|-h] [file...]\n";
+
+# Read options:
+my $h = 0;      # header required?
+my $nonum = ""; # Set to * for -nonum
+while (@ARGV && $ARGV[0] =~ /^-/) {
+  if ($ARGV[0] eq "-n") {
+    $h = 0;
+    shift;
+  } elsif ($ARGV[0] eq "-h") {
+    $h = 1;
+    shift;
+  } elsif ($ARGV[0] eq "-nonum") {
+    $nonum = "*";
+    shift;
+  } else {
+    die $Usage;
+  }
+}
+
+my $vars = 0;
+my @vars = ();
+
+# set up %latex table, $latex{"foo"} contains LaTeX equivalent of "word" foo.
+# for keywords the equivalent is \KEYWORD
+my @keywords = qw(IF THEN ELSIF ELSE FI BEGIN REP WHERE ABORT SKIP NULL
+	          AWAIT DO OD WHILE FOR FOREACH ATEACH WITH STEP TO
+	          IFMATCH FILL ENDFILL
+	          EDIT EDITPARENT ENDEDIT ENDMATCH EXIT
+                  EXP ENDEXP END ENDVAR ENDREP WITHIN PROC ENDPROC
+                  FUNCT ENDFUNCT JOIN NIOJ ONEOF FOENO ACTIONS ENDACTIONS
+                  CALL LLAC COMMENT ARRAY EOR AND OR NOT MOD DIV);
+my %latex = ();
+foreach my $word (@keywords) {
+  $latex{$word} = "\\$word";
+}
+
+# special words:
+$latex{LENGTH} = "\\ell";
+$latex{BFUNCT} = "\\FUNCT";
+$latex{MW_PROC} = "\\PROC";
+$latex{MW_FUNCT} = "\\FUNCT";
+$latex{MW_BFUNCT} = "\\FUNCT";
+$latex{D_IF} = "\\IF";
+$latex{D_DO} = "\\DO";
+$latex{TRUE} = "\\true";
+$latex{FALSE} = "\\false";
+# VAR statement is a special case:
+$latex{VAR} = "\\var";
+
+&print_header if ($h);
+
+# pattern which matches an identifier:
+my $id = qr/\@?[A-Za-z_][A-Za-z0-9_]+\??/;
+
+print "\\section$nonum\{$ARGV[0]\}\n" if ($h);
+print "\\begin{program}\n";
+
+# LaTeX special characters
+my $special = '\#\$\%\^\&\{\}';
+my $notspecial = "[^$special]";
+(my $metaspecial = $special) =~ tr/\000-\177/\200-\377/;
+my $notmetaspecial = "[^$metaspecial]";
+my $instring = 0;
+my $incomment = 0;
+my $inmember = 0;
+
+my $nl = 0; # number of postponed newline characters
+
+while (<>) {
+
+  # Eliminate verbatim environment:
+  next if /^\\(begin|end)\{verbatim\}$/;
+
+  # Backwhack LaTeX special characters:
+  s/(^|[^\\])([$special])/$1\\$2/g;
+  # do it again (pairs of special characters):
+  s/(^|[^\\])([$special])/$1\\$2/g;
+
+  # special lines:
+  if (/^\s*C:\s*"\s*\-+\s*";?\s*\n/) {
+    # a line of dashes:
+    print '\dashes', "\n";
+  } elsif (/^\*/) {
+    # header line
+    chop;
+    print "\\mbox{$_}\n";
+  } else {
+
+    if ($instring && /"/) { #"
+      # end the string:
+      s/^([^"]*)"/"``".&set_meta("$1")."''"/e;
+      $instring = 0;
+    } elsif ($instring) {
+      # protect all the line:
+      chop;
+      $_ = "``" . &set_meta($_) . "''\n";
+    } else {
+      # start of a string
+      s/^([^\"]*(\"[^\"]*\")*[^\"]*)\"([^\"]*)\n/"$1``".&set_meta("$3")."''\n"/e
+	&& $instring++;
+    }
+    # A string in a comment has the quotes removed (so it appears in
+    # ordinary text mode, not \tt):
+    if ($incomment) {
+      # remove pairs of quotes:
+      s/``([^'`]*)''/\377mbox{$1}/g; #'
+      # check for end of comment (a semicolon at the end):
+      m/\377mbox{.*}\s*$/ || ($incomment = 0);
+    }
+    # protect the contents of strings (set meta bit):
+    s/"([^"]*)"/"``".&set_meta("$1")."''"/ge;
+
+    # "\" is "\setminus":
+    s/\\($notspecial|$)/\\setminus $1/g;
+    # also in strings (meta bits set):
+    s/\334($notmetaspecial|$)/\$\\setminus\$ $1/g;
+
+    # the \377 is a \ (for mbox, to avoid confusion with \setminus)
+    tr/\377/\\/;
+
+    # "WYSIWYG" symbols:
+    s/\[\]/\\BAR /g;
+    s/\-\>/\\AR /g;
+    s/\=\=/\\EQ /g;
+    s/\<\=/\\leqslant /g;
+    s/\>\=/\\geqslant /g;
+    s/\<\>/\\neq /g;
+    s/\+\+/\\concat /g;
+    s/\<\s+\>/\\seq{}/g;
+    s|\\setminus /|\\union |g;
+    s|/\\setminus |\\intersect |g;
+    # \/ and /\ in strings (meta bits set):
+    s|\\setminus \257|\$\\union\$|g;
+    s|\257\\setminus |\$\\intersect\$|g;
+    # To ensure >\pat is not changed to \rangle\pat:
+    s/\~/{}\\pat/g;
+
+    # specials:
+    # strings and comments should be meta, all other .'s are \fullstop
+    # (apart from decimal points and ".." array segments and structs
+    # and foo.(bar) notation.)
+    s/\./\\fullstop /g;
+    s/([0-9])\\fullstop ([0-9])/$1.$2/g;
+    1 while (s/([A-Za-z0-9_\]]+)\\fullstop ([\(A-Za-z])/$1.$2/g);
+    s/\\fullstop \\fullstop ([^\]]*\])/..$1/g;
+    #s/MEMBER\?\((.*),\s*\<([^<>]*)\>\)/$1 \\in\\{$2\\}/g;
+    s/MEMBER\?\((.*),\s*\</$1 \\in\\{\\tab /g && $inmember++;
+    if ($inmember) {
+      s/^([^>]*)\>\s*\)/$1\\untab\\}/ && $inmember--;
+    }
+    # MEMBER?(name, name[...])  becomes  name\in name[...]
+    # crude bracket matching:
+    s/MEMBER\?\(\s*(\w+)\s*,([^()]+)\)/$1\\in $2/g;
+    s/MEMBER\?\(\s*(\w+)\s*,([^()]*\([^()]*\)[^()]*)\)/$1\\in $2/g;
+    # Check for \notin:
+    s/\bNOT\s*\(([^()]+)\\in([^()]+)\)/$1\\notin $2/g;
+    s/\bNOT\s*\(([^()]+)\\in([^()]*\([^()]*\)[^()]*)\)/$1\\notin $2/g;
+    # crude bracket matching:
+    s/\bNOT\s+EMPTY\?\(([^()]*)\)/$1 \\neq \\seq{}/g;
+    s/\bNOT\s+EMPTY\?\(([^()]*\([^()]*\)[^()]*)\)/$1 \\neq \\seq{}/g;
+    s/EMPTY\?\(([^()]*)\)/$1 = \\seq{}/g;
+    s/EMPTY\?\(([^()]*\([^()]*\)[^()]*\))/$1 = \\seq{}/g;
+
+    s/\bIN\b/\\in /g;
+    s/\bNOTIN\b/\\notin /g;
+
+    s/\bNIL\b/\\Lambda /g;
+
+    # VAR statement:
+    s/\bVAR\s*(($id|[A-Za-z])\s*:=|\<\s*$id|\<\s*[A-Za-z])/\\VAR $1/go;
+    # If VAR is at end of line, assume it is a statement:
+    s/\bVAR\s*$/\\VAR/;
+    # all other VAR's are in procs or calls, dealt with below
+
+    # SPEC statement:
+    s/\bSPEC\s+<(.*?)>:/fix_spec($1)/ge;
+    s/\bENDSPEC\b/\)/g;
+
+    # short comments (note minimal match in case there are several
+    # comments on the line):
+    if (s/C:\s*``(.*?)''/\\C{$1}/g && $instring) {
+      # comment continues on next line:
+      $incomment++;
+    }
+    # Convert initial spaces in comment to ~s:
+    s/\\C\{(\240+)([^\240])/"\\C{"."\\ " x length("$1") . "$2"/e;
+
+    # protect LaTeX commands before doing remaining words:
+    s/\\[a-zA-Z]+/&set_meta("$&")/ge;
+
+    # words (either in %latex table or replace by |word|):
+    s/$id/$latex{"$&"} ? $latex{"$&"} : "|$&|"/geo;
+
+    s/\|\@(\w+)\|\(\)/\|$1\|/g;
+    s/\|\@/\|/g;
+
+    s/_/\\_/g;
+
+    # clear some meta bits (letters and \ but not <>):
+    tr/\301-\332\341-\372\334/A-Za-z\\/;
+
+    # see which <...> are sequence brackets and which are relations:
+    s/(\(|\\[a-zA-Z]+|,|^|:=|;|\<|=)(\s*)\</$1$2\\langle /g;
+    s/\>\s*(\)|\\[a-zA-Z]+|,|\n|:|;|\>|\.)/\\rangle $1/g;
+    # check for <<, now \langle<
+    s/\\langle\s*\</\\langle\\langle /g;
+    # check for >>, now \rangle>
+    s/\\rangle\s*\>/\\rangle\\rangle /g;
+
+    # clear rest of meta bits:
+    tr/\200-\377/\0-\177/;
+
+    # Convert <> in comments to $<$ $>$:
+    1 while (s/(\\C\{[^\$]*)([\<\>]+)/$1\$$2\$/);
+    s/\$\$//g;
+
+    # hack to fix FUNCT...VAR... \fullstop:
+    #  May be more than one VAR or ENDVAR on each line (Grrr...):
+    if (/\\ACTIONS/) {
+      push (@vars, $vars);
+      $vars = 0;
+    }
+    $vars = pop(@vars) if (/\\ENDACTIONS/);
+    if (/\\VAR/ || /\\ENDVAR/) {
+      my $tmp = $_;
+      while ($tmp =~ s/\\VAR/ /) { $vars++; }
+      while ($tmp =~ s/\\ENDVAR/ /) { $vars--; }
+    }
+    if ($vars > 0) {
+      if (s/\\fullstop/\\fullstop\\untab /) {
+	$vars--;
+      }
+    }
+
+    # give \FILL and \IFMATCH their proper arguments:
+    #s/\\FILL\s*\|([A-Za-z]+)\|/\\FILL\\ttt{$1}/g;
+    #s/\\IFMATCH\s*\|([A-Za-z]+)\|/\\IFMATCH\\ttt{$1}/g;
+
+    # Fix type names t use \ttt rather than |...|:
+    s/\|T_([A-Za-z_]+)\|/\\ttt{$1}/g;
+
+    # fix |HEAD| and |TAIL| to |hd| and |tl| respectively:
+    s/\|HEAD\|/|hd|/g;
+    s/\|TAIL\|/|tl|/g;
+
+    # Move a \THEN or \ELSE at the end of a line to beginning of next line
+    # (Coding standards! Allows indentation to happen properly):
+    s/(^|\n)(\s*)(\\THEN|\\ELSE)\s*\n/$1$2$3/;
+    s/(\\THEN|\\ELSE)\s*\n/\n  $1 /;
+
+    # if there are 20 characters before "; \\IF"
+    # insert a newline:
+    s/((\n|^)[^\n]{20,})\\IF/$1\n\\IF/;
+
+    # If there are >= 30 characters before a \\THEN,
+    # insert a newline (because Eddy lines up ELSE with IF and not THEN!):
+    s/((\n|^)[^\n]{30,})\\THEN/$1\n\\THEN/;
+
+    # If there are >= 20 characters between \\IF and \\THEN
+    # also insert a newline before the \\THEN:
+    s/\\THEN/\377/g;
+    s/(\\IF[^\377\n]{20,})\377/$1\n\\THEN/;
+    s/\377/\\THEN/g;
+
+    # delete \n after \EQ unless the line is a \PROC or \FUNCT:
+    s/\\EQ\s*\n/\\EQ / unless (/\\PROC/ || /\\FUNCT/);
+
+    # delete \n after \DO unless the line is a \WHILE or \ATEACH or \FOREACH or \FOR:
+    s/\\DO\s*\n/\\DO / unless (/\\WHILE/ || /\\ATEACH/ || /\\FOR/);
+
+    # delete \n after \IF:
+    s/\\IF\s*\n/\\IF /;
+
+    # delete \n before closing constructs:
+    $nl = 0 if m/^\s*\\(FI|OD|END|ENDACTIONS)\b/;
+
+    # a minor prettification:
+    s/```/``\\,`/g;
+    s/'''/'\\,''/g;
+
+    # insert spaces in !P etc.:
+    s/\!([A-Z\|]+)\s+/\!$1~/g;
+    s/\!([A-Z])~/\!\|$1\|~/g;
+
+    s/(FOREACH|ATEACH|IFMATCH|FILL)\s+\|(\S+)\|/$1 \{$2\}/g;
+
+
+    s/\|([RL])(\d)\|/$1_$2/g;
+
+    # ensure blank lines get printed:
+    s/^$/~/g;
+
+    # print the result, avoiding multiple spaces between lines:
+    print ("\n" x $nl);
+    s/^ */ / unless $nl;
+    $nl = chomp;
+    s/ +$//;
+    print;
+
+  } # end skipping a line of dashes
+
+  # Change heading if necessary:
+  if ($h && eof && $ARGV[0]) {
+    print "\\end{program}\n\\section$nonum\{$ARGV[0]\}\n\\begin{program}\n";
+  }
+
+}
+
+print ("\n" x $nl);
+print "\\end{program}\n";
+&print_footer if ($h);
+
+exit(0);
+
+
+sub print_header() {
+  print <<'END_OF_HEADER';
+\documentclass[11pt,a4paper]{article}
+\usepackage{a4}
+\usepackage{newlfont} % needed for sober style
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{sober}
+\usepackage{fixup}
+\usepackage{epic}
+\usepackage{eepic}
+\usepackage{program}
+\usepackage{stmaryrd}
+\usepackage{fancyheadings}
+\sfvariables
+
+\setlength{\parskip}{1ex plus 1pt minus 1pt}
+\newcommand{\ttt}[1]{\mbox{\tt #1}}
+\newcommand{\pat}[1]{\tw\text{#1}}
+\def\up#1{$^{\hbox{\small \it#1}}$}
+\def\today{{\sl
+   \number\day
+   \ifcase\day\or
+      \up{st}\or \up{nd}\or \up{rd}\or \up{th}\or \up{th}\or
+      \up{th}\or \up{th}\or \up{th}\or \up{th}\or \up{th}\or
+      \up{th}\or \up{th}\or \up{th}\or \up{th}\or \up{th}\or
+      \up{th}\or \up{th}\or \up{th}\or \up{th}\or \up{th}\or
+      \up{st}\or \up{nd}\or \up{rd}\or \up{th}\or \up{th}\or
+      \up{th}\or \up{th}\or \up{th}\or \up{th}\or \up{th}\or
+      \up{st}\fi
+   \space
+   \ifcase\month\or
+      January\or February\or March\or April\or May\or June\or
+      July\or August\or September\or October\or November\or December\fi
+   \space\number\year}}
+
+\makeatletter
+\def\PROC{\quad\tab\kern-1em\keyword{proc}\
+	    \gdef\EQ{\ \equiv\ \global\let\EQ=\@oldEQ}}
+\def\WHILE{\quad\tab\kern-1em\keyword{while}\ 
+	   \gdef\DO{\@marginspace\keyword{do}\ \global\let\DO=\@oldDO}}
+\def\VAR{\tab\keyword{var}\ }
+\makeatother
+
+\MathsModeStringsfalse
+% Turn off the active @ (so we can use @ in variable names as arguments to
+% other commands):
+\catcode`\@=12\relax
+\catcode`\_\active
+\def\^{\uparrow}
+
+\pagestyle{fancy}
+\addtolength{\headheight}{3pt}
+\rhead{\today}
+END_OF_HEADER
+
+  print "\\cfoot{}\n" if ($nonum);
+  print "\\begin{document}\n\\scriptsize\n";
+
+}
+
+sub print_footer() {
+  print <<'END_OF_FOOTER';
+
+\end{document}
+
+END_OF_FOOTER
+}
+
+# return string with meta bits set:
+sub set_meta($) {
+  my ($str) = @_;
+  $str =~ tr/\0-\177/\200-\377/;
+  return($str);
+}
+
+sub clear_meta($) {
+  my ($str) = @_;
+  $str =~ tr/\200-\377/\0-\177/;
+  return($str);
+}
+
+sub fix_spec($) {
+  my ($vars) = @_;
+  # Generate v := v'.(
+  #       or <v1, v2, ...> := <v1', v2', ...>.(
+  my @vars = split(/\s*,\s*/, $vars);
+  if (@vars == 1) {
+    return("$vars[0] := $vars[0]\'.(");
+  } else {
+    my @pvars = map { "$_\'" } @vars;
+    return("<" . join(", ", @vars) . "> := <" . join(", ", @pvars) . ">.(");
+  }
+}
+

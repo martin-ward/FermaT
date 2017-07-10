@@ -1,0 +1,13 @@
+C:"Type-Level: StrongUnsafeTypedWSL";
+VAR <
+ STRING*0 :: z := "GOOD BYE",
+ STRING*0 :: y := "HELLO",
+ INTEGER*0 :: x := 0
+>:
+ SKIP;
+ IF x = 0 THEN
+   y := "HELLO"
+ ELSIF TRUE THEN
+   z := "GOOD BYE"
+ FI
+ENDVAR

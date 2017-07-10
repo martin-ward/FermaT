@@ -1,0 +1,60 @@
+
+IFMATCH/FILL New Syntax:
+
+The old syntax for IFMATCH and FILL patterns was: ~?name, ~*name, ~+name
+
+This caused an ambiguity in IFMATCH: does ~?foo mean "match an item
+and store the result in foo" or "match against the current value of
+foo".  Currently, IFMATCH takes the former interpretation if the
+variable's value is the empty sequence < >.
+
+For global variables, the result of an IFMATCH would depend on whether
+the variable was bound or not in some procedure further up the
+(dynamic) call path.
+
+Also, there was no way to interpolate the value of an expression
+(eg @I^2) in a FILL: the value had to be stored in a variable first.
+
+
+The new syntax adds four new patterns for interpolation:
+~?(expn), ~*(expn), ~?=var and ~*=var.
+
+The first two have a single component of type T_Expression.
+The expression is evaluated *before* the match or fill begins
+and is then interpolated into the item. The ~?=var and ~*=var matches
+can only appear *after* a corresponding ~?var, ~*var or ~+var.
+They match against the previously matched value: they can *only*
+appear in an IFMATCH, not in a FILL.
+
+The original patterns ~?name, ~*name and ~+name will now match any
+item, any sequence of items, and any non-empty sequence of items, and
+store the result in a new local variable with the given name.
+The scope of this new variable extends over the THEN part
+of the IFMATCH only.
+
+For example, to match any binary IF statement with S as the first
+statement in the THEN part, we used to have to write something like
+this:
+
+VAR < B := < >, S1 := < >, S2 := < > >:
+IFMATCH Statement ~?B THEN ~?S; ~*S1 ELSE ~*S2 FI
+THEN ...
+ELSE ... ENDMATCH ENDVAR
+
+We can now write:
+
+IFMATCH Statement ~?B THEN ~?(S); ~*S1 ELSE ~*S2 FI
+THEN ...
+ELSE ... ENDMATCH
+
+This matches against the statement in S and creates
+new local variables B, S1 and S2 to store the other matches.
+
+To reverse the branches of the IF statement we can write:
+
+IFMATCH Statement ~?B THEN ~?(S); ~*S1 ELSE ~*S2 FI
+THEN @Paste_Over(FILL Statement
+	           IF ~?(@Not(B)) THEN ~*S2 ELSE ~?S; ~*S1 FI ENDFILL)
+ELSE PRINT("Match failed") ENDMATCH
+
+

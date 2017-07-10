@@ -1,0 +1,89 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans("First test of `While_To_Abort'",
+	    (FILL Statements WHILE TRUE DO X:=1 OD ENDFILL),
+	    <1>,
+	    TR_While_To_Abort,
+	    < >,
+	    (FILL Statements ABORT ENDFILL));
+
+@Test_Trans("Second test of `While_To_Abort'",
+	    (FILL Statements WHILE X<10 DO X:=X+1; {X=9} OD ENDFILL),
+	    <1>,
+	    TR_While_To_Abort,
+	    < >,
+	    (FILL Statements IF X<10 THEN ABORT FI ENDFILL));
+
+@Test_Trans("Third test of `While_To_Abort'",
+	    (FILL Statements WHILE X < 10 DO !XP external ();
+					   {(X = 1)} OD ENDFILL),
+	    <1>,
+	    TR_While_To_Abort,
+	    < >,
+	    (FILL Statements IF X<10 THEN ABORT FI ENDFILL));
+
+@Test_Trans("Fourth test of `While_To_Abort'",
+	    (FILL Statements WHILE X < 10 DO {(X = 1)};
+					     Y:=Y+1  OD ENDFILL),
+	    <1>,
+	    TR_While_To_Abort,
+	    < >,
+	    (FILL Statements IF X<10 THEN ABORT FI ENDFILL));
+
+@Test_Trans("Fifth test of `While_To_Abort'",
+	    (FILL Statements WHILE X < 10 DO SKIP; SKIP; {(X = 1)};
+					     X:=Y+1; Z:=1  OD ENDFILL),
+	    <1>,
+	    TR_While_To_Abort,
+	    < >,
+	    "Fail");
+
+@Test_Trans("Sixth test of `While_To_Abort'",
+	    (FILL Statements WHILE X = 1 DO
+				   A := A + 1;
+				   !XP unknown_proc();
+				   SKIP OD ENDFILL),
+	    <1>,
+	    TR_While_To_Abort,
+	    < >,
+	    "Fail");
+
+IF FALSE THEN
+
+
+@Test_Trans("Seventh test of `While_To_Abort'",
+	    (FILL Statements WHILE X < 100 DO
+				   X := X - 2 OD ENDFILL),
+	    <1>,
+	    TR_While_To_Abort,
+	    < >,
+	    (FILL Statements IF (X < 100) THEN ABORT FI ENDFILL));
+
+@Test_Trans("Eighth test of `While_To_Abort'",
+	    (FILL Statements WHILE X < 100 DO
+				   A := A + 1;
+				   proc1( VAR );
+				   X := X - 2 OD ENDFILL),
+	    <1>,
+	    TR_While_To_Abort,
+	    < >,
+	    (FILL Statements IF (X < 100) THEN ABORT FI ENDFILL)) FI
+

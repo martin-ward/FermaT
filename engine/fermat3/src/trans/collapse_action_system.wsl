@@ -1,0 +1,410 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+MW_PROC @Collapse_Action_System_Test() ==
+  IF @ST(@I) <> T_A_S
+    THEN @Fail("Not an action system")
+  ELSIF @System_Type(@I) <> "Reg"
+    THEN @Fail("Not a regular action system")
+    ELSE @Pass FI END;
+
+
+C:" The old version leads to exponential growth, so use this instead. ";
+C:" Convert to a double loop with an IF statement:
+    
+    action := 1;
+    DO DO IF action = 1 THEN A1
+          ELSIF action = 2 THEN A2
+          ...
+            ELSE EXIT(2) FI OD OD
+    
+    CALL Z becomes EXIT(2+depth)
+    CALL An becomes action := n; EXIT(1+depth)
+
+Note: if the first action (A1) starts with a D_IF and is not called
+from any other action, then we need to do this:
+
+ACTIONS MAIN_1:
+  MAIN_1 == A1 END
+  SUB_1 == DO DO IF action = 2 THEN A2
+                 ELSIF action = 3 THEN A3
+                 ...
+                 ELSE CALL Z FI OD OD END
+ENDACTIONS
+
+where in A1, CALL An becomes: action := n; CALL SUB_1
+  and in Ai, CALL An becomes: action := n; EXIT(1+depth)
+CALL Z is unchanged in both.
+
+Subsequent transformations should be able to handle this action system.
+
+Converting the arms of IF action = ... FI into separate procs ACTION_n
+could be done by @WSL_To_COBOL(?)
+
+";
+
+
+MW_PROC @Collapse_Action_System_Code(Data) ==
+  VAR < size := @Total_Size(@I), posn := @Posn, orig := @Program >:
+  @Collapse_Action_System_Simple(Data);
+  IF @Total_Size(@I) > 3 * size
+    THEN @New_Program(orig);
+         @Goto(posn);
+         PRINT("Result of Collapse_Action_System_Simple is too big!");
+         PRINT("Converting to a double loop");
+	 IF @Size(@I^2) > 2 AND @ST(@I^2^1^2^1) = T_D_If AND @V(@I^2^1^1) = @V(@I^1)
+	      AND NOT @Called?(@V(@I^1), @I^2)
+           THEN @Collapse_Action_System_New1(Data)
+           ELSE @Collapse_Action_System_New2(Data) FI;
+         @Goto(posn);
+         @Trans(TR_Delete_All_Skips, "") FI ENDVAR .;
+
+
+MW_PROC @Collapse_Action_System_Simple(Data) ==
+  VAR < as := "", Entry_Point := @V(@I^1),
+	z_name := @Make_Name("Z"), total := @Total_Size(@I),
+	change := 0 >:
+  @Down_Last; as := @AS_Type; @Up;
+  DO IF @Trans?(TR_Simplify_Action_System)
+       THEN PRINT("Simplifying action system");
+	    @Trans(TR_Simplify_Action_System, "") FI;
+     PRINT("");
+     PRINT(@Size(@I^2), " actions remaining");
+     IF @Size(@I^2) = 1 THEN EXIT(1) FI;
+
+     C:" Make procs of all actions which only call Z ";
+
+     @Down_Last; @Down_Last;
+     PRINT("CAS: Finding actions which only call Z...");
+     DO change := 0;
+        DO IF @V(@I^1) = Entry_Point
+             THEN IF @Left? THEN @Left ELSE EXIT(1) FI FI;
+           calls := @Calls(@I);
+           IF LENGTH(calls) = 1 AND calls[1][1] = z_name AND @Trans?(TR_Make_Proc)
+             THEN @Trans(TR_Make_Proc, "");
+                  @ATP_SAD(VAR change);
+		  @To_Last;
+             ELSE IF @Left? THEN @Left ELSE EXIT(1) FI FI OD;
+        IF change = 0 THEN EXIT(1) FI OD;
+     @Up; @Up;
+
+     IF @Size(@I^2) = 1 THEN EXIT(1) FI;
+
+     @CAS_Unfold_Least_Called_Action(as, Entry_Point, z_name, total);
+
+     IF @Total_Size(@I) > 3 * total THEN EXIT(1) FI OD;
+
+  C:"End of outer loop. We should have only one action in the action system";
+  WHILE @ST(@I) <> T_A_S DO @Up OD;
+  DO IF @Left? THEN @Left ELSE EXIT(1) FI;
+     IF @ST(@I) = T_Skip
+       THEN @Delete
+       ELSE @Right; EXIT(1) FI OD;
+  IF @Trans?(TR_Simplify_Item)
+    THEN @Trans(TR_Simplify_Item, "");
+	 @Trans(TR_Delete_All_Skips, "")
+    ELSE PRINT("Unable to remove action system completely.");
+	 PRINT("Some more restructuring will be necessary.") FI ENDVAR .;
+
+
+
+MW_PROC @CAS_Unfold_Least_Called_Action(as, Entry_Point, z_name, total VAR ) ==
+  VAR < min_n := 0, min_size := 0, min_name := 0,
+        size := HASH_TABLE, posn := < > >:
+
+  PRINT("Searching for least-called action");
+  FOR action IN @Cs(@I^2) DO
+    size.(@V(action^1)) := @Stat_Count(action^2) OD;
+  min_n := 32000;
+  FOR call IN @Calls(@I) DO
+    IF call[1] <> z_name AND call[1] <> Entry_Point
+      THEN IF call[2] < min_n OR (call[2] = min_n AND size.(call[1]) < min_size)
+             THEN min_n := call[2];
+                  min_size := size.(call[1]);
+                  min_name := call[1] FI FI OD;
+  PRINT("Action ", @N_String(min_name), " is called ", min_n, " times");
+  C:"Down to first action";
+  @Down_Last;
+  @Down;
+  C:" Move to the action we aim to remove ";
+  WHILE @V(@I^1) <> min_name DO @Right OD;
+  C:" Try to shrink the action by creating procedures from blocks of code ";
+  C:" (we use ATEACH in order to try the larger blocks first) ";
+  C:" TODO: Make this a separate transformation? ";
+
+  VAR < body := < >, span := 0, stats := 0, procs := < >, tvs := < >, tv := 0 >:
+  ATEACH Statement DO
+    IF EMPTY?(@Calls(@I)) AND LENGTH(@Gen_TVs(@I, as)) <= 1
+      THEN body := <@I>;
+           span := 1;
+           stats := @Stat_Count(@I);
+           posn := @Posn;
+           DO IF @Right? THEN @Right ELSE EXIT(1) FI;
+              IF NOT EMPTY?(@Calls(@I)) THEN EXIT(1) FI;
+              IF LENGTH(@Gen_TVs(@I, as)) > 1 THEN EXIT(1) FI;
+              tvs := @Gen_TVs(@I, as);
+              span := span + 1;
+              body := <@I> ++ body;
+              stats := stats + @Stat_Count(@I) OD;
+           IF stats > 5
+             THEN C:" Record this procedure in the list: ";
+                  IF EMPTY?(tvs) THEN tv := 0 ELSE tv := HEAD(tvs) FI;
+                  procs := <<posn, span, tv, REVERSE(body)>>
+                             ++ procs FI FI OD;
+  IF NOT EMPTY?(procs)
+    THEN PRINT("Creating ", LENGTH(procs), " proc(s).") FI;
+  C:" If any procs were created, ensure that there is a WHERE clause ";
+  C:" and create the procs ";
+  IF NOT EMPTY?(procs)
+    THEN VAR < posn := @Posn, where := < >, n := 0, p := < >, new := < >,
+               calls := @MP_Proc_Calls, tv := 0, span := 0, body := < >,
+               name := < >, call_n := 1, defns := < >,
+               expns := @Make(T_Expressions, < >, < >),
+               lvalues := @Make(T_Lvalues, < >, < >) >:
+         C:" Ensure that there is a surrounding WHERE clause ";
+         @MP_Ensure_Where(VAR n);
+         where := @Posn;
+         IF n >= 0
+           THEN C:" A WHERE had to be inserted, so fix the positions: ";
+                posn := posn[1..n] ++ <1,1> ++ posn[n+1..];
+                FOR proc IN procs DO
+                  p := proc[1];
+                  p := p[1..n] ++ <1,1> ++ p[n+1..];
+                  new := <<p, proc[2], proc[3], proc[4]>> ++ new OD;
+                procs := new FI;
+         WHILE NOT EMPTY?(procs) DO
+           @Goto(procs[1][1]);
+           span := procs[1][2];
+           tv := procs[1][3];
+           body := @Make(T_Statements, < >, procs[1][4]);
+           IF tv > 0 THEN body := @Increment(body, as, -tv, 0) FI;
+           DO name := @Make_Name("p_" ++ @String(call_n));
+              IF name NOTIN calls THEN EXIT(1) FI;
+              call_n := call_n + 1 OD;
+           calls := <name> \/ calls;
+           defns := <@Make(T_Proc, < >, <@Name(name), lvalues, lvalues, body>)>
+                       ++ defns;
+           @Paste_Over(@Make(T_Proc_Call, < >, <@Name(name), expns, lvalues>));
+           IF tv > 0 AND span = 1
+             THEN C:" Put the EXIT into an IF to preserve posn ";
+                  @Paste_Cond(<@I, @Make(T_Exit, tv, < >)>)
+           ELSIF tv > 0 
+             THEN @Right; span := span - 1;
+                  @Paste_Over(@Make(T_Exit, tv, < >)) FI;
+           WHILE span > 1 DO
+             span := span - 1;
+             @Right;
+             @Paste_Over(@Skip) OD;
+           procs := TAIL(procs) OD;
+         @Goto(where);
+         @Down_Last;
+         @Down_Last;
+         @Splice_After(REVERSE(defns));
+         @Goto(posn) ENDVAR FI ENDVAR;
+
+  C:" Try to remove the action ";
+  @Trans(TR_Delete_All_Skips, "");
+  IF @Trans?(TR_Substitute_And_Delete)
+    THEN PRINT("Removing action ", @N_String(min_name));
+         @Trans(TR_Substitute_And_Delete, "")
+    ELSE ERROR("Unable to remove action " ++ @N_String(min_name) ++ "!!!") FI;
+  WHILE @ST(@I) <> T_A_S DO @Up OD ENDVAR .;
+
+
+
+
+
+C:" The starting action is the first action in the system, it starts with a D_IF ";
+C:" and is not called from within the system. This is typical for assembler modules ";
+C:" with multiple entry points. ";
+
+MW_PROC @Collapse_Action_System_New1(Data) ==
+  VAR < N := @Size(@I^2) >:
+  VAR < AS_Name := @V(@I^1),
+        Starting_Action := 0,
+        N_Actions := 0, n := 0,
+        Bodies := ARRAY(N, < >),
+        Names := ARRAY(N+1, < >),
+        Name2Num := HASH_TABLE,
+	guards := < >, i := 0, next := < >, body := < >, A1 := < >,
+	main := @Make_Name("MAIN_1"), sub := @Make_Name("SUB_1"),
+	name := < >, procs := < >,
+	expns := @Make(T_Expressions, < >, < >),
+	lvals := @Make(T_Lvalues, < >, < >),
+	posn := < > >:
+  PRINT("Extracting D_IF statement to be outside the loop ");
+  @Edit;
+  C:" Calculate Bodies, Names, Name2Num ";
+  C:" Hash table Name2Num maps action names (keys) to action numbers   ";
+  @FD_Init(N VAR Bodies, Names, Name2Num);
+  C:" Find the starting action: ";
+  Starting_Action := Name2Num.(AS_Name);
+  IF Starting_Action <> 1 THEN ERROR("Starting_Action should be action 1!!!") FI;
+  @New_Program(Bodies[1]);
+  FOREACH Statement DO
+    IF @ST(@I) = T_Call AND @V(@I) = -(N+1)
+      THEN @Paste_Over(FILL Statement CALL Z ENDFILL)
+    ELSIF @ST(@I) = T_Call
+      THEN next := @Make(T_Number, -@V(@I), < >);
+           @Paste_Over(@Make(T_Call, sub, < >));
+	   @Paste_Before(@Make(T_Comment, "First action is "
+	                                       ++ @N_String(Names[@V(next)]), < >));
+           @Paste_Before(FILL Statement action := ~?next ENDFILL) FI OD;
+  A1 := @Cs(@Program);
+
+  FOR i := 2 TO N STEP 1 DO
+    @New_Program(Bodies[i]);
+    FOREACH Statement DO
+      IF @ST(@I) = T_Call AND @V(@I) = -(N+1)
+        THEN C:" CALL Z ";
+	     @Paste_Over(@Make(T_Exit, 1 + Depth, < >));
+	     @Paste_Before(@Make(T_Comment, "Terminate action system", < >));
+             @Paste_Before(FILL Statement action := 0 ENDFILL)
+      ELSIF @ST(@I) = T_Call
+        THEN next := @Make(T_Number, -@V(@I), < >);
+             @Paste_Over(@Make(T_Exit, 1 + Depth, < >));
+	     @Paste_Before(@Make(T_Comment, "Next action is "
+	                                       ++ @N_String(Names[@V(next)]), < >));
+             @Paste_Before(FILL Statement action := ~?next ENDFILL) FI OD;
+    body := @Cs(@Program);
+    body := <@Make(T_Comment, "This action is " ++ @N_String(Names[i]), < >),
+             FILL Statement DO ~*body OD ENDFILL>;
+    name := @Make(T_Name, @Make_Name(@N_String(Names[i]) ++ "_ACTION"), < >);
+    procs := <@Make(T_Proc, < >, <name, lvals, lvals, @Make(T_Statements, < >, body)>)>
+               ++ procs;
+    body := <@Make(T_Proc_Call, < >, <name, expns, lvals>)>;
+    next := @Make(T_Number, i, < >);
+    guards := <FILL Guarded action = ~?next THEN ~*body ENDFILL> ++ guards OD;
+  guards := <FILL Guarded TRUE THEN action := 0 ENDFILL> ++ guards;
+  body := @Make(T_Cond, < >, REVERSE(guards));
+  @Undo_Edit;
+  @Paste_Over(FILL Statement
+              ACTIONS MAIN_1:
+	      MAIN_1 == ~*A1 END
+	      SUB_1 == WHILE action <> 0 DO ~?body OD;
+	               CALL Z END ENDACTIONS ENDFILL);
+  posn := @Posn;
+  @MP_Ensure_Where(VAR n);
+  IF n >= 0 THEN posn := posn[1..n] ++ <1,1> ++ posn[n+1..] FI;
+  IF @ST(@I) <> T_Where THEN ERROR("@MP_Ensure_Where didn't work!!!") FI;
+  @Down_To(2); @Down; C:" to first defn ";
+  @Splice_Before(REVERSE(procs));
+  @Goto(posn); C:" Back to the action system ";  
+  IF @Trans?(TR_Collapse_Action_System)
+    THEN @Trans(TR_Collapse_Action_System, "");
+	 @Trans(TR_Simplify_Item, "");
+	 @Trans(TR_Delete_All_Skips, "") FI ENDVAR ENDVAR .;
+
+
+
+MW_PROC @Collapse_Action_System_New1_Orig(Data) ==
+  VAR < N := @Size(@I^2) >:
+  VAR < AS_Name := @V(@I^1),
+        Starting_Action := 0,
+        N_Actions := 0, n := 0,
+        Bodies := ARRAY(N, < >),
+        Names := ARRAY(N+1, < >),
+        Name2Num := HASH_TABLE,
+	guards := < >, i := 0, next := < >, body := < >, A1 := < >,
+	main := @Make_Name("MAIN_1"), sub := @Make_Name("SUB_1") >:
+  PRINT("Extracting D_IF statement to be outside the loop ");
+  @Edit;
+  C:" Calculate Bodies, Names, Name2Num ";
+  C:" Hash table Name2Num maps action names (keys) to action numbers   ";
+  @FD_Init(N VAR Bodies, Names, Name2Num);
+  C:" Find the starting action: ";
+  Starting_Action := Name2Num.(AS_Name);
+  IF Starting_Action <> 1 THEN ERROR("Starting_Action should be action 1!!!") FI;
+  @New_Program(Bodies[1]);
+  FOREACH Statement DO
+    IF @ST(@I) = T_Call AND @V(@I) = -(N+1)
+      THEN @Paste_Over(FILL Statement CALL Z ENDFILL)
+    ELSIF @ST(@I) = T_Call
+      THEN next := @Make(T_Number, -@V(@I), < >);
+           @Paste_Over(@Make(T_Call, sub, < >));
+           @Paste_Before(FILL Statement action := ~?next ENDFILL) FI OD;
+  A1 := @Cs(@Program);
+
+  FOR i := 2 TO N STEP 1 DO
+    @New_Program(Bodies[i]);
+    FOREACH Statement DO
+      IF @ST(@I) = T_Call AND @V(@I) = -(N+1)
+        THEN @Paste_Over(FILL Statement CALL Z ENDFILL)
+      ELSIF @ST(@I) = T_Call
+        THEN next := @Make(T_Number, -@V(@I), < >);
+             @Paste_Over(@Make(T_Exit, 1 + Depth, < >));
+             @Paste_Before(FILL Statement action := ~?next ENDFILL) FI OD;
+    body := @Cs(@Program);
+    next := @Make(T_Number, i, < >);
+    guards := <FILL Guarded action = ~?next THEN ~*body ENDFILL> ++ guards OD;
+  guards := <FILL Guarded TRUE THEN CALL Z ENDFILL> ++ guards;
+  body := @Make(T_Cond, < >, REVERSE(guards));
+  @Undo_Edit;
+  @Paste_Over(FILL Statement
+              ACTIONS MAIN_1:
+	      MAIN_1 == ~*A1 END
+	      SUB_1 == DO DO ~?body OD OD END ENDACTIONS ENDFILL);
+  IF @Trans?(TR_Simplify_Item)
+    THEN @Trans(TR_Simplify_Item, "");
+	 @Trans(TR_Delete_All_Skips, "") FI ENDVAR ENDVAR .;
+
+
+
+MW_PROC @Collapse_Action_System_New2(Data) ==
+  VAR < N := @Size(@I^2) >:
+  VAR < AS_Name := @V(@I^1),
+        Starting_Action := 0,
+        N_Actions := 0, n := 0,
+        Bodies := ARRAY(N, < >),
+        Names := ARRAY(N+1, < >),
+        Name2Num := HASH_TABLE,
+	guards := < >, i := 0, next := < >, body := < > >:
+  @Edit;
+  C:" Calculate Bodies, Names, Name2Num ";
+  C:" Hash table Name2Num maps action names (keys) to action numbers   ";
+  @FD_Init(N VAR Bodies, Names, Name2Num);
+  C:" Find the starting action: ";
+  Starting_Action := Name2Num.(AS_Name);
+  FOR i := 1 TO N STEP 1 DO
+    @New_Program(Bodies[i]);
+    FOREACH Statement DO
+      IF @ST(@I) = T_Call AND @V(@I) = -(N+1)
+        THEN @Paste_Over(@Make(T_Exit, 2 + Depth, < >))
+      ELSIF @ST(@I) = T_Call
+        THEN next := @Make(T_Number, -@V(@I), < >);
+             @Paste_Over(@Make(T_Exit, 1 + Depth, < >));
+             @Paste_Before(FILL Statement action := ~?next ENDFILL) FI OD;
+    body := @Cs(@Program);
+    next := @Make(T_Number, i, < >);
+    guards := <FILL Guarded action = ~?next THEN ~*body ENDFILL> ++ guards OD;
+  guards := <FILL Guarded TRUE THEN EXIT(2) ENDFILL> ++ guards;
+  body := @Make(T_Cond, < >, REVERSE(guards));
+  next := @Make(T_Number, Starting_Action, < >);
+  @Undo_Edit;
+  @Paste_Over(FILL Statement action := ~?next ENDFILL);
+  @Paste_After(FILL Statement DO DO ~?body OD OD ENDFILL);
+  @Right;
+  IF @Trans?(TR_Simplify_Item)
+    THEN @Trans(TR_Simplify_Item, "");
+	 @Trans(TR_Delete_All_Skips, "") FI ENDVAR ENDVAR .;
+
+
+
+C:" ------------------------------------------------------------------------ "

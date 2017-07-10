@@ -1,0 +1,472 @@
+Fix Assembler, Max_Passes = 35 call_budget = 4000
+Trial = 1
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 101 posn = ()
+Preserving actions: (dispatch)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 102 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+27 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 27 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 103 posn = (1)
+27 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+27 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: .......................
+Removing recursion in action LABA(17), dn = 27
+
+Finding elementary actions
+Removing elementary actions: _start_=28 
+
+Action system type is Reg
+3 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: .
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: 
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+
+REITERATING...
+Action system type is Reg
+Leave_Alone_Names = dispatch
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 104 posn = (1)
+Reading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 105 posn = ()
+Top_Level_Remove: (len_2 len_1)
+Constant_Propagation effort = 0 budget = 200
+Migration = 1
+Call Budget = 200
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXXXXXXX WDS2  WDS1 
+2 actions
+Calculating Succs and Preds... Done.
+.R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(1 1 2 38)
+/B<1>/B<1>
+
+Re-Scanning Action System, scan: 2
+.R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(1 1 2 38)
+/B<1>/B<1>
+Rebuilding the action system.
+There are 2 actions in the main system.
+ 
+Simplifying the result
+
+PASS 1
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 106 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+(dispatch) 
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 1 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 107 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 108 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS1 WDS2)
+..r....r.. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 109 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+1 actions
+Calculating Succs and Preds... Done.
+.c0c0
+
+Re-Scanning Action System, scan: 2
+.c0c0
+Rebuilding the action system.
+There are 1 actions in the main system.
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 110 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 111 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS1 WDS2)
+..r....r. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 112 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+ 
+Simplifying the result
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 113 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS1 WDS2)
+..r....r. 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 114 posn = ()
+Redundant variables are: (cc destination)
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 115 posn = ()
+.....XX....................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+.RP = (1 2 2 15 1 3) has n = 1
+.
+ 
+Testing transformation: Unfold Dynamic Calls
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 116 posn = ()
+
+PASS 2
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 117 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 118 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 119 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS1 WDS2)
+.r..r 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 120 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+ 
+Simplifying the result
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 121 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 122 posn = ()
+.........................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+..
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 123 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+ 
+Simplifying the result
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 124 posn = ()
+--- current equals old ---
+Trial = 6
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 125 posn = ()
+Preserving actions: (dispatch)
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 126 posn = ()
+
+PASS 3
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 127 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 128 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 129 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS1 WDS2)
+.r..r 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 130 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+ 
+Simplifying the result
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 131 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS1 WDS2)
+.r..r 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 132 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 133 posn = ()
+.........................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+..
+ 
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 134 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+ 
+Simplifying the result
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 135 posn = ()
+Actions to Procs...
++
+PASS 4
+
+Testing transformation: Find Dead Code
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 136 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 137 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 138 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS1 WDS2)
+.r..r 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 139 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+ 
+Simplifying the result
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 140 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 141 posn = ()
+.........................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Aligning nested IF statements 
+Joining cases in IF statements 
+Removing/Reducing superfluous loops
+.RP = (1 2 2 15 1 3) has n = 1
+.
+ 
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 142 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+DSECT_init(WDS1) = r5
+DSECT_init(WDS2) = r6
+Found (fairly) constant DSECT: WDS1 reg = r5 init count = 1
+Found (fairly) constant DSECT: WDS2 reg = r6 init count = 1
+XXXX WDS2  WDS1 
+ 
+Simplifying the result
+
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 143 posn = ()
+Actions to Procs...
++--- current equals old ---
+
+Final simplification...
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 144 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = (WDS1 WDS2)
+.r..r 
+Removing/Reducing superfluous loops
+.RP = (1 2 2 15 1 3) has n = 1
+.
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 145 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 146 posn = ()
+.........................................
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 147 posn = ()
+
+Transformation time: 13
+Transformation Count: 182
+Result is in: FMT001A6.ws4

@@ -1,0 +1,455 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" ----------------------------------------------------------------------- ";
+C:" Metric calculation functions:                                           ";
+C:"                                                                         ";
+C:"      @Stat_Types - returns the types of statements used.                ";
+C:"                                                                         ";
+C:"      @Total_Size - returns the total number of nodes.                   ";
+C:"                                                                         ";
+C:"      @Stat_Count - returns the number of statements.                    ";
+C:"                                                                         ";
+C:"  @Gen_Type_Count - Returns the number of times that a certain generic   ";
+C:"                    type appears.                                        ";
+C:"                                                                         ";
+C:" @Spec_Type_Count - returns the number of times that a certain specific  ";
+C:"                    type appears.                                        ";
+C:"                                                                         ";
+C:"          @McCabe - returns the McCabe cycolmatic complexity measure.    ";
+C:"                                                                         ";
+C:"       @Essential - returns the McCabe essential complexity measure      ";
+C:"                                                                         ";
+C:"     @CFDF_Metric - returns the control-flow / data-flow metric.         ";
+C:"                                                                         ";
+C:"       @BL_Metric - returns the branch-loop metric.                      ";
+C:"                                                                         ";
+C:"   @Struct_Metric - returns the structural complexity metric.            ";
+C:"                     -- a weighted sum over all nodes                    ";
+C:"                                                                         ";
+C:" ----------------------------------------------------------------------- ";
+
+Qry_Statements    := @Make_Name("Qry_Statements");
+Qry_Total_Size    := @Make_Name("Qry_Total_Size");
+Qry_Stat_Count    := @Make_Name("Qry_Stat_Count");
+Qry_Stat_Count_NC := @Make_Name("Qry_Stat_Count_NC");
+Qry_McCabe_Metric := @Make_Name("Qry_McCabe_Metric");
+Qry_CFDF_Metric   := @Make_Name("Qry_CFDF_Metric");
+Qry_BL_Metric     := @Make_Name("Qry_BL_Metric");
+Qry_Struct_Metric := @Make_Name("Qry_Struct_Metric");
+Qry_Spec_Types    := @Make_Name("Qry_Spec_Types");
+
+BUGFIX := "                                                             ";
+
+
+MW_FUNCT @Stat_Types(I) ==
+  VAR < Result := < > >:
+  IF @Has_Statements_Type?(@GT(I)) AND @Cs?(I)
+    THEN VAR < Prev := @Dtable_Get(I, Qry_Statements), Comps := @Cs(I) >:
+	   IF EMPTY?(Prev)
+	     THEN IF @GT(I) = T_Statement THEN Result := <@ST(I)> FI;
+		  Result := Result \/ REDUCE("\\/", MAP("@Stat_Types", Comps));
+		  @Dtable_Put(I, Qry_Statements, Result)
+	     ELSE Result := @Dtable_Value_Part(Prev)  FI ENDVAR
+    ELSE Result := IF @GT(I) = T_Statement THEN <@ST(I)> ELSE < > FI FI;
+  (Result) .;
+
+
+C:" Return the list of specific types found in the item: ";
+
+MW_FUNCT @Spec_Types(I) ==
+  VAR < R := < > >:
+  IF @Cs?(I)
+    THEN VAR < Prev := @Dtable_Get(I, Qry_Spec_Types) >:
+	 IF EMPTY?(Prev)
+	   THEN R := <@ST(I)> \/ REDUCE("\\/", MAP("@Spec_Types", @Cs(I)));
+		@Dtable_Put(I, Qry_Spec_Types, R)
+	   ELSE R := @Dtable_Value_Part(Prev) FI ENDVAR
+    ELSE R := <@ST(I)> FI;
+  (R) .;
+
+
+MW_FUNCT @Total_Size(I) ==
+  VAR < R := 1 >:
+  IF @Cs?(I)
+    THEN VAR < Prev := @Dtable_Get(I, Qry_Total_Size), Comps := @Cs(I) >:
+	   IF EMPTY?(Prev)
+	     THEN R := R + REDUCE("+", MAP("@Total_Size", Comps));
+		  @Dtable_Put(I, Qry_Total_Size, R)
+	     ELSE R := @Dtable_Value_Part(Prev)  FI ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @Stat_Count(I) ==
+  VAR < R := IF @GT(I) = T_Statement THEN 1 ELSE 0 FI >:
+    IF @Has_Statements_Type?(@GT(I)) AND @Cs?(I)
+      THEN VAR < Prev := @Dtable_Get(I, Qry_Stat_Count), Comps := @Cs(I) >:
+	     IF EMPTY?(Prev)
+	       THEN R := R + REDUCE("+", MAP("@Stat_Count", Comps));
+		    @Dtable_Put(I, Qry_Stat_Count, R)
+	       ELSE R := @Dtable_Value_Part(Prev) FI ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @Stat_Count_NC(I) ==
+  VAR < R := IF @GT(I) = T_Statement AND @ST(I) <> T_Comment THEN 1 ELSE 0 FI >:
+    IF @Has_Statements_Type?(@GT(I)) AND @Cs?(I)
+      THEN VAR < Prev := @Dtable_Get(I, Qry_Stat_Count_NC), Comps := @Cs(I) >:
+	     IF EMPTY?(Prev)
+	       THEN R := R + REDUCE("+", MAP("@Stat_Count_NC", Comps));
+		    @Dtable_Put(I, Qry_Stat_Count_NC, R)
+	       ELSE R := @Dtable_Value_Part(Prev) FI ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @Gen_Type_Count(Type, I) ==
+  VAR < R := IF @GT(I) = Type THEN 1 ELSE 0 FI >:
+  IF @Cs?(I)
+    THEN VAR < Comps := @Cs(I) >:
+	   WHILE NOT EMPTY?(Comps) DO
+	     R := R + @Gen_Type_Count(Type, HEAD(Comps));
+	     Comps := TAIL(Comps) OD ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @Spec_Type_Count(Type, I) ==
+  VAR < R := IF @ST(I) = Type THEN 1 ELSE 0 FI >:
+  IF @Cs?(I)
+    THEN VAR < Comps := @Cs(I) >:
+	   WHILE NOT EMPTY?(Comps) DO
+	     R := R + @Spec_Type_Count(Type, HEAD(Comps));
+	     Comps := TAIL(Comps) OD ENDVAR FI;
+  (R) .;
+
+
+
+C:" McCabe Cyclomatic Complexity ";
+C:" Measures the number of `basic paths' through the program: ";
+C:" this is the number of different paths which taken in combination ";
+C:" will generate all possible paths. ";
+C:" v(G) = edges - nodes + connected_components ";
+C:" In a strongly connected graph, v(G) is the maximum number ";
+C:" of linearly independent circuits. ";
+C:" To make the components of a cfg strongly connected we need to add ";
+C:" an extra edge from the exit node of each conmponent to the entry node. ";
+C:" This adds an extra edge per connected component. So, for a cfg we have: ";
+C:" v(G) = edges - nodes + 2 * connected_components ";
+C:" For a simple graph (one component) this is the number of predicates plus 1 ";
+C:" It is also equal to the number of separate regions in the flowgraph ";
+C:" For a complex graph, add the complexity of each component to get the total. ";
+
+C:" See mccabe.pdf ";
+C:" Each separate PROC, FUNCT or BFUNCT body is a separate component ";
+C:" as is the main program. ";
+
+MW_FUNCT @McCabe(I) == : SKIP;
+  (@McCabe_Sub(I) + 1) .;
+
+MW_FUNCT @McCabe_Sub(I) == 
+  VAR < R := 0 >:
+  IF @ST(I) = T_For
+    THEN R := 1 
+  ELSIF @ST(I) IN <T_Proc, T_Funct, T_BFunct, T_MW_Proc, T_MW_Funct, T_MW_BFunct>
+    THEN R := 1
+  ELSIF @ST(I) = T_D_If
+    THEN R := -1 FI;
+  IF @GT(I) = T_Condition
+    THEN IF @ST(I) = T_True OR @ST(I) = T_False
+           THEN R := 0
+	   ELSE R := 1 FI
+  ELSIF @GT(I) = T_Expression
+    THEN R := 0
+  ELSIF @ST(I) IN <T_Assert, T_Spec>
+    THEN R := 0
+  ELSIF @Cs?(I)
+    THEN VAR < Prev := @Dtable_Get(I, Qry_McCabe_Metric), Comps := @Cs(I) >:
+	   IF EMPTY?(Prev)
+	     THEN R := R + REDUCE("+", MAP("@McCabe_Sub", Comps));
+		  @Dtable_Put(I, Qry_McCabe_Metric, R)
+	     ELSE R := @Dtable_Value_Part(Prev)  FI ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @Essential(I) ==
+  VAR < block_file := "tmp_ess.bb", ess_file := "tmp_ess.ess", result := "tmp_ess.txt",
+        prefix := @String(@Random(Omega)), port := < >, line := "", p := 0,
+	R := 0 >:
+  C:" Add a random prefix to filenames to avoid race condition clashes: ";
+  block_file := prefix ++ "_" ++ block_file;
+  ess_file := prefix ++ "_" ++ ess_file;
+  result := prefix ++ "_" ++ result;
+  @Basic_Blocks(I, block_file);
+  !XP perlscript("bbtoess", block_file ++ " " ++ ess_file);
+  !XP perlscript("bbmccabe", ess_file ++ " " ++ result);
+  port := @Open_Input_File(result);
+  @Read_Line_Proc(VAR line, port);
+  @Close_Input_Port(port);
+  @Delete_File(block_file);
+  @Delete_File(ess_file);
+  @Delete_File(result);
+  IF SLENGTH(line) < 22
+    THEN ERROR("@Essential: failed: " ++ line) FI;
+  p := SLENGTH(line) - 1;
+  WHILE @Digit?(SUBSTR(line, p, 1)) DO
+    p := p - 1 OD;
+  R := @String_To_Num(SUBSTR(line, p + 1));
+  (R) .;
+
+
+MW_FUNCT @CFDF_Metric(I) ==
+  VAR < R := 0 >:
+  IF @ST(I) IN <T_Variable, T_Aref> OR @GT(I) = T_Lvalue
+    THEN R := 1
+  ELSIF @ST(I) IN <T_A_Proc_Call, T_MW_Proc_Call, T_X_Proc_Call, T_Call, T_Proc_Call>
+    THEN R := 1
+  ELSIF @Cs?(I)
+    THEN VAR < Prev := @Dtable_Get(I, Qry_CFDF_Metric), Comps := @Cs(I) >:
+	   IF EMPTY?(Prev)
+	     THEN R := REDUCE("+", MAP("@CFDF_Metric", Comps));
+		  @Dtable_Put(I, Qry_CFDF_Metric, R)
+	     ELSE R := @Dtable_Value_Part(Prev) FI ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @BL_Metric(I) ==
+  VAR < R := 0 >:
+  IF @ST(I) IN <T_Floop, T_While, T_For, T_D_Do>
+    THEN R := 1
+  ELSIF @ST(I) IN <T_A_Proc_Call, T_MW_Proc_Call, T_X_Proc_Call, T_Call, T_Proc_Call>
+    THEN R := 1
+  ELSIF @Cs?(I)
+    THEN VAR < Prev := @Dtable_Get(I, Qry_BL_Metric), Comps := @Cs(I) >:
+	   IF EMPTY?(Prev)
+	     THEN R := REDUCE("+", MAP("@BL_Metric", Comps));
+		  @Dtable_Put(I, Qry_BL_Metric, R)
+	     ELSE R := @Dtable_Value_Part(Prev) FI ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @Struct_Metric(I) ==
+  VAR < R := 0, Prev := @Dtable_Get(I, Qry_Struct_Metric) >:
+  IF EMPTY?(Prev)
+    THEN IF @ST(I) IN <T_Plus, T_Times, T_Variable, T_Var_Lvalue>
+	   THEN R := 1
+	 ELSIF @ST(I) IN <T_Minus, T_Divide, T_Exponent, T_Div, T_Mod,
+			  T_Abs, T_Sgn, T_Frac, T_Int, T_And, T_Or>
+	   THEN R := 2
+	 ELSIF @GT(I) = T_Expression
+	   THEN R := 4
+	 ELSIF @GT(I) = T_Assign
+	   THEN R := 4
+         ELSIF @ST(I) = T_Cond AND @Size(I^@Size(I)^2) = 1
+	                       AND @ST(I^@Size(I)^2^1) = T_Skip
+	   THEN R := 5 * (@Size(I) - 1)
+	 ELSIF @ST(I) IN <T_Cond, T_D_If, T_D_Do>
+	   THEN R := 5 * @Size(I)
+	 ELSIF @ST(I) = T_Call
+	   THEN R := 20
+	 ELSIF @ST(I) = T_A_Proc_Call
+	   THEN R := 17
+	 ELSIF @ST(I) = T_Proc_Call
+	   THEN R := 17
+	 ELSIF @ST(I) = T_Exit
+	   THEN R := (8 + @V(I)) * @V(I)
+	 ELSIF @ST(I) = T_Skip
+	   THEN R := 1
+	 ELSIF @ST(I) = T_Var
+	   THEN R := 8 + @Size(I^2)
+	 ELSIF @GT(I) = T_Statements AND @ST(I^@Size(I)) = T_Exit
+	   THEN R := @Size(I)
+	 ELSIF @GT(I) = T_Statement
+	   THEN R := 4 FI;
+	 IF @Cs?(I)
+	   THEN R := R + REDUCE("+", MAP("@Struct_Metric", @Components(I))) FI;
+	 @Dtable_Put(I, Qry_Struct_Metric, R)
+    ELSE R := @Dtable_Value_Part(Prev) FI;
+  (R) .;
+
+
+MW_FUNCT @If_Nest(I) == : SKIP ;
+  (IF NOT (@Has_Statements_Type?(@GT(I)) AND @Cs?(I))
+     THEN 0
+     ELSE IF (@ST(I) = T_Cond)
+	    THEN (1 + REDUCE ("MAX", MAP("@If_Nest", @Cs (I))))
+	    ELSE (0 + REDUCE ("MAX", MAP("@If_Nest", @Cs (I)))) FI FI) .;
+
+
+MW_FUNCT @Big_Proc(Data) ==
+  VAR < bignum := 0, bigname:="None" >:
+  WHILE @Up? DO @Up OD;
+    FOREACH Statement DO
+      IF @ST(@I) = T_Where
+	THEN @Down_To (2);@Down;
+	     DO IF @ST(@I) = T_Proc
+		  THEN Name:= @V(@I^1);
+		       IF @Stat_Count(@I) > bignum
+			 THEN bignum := @Stat_Count(@I); 
+			      bigname:= Name FI FI;
+		IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+  (<bignum, bigname>) .;
+
+
+C:" Calculate the effective size of a WHERE clause or action system ";
+C:" Depth-first search of the call graph, ignoring recursion. ";
+
+C:" Let M be the set of modules (actions or procs+functions). Then: ";
+C:" ES = ESM(root, M \ {root}) / #M ";
+C:" where ESM(x, M) (the effective size in modules) is defined: ";
+C:" ESM(x, M) = 1 + SUM_{y in M is called by x} ESM(y, M \ {y}) ";
+C:"               + #{y is not in M and is called by x} ";
+
+C:" (note that for a recursive call, we don't look any deeper) ";
+
+C:" The hash table call_graph contains the list of <call, freq> pairs ";
+C:" for each node, while the table effective_size records the ESM values ";
+C:" for each node as they are calculated (to avoid recalculating). ";
+
+MW_FUNCT @Effective_Size(I) ==
+  VAR < R := 0 >:
+  IF @ST(I) = T_A_S
+    THEN VAR < call_graph := HASH_TABLE,
+	       effective_size := HASH_TABLE,
+	       M := HASH_TABLE, Msize := 0, root := @V(I^1),
+	       actions := @Cs(I^2) >:
+	   C:" Build the action call graph: ";
+	   WHILE NOT EMPTY?(actions) DO
+	     M.(@V(HEAD(actions)^1)) := 1;
+	     Msize := Msize + 1;
+	     call_graph.(@V(HEAD(actions)^1)) := @Calls(HEAD(actions));
+	     actions := TAIL(actions) OD;
+	   IF Msize = 0
+	     THEN R := 0
+	     ELSE M.(root) := 0; R := @ESM(root) / Msize FI ENDVAR
+  ELSIF @ST(I) = T_Where
+    THEN VAR < call_graph := HASH_TABLE,
+	       effective_size := HASH_TABLE,
+	       M := HASH_TABLE, Msize := 1, root := "main",
+	       defns := @Cs(I^2) >:
+	   M.("main") := 1;
+	   call_graph.("main") := @Proc_Calls(I^1) ++ @Funct_Calls(I^1);
+	   C:" Build the proc/funct call graph: ";
+	   WHILE NOT EMPTY?(defns) DO
+	     M.(@V(HEAD(defns)^1)) := 1;
+	     Msize := Msize + 1;
+	     call_graph.(@V(HEAD(defns)^1)) := @Proc_Calls(HEAD(defns)^4)
+					       ++ @Funct_Calls(HEAD(defns)^4);
+	     defns := TAIL(defns) OD;
+	   M.(root) := 0; R := @ESM(root) / Msize ENDVAR
+    ELSE IF EMPTY?(<T_A_S, T_Where> /\ @Stat_Types(I))
+	   THEN R := 1
+	   ELSE C:" Count the total number of modules and the total ESM ";
+		C:" for all action systems and WHERE clauses ";
+		R := 0;
+		VAR < total := 0, size := 0 >:
+		  @Edit; @New_Program(I);
+		  FOREACH Statement DO
+		    IF @ST(@I) = T_A_S
+		      THEN size := @Size(@I^2);
+			   total := total + size;
+			   R := R + @Effective_Size(@I) * size
+		    ELSIF @ST(@I) = T_Where
+		      THEN size := @Size(@I^2);
+			   total := total + size;
+			   R := R + @Effective_Size(@I) * size FI OD;
+		  @Undo_Edit;
+		  IF total > 0 THEN R := R / total FI ENDVAR FI FI;
+  (R) .;
+
+
+MW_FUNCT @ESM(x) == 
+  VAR < R := effective_size.(x), y := < > >:
+  IF EMPTY?(R)
+    THEN VAR < pairs := call_graph.(x), y := < > >:
+	   R := 1;
+	   WHILE NOT EMPTY?(pairs) DO
+	     y := HEAD(HEAD(pairs));
+	     IF NOT EMPTY?(M.(y)) AND M.(y) = 1
+	       THEN M.(y) := 0; R := R + @ESM(y); M.(y) := 1
+	       ELSE R := R + 1 FI;
+	     pairs := TAIL(pairs) OD;
+	   effective_size.(x) := R ENDVAR FI;
+  (R) .;
+
+
+
+C:" Write an action or procedure call graph to the given file ";
+C:" Format is: ";
+C:" source: target1 n1 target2 n2 ... ";
+
+MW_PROC @Call_Graph(I, Filename) ==
+  VAR < port := < >,
+	main_list := MAP("@Make_Name", <"MAIN", "Main", "main">),
+	main := < >, calls := < >, n := 1, action := < >, defn := < > >:
+  IF Filename = ""
+    THEN port := Standard_Output_Port
+    ELSE port := @Open_Output_File(Filename) FI;
+  IF @ST(I) = T_A_S
+    THEN FOR action IN @Cs(I^2) DO
+	   @Write_CG_Line(@V(action^1), @Calls(action), port) OD
+  ELSIF @ST(@I) = T_Where
+    THEN calls := MAP("HEAD", @Proc_Calls(I^1)) \/ MAP("HEAD", @Funct_Calls(I^1));
+	 main_list := main_list \ calls;
+	 IF EMPTY?(main_list)
+	   THEN DO main := @Make_Name("main_" ++ @String(n));
+		   IF main NOTIN calls THEN EXIT(1) FI;
+		   n := n + 1 OD
+	   ELSE main := HEAD(main_list) FI;
+	 @Write_CG_Line(main, @Proc_Calls(I^1) ++ @Funct_Calls(I^1), port);
+	 FOR defn IN @Cs(I^2) DO
+	   @Write_CG_Line(@V(defn^1), @Proc_Calls(defn) ++ @Funct_Calls(defn), port) OD FI;
+  @Close_Output_Port(port) ENDVAR .;
+	 
+
+C:" Write a line to a call graph file: ";
+
+MW_PROC @Write_CG_Line(name, calls, port) ==
+  VAR < call := < > >:
+  @Write(@N_String(name), port); @Write(": ", port);
+  FOR call IN calls DO
+    @Write(@N_String(call[1]), port);
+    @Write(" ", port);
+    @Write(@String(call[2]), port);
+    @Write(" ", port) OD;
+  @Write_Line("", port) ENDVAR .;
+
+
+C:" Count the total number of assignment statements ";
+C:" and the number of assignments where the value assigned is a constant ";
+
+MW_FUNCT @Assignment_Stats(I) ==
+  VAR < total := 0, c1 := 0, c2 := 0, Constants := @Used(I) \ @Assigned(I),
+        Assigned := @Assigned(I) >:
+  @Edit;
+  @New_Program(I);
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+      THEN @Down; C:" to first assign ";
+           DO total := total + 1;
+	      IF SUBSET?(@Used(@I^2), Constants)
+	        THEN c1 := c1 + 1 FI;
+              IF EMPTY?(@Used(@I^2) /\ Assigned)
+	        THEN c2 := c2 + 1 FI;
+              IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+  @Undo_Edit;
+  (<c1, c2, total>) .;
+
+
+
+C:" ----------------------------------------------------------------------- "

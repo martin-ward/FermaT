@@ -1,0 +1,313 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Floop_To_While'",
+	    (FILL Statements 
+
+DO IF x <= 0 THEN EXIT(1) FI;
+   x := x - 1 OD
+
+            ENDFILL),
+	    <1>,
+	    TR_Floop_To_While,
+	    < >,
+	    (FILL Statements 
+
+WHILE x > 0 DO x := x - 1 OD
+
+            ENDFILL));
+
+
+
+@Test_Trans(" 2nd test of `Floop_To_While'",
+	    (FILL Statements 
+
+DO last := item[i];
+   i := i + 1;
+   IF i = n + 1 THEN EXIT(2) FI;
+   IF last <> item[i] THEN EXIT(1) FI;
+   line := line ++ ", " ++ number[i] OD
+
+            ENDFILL),
+	    <1>,
+	    TR_Floop_To_While,
+	    < >,
+	    (FILL Statements 
+
+last := item[i];
+i := i + 1;
+WHILE last = item[i] AND i <> n + 1 DO
+  line := line ++ ", " ++ number[i];
+  last := item[i];
+  i := i + 1 OD;
+IF i = n + 1 THEN EXIT(1) FI
+
+
+              ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Floop_To_While'",
+	    (FILL Statements 
+
+DO i := i + 1;
+   card := cards[i];
+   IF i >= n THEN EXIT(1) FI;
+   IF i = 1 OR card <> last
+     THEN IF sw1 = 1
+            THEN !P write(last[name], total VAR os) FI;
+          sw1 := 1;
+          last := item;
+          total := 0 FI;
+   total := total + card[number];
+   sw2 := 1 OD
+
+            ENDFILL),
+	    <1>,
+	    TR_Floop_To_While,
+	    < >,
+	    (FILL Statements 
+
+i := i + 1;
+card := cards[i];
+WHILE i < n DO
+  IF i = 1 OR card <> last
+    THEN IF sw1 = 1
+           THEN !P write(last[name], total VAR os) FI;
+         sw1 := 1;
+         last := item;
+         total := 0 FI;
+  total := total + card[number];
+  sw2 := 1;
+  i := i + 1;
+  card := cards[i] OD
+
+              ENDFILL));
+
+
+@Test_Trans(" 4th test of `Floop_To_While'",
+	    (FILL Statements
+
+DO i := i + 1;
+   card := cards[i];
+   IF i >= n THEN EXIT(1)
+   ELSIF i = 1 OR card <> last
+     THEN IF sw1 = 1
+            THEN !P write(last[name], total VAR os) FI;
+          sw1 := 1;
+          last := item;
+          total := 0
+   ELSIF foo = bar THEN baz := 1 FI;
+   total := total + card[number];
+   sw2 := 1 OD
+
+            ENDFILL),
+	    <1>,
+	    TR_Floop_To_While,
+	    < >,
+	    (FILL Statements
+
+i := i + 1;
+card := cards[i];
+WHILE i < n DO
+  IF i = 1 OR card <> last
+    THEN IF sw1 = 1
+           THEN !P write(last[name], total VAR os) FI;
+         sw1 := 1;
+         last := item;
+         total := 0
+  ELSIF foo = bar
+    THEN baz := 1 FI;
+  total := total + card[number];
+  sw2 := 1;
+  i := i + 1;
+  card := cards[i] OD
+
+
+              ENDFILL));
+
+
+@Test_Trans(" 5th test of `Floop_To_While'",
+	    (FILL Statements
+
+DO i := i + 1;
+   card := cards[i];
+   IF i = 1 OR card <> last
+     THEN IF sw1 = 1
+            THEN !P write(last[name], total VAR os) FI;
+          sw1 := 1;
+          last := item;
+          total := 0
+   ELSIF i >= n THEN EXIT(1)
+   ELSIF foo = bar THEN baz := 1 FI;
+   total := total + card[number];
+   sw2 := 1 OD
+
+            ENDFILL),
+	    <1>,
+	    TR_Floop_To_While,
+	    < >,
+	    (FILL Statements
+
+i := i + 1;
+card := cards[i];
+WHILE card <> last OR i = 1 OR i < n DO
+  IF i = 1 OR card <> last
+    THEN IF sw1 = 1
+           THEN !P write(last[name], total VAR os) FI;
+         sw1 := 1;
+         last := item;
+         total := 0
+  ELSIF foo = bar
+    THEN baz := 1 FI;
+  total := total + card[number];
+  sw2 := 1;
+  i := i + 1;
+  card := cards[i] OD
+
+              ENDFILL));
+
+
+@Test_Trans(" 6th test of `Floop_To_While'",
+	    (FILL Statements
+
+IF r5 = 0
+ THEN r9[4] := a[r1]
+ ELSE DO C:"*INSERT CHAR TO HOLD";
+         r9[4] := a[r1];
+         C:"*MOVE IT TO OUTPUT            P10479";
+         a[r6] := a[r1];
+         C:"*ADVANCE OUTPUT REG           P10479";
+         r6 := r6 + 1;
+         C:"*BUMP DRAG REG";
+         r1 := r1 + 1;
+         C:"P10479";
+         r5 := r5 - 1;
+         IF r5 = 0 THEN EXIT(1) FI OD;
+      TSTCOMPX() FI
+
+            ENDFILL),
+	    <1,2,2,1>,
+	    TR_Floop_To_While,
+	    < >,
+	    (FILL Statements
+
+IF r5 = 0
+  THEN r9[4] := a[r1]
+  ELSE WHILE r5 <> 0 DO
+         C:"*INSERT CHAR TO HOLD";
+         r9[4] := a[r1];
+         C:"*MOVE IT TO OUTPUT            P10479";
+         a[r6] := a[r1];
+         C:"*ADVANCE OUTPUT REG           P10479";
+         r6 := r6 + 1;
+         C:"*BUMP DRAG REG";
+         r1 := r1 + 1;
+         C:"P10479";
+         r5 := r5 - 1 OD;
+       TSTCOMPX() FI
+
+              ENDFILL));
+
+
+
+@Test_Trans(" 7th test of `Floop_To_While'",
+	    (FILL Statements
+
+DO !P FOO( VAR GN, r3, MROOT, SSA1, regs, os);
+   IF BB <> a[r3 + 10, 2] AND GB = a[r3 + 10, 2]
+     THEN PRO040();
+          IF exit_flag = 1 THEN EXIT(1) FI
+   ELSIF BB = a[r3 + 10, 2]
+     THEN DO IF MROOT.MRPOLICY < RECREJ.POLREJ
+               THEN EXIT(2)
+             ELSIF MROOT.MRPOLICY = RECREJ.POLREJ
+               THEN EXIT(1)
+               ELSE !P GET_FIXED(DPBBIN
+                      VAR RECREJ, r0, r1, result_code, os);
+                    IF !XC end_of_file(DPBBIN)
+                      THEN !P fill(!XF mvi("hex 0xFF") VAR RECREJ.POLREJ);
+                           EXIT(2) FI;
+                    C:"PB213" FI OD
+     ELSE !P ABEND(2000 VAR r0, r1, r15, os);
+          exit_flag := 1;
+          EXIT(2) FI OD
+
+            ENDFILL),
+	    <1>,
+	    TR_Floop_To_While,
+	    < >,
+	    (FILL Statements
+
+fl_flag1 := 0;
+WHILE fl_flag1 = 0 DO
+  !P FOO( VAR GN, r3, MROOT, SSA1, regs, os);
+  IF BB <> a[r3 + 10, 2] AND GB = a[r3 + 10, 2]
+    THEN PRO040();
+         IF exit_flag = 1
+           THEN fl_flag1 := 1
+           ELSE fl_flag1 := 0 FI
+  ELSIF BB = a[r3 + 10, 2]
+    THEN DO IF MROOT.MRPOLICY < RECREJ.POLREJ
+              THEN fl_flag1 := 1; EXIT(1)
+            ELSIF MROOT.MRPOLICY = RECREJ.POLREJ
+              THEN fl_flag1 := 0; EXIT(1)
+              ELSE !P GET_FIXED(DPBBIN
+                     VAR RECREJ, r0, r1, result_code, os);
+                   IF !XC end_of_file(DPBBIN)
+                     THEN !P fill(!XF mvi("hex 0xFF") VAR RECREJ.POLREJ);
+                          fl_flag1 := 1;
+                          EXIT(1) FI;
+                   C:"PB213" FI OD
+    ELSE !P ABEND(2000 VAR r0, r1, r15, os);
+         exit_flag := 1;
+         fl_flag1 := 2 FI OD;
+IF fl_flag1 = 2 THEN EXIT(1) FI
+
+
+              ENDFILL));
+
+
+@Test_Trans(" 8th test of `Floop_To_While'",
+	    (FILL Statements
+
+IF last = item[i] AND i <> (n + 1)
+  THEN DO line := line ++ ", " ++ number[i];
+          last := item[i];
+          i := (i + 1);
+          IF last <> item[i] OR i = (n + 1)
+            THEN EXIT(1) FI OD FI
+
+            ENDFILL),
+	    <1, 1, 2, 1>,
+	    TR_Floop_To_While,
+	    < >,
+	    (FILL Statements
+
+WHILE last = item[i] AND i <> n + 1 DO
+  line := line ++ ", " ++ number[i];
+  last := item[i];
+  i := i + 1 OD
+
+              ENDFILL));
+
+
+
+SKIP
+

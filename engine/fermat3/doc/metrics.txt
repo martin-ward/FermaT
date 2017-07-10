@@ -1,0 +1,40 @@
+
+METRICS
+
+
+Statements: total number of statements (including compound statements)
+
+Expressions: total number of expressions (including compound expressions)
+
+(these two actually count the number of nodes in the parse tree).
+
+
+
+McCabe Cyclomatic Complexity Metric (v(G)) 
+
+Cyclomatic Complexity (v(G)) is a measure of the complexity
+of a module's decision structure.  It is the number of linearly
+independent paths and therefore, the minimum number of paths
+that should be tested.
+
+
+CFDF:  total number of variable accesses and updates plus proc
+calls and branches
+
+
+Branch-Loop: total number of loops (DO...OD, WHILE and FOR loops)
+plus proc calls and branches.
+
+
+Structural: a "weighted sum" over the parse tree:
+* Plus and times nodes have weight=1
+* Minus, divide, exponent, DIV, MOD, ABS, SGN, FRAC, INT, AND and OR
+have weight=2
+* All other expression nodes have weight=4
+* IF statements have weight=5*number-of-arms
+* Action calls (GOTOs) have weight=10
+* EXIT(n) has weight=5*n
+* All other statements have weight=5
+
+
+

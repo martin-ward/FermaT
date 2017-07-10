@@ -1,0 +1,20 @@
+C:" A sample wsl file. Type: ";
+C:" wsl sample_code.wsl ";
+C:" to execute this file. ";
+PRINT("Hello World!");
+x := 10;
+WHILE x > 0 DO
+  PRINT("x = ", x);
+  x := 1 + x - 2 OD;
+PRINT("Goodbye World!");
+
+@New_Program(@Parse_File("test-1.wsl", T_Statements));
+@Find_Type(T_Cond);
+IF @Trans?(TR_Simplify)
+  THEN @Trans(TR_Simplify, "");
+       @PP_Item(@Program, 80, "test-2.wsl")
+  ELSE PRINT("Transformation not applicable: ", @Fail_Message) FI; 
+
+
+SKIP
+

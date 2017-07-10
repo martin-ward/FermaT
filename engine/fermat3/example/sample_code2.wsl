@@ -1,0 +1,18 @@
+C:" A sample wsl file. Type: ";
+C:" wsl sample_code.wsl ";
+C:" to execute this file. ";
+
+
+@New_Program(@Parse_File("test-1.wsl", T_Statements));
+
+PRINT("Parse tree:");
+@Print_WSL(@Program, "");
+
+PRINT("");
+
+PRINT("Pretty printed:");
+@PP_Item(@Program, 80, "");
+
+
+SKIP
+

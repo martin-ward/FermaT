@@ -1,0 +1,221 @@
+
+C:" Debugging versions of the basic ADT functions. ";
+
+C:" The structure of a WSL item is either: ";
+C:" CONS(dtable, CONS(spec_type, value)) OR: ";
+C:" CONS(dtable, CONS(spec_type, component_list)) ";
+
+
+
+C:" These definitions assume that we ONLY call @V() on an item which is known ";
+C:" to have a value: ";
+
+MW_FUNCT @V(I) == :
+  @Check_Item("@V", I);
+  IF @Has_Comps_Type?(HEAD(TAIL(I)))
+    THEN ERROR("@V called on an item type which has no value: ", HEAD(TAIL(I))) FI;
+  (TAIL(TAIL(I))) .;
+
+MW_FUNCT @Cs(I) == :
+  @Check_Item("@Cs", I);
+  IF @Has_Value_Type?(HEAD(TAIL(I)))
+    THEN ERROR("@Cs called on an item type which has a value: ", HEAD(TAIL(I))) FI;
+  (TAIL(TAIL(I))) .;
+
+
+C:" These definitions are more relaxed and allow the functions to be applied ";
+C:" to any type of item: ";
+
+MW_FUNCT @Value(I) == :
+  @Check_Item("@V", I);
+  (IF @Has_Comps_Type?(HEAD(TAIL(I)))
+    THEN < >
+    ELSE TAIL(TAIL(I)) FI) .;
+
+MW_FUNCT @Components(I) == :
+  @Check_Item("@Cs", I);
+  (IF @Has_Comps_Type?(HEAD(TAIL(I)))
+     THEN TAIL(TAIL(I))
+     ELSE < > FI) .;
+
+
+MW_BFUNCT @Components?(I) == : SKIP; (NOT EMPTY?(@Components(I))) .;
+
+MW_BFUNCT @Cs?(I) == : SKIP; (NOT EMPTY?(@Components(I))) .;
+
+
+MW_FUNCT @Spec_Type(I) == : SKIP; (@ST(I)) .;
+
+MW_FUNCT @ST(I) == :
+  @Check_Item("@ST", I);
+  (HEAD(TAIL(I))) .;
+
+
+
+Spec_To_Gen_Type := ARRAY(999, 0);
+FOR i := 1 TO 999 STEP 1 DO
+  Spec_To_Gen_Type[i] := IF i < 100 THEN i ELSE i DIV 100 FI OD;
+
+MW_FUNCT @Gen_Type(I) == :
+  @Check_Item("@Gen_Type", I);
+  (Spec_To_Gen_Type[HEAD(TAIL(I))]) .;
+
+MW_FUNCT @GT(I) == :
+  @Check_Item("@Gen_Type", I);
+  (Spec_To_Gen_Type[HEAD(TAIL(I))]) .;
+
+
+
+MW_FUNCT @Size(I) == :
+  @Check_Item("@Size", I);
+  (IF @Has_Comps_Type?(HEAD(TAIL(I)))
+    THEN LENGTH(I) - 2
+    ELSE 0 FI) .;
+
+
+C:" @Get_n is now a macro which checks for small integer constant n ";
+
+MW_FUNCT @Get_L(I, n, m) == :
+  @Check_Item("@Get_L", I);
+  IF @Has_Value_Type?(HEAD(TAIL(I)))
+    THEN ERROR("@Get_L called on an item type which a value.") FI;
+  (!XF firstn(m - n + 1, !XF nthcdr(n + 1, I))) .;
+
+MW_FUNCT @Get(I, posn) == :
+  @Check_Item("@Get", I);
+  (IF EMPTY?(posn) THEN I
+		   ELSE @Get(I^HEAD(posn), TAIL(posn)) FI) .;
+
+
+MW_FUNCT @Make(ST, value, comps) == :
+  IF NOT NUMBER?(ST)
+    THEN ERROR("@Make called with non-numeric ST.") FI;
+  IF NOT EMPTY?(value) AND NOT EMPTY?(comps)
+    THEN ERROR("@Make called with both value and comps.") FI;
+  IF NOT EMPTY?(value) AND @Has_Comps_Type?(ST)
+    THEN ERROR("@Make called with value on a comps type.") FI;
+  IF NOT EMPTY?(comps) AND @Has_Value_Type?(ST)
+    THEN ERROR("@Make called with comps on a value type.") FI;
+  IF NOT EMPTY?(comps)
+    THEN C:" Check that the supplied components have the right types. ";
+	 C:" If there are fewer than expected components, then don't check ";
+	 C:" (this happens inside a FOREACH and is fixed later) ";
+	 VAR < C := comps, S := @Syntax(ST),
+	       L := IF @List_Type?(ST) THEN 1 ELSE 0 FI >:
+	   IF L = 0 AND LENGTH(C) < LENGTH(S)
+	     THEN C := < >
+	   ELSIF L = 0 AND LENGTH(C) > LENGTH(S)
+	     THEN ERROR("@Make called with too many components.") FI;
+	   WHILE NOT EMPTY?(C) DO
+	     IF EMPTY?(HEAD(C))
+	       THEN ERROR("@Make called with empty component.") FI;
+	     IF @GT(HEAD(C)) <> HEAD(S)
+	       THEN PRINT("C = ", @GT(HEAD(C)), " S = ", HEAD(S));
+                    @Print_WSL(HEAD(C), "");
+	            ERROR("@Make called with component of wrong type.") FI;
+	     C := TAIL(C);
+	     IF L = 0 THEN S := TAIL(S) FI OD ENDVAR FI;
+  (IF EMPTY?(value)
+     THEN << >> ++ <ST> ++ comps
+     ELSE << >> ++ <ST> ++ value FI) .;
+
+
+
+C:" Check that I (which was passed as an argument to the function funct) ";
+C:" is a valid item: ";
+
+MW_PROC @Check_Item(funct, I) ==
+  IF EMPTY?(I)
+    THEN ERROR(funct ++ " called on an empty list.")
+  ELSIF NOT SEQUENCE?(HEAD(I))
+    THEN ERROR(funct ++ " called on something with an invalid dbase.")
+  ELSIF EMPTY?(TAIL(I))
+    THEN ERROR(funct ++ " called on a singleton list.")
+  ELSIF NOT NUMBER?(HEAD(TAIL(I)))
+    THEN ERROR(funct ++ " called on something with a bad spec type.") FI .;
+
+
+
+C:" Routines for handling sets as sorted lists, using @Gen_Less? for comparisons. ";
+
+
+MW_PROC @Set_Check(a) ==
+  IF NOT EMPTY?(a) AND NOT EMPTY?(TAIL(a))
+    THEN IF @Gen_Less?(HEAD(TAIL(a)), HEAD(a))
+	   THEN ERROR("Non-sorted set found:", a) FI;
+	 @Set_Check(TAIL(a)) FI .;
+
+
+MW_FUNCT @Set_Union(a, b) == : SKIP; @Set_Check(a); @Set_Check(b);
+  (IF EMPTY?(a)
+     THEN b
+   ELSE IF EMPTY?(b)
+     THEN a
+   ELSE IF HEAD(a) = HEAD(b)
+     THEN <HEAD(a)> ++ @Set_Union(TAIL(a), TAIL(b))
+   ELSE IF @Gen_Less?(HEAD(a), HEAD(b))
+     THEN <HEAD(a)> ++ @Set_Union(TAIL(a), b)
+     ELSE <HEAD(b)> ++ @Set_Union(a, TAIL(b)) FI FI FI FI) .;
+
+
+MW_FUNCT @Set_Intersect(a, b) == : SKIP; @Set_Check(a); @Set_Check(b);
+  (IF EMPTY?(a) OR EMPTY?(b)
+     THEN < >
+   ELSE IF HEAD(a) = HEAD(b)
+     THEN <HEAD(a)> ++ @Set_Intersect(TAIL(a), TAIL(b))
+   ELSE IF @Gen_Less?(HEAD(a), HEAD(b))
+     THEN @Set_Intersect(TAIL(a), b)
+     ELSE @Set_Intersect(a, TAIL(b)) FI FI FI) .;
+
+
+MW_FUNCT @Set_Difference(a, b) == : SKIP; @Set_Check(a); @Set_Check(b);
+  (IF EMPTY?(a)
+     THEN < >
+   ELSE IF EMPTY?(b)
+     THEN a
+   ELSE IF HEAD(a) = HEAD(b)
+     THEN @Set_Difference(TAIL(a), TAIL(b))
+   ELSE IF @Gen_Less?(HEAD(a), HEAD(b))
+     THEN <HEAD(a)> ++ @Set_Difference(TAIL(a), b)
+     ELSE @Set_Difference(a, TAIL(b)) FI FI FI FI) .;
+
+
+MW_BFUNCT @Set_Subset?(a, b) == : SKIP; @Set_Check(a); @Set_Check(b);
+  (EMPTY?(a)
+    OR NOT EMPTY?(b)
+	 AND ((HEAD(a) = HEAD(b) AND @Set_Subset?(TAIL(a), TAIL(b)))
+		OR (@Gen_Less?(HEAD(b), HEAD(a))
+		     AND @Set_Subset?(a, TAIL(b))))) .;
+
+
+C:" Sort a list of elements (maybe with duplicates) and return a set: ";
+
+MW_FUNCT @Make_Set(L) ==
+  VAR < R := < >, len := LENGTH(L) >:
+  IF len <= 1
+    THEN R := L
+  ELSIF len = 2
+    THEN IF HEAD(L) = HEAD(TAIL(L))
+	   THEN R := <HEAD(L)>
+	 ELSIF @Gen_Less?(HEAD(L), HEAD(TAIL(L)))
+	   THEN R := L
+	   ELSE R := <HEAD(TAIL(L)), HEAD(L)> FI
+    ELSE VAR < mid := len DIV 2 >:
+	 R := @Set_Union(@Make_Set(L[1..mid]), @Make_Set(L[mid+1..])) ENDVAR FI;
+  (R) .;
+
+
+C:" An efficient way to form the union or intersection of a list of sets ";
+C:" is to pick the two smallest sets in the list and process those, ";
+C:" returning the result to the list. Repeat until only one set remains. ";
+C:" I think that this can be done efficiently using a heap structure. ";
+C:" Such a function can be used to optimise REDUCE(\/, ...) ";
+C:" and REDUCE(/\, ...) functions. ";
+
+
+
+
+
+
+
+C:" ============================================================================== "

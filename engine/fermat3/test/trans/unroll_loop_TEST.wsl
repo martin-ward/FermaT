@@ -1,0 +1,214 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Unroll_Loop'",
+	    (FILL Statements WHILE x > 0 DO x := x - 1 OD ENDFILL),
+	    <1>,
+	    TR_Unroll_Loop,
+	    < >,
+	    (FILL Statements IF x > 0
+	                       THEN x := x - 1;
+			       WHILE x > 0 DO x := x - 1 OD FI ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Unroll_Loop'",
+	    (FILL Statements
+
+DO IF card <> last OR i = 1
+     THEN IF sw1 = 1 THEN PRINT(last[name], total) FI;
+          sw1 := 1;
+          last := item;
+          total := 0 FI;
+   total := card[number] + total;
+   i := i + 1;
+   card := cards[i];
+   IF i >= n THEN EXIT(1) FI OD
+
+             ENDFILL),
+	    <1>,
+	    TR_Unroll_Loop,
+	    < >,
+	    (FILL Statements
+
+IF card <> last OR i = 1
+  THEN IF sw1 = 1 THEN PRINT(last[name], total) FI;
+       sw1 := 1;
+       last := item;
+       total := 0 FI;
+total := card[number] + total;
+i := i + 1;
+card := cards[i];
+IF i >= n
+  THEN SKIP
+  ELSE DO IF card <> last OR i = 1
+            THEN IF sw1 = 1 THEN PRINT(last[name], total) FI;
+                 sw1 := 1;
+                 last := item;
+                 total := 0 FI;
+          total := card[number] + total;
+          i := i + 1;
+          card := cards[i];
+          IF i >= n THEN EXIT(1) FI OD FI
+
+             ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Unroll_Loop'",
+	    (FILL Statements
+
+DO IF card <> last OR i = 1
+     THEN IF sw1 = 1 THEN PRINT(last[name], total); EXIT(2) FI;
+          sw1 := 1;
+          last := item;
+          total := 0 FI;
+   total := card[number] + total;
+   i := i + 1;
+   card := cards[i];
+   IF i >= n THEN EXIT(1) FI OD
+
+             ENDFILL),
+	    <1>,
+	    TR_Unroll_Loop,
+	    < >,
+	    (FILL Statements
+
+IF card <> last OR i = 1
+  THEN IF sw1 = 1
+         THEN PRINT(last[name], total); EXIT(1) FI;
+       sw1 := 1;
+       last := item;
+       total := 0 FI;
+total := card[number] + total;
+i := i + 1;
+card := cards[i];
+IF i >= n
+  THEN SKIP
+  ELSE DO IF card <> last OR i = 1
+            THEN IF sw1 = 1
+                   THEN PRINT(last[name], total); EXIT(2) FI;
+                 sw1 := 1;
+                 last := item;
+                 total := 0 FI;
+          total := card[number] + total;
+          i := i + 1;
+          card := cards[i];
+          IF i >= n THEN EXIT(1) FI OD FI
+
+             ENDFILL));
+
+
+@Test_Trans(" 4th test of `Unroll_Loop'",
+	    (FILL Statements
+
+DO IF card <> last OR i = 1
+     THEN IF sw1 = 1 THEN PRINT(last[name], total); EXIT(1) FI;
+          sw1 := 1;
+          last := item;
+          total := 0 FI;
+   total := card[number] + total;
+   i := i + 1;
+   card := cards[i];
+   IF i >= n THEN EXIT(1) FI OD
+
+             ENDFILL),
+	    <1>,
+	    TR_Unroll_Loop,
+	    < >,
+	    (FILL Statements
+BEGIN
+  IF (card <> last OR i = 1) AND sw1 = 1
+    THEN PRINT(last[name], total); SKIP
+    ELSE IF card <> last OR i = 1
+           THEN sw1 := 1; last := item; total := 0; p_1()
+           ELSE p_1() FI;
+         IF i >= n
+           THEN SKIP
+           ELSE DO IF card <> last OR i = 1
+                     THEN IF sw1 = 1
+ THEN PRINT(last[name], total); EXIT(1) FI;
+                          sw1 := 1;
+                          last := item;
+                          total := 0 FI;
+                   total := card[number] + total;
+                   i := i + 1;
+                   card := cards[i];
+                   IF i >= n THEN EXIT(1) FI OD FI FI
+WHERE
+  PROC p_1() ==
+    total := card[number] + total;
+    i := i + 1;
+    card := cards[i] END
+END
+
+             ENDFILL));
+
+
+@Test_Trans(" 5th test of `Unroll_Loop'",
+	    (FILL Statements
+
+DO IF x = 1 THEN EXIT(3) FI;
+   IF x = 2 THEN EXIT(2) FI;
+   IF x = 3 THEN EXIT(1) FI;
+   x := x - y OD
+
+             ENDFILL),
+	    <1>,
+	    TR_Unroll_Loop,
+	    < >,
+	    (FILL Statements
+
+IF x = 1 THEN EXIT(2) FI;
+IF x = 2 THEN EXIT(1) FI;
+IF x = 3
+  THEN SKIP
+  ELSE x := x - y;
+       DO IF x = 1 THEN EXIT(3) FI;
+          IF x = 2 THEN EXIT(2) FI;
+          IF x = 3 THEN EXIT(1) FI;
+          x := x - y OD FI
+
+             ENDFILL));
+
+
+@Test_Trans(" 6th test of `Unroll_Loop'",
+	    (FILL Statements
+
+DO IF x = 0 
+     THEN EXIT(1)
+     ELSE x := x - 1 FI OD
+
+             ENDFILL),
+	    <1>,
+	    TR_Unroll_Loop,
+	    < >,
+	    (FILL Statements
+
+IF x = 0
+  THEN SKIP
+  ELSE x := x - 1;
+       DO IF x = 0 THEN EXIT(1) ELSE x := x - 1 FI OD
+FI
+
+             ENDFILL));
+
+
+
+SKIP
+

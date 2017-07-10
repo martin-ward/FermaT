@@ -1,0 +1,368 @@
+
+VAR < file := "007-invert: ", fail := < >, n := "",
+      x := @Make(T_Variable, @Make_Name("x"), < >), v := @Make_Name("v") >:
+
+PRINT("Testing ...");
+
+
+n := "001";
+IF @Equal?(@Invert(x, v, FILL Expression v + 1 ENDFILL),
+			 FILL Expression x - 1 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "002";
+IF @Equal?(@Invert(x, v, FILL Expression 1 + v ENDFILL),
+			 FILL Expression x - 1 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "003";
+IF @Equal?(@Invert(x, v, FILL Expression v - 1 ENDFILL),
+			 FILL Expression x + 1 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "004";
+IF @Equal?(@Invert(x, v, FILL Expression 1 - v ENDFILL),
+			 FILL Expression 1 - x ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "005";
+IF @Equal?(@Invert(x, v, FILL Expression v - a - b - c ENDFILL),
+			 FILL Expression x + a + b + c ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "006";
+IF @Equal?(@Invert(x, v, FILL Expression a - b - v - c ENDFILL),
+			 FILL Expression a - x - b - c ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "007";
+IF @Equal?(@Invert(x, v, FILL Expression a + b + v + c ENDFILL),
+			 FILL Expression x - a - b - c ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "008";
+IF @Equal?(@Invert(x, v, FILL Expression 2 * v ENDFILL),
+			 FILL Expression x / 2 ENDFILL)
+ THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "009";
+IF @Equal?(@Invert(x, v, FILL Expression v * a * b ENDFILL),
+			 FILL Expression x / a / b ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "010";
+IF @Equal?(@Invert(x, v, FILL Expression v / a / b ENDFILL),
+			 FILL Expression x * a * b ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "011";
+IF @Equal?(@Invert(x, v, FILL Expression a / v / b / c ENDFILL),
+			 FILL Expression a / x / b / c ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "012";
+IF @Equal?(@Invert(x, v, FILL Expression 2 * v + 1 ENDFILL),
+			 FILL Expression (x - 1) / 2 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "013";
+IF @Equal?(@Invert(x, v, FILL Expression a + 2 * (v + b) + c ENDFILL),
+			 FILL Expression (x - a - c) / 2 - b ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "014";
+IF @Equal?(@Invert(x, v, FILL Expression -v ENDFILL),
+			 FILL Expression -x ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "015";
+IF @Equal?(@Invert(x, v, FILL Expression 1/v ENDFILL),
+			 FILL Expression 1/x ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "016";
+IF @Equal?(@Invert(x, v, FILL Expression 1 / (1 - 1 / (1 - v)) ENDFILL),
+			 FILL Expression 1 - 1 / (1 - 1 / x) ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "017";
+IF @Equal?(@Invert(x, v, FILL Expression 1 / (v * 2 + 1) ENDFILL),
+			 FILL Expression (1 / x - 1) / 2 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "018";
+IF @Equal?(@Invert(x, v, FILL Expression 1 - v * 2 ENDFILL),
+			 FILL Expression (1 - x) / 2 ENDFILL)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "019";
+IF EMPTY?(@Invert(x, v, FILL Expression a + b ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "020";
+IF EMPTY?(@Invert(x, v, FILL Expression v + 2 * v ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "021";
+IF EMPTY?(@Invert(x, v, FILL Expression v + v ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "022";
+IF EMPTY?(@Invert(x, v, FILL Expression v * 1/v ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "023";
+IF EMPTY?(@Invert(x, v, FILL Expression 1 ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "024";
+IF EMPTY?(@Invert(x, v, FILL Expression 1 ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "025";
+IF EMPTY?(@Invert(x, v, FILL Expression 1 ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "026";
+IF EMPTY?(@Invert(x, v, FILL Expression 1 ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+IF FALSE THEN
+
+n := "027";
+IF EMPTY?(@Invert(x, v, FILL Expression 1 ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "028";
+IF EMPTY?(@Invert(x, v, FILL Expression 1 ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "029";
+IF EMPTY?(@Invert(x, v, FILL Expression 1 ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "030";
+IF EMPTY?(@Invert(x, v, FILL Expression 1 ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "031";
+IF EMPTY?(@Invert(x, v, FILL Expression 1 ENDFILL))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "032";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "033";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "034";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "035";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "036";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "037";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "038";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "039";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "040";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "041";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "042";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "043";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "044";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "045";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "046";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "047";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "048";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "049";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "050";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "051";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "052";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "053";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "054";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "055";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "056";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "057";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "058";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "059";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "060";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+SKIP FI;
+
+
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+

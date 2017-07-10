@@ -1,0 +1,1747 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C: " ----------------------------------------------------------------------- ";
+C: " First some definitions of Lisp-like functions                           ";
+C: " ----------------------------------------------------------------------- ";
+
+
+C:" Check if the first list of names is a prefix of the second ";
+
+MW_BFUNCT @Prefix?(A, B) == :
+  SKIP;
+  (EMPTY?(A) OR
+     (NOT EMPTY?(B) AND !XC eq?(HEAD(A), HEAD(B)) AND @Prefix?(TAIL(A), TAIL(B)))) .;
+
+C:" Check if any prefix of the element is in the given list ";
+
+MW_BFUNCT @Any_Prefix_In?(elt, L) == :
+  SKIP;
+  (NOT EMPTY?(L) AND
+     (@Prefix?(HEAD(L), elt) OR @Any_Prefix_In?(elt, TAIL(L)))) .;
+
+
+C: " ----------------------------------------------------------------------- ";
+C: " Now some functions which allow regression testing.                      ";
+C: " ----------------------------------------------------------------------- ";
+
+
+MW_PROC @Test_Trans(Text, Before, Position, TR_Num, Data, After) ==
+  @New_Program(Before);
+  @Clear_State;
+  @Goto(Position);
+  IF @Trans?(TR_Num)
+    THEN @Trans(TR_Num, Data);
+	 IF After = "Fail"
+	   THEN PRINT("----------------------------------------------");
+		PRINT(Text, " was NOT supposed to be valid !!!");
+		PRINT(" ");
+		PRINT("Initial program...");
+		@PP_Item(Before, 80, "");
+		PRINT(" ");
+		PRINT("Final program...");
+		@PP_Item(@Program, 80, "");
+		PRINT(" ");
+		PRINT("Point of transformation application...", Position);
+		PRINT("----------------------------------------------");
+		PRINT(" ")
+	 ELSIF @Equal?(@Program, After)
+	   THEN PRINT(Text, " was OK.")
+	   ELSE PRINT("----------------------------------------------");
+		PRINT(Text, " FAILED !!!");
+		PRINT(" ");
+		PRINT("Initial program...");
+		@PP_Item(Before, 80, "");
+		PRINT(" ");
+		PRINT("Point of transformation application... ", Position);
+		PRINT("Transformation number...               ", TR_Num);
+		PRINT("User-supplied data...                  ", Data);
+		PRINT(" ");
+		PRINT("Final program should have been...");
+		@PP_Item(After, 80, "");
+		PRINT(" ");
+		PRINT("Final program actually was...");
+		@PP_Item(@Program, 80, "");
+		PRINT("----------------------------------------------");
+		PRINT(" ") FI
+    ELSE IF After = "Fail"
+	   THEN PRINT(Text, " was OK.")
+	   ELSE PRINT("----------------------------------------------");
+		PRINT(Text, " WAS supposed to be valid, but the test failed !!!");
+		PRINT("Message: ", @Fail_Message());
+		PRINT(" ");
+		PRINT("Initial program...");
+		@PP_Item(@Program, 80, "");
+		PRINT(" ");
+		PRINT("Final program should have been...");
+		@PP_Item(After, 80, "");
+		PRINT(" ");
+		PRINT("Point of transformation application...", Position);
+		PRINT("----------------------------------------------");
+		PRINT(" ") FI FI .;
+
+
+
+C: " ----------------------------------------------------------------------- ";
+C: " The following functions are used to generate random programs and to     ";
+C: " apply random transformations to them at random positions.               ";
+C: " ----------------------------------------------------------------------- ";
+
+
+MW_PROC @RP_Trans () ==
+   VAR <D := @Random(6), Temp := 0> :
+       @New_Program(@RP_Item(T_Statements, 5, 0));
+       @Clear_State;
+       FOR I := 1 TO 5 STEP 1 DO
+	   @Goto (< >);
+	   WHILE (D > 1) AND @Down? DO
+		 Temp := @Random(@Size(@Item));
+		 @Down_To(Temp);
+		 D := D - 1 OD;
+	   Temp := @What_Trans(< >);
+	   Temp := Temp[@Random(LENGTH(Temp))];
+	   PRINT(I);
+	   PRINT("      Position :  ", @Posn);
+	   PRINT("Transformation :  ", TRs_Name[Temp]);
+	   PRINT("   Size Before :  ", @Total_Size(@Program));
+	   @Trans(Temp, "");
+	   PRINT("    Size After :  ", @Total_Size(@Program));
+	   IF NOT @Syntax_OK?(@Program)
+	      THEN PRINT("");
+		   PRINT("Syntax Failed !!");
+		   PRINT("");
+		   @Undo;
+		   PRINT(@Program) FI OD;
+       PRINT("") ENDVAR .;
+
+
+MW_PROC @Test_Maths () ==
+   IF @Random(2) = 1
+      THEN VAR <Exp := @RP_Expn(4)> :
+	       @Print_WSL(Exp, "");
+	       Exp := @Simplify_Expn(Exp);
+	       @Print_WSL(Exp, "") ENDVAR
+      ELSE VAR <Exp := @RP_Cond(4)> :
+	       @Print_WSL(Exp, "");
+	       @PP_Item(Exp, 80, "");
+	       Exp := @Simplify_Cond(Exp);
+	       @Print_WSL(Exp, "") ENDVAR FI .;
+
+
+MW_FUNCT @RP_Item (Type, Dep, In_A_S) ==
+   VAR <Result := < >, S := 0, Seq := < >, Syn := < >, Val := < >> :
+       IF Type = T_Statement
+	  THEN Result := @RP_Stat(Dep, In_A_S)
+       ELSIF Type = T_Lvalue
+	  THEN Result := @RP_Lval(Dep)
+       ELSIF Type = T_Expression
+	  THEN Result := @RP_Expn(3)
+       ELSIF Type = T_Condition
+	  THEN Result := @RP_Cond(3)
+	  ELSE Syn := @Syntax(Type);
+	       IF @List_Type?(Type)
+		  THEN S := @Random(5) + 1;
+		       FOR I := 1 TO S STEP 1 DO
+			   Seq := <@RP_Item(HEAD(Syn), (Dep-1), In_A_S)> ++ Seq OD
+		  ELSE WHILE NOT EMPTY?(Syn) DO
+			     Seq := Seq ++ <@RP_Item(HEAD(Syn), (Dep-1), In_A_S)>;
+			     Syn := TAIL(Syn) OD FI;
+	       Result := @Make(Type, < >, Seq) FI;
+       (Result) .;
+
+
+MW_FUNCT @RP_Stat (Dep, In_A_S) ==
+   VAR <Result := < >, R := @Random(IF Dep > 0 THEN 16 ELSE 8 FI),
+        S := 0, Seq := < >, Temp := < >> :
+       IF R = 1
+	  THEN Result := @Make(T_Skip, < >, < >)
+       ELSIF R = 2
+	  THEN Result := @Make(T_Exit, @Random(4), < >)
+       ELSIF R = 3
+	  THEN IF In_A_S = 1
+		  THEN Result := @Make(T_Call, < >, <@Make(T_Name, @RP_Name(Dep), < >)>)
+		  ELSE Result := @Make(T_Skip, < >, < >) FI
+       ELSIF R <= 8
+	  THEN Temp := <T_Abort, T_Assert, T_Assignment, T_Pop, T_Push>;
+	       Result := @RP_Item(Temp[(R-3)], (Dep-1), In_A_S)
+       ELSIF R <= 15
+	  THEN Temp := <T_Cond, T_D_If, T_D_Do, T_Floop, T_Var, T_While, T_Cond>;
+	       Result := @RP_Item(Temp[(R-8)], (Dep-1), In_A_S)
+       ELSIF R = 16
+	  THEN Temp := <"A1", "B2", "C3", "D4", "E5", "F6">;
+	       S := @Random(6);
+	       FOR I := 1 TO S STEP 1 DO
+		   Seq := Seq ++ <@Make(T_Action, < >,
+					<@Make(T_Name, @Make_Name(HEAD(Temp)), < >),
+					 @RP_Item(T_Statements, (Dep-1), 1)>)>;
+		   Temp := TAIL(Temp) OD;
+	       Result := @Make(T_A_S, < >,
+			       <@Make(T_Name, @Make_Name("A1"), < >),
+				@Make(T_Actions, < >, Seq)>) FI;
+       (Result) .;
+
+
+MW_FUNCT @RP_Name (Dep) ==
+   VAR <Result := < >, R := @Random(5), Temp := <"A1", "B2", "C3", "D4", "E5", "F6">> :
+       Result := @Make_Name(Temp[R]);
+       (Result) .;
+
+
+MW_FUNCT @RP_Lval (Dep) ==
+   VAR <Result := < >, R := @Random(5), Temp := <"A", "B", "C", "X", "Y">> :
+       Result := @Make(T_Var_Lvalue, @Make_Name(Temp[R]), < >);
+       (Result) .;
+
+
+MW_FUNCT @RP_Expn (Dep) ==
+   VAR <Result := < >, R := @Random(IF Dep > 0 THEN 27 ELSE 17 FI),
+        S := 0, Seq := < >, Temp := < >> :
+       IF R <=7
+	  THEN Temp := <"A", "B", "C", "I", "J", "X", "Y">;
+	       Result := @Make(T_Variable, @Make_Name(Temp[R]), < >)
+       ELSIF R <= 17
+	  THEN Temp := <0, 1, 2, 3, 4, 5, 10, 20, 50, 100>;
+	       Result := @Make(T_Number, Temp[(R-7)], < >)
+       ELSIF R <= 23
+	  THEN S := @Random(3) + 2;
+	       FOR I := 1 TO S STEP 1 DO
+		   Seq := <@RP_Expn(Dep-1)> ++ Seq OD;
+	       Temp := <T_Plus, T_Minus, T_Times, T_Divide, T_Max, T_Min>;
+	       Result := @Make(Temp[(R-17)], < >, Seq)
+       ELSIF R <= 27
+	  THEN Temp := <T_Abs, T_Sgn, T_Int, T_Frac>;
+	       Result := @Make(Temp[(R-23)], < >, <@RP_Expn(Dep-1)>) FI;
+       (Result) .;
+
+
+MW_FUNCT @RP_Cond (Dep) ==
+   VAR <Result := < >, R := @Random(IF Dep > 0 THEN 11 ELSE 6 FI),
+        S := 0, Seq := < >, Temp := < >> :
+       IF R <= 6
+	  THEN Temp := <T_Equal, T_Not_Equal, T_Less, T_Greater,
+	                T_Less_Eq, T_Greater_Eq>;
+	       Result := @Make(Temp[R], < >, <@RP_Expn(Dep-1), @RP_Expn(Dep-1)>)
+       ELSIF R = 7
+	  THEN Result := @Make(T_Not, < >, <@RP_Cond(Dep-1)>)
+       ELSIF R <=9
+	  THEN S := @Random(3) + 2;
+	       FOR I := 1 TO S STEP 1 DO
+		   Seq := <@RP_Cond(Dep-1)> ++ Seq OD;
+	       Temp := <T_And, T_Or>;
+	       Result := @Make(Temp[(R-7)], < >, Seq)
+       ELSIF R = 10
+	  THEN Result := @Make(T_True, < >, < >)
+       ELSIF R = 11
+	  THEN Result := @Make(T_False, < >, < >) FI;
+       (Result) .;
+
+
+
+C:" Move to the first statement with the given specific type, eg T_A_S or T_Where. ";
+C:" This is used by the dotrans script option type=T_xxx ";
+
+MW_PROC @Find_Type(type) ==
+  DO IF @Spec_Type(@Item) = type THEN EXIT(1) FI;
+     IF @Down? THEN @Down
+     ELSIF @Right? THEN @Right
+     ELSIF @Up?
+       THEN @Up; WHILE @Up? AND NOT @Right? DO @Up OD;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI
+       ELSE EXIT(1) FI OD .;
+
+
+C:" Convert a string to a decimal number ";
+MW_FUNCT @String_To_Num(s) ==
+  VAR < r := 0, l := 0, d := 0>:
+  IF STRING?(s)
+    THEN l := SLENGTH(s);
+	 IF l > 0
+	   THEN IF SUBSTR(s, 0, 1) = "-"
+		  THEN r := -@String_To_Num(SUBSTR(s, 1))
+		  ELSE r := @String_To_Num(SUBSTR(s, 0, l - 1));
+		       r := r * 10;
+		       d := SUBSTR(s, l - 1, 1);
+		       IF d = "1" THEN r := r + 1
+		       ELSIF d = "2" THEN r := r + 2 
+		       ELSIF d = "3" THEN r := r + 3
+		       ELSIF d = "4" THEN r := r + 4
+		       ELSIF d = "5" THEN r := r + 5
+		       ELSIF d = "6" THEN r := r + 6
+		       ELSIF d = "7" THEN r := r + 7
+		       ELSIF d = "8" THEN r := r + 8
+		       ELSIF d = "9" THEN r := r + 9 FI FI FI FI;
+  (r) .;
+
+
+
+MW_FUNCT @Hex_To_Num(s) ==
+  VAR < r := 0, l := SLENGTH(s) >:
+  IF l > 0
+    THEN IF SUBSTR(s, 0, 1) = "-"
+	   THEN r := -@Hex_To_Num(SUBSTR(s, 1))
+	   ELSE r := @Hex_To_Num(SUBSTR(s, 0, l - 1));
+		r := r * 16;
+		VAR < d := SUBSTR(s, l - 1, 1) >:
+		IF    d = "1" THEN r := r + 1
+		ELSIF d = "2" THEN r := r + 2 
+		ELSIF d = "3" THEN r := r + 3
+		ELSIF d = "4" THEN r := r + 4
+		ELSIF d = "5" THEN r := r + 5
+		ELSIF d = "6" THEN r := r + 6
+		ELSIF d = "7" THEN r := r + 7
+		ELSIF d = "8" THEN r := r + 8
+		ELSIF d = "9" THEN r := r + 9
+		ELSIF d = "A" THEN r := r + 10
+		ELSIF d = "B" THEN r := r + 11
+		ELSIF d = "C" THEN r := r + 12
+		ELSIF d = "D" THEN r := r + 13
+		ELSIF d = "E" THEN r := r + 14
+		ELSIF d = "F" THEN r := r + 15 FI ENDVAR FI FI;
+  (r) .;
+
+
+C:" This version is needed for hex numbers which are too large for Scheme ints ";
+MW_FUNCT @Hex_To_Num_String(s) ==
+  VAR < r := "", l := SLENGTH(s) >:
+  IF l = 0
+    THEN r := "0"
+  ELSIF SUBSTR(s, 0, 1) = "-"
+    THEN r := "-" ++ @Hex_To_Num_String(SUBSTR(s, 1))
+  ELSIF l < 14
+    THEN r := @String(@Hex_To_Num(s));
+    ELSE C:" xxxxx TODO xxxxx ";
+         r := @String(@Hex_To_Num(s)) FI;
+  (r) .;
+
+
+
+MW_FUNCT @Num_To_Hex(n) ==
+  VAR < r := "", d := 0, digits := "0123456789ABCDEF" >:
+  DO C:" Pick out the last digit and prepend it to the result: ";
+     d := n MOD 16;
+     r := SUBSTR(digits, d, 1) ++ r;
+     n := n DIV 16;
+     IF n = 0 THEN EXIT(1) FI OD;
+  C:" Ensure an even number of hex digits: ";
+  IF SLENGTH(r) MOD 2 = 1 THEN r := "0" ++ r FI;
+  (r) .;
+
+
+MW_FUNCT @Bin_To_Hex(bin) ==
+  VAR < hex := "", n := 0, i := 0, digit := 0, d := "" >:
+  WHILE SLENGTH(bin) MOD 4 > 0 DO bin := "0" ++ bin OD;
+  WHILE n < SLENGTH(bin) DO
+    C:" Pick out the next digit and append to result: ";
+    digit := 0;
+    FOR i := 0 TO 3 STEP 1 DO
+      digit := digit * 2;
+      IF SUBSTR(bin, n + i, 1) = "1"
+	THEN digit := digit + 1 FI OD;
+    d := @Num_To_Hex(digit);
+    hex := hex ++ SUBSTR(d, SLENGTH(d) - 1, 1);
+    n := n + 4 OD;
+  (hex) .;
+    
+
+
+
+MW_FUNCT @Lvalue_To_Expn(I) ==
+  VAR < ST := @ST(I), comps := @Components(I) >:
+  IF @GT(I) = T_Lvalue
+    THEN IF ST = T_Var_Lvalue
+	   THEN ST := T_Variable
+	 ELSIF ST = T_Aref_Lvalue
+	   THEN ST := T_Aref
+	 ELSIF ST = T_Sub_Seg_Lvalue
+	   THEN ST := T_Sub_Seg
+	 ELSIF ST = T_Rel_Seg_Lvalue
+	   THEN ST := T_Rel_Seg
+	 ELSIF ST = T_Final_Seg_Lvalue
+	   THEN ST := T_Final_Seg
+	 ELSIF ST = T_Struct_Lvalue
+	   THEN ST := T_Struct
+	 ELSIF ST = T_Mem_Lvalue
+	   THEN ST := T_Mem
+	 ELSIF ST = T_Mem_Seg_Lvalue
+	   THEN ST := T_Mem_Seg
+	 ELSIF ST = T_Mem_Rel_Lvalue
+	   THEN ST := T_Mem_Rel
+	   ELSE @Print_WSL(I, "") FI;
+	 IF ST = T_Struct
+	   THEN comps[2] := @Lvalue_To_Expn(comps[2])
+         ELSIF ST = T_Mem OR ST = T_Mem_Seg OR ST = T_Mem_Rel
+	   THEN SKIP
+	 ELSIF NOT EMPTY?(comps)
+	   THEN comps[1] := @Lvalue_To_Expn(comps[1]) FI;
+	 I := @Make(ST, @Value(I), comps) FI;
+  (I) .;
+
+
+MW_FUNCT @Expn_To_Lvalue(I) ==
+  VAR < ST := @ST(I), comps := @Components(I) >:
+  IF @GT(I) = T_Expression
+    THEN IF ST = T_Variable
+	   THEN ST := T_Var_Lvalue
+	 ELSIF ST = T_Aref
+	   THEN ST := T_Aref_Lvalue
+	 ELSIF ST = T_Sub_Seg
+	   THEN ST := T_Sub_Seg_Lvalue
+	 ELSIF ST = T_Rel_Seg
+	   THEN ST := T_Rel_Seg_Lvalue
+	 ELSIF ST = T_Final_Seg
+	   THEN ST := T_Final_Seg_Lvalue
+	 ELSIF ST = T_Struct
+	   THEN ST := T_Struct_Lvalue
+	 ELSIF ST = T_Mem
+	   THEN ST := T_Mem_Lvalue
+	 ELSIF ST = T_Mem_Seg
+	   THEN ST := T_Mem_Seg_Lvalue
+	 ELSIF ST = T_Mem_Rel
+	   THEN ST := T_Mem_Rel_Lvalue FI;
+	 IF ST = T_Struct_Lvalue
+	   THEN comps[2] := @Expn_To_Lvalue(comps[2])
+         ELSIF ST = T_Mem_Lvalue OR ST = T_Mem_Seg_Lvalue OR ST = T_Mem_Rel_Lvalue
+	   THEN SKIP
+	 ELSIF NOT EMPTY?(comps)
+	   THEN comps[1] := @Expn_To_Lvalue(comps[1]) FI;
+	 I := @Make(ST, @Value(I), comps) FI;
+  (I) .;
+
+
+C:" Return TRUE if the given word appears in the string: ";
+MW_BFUNCT @Word_In_String?(word, str) == : SKIP;
+  (INDEX(" " ++ word ++ " ", " " ++ str ++ " ", 0) >= 0) .;
+
+
+C:" Convert a list of strings to a single string ";
+MW_FUNCT @Join_Removing_Dups(glue, l) == : SKIP;
+  (IF EMPTY?(l)
+     THEN ""
+     ELSE IF LENGTH(l) = 1
+	    THEN l[1]
+	    ELSE IF HEAD(l) IN TAIL(l)
+		   THEN @Join_Removing_Dups(glue, TAIL(l))
+		   ELSE l[1] ++ glue ++ @Join_Removing_Dups(glue, TAIL(l)) FI FI FI) .;
+
+
+MW_FUNCT @Join(glue, l) == : SKIP;
+  (IF EMPTY?(l)
+     THEN ""
+     ELSE IF LENGTH(l) = 1
+	    THEN l[1]
+	    ELSE l[1] ++ glue ++ @Join(glue, TAIL(l)) FI FI) .;
+
+
+C:" Convert a structure of nested lists to a string (roughly as PRINT does) ";
+MW_FUNCT @Struct_To_String(L) == : SKIP;
+  (IF SEQUENCE?(L)
+     THEN "(" ++ @Join(" ", MAP("@Struct_To_String", L)) ++ ")"
+     ELSE @String(L) FI).;
+
+
+C:" Split a string into a list of (non-empty) words: ";
+MW_FUNCT @Split(str) ==
+  VAR < R := < >, p := 0, q := INDEX(" ", str, 0) >:
+  WHILE q >= 0 DO
+    IF q > p THEN R := <SUBSTR(str, p, q - p)> ++ R FI;
+    p := q + 1;
+    q := INDEX(" ", str, q + 1) OD;
+  IF p < SLENGTH(str) THEN R := <SUBSTR(str, p)> ++ R FI;
+  (REVERSE(R)) .;
+
+
+
+C:" Check if the string ends with the given extension: ";
+MW_BFUNCT @Ends_With?(str, extn) ==
+  VAR < R := 0, len := SLENGTH(extn) >:
+  IF NUMBER?(str) THEN str := @N_String(str) FI;
+  IF SLENGTH(str) >= len AND SUBSTR(str, SLENGTH(str) - len, len) = extn
+    THEN R := 1 FI;
+  (R = 1) .;
+
+
+C:" Check if the string starts with the given extension: ";
+MW_BFUNCT @Starts_With?(str, extn) ==
+  VAR < R := 0, len := SLENGTH(extn) >:
+  IF NUMBER?(str) THEN str := @N_String(str) FI;
+  IF SLENGTH(str) >= len AND SUBSTR(str, 0, len) = extn
+    THEN R := 1 FI;
+  (R = 1) .;
+
+
+C:" Check if name is of the form FOO_xxx_nnn (given string plus 3 digits): ";
+MW_BFUNCT @Starts_With_Plus_Num?(name, extn) ==
+  VAR < R := 0, len := SLENGTH(extn) >:
+  IF NUMBER?(name) AND name > 0
+    THEN name := @N_String(name);
+	 IF SLENGTH(name) >= len + 3 AND SUBSTR(name, 0, len) = extn
+	      AND @Digits?(SUBSTR(name, SLENGTH(name) - 3, 3))
+	   THEN R := 1 FI FI;
+  (R = 1) .;
+
+
+C:" Check if given name ends in __ plus one or more digits: ";
+MW_BFUNCT @Ends_With_Underscore_Digits?(name) ==
+  VAR < R := 0, p := 0 >:
+  IF NUMBER?(name) AND name > 0
+    THEN name := @N_String(name);
+         p := SLENGTH(name) - 1;
+	 WHILE p > 0 AND @Digit?(SUBSTR(name, p, 1)) DO p := p - 1 OD;
+	 IF p > 1 AND p < SLENGTH(name) - 1
+	   THEN IF SUBSTR(name, p - 1, 2) = "__"
+	          THEN R := 1 FI FI FI;
+  (R = 1) .;
+
+C:" Trim __nnn from the given string and return the number nnn ";
+MW_PROC @Trim_Underscore_Number(VAR str, n) ==
+  VAR < p := SLENGTH(str) - 1 >:
+  WHILE p >= 0 AND @Digit?(SUBSTR(str, p, 1)) DO p := p - 1 OD;
+  n := @String_To_Num(SUBSTR(str, p + 1));
+  str := SUBSTR(str, 0, p + 1);
+  IF p > 1
+    THEN IF SUBSTR(str, p - 1, 2) = "__"
+           THEN str := SUBSTR(str, 0, p - 1) FI FI ENDVAR .;
+
+
+C:" Sort a list of names or elements: ";
+MW_FUNCT @Sort_List(L) ==
+  VAR < R := < >, len := LENGTH(L) >:
+  IF len <= 1
+    THEN R := L
+  ELSIF len = 2
+    THEN IF @Sort_Less?(L[1], L[2])
+	   THEN R := L
+	   ELSE R := <L[2], L[1]> FI
+    ELSE VAR < mid := len DIV 2 >:
+	 R := @Sort_Merge(@Sort_List(L[1..mid]), @Sort_List(L[mid+1..])) ENDVAR FI;
+  (R) .;
+
+
+C:" Merge two sorted lists: ";
+MW_FUNCT @Sort_Merge(L1, L2) ==
+  VAR < R := < > >:
+  IF EMPTY?(L1)
+    THEN R := L2
+  ELSIF EMPTY?(L2)
+    THEN R := L1
+  ELSIF @Sort_Less?(HEAD(L1), HEAD(L2))
+    THEN R := <HEAD(L1)> ++ @Sort_Merge(TAIL(L1), L2)
+    ELSE R := <HEAD(L2)> ++ @Sort_Merge(L1, TAIL(L2)) FI;
+  (R) .;
+
+
+C:" Compare two names or lists of names: ";
+
+MW_BFUNCT @Sort_Less?(a, b) ==
+  VAR < R := 0 >:
+  IF SEQUENCE?(a)
+    THEN IF NOT SEQUENCE?(b)
+	   THEN R := 0
+	 ELSIF EMPTY?(a)
+	   THEN R := 1
+	 ELSIF EMPTY?(b)
+	   THEN R := 0
+	 ELSIF HEAD(a) = HEAD(b)
+	   THEN IF @Sort_Less?(TAIL(a), TAIL(b))
+		  THEN R := 1
+		  ELSE R := 0 FI
+	 ELSIF @Sort_Less?(HEAD(a), HEAD(b))
+	   THEN R := 1
+	   ELSE R := 0 FI
+  ELSIF SEQUENCE?(b)
+    THEN R := 1
+  ELSIF @String_Less?(@Name_Or_Num_String(a), @Name_Or_Num_String(b))
+    THEN R := 1
+    ELSE R := 0 FI;
+  (R = 1) .;
+
+
+
+
+C:" Sort a list of numbers: ";
+MW_FUNCT @Sort_Num(L) ==
+  VAR < R := < >, len := LENGTH(L) >:
+  IF len <= 1
+    THEN R := L
+  ELSIF len = 2
+    THEN IF L[1] < L[2]
+           THEN R := L
+           ELSE R := <L[2], L[1]> FI
+    ELSE VAR < mid := len DIV 2 >:
+         R := @Sort_Merge_Num(@Sort_Num(L[1..mid]), @Sort_Num(L[mid+1..])) ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @Sort_Merge_Num(L1, L2) ==
+  VAR < R := < > >:
+  IF EMPTY?(L1)
+    THEN R := L2
+  ELSIF EMPTY?(L2)
+    THEN R := L1
+  ELSIF HEAD(L1) < HEAD(L2)
+    THEN R := <HEAD(L1)> ++ @Sort_Merge_Num(TAIL(L1), L2)
+    ELSE R := <HEAD(L2)> ++ @Sort_Merge_Num(L1, TAIL(L2)) FI;
+  (R) .;
+
+
+
+
+Swap_Case := 1;
+
+MW_FUNCT @Swap_Case(obj) == : SKIP;
+  (IF Swap_Case = 1 THEN !XF swapcase(@N_String(obj))
+		    ELSE @N_String(obj) FI) .;
+
+
+MW_FUNCT @Upper_Case(obj) ==: SKIP;
+  (!XF upcase(@N_String(obj))) .;
+
+MW_FUNCT @Lower_Case(obj) ==: SKIP;
+  (!XF lowcase(@N_String(obj))) .;
+
+
+C:" Simple file writing: ";
+
+Output_Stack := < >;
+Output_Port := Standard_Output_Port;
+
+MW_PROC @Write_To(file) ==
+  Output_Stack := <<Output_Port, file>> ++ Output_Stack;
+  Output_Port := IF file = "" THEN Standard_Output_Port
+			      ELSE @Open_Output_File(file) FI .;
+
+MW_PROC @End_Write() ==
+  IF EMPTY?(Output_Stack)
+    THEN ERROR("@End_Write called with no corresponding @Write_To")
+    ELSE IF Output_Stack[1][2] <> "" THEN @Close_Output_Port(Output_Port) FI;
+	 Output_Port := Output_Stack[1][1];
+	 Output_Stack := TAIL(Output_Stack) FI .;
+
+
+MW_PROC @WS(string) ==
+ @Write(string, Output_Port) .;
+
+MW_PROC @WL(string) ==
+  @Write_Line(string, Output_Port) .;
+
+C:" Write a number (eg integer represented as floating point) ";
+MW_PROC @WN(n) ==
+  IF n < 0
+    THEN @WS("-"); @WN(-n)
+  ELSIF n > 10000
+    THEN @WN(n DIV 10000);
+	 n := n MOD 10000;
+	 VAR < m := 1000 >:
+	   DO @WS(n DIV m);
+	      IF m = 1 THEN EXIT(1) FI;
+	      n := n MOD m;
+	      m := m DIV 10 OD ENDVAR
+    ELSE VAR < digits := < >, m := 0 >:
+	   WHILE n > 0 DO
+	     m := n;
+	     n := n DIV 10;
+	     digits := <m MOD 10> ++ digits OD;
+	   IF EMPTY?(digits) THEN digits := <0> FI;
+	   WHILE NOT EMPTY?(digits) DO
+	     @WS(HEAD(digits));
+	     digits := TAIL(digits) OD ENDVAR FI .;
+
+
+
+C:" Is nth char of str in valid list? ";
+
+MW_BFUNCT @Char_In_Str?(str, n, valid) == : SKIP;
+  (SLENGTH(str) > n
+     AND INDEX(SUBSTR(str, n, 1), valid, 0) >= 0) .;
+
+
+C:" Check if the given character (single char string) is a digit: ";
+MW_BFUNCT @Digit?(c) == : SKIP;
+  (INDEX(c, "0123456789", 0) >= 0) .;
+
+MW_BFUNCT @Digits?(s) == : SKIP;
+  (SLENGTH(s) = 0
+    OR (@Digit?(SUBSTR(s, 0, 1)) AND @Digits?(SUBSTR(s, 1)))) .;
+
+
+C:" Check if the given character (single char string) is a hex digit: ";
+MW_BFUNCT @Hex?(c) == : SKIP;
+  (INDEX(c, "0123456789ABCDEFabcdef", 0) >= 0) .;
+
+MW_BFUNCT @All_Hex?(s) == : SKIP;
+  (SLENGTH(s) = 0
+    OR (@Hex?(SUBSTR(s, 0, 1)) AND @All_Hex?(SUBSTR(s, 1)))) .;
+
+
+C:" Strip the given character from the string: ";
+
+MW_FUNCT @Strip_Char(c, str) ==
+  VAR < R := "", p := 0 >:
+  DO p := INDEX(c, str, 0);
+     IF p < 0 THEN EXIT(1) FI;
+     R := R ++ SUBSTR(str, 0, p);
+     str := SUBSTR(str, p + 1) OD;
+  (R ++ str) .;
+
+
+C:" Go from the action call to the corresponding body ";
+
+MW_PROC @Goto_Body() ==
+  VAR < posn := @Posn, name := @V(@I) >:
+  WHILE @Up? AND @ST(@I) <> T_Actions DO @Up OD;
+  IF @ST(@I) = T_Actions
+    THEN @Down; C:" to first action ";
+         DO IF @V(@I^1) = name THEN EXIT(1) FI;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD FI;
+  IF @ST(@I) <> T_Action OR @V(@I^1) <> name
+    THEN @Goto(posn) FI ENDVAR .;
+
+
+
+C:" Compute the transitive closure of a hash of lists and return a new hash ";
+C:" Floyd Warshall algorithm from: ";
+C:" http://www.foad.org/~abigail/Perl/Algorithms/Graphs/ ";
+
+MW_FUNCT @Transitive_Closure(succs) == 
+  VAR < R := HASH_TABLE, elts :=  @Hash_Keys(succs), graph := HASH_TABLE >:
+
+  IF FALSE
+    THEN PRINT("Transitive_Closure input: ");
+         FOR v IN @Hash_Keys(succs) DO
+           PRINT(v, " --> ", succs.(v)) OD FI;
+
+  FOR i IN elts DO
+    FOR j IN succs.(i) DO
+      graph.(<i, j>) := 1 OD OD;
+
+  FOR k IN elts DO
+    FOR i IN elts DO
+      FOR j IN elts DO
+        IF NOT EMPTY?(graph.(<k, j>)) AND NOT EMPTY?(graph.(<i, k>))
+	  THEN graph.(<i, j>) := 1 FI OD OD OD;
+
+  FOR i IN elts DO
+    FOR j IN elts DO
+      IF NOT EMPTY?(graph.(<i, j>)) THEN R.(i) := <j> ++ R.(i) FI OD OD;
+ 
+  IF FALSE
+    THEN PRINT("Transitive_Closure output: ");
+         FOR v IN @Hash_Keys(succs) DO
+           PRINT(v, " --> ", R.(v)) OD FI;
+
+  (R) .;
+
+
+C:" Simple algorithm which iterates to convergance ";
+
+MW_FUNCT @Transitive_Closure_Simple(succs) == 
+  VAR < R := HASH_TABLE, elts :=  @Hash_Keys(succs), change := 0 >:
+
+  IF TRUE
+    THEN PRINT("Transitive_Closure input: ");
+         FOR v IN @Hash_Keys(succs) DO
+           PRINT(v, " --> ", succs.(v)) OD FI;
+
+  FOR elt IN elts DO
+    R.(elt) := @Make_Set(<elt> ++ succs.(elt)) OD;
+
+  DO change := 0;
+     FOR i IN elts DO
+       FOR j IN R.(i) DO
+         IF NOT SUBSET?(R.(j), R.(i))
+	   THEN change := 1;
+	        R.(i) := R.(i) \/ R.(j) FI OD OD;
+     IF change = 0 THEN EXIT(1) FI OD;
+ 
+  IF TRUE
+    THEN PRINT("Transitive_Closure output: ");
+         FOR v IN @Hash_Keys(succs) DO
+           PRINT(v, " --> ", R.(v)) OD FI;
+
+  (R) .;
+
+
+
+C:" Compute the transitive closure of a hash of lists and return a new hash ";
+C:" The algorithm is from `An Efficient Transitive Closure Algorithm ";
+C:" for Cyclic Digraphs' by Esko Nuutila, Information Processing Letters, ";
+C:" 52:207--213, 1994. http://www.cs.hut.fi/~enu/tc.html ";
+
+
+MW_FUNCT @Transitive_Closure_New(succs) == 
+  VAR < R := HASH_TABLE,
+        C := < >, SC := HASH_TABLE, root := HASH_TABLE,
+	dfs := HASH_TABLE, dfs_num := 1,
+        nstack := < >, cstack := < >, hsaved := HASH_TABLE,
+	Succ := HASH_TABLE, Elts := HASH_TABLE >:
+
+  IF FALSE
+    THEN PRINT("Transitive_Closure input: ");
+         FOR v IN @Hash_Keys(succs) DO
+           PRINT(@N_String(v), " --> ", MAP("@N_String", succs.(v))) OD FI;
+
+  IF TRUE
+    THEN PRINT("Transitive_Closure input: ");
+         FOR v IN @Hash_Keys(succs) DO
+           PRINT(v, " --> ", succs.(v)) OD FI;
+
+  FOR v IN @Hash_Keys(succs) DO
+    IF EMPTY?(dfs.(v)) THEN @COMP_TC(v) FI OD;
+
+  IF FALSE
+    THEN PRINT("Strong Components:");
+         FOR v IN @Hash_Keys(Elts) DO
+           PRINT(@N_String(v), " --> ", MAP("@N_String", Elts.(v))) OD FI;
+
+  IF TRUE
+    THEN PRINT("Strong Components:");
+         FOR v IN @Hash_Keys(Elts) DO
+           PRINT(v, " --> ", Elts.(v)) OD FI;
+
+  C:" Compute R for each strong component root: ";
+  FOR v IN @Hash_Keys(Elts) DO
+    FOR w IN Succ.(v) DO
+PRINT("R.(", v, ") := ", Elts.(w), " ++ ", R.(v));
+      R.(v) := Elts.(w) ++ R.(v) OD;
+    R.(v) := @Make_Set(R.(v)) OD;
+
+  C:" Copy R from the strong component root to each element of the component ";
+  FOR v IN @Hash_Keys(succs) DO
+    R.(v) := R.(SC.(v)) OD;
+
+  IF FALSE
+    THEN PRINT("Transitive_Closure output: ");
+         FOR v IN @Hash_Keys(succs) DO
+           PRINT(@N_String(v), " --> ", MAP("@N_String", R.(v))) OD FI;
+
+  IF TRUE
+    THEN PRINT("Transitive_Closure output: ");
+         FOR v IN @Hash_Keys(succs) DO
+           PRINT(v, " --> ", R.(v)) OD FI;
+
+  (R) .;
+
+
+MW_PROC @COMP_TC(v) ==
+  VAR < forward_edge := 0, X := < > >:
+  dfs.(v) := dfs_num; dfs_num := dfs_num + 1;
+  root.(v) := v;
+  SC.(v) := < >;
+  nstack := <v> ++ nstack;
+  hsaved.(v) := LENGTH(cstack);
+  FOR w IN succs.(v) DO
+    C:" Is v -> w a forward edge? (to a marked node with higher dfs) ";
+    IF NOT EMPTY?(dfs.(w)) AND dfs.(w) > dfs.(v)
+      THEN forward_edge := 1 FI;
+PRINT("forward_edge ", v, " -> ", w, " = ", forward_edge);
+    IF EMPTY?(dfs.(w)) THEN @COMP_TC(w) FI;
+    IF EMPTY?(SC.(w))
+      THEN IF dfs.(root.(w)) < dfs.(root.(v))
+	     THEN root.(v) := root.(w) FI;
+    ELSIF forward_edge = 0
+      THEN cstack := <SC.(w)> ++ cstack FI OD;
+  IF root.(v) = v
+    THEN C:" Create a new component ";
+         C := v;
+	 C:" If there is only one element in this component ";
+	 C:" and this element doesn't have a self-loop edge ";
+	 C:" then C is not a sucessor of C ";
+	 IF HEAD(nstack) = v AND v NOTIN succs.(v)
+	   THEN Succ.(C) := < >
+	   ELSE Succ.(C) := <C> FI;
+	 C:" Could process these components in topological order ";
+	 C:" to minimise the number of set operations ";
+	 WHILE LENGTH(cstack) <> hsaved.(v) DO
+	   X := HEAD(cstack); cstack := TAIL(cstack);
+	   IF X NOTIN Succ.(C)
+	     THEN Succ.(C) := Succ.(C) \/ <X> \/ Succ.(X) FI OD;
+	 DO w := HEAD(nstack);
+	    nstack := TAIL(nstack);
+	    C:" Insert w into component C ";
+PRINT("Inserting ", w, " into component ", C);
+	    Elts.(C) := <w> ++ Elts.(C);
+	    SC.(w) := C;
+	    IF w = v THEN EXIT(1) FI OD FI ENDVAR .;
+
+
+
+C:" Compute a breadth first search of the succs array, return the list of nodes. ";
+
+MW_FUNCT @Breadth_First_Search(start, succs) == 
+  VAR < R := < >, fringe := <start>, done := HASH_TABLE, node := < > >:
+  WHILE NOT EMPTY?(fringe) DO
+    node := HEAD(fringe);
+    fringe := TAIL(fringe);
+    R := <node> ++ R;
+    FOR succ IN @Sort_Num(succs[node]) DO
+      IF EMPTY?(done.(succ))
+        THEN done.(succ) := 1;
+	     fringe := fringe ++ <succ> FI OD OD;
+  (REVERSE(R)) .;
+
+
+
+
+C:" Replace copies of one item by a different one (for small items only): ";
+
+MW_FUNCT @Replace(I, new, old) ==
+  VAR < R := I >:
+  IF @Equal?(I, old)
+    THEN R := new
+  ELSIF @Cs?(I)
+    THEN VAR < L := < > >:
+         FOR comp IN @Cs(I) DO
+	   L := <@Replace(comp, new, old)> ++ L OD;
+         R := @Make(@ST(I), < >, REVERSE(L)) ENDVAR FI;
+  (R) .;
+
+
+
+MW_PROC @Inc_Hash(key VAR tab) ==
+  IF EMPTY?(tab.(key))
+    THEN tab.(key) := 1
+    ELSE tab.(key) := tab.(key) + 1 FI .;
+
+
+C:" Compute a topological sort of a graph given a hash table of predecessors. ";
+C:" The second argument is a hash table giving a priority order ";
+C:" (it maps names to numbers) to use as a secondary ordering relation. ";
+C:" mins is the list of minimal elements in todo ";
+C:" numpreds.(n) is the number of predecessors (in todo) for n. ";
+
+MW_FUNCT @Topological_Sort(nodes, succs, preds, order) ==
+  VAR < todo := @Make_Set(nodes), mins := < >, numpreds := HASH_TABLE,
+        min := < >, R := < > >:
+  C:" Ensure all nodes are in order ";
+  FOR name IN nodes DO
+    IF EMPTY?(order.(name))
+      THEN order.(name) := 0 FI OD;
+  FOR name IN todo DO
+    numpreds.(name) := LENGTH(preds.(name));
+    IF numpreds.(name) = 0
+      THEN mins := <name> \/ mins FI OD;
+  WHILE NOT EMPTY?(todo) DO
+    IF NOT EMPTY?(mins)
+      THEN C:" Pick the minimal element with the smallest order number ";
+           min := HEAD(mins);
+           FOR elt IN TAIL(mins) DO
+             IF order.(elt) < order.(min)
+               THEN min := elt FI OD;
+           mins := mins \ <min>
+      ELSE C:" There must be a recursive call somewhere. ";
+           PRINT("Recursive call found!!!");
+           C:" Pick an element with the smallest number of predecessors ";
+           min := HEAD(todo);
+           FOR elt IN TAIL(todo) DO
+	     IF numpreds.(elt) < numpreds.(min)
+	          OR (numpreds.(elt) = numpreds.(min) AND order.(elt) < order.(min))
+               THEN min := elt FI OD;
+           C:" Treat min as if it were a real minimal element: ";
+	   numpreds.(min) := 0 FI;
+    C:" Build up the result in reverse order: ";
+    R := <min> ++ R;
+    todo := todo \ <min>;
+    C:" Update numpreds: decrement numpreds for mins successors: ";
+    C:" Note: could have spurious entries in succs table for proc calls with no defn ";
+    FOR elt IN succs.(min) DO
+      IF NOT EMPTY?(numpreds.(elt))
+        THEN numpreds.(elt) := numpreds.(elt) - 1;
+             IF numpreds.(elt) = 0
+               THEN mins := <elt> \/ mins FI FI OD OD;
+    (REVERSE(R)) .;
+
+
+
+MW_PROC @Sort_Test(type, N, k) ==
+  VAR < A := ARRAY(N, 0), t := 0, mod := 2 ** 27 >:
+  PRINT("Initialising... ", @Runtime);
+  VAR < x := @Random(100000), m := 1664525, c := 1013904223 >:
+  FOR i := 1 TO N STEP 1 DO
+    A[i] := x;
+    x :=  (m * x + c) MOD mod OD ENDVAR;
+
+  FOR i := 1 TO N STEP 1 DO
+    A[i] := A[i] OD;
+
+  PRINT("Starting... ", @Runtime); t := @Runtime;
+
+  IF type = "Quick"
+    THEN @Quick_sort(N, k VAR A)
+  ELSIF type = "DPQ"
+    THEN @DPQ_sort(N, k VAR A)
+  ELSIF type = "Shell"
+    THEN @Shell_sort(N, k VAR A)
+  ELSIF type = "Insertion"
+    THEN @Insertion_sort(N, k VAR A)
+  ELSIF type = "Bubble"
+    THEN @Bubble_sort(N, k VAR A)
+    ELSE PRINT("Unknown sort type: ", type) FI;
+
+  PRINT("Checking... ", @Runtime);
+
+  FOR i := 2 TO N STEP 1 DO
+    IF A[i-1] > A[i] THEN ERROR("Shouldn't happen!") FI OD;
+  IF N <= 1000 THEN PRINT("Result = ", A) FI;
+
+  PRINT("Finished! ", @Runtime);
+  PRINT("sort time = ", @Runtime - t);
+
+  SKIP ENDVAR .;
+
+
+MW_FUNCT @DPQ_Pivots(i, j) ==
+  VAR < sixth := 0, e1 := 0, e2 := 0, e3 := 0, e4 := 0, e5 := 0 >:
+  sixth := (j - i + 1) DIV 6;
+  e1 := i + sixth;
+  e3 := (i + j) DIV 2;
+  e2 := e3 - sixth;
+  e4 := e3 + sixth;
+  e5 := j - sixth;
+  (<e1, e2, e3, e4, e5>) .;
+
+
+MW_PROC @Sort_Test_List(type_list, data, N, k) ==
+  VAR < A := ARRAY(N, 0), B := ARRAY(N, 0), start := 0, end := 0, mod := 2 ** 27 >:
+  VAR < pivots := @DPQ_Pivots(1, N), min := 0, e1 := 0, e2 := 0, e3 := 0 >: 
+  
+  PRINT("pivots = ", pivots);
+
+  PRINT("Initialising... ", @Runtime);
+  VAR < x := @Random(100000), m := 1664525, c := 1013904223 >:
+  FOR i := 1 TO N STEP 1 DO
+    A[i] := x;
+    x :=  (m * x + c) MOD mod OD ENDVAR;
+
+  FOR i := 1 TO N STEP 1 DO
+
+    IF data = "Random"
+      THEN SKIP
+    ELSIF data = "Ordered"
+      THEN A[i] := i
+    ELSIF data = "Random01"
+      THEN A[i] := (A[i] DIV 10) MOD 2
+    ELSIF data = "Random16"
+      THEN A[i] := (A[i] DIV 10) MOD 16
+    ELSIF data = "Same"
+      THEN A[i] := 1
+    ELSIF data = "VVVVV"
+      THEN C:" Set A[i] to the distance to the nearest pivot: ";
+           min := N;
+	   e1 := 0;
+	   FOR pivot IN pivots DO
+	     e1 := e1 + 1;
+	     IF ABS(i - pivot) < min
+	       THEN min := ABS(i - pivot); e2 := e1 FI OD;
+           A[i] := 10 * min + 0 * e2;
+	   A[i] := N
+      ELSE ERROR("Unknown data value: " ++ data) FI;
+
+    B[i] := A[i] OD;
+
+  e1 := 0;
+  e2 := 0;
+  e3 := 0;
+  i := 1;
+  WHILE i < N DIV 6 DO
+    FOR j IN @DPQ_Pivots(i, N) DO
+      WHILE j + e2 + e3 < N AND A[j + e2 + e3] <= e1 DO e2 := e2 + 1 OD;
+      j := j + e2 + e3;
+      IF N <= 10000 THEN PRINT("inserting A[", j, "] = ", A[j], " --> ", e1) FI;
+      A[j] := e1;
+      B[j] := e1 OD;
+    i := i + 5;
+    e1 := e1 + 1;
+    e3 := e3 + 1 OD;
+
+  PRINT("--------------------------------------------------------");
+
+  FOR type IN type_list DO
+    FOR i := 1 TO N STEP 1 DO
+      A[i] := B[i] OD;
+
+    PRINT("================ ", type, " sort N = ", N, " k = ", k, " data = ", data);
+    PRINT("Starting... ", @Runtime);
+    start := @Runtime;
+
+    IF type = "Quick"
+      THEN @Quick_sort(N, k VAR A)
+    ELSIF type = "Quick2"
+      THEN @Quick_sort2(N, k VAR A)
+    ELSIF type = "Quick3"
+      THEN @Quick_sort3(N, k VAR A)
+    ELSIF type = "Quick4"
+      THEN @Quick_sort4(N, k VAR A)
+    ELSIF type = "Quick5"
+      THEN @Quick_sort5(N, k VAR A)
+    ELSIF type = "DPQ"
+      THEN IF k < 6 THEN k := 6 FI;
+           @DPQ_sort(N, k VAR A)
+    ELSIF type = "DPQ2"
+      THEN IF k < 6 THEN k := 6 FI;
+           @DPQ2_sort(N, k VAR A)
+    ELSIF type = "Shell"
+      THEN @Shell_sort(N, k VAR A)
+    ELSIF type = "Insertion"
+      THEN @Insertion_sort(N, k VAR A)
+    ELSIF type = "Bubble"
+      THEN @Bubble_sort(N, k VAR A)
+      ELSE PRINT("Unknown sort type: ", type) FI;
+
+    end := @Runtime;
+    PRINT("Checking... ", @Runtime);
+
+    FOR i := 2 TO N STEP 1 DO
+      IF A[i-1] > A[i] THEN PRINT(A); ERROR("Shouldn't happen!") FI OD;
+    IF N <= 1000 THEN PRINT("Result = ", A) FI;
+
+    PRINT("Finished! ", @Runtime);
+    PRINT("sort time = ", end - start) OD;
+
+  PRINT("--------------------------------------------------------") ENDVAR ENDVAR .;
+
+
+MW_PROC @Quick_sort(N, k VAR A) ==
+  VAR < AS := < >, a := 1, b := N, i := 0, j := 0, v := 0 >:
+  DO IF N <= 1000 THEN PRINT("a = ", a, " b = ", b, " AS = ", AS) FI;
+     IF b - a + 1 > k
+       THEN j := (a + b) DIV 2;
+            IF A[a] < A[j] AND A[j] < A[b] OR A[b] < A[j] AND A[j] < A[a] 
+	      THEN <A[j] := A[a], A[a] := A[j]>
+	    ELSIF A[a] < A[b] AND A[b] < A[j] OR A[j] < A[b] AND A[b] < A[a] 
+	      THEN <A[b] := A[a], A[a] := A[b]> FI;
+            i := a - 1; j := b + 1; v := A[a];
+            DO DO i := i + 1;
+                  IF A[i] >= v THEN EXIT(1) FI OD;
+               DO j := j - 1;
+                  IF A[j] <= v THEN EXIT(1) FI OD;
+               IF i >= j THEN EXIT(1) FI;
+               <A[i] := A[j], A[j] := A[i]> OD;
+            IF j - a > b - j - 1
+              THEN PUSH(AS, a); PUSH(AS, j); a := j + 1
+              ELSE PUSH(AS, j + 1); PUSH(AS, b); b := j FI 
+       ELSE IF AS = < > THEN EXIT (1)
+                        ELSE POP(b, AS); POP(a, AS) FI FI OD;
+
+  IF k > 1
+    THEN PRINT("Final insertion sort... ", @Runtime);
+         @Insertion_sort(N, k VAR A) FI ENDVAR .;
+
+
+
+MW_PROC @Quick_sort2(N, k VAR A) ==
+  @Quick_sort_rec2(k, 1, N VAR A);
+  C:" NB: k may be dynamically changed, so always do the final insertion sort: ";
+IF k > 1 THEN
+  PRINT("Final insertion sort... ", @Runtime);
+  @Insertion_sort(N, k VAR A) FI .;
+
+C:" Recursive Quicksort: ";
+
+MW_PROC @Quick_sort_rec2(k, a, b VAR A) ==
+  VAR < i := 0, j := 0, v := 0 >:
+  IF b - a + 1 > k
+    THEN C:" Median of three partitioning: ";
+         j := (a + b) DIV 2;
+         IF A[a] < A[j] AND A[j] < A[b] OR A[b] < A[j] AND A[j] < A[a] 
+           THEN <A[j] := A[a], A[a] := A[j]>
+         ELSIF A[a] < A[b] AND A[b] < A[j] OR A[j] < A[b] AND A[b] < A[a] 
+           THEN <A[b] := A[a], A[a] := A[b]> FI;
+         i := a - 1; j := b + 1; v := A[a];
+         DO DO i := i + 1;
+               IF A[i] >= v THEN EXIT(1) FI OD;
+            DO j := j - 1;
+               IF A[j] <= v THEN EXIT(1) FI OD;
+            IF i >= j THEN EXIT(1) FI;
+            <A[i] := A[j], A[j] := A[i]> OD;
+         <A[a] := A[j], A[j] := A[a]>;
+         IF j - a > b - j - 1
+           THEN @Quick_sort_rec2(k, j + 1, b VAR A);
+	        @Quick_sort_rec2(k, a, j VAR A)
+           ELSE @Quick_sort_rec2(k, a, j VAR A);
+	        @Quick_sort_rec2(k, j + 1, b VAR A) FI FI ENDVAR .;
+
+
+MW_PROC @Quick_sort3(N, k VAR A) ==
+  @Quick_sort_rec3(k, 1, N VAR A);
+  C:" NB: k may be dynamically changed, so always do the final insertion sort: ";
+IF k > 1 THEN
+  PRINT("Final insertion sort... ", @Runtime);
+
+  @Insertion_sort(N, k VAR A) FI .;
+
+C:" Recursive Quicksort: ";
+
+MW_PROC @Quick_sort_rec3(k, a, b VAR A) ==
+  VAR < i := 0, j := 0, v := 0, swap := 0 >:
+  IF b - a + 1 > k
+    THEN C:" Median of three partitioning: ";
+         j := (a + b) DIV 2;
+         IF A[a] < A[j] AND A[j] < A[b] OR A[b] < A[j] AND A[j] < A[a] 
+           THEN <A[j] := A[a], A[a] := A[j]>
+         ELSIF A[a] < A[b] AND A[b] < A[j] OR A[j] < A[b] AND A[b] < A[a] 
+           THEN <A[b] := A[a], A[a] := A[b]> FI;
+         i := a - 1; j := b + 1; v := A[a];
+         DO DO i := i + 1;
+               IF A[i] >= v THEN EXIT(1) FI OD;
+            DO j := j - 1;
+               IF A[j] <= v THEN EXIT(1) FI OD;
+            IF i >= j THEN EXIT(1) FI;
+	    IF A[i] <> A[j]
+	      THEN swap := swap + 1;
+                   <A[i] := A[j], A[j] := A[i]>;
+		   IF swap > 1
+		     THEN DO DO i := i + 1;
+                                IF A[i] >= v THEN EXIT(1) FI OD;
+                             DO j := j - 1;
+                                IF A[j] <= v THEN EXIT(1) FI OD;
+                             IF i >= j THEN EXIT(1) FI;
+                             IF A[i] <> A[j] THEN swap := swap + 1 FI;
+                             <A[i] := A[j], A[j] := A[i]> OD;
+                          EXIT(1) FI FI OD;
+         <A[a] := A[j], A[j] := A[a]>;
+         IF swap <= 1 THEN k := 10 * k FI;
+         IF j - a > b - j - 1
+           THEN @Quick_sort_rec3(k, j + 1, b VAR A);
+	        @Quick_sort_rec3(k, a, j VAR A)
+           ELSE @Quick_sort_rec3(k, a, j VAR A);
+	        @Quick_sort_rec3(k, j + 1, b VAR A) FI FI ENDVAR .;
+
+
+
+MW_PROC @Quick_sort4(N, k VAR A) ==
+  @Quick_sort_rec4(k, 1, N VAR A);
+  C:" NB: k may be dynamically changed, so always do the final insertion sort: ";
+  PRINT("Final insertion sort... ", @Runtime);
+
+  @Insertion_sort(N, k VAR A) .;
+
+C:" Recursive Quicksort: ";
+
+MW_PROC @Quick_sort_rec4(k, a, b VAR A) ==
+  VAR < i := 0, j := 0, v := 0, swap := 0, same := 0 >:
+  IF b - a + 1 > k
+    THEN C:" Median of three partitioning: ";
+         j := (a + b) DIV 2;
+         IF A[a] < A[j] AND A[j] < A[b] OR A[b] < A[j] AND A[j] < A[a] 
+           THEN <A[j] := A[a], A[a] := A[j]>
+         ELSIF A[a] < A[b] AND A[b] < A[j] OR A[j] < A[b] AND A[b] < A[a] 
+           THEN <A[b] := A[a], A[a] := A[b]> FI;
+         i := a - 1; j := b + 1; v := A[a];
+         DO DO i := i + 1;
+               IF A[i] >= v THEN EXIT(1) FI OD;
+            DO j := j - 1;
+               IF A[j] <= v THEN EXIT(1) FI OD;
+            IF i >= j THEN EXIT(1) FI;
+	    IF A[i] = A[j]
+              THEN same := same + 1
+	      ELSE swap := swap + 1;
+                   <A[i] := A[j], A[j] := A[i]> FI OD;
+         <A[a] := A[j], A[j] := A[a]>;
+         IF swap <= 1 THEN k := 10 * k FI;
+         IF same = (b - a + 1) DIV 2
+	   THEN C:" All elements are the same: so the array is sorted "
+         ELSIF j - a > b - j - 1
+           THEN @Quick_sort_rec4(k, j + 1, b VAR A);
+	        @Quick_sort_rec4(k, a, j VAR A)
+           ELSE @Quick_sort_rec4(k, a, j VAR A);
+	        @Quick_sort_rec4(k, j + 1, b VAR A) FI FI ENDVAR .;
+
+MW_PROC @Quick_sort5(N, k VAR A) ==
+  @Quick_sort_rec5(k, 1, N VAR A) .;
+
+C:" Recursive Quicksort: ";
+
+MW_PROC @Quick_sort_rec5(k, a, b VAR A) ==
+  VAR < i := 0, j := 0, v := 0, swap := 0, same := 1 >:
+  IF b - a + 1 <= k
+    THEN C:" Insertion sort ";
+         FOR i := a + 1 TO b STEP 1 DO 
+           v := A[i]; j := i;
+           WHILE j > a AND A[j - 1] > v DO 
+             A[j] := A[j - 1]; j := j - 1 OD;
+           A[j] := v OD
+    ELSE C:" Median of three partitioning: ";
+         j := (a + b) DIV 2;
+         IF A[a] < A[j] AND A[j] < A[b] OR A[b] < A[j] AND A[j] < A[a] 
+           THEN <A[j] := A[a], A[a] := A[j]>
+         ELSIF A[a] < A[b] AND A[b] < A[j] OR A[j] < A[b] AND A[b] < A[a] 
+           THEN <A[b] := A[a], A[a] := A[b]> FI;
+         i := a - 1; j := b + 1; v := A[a];
+         DO DO i := i + 1;
+               IF A[i] >= v THEN EXIT(1) FI;
+	       same := 0;
+	       DO i := i + 1;
+                  IF A[i] >= v THEN EXIT(2) FI OD OD;
+            DO j := j - 1;
+               IF A[j] <= v THEN EXIT(1) FI;
+               same := 0;
+	       DO j := j - 1;
+                  IF A[j] <= v THEN EXIT(2) FI OD OD;
+            IF i >= j THEN EXIT(1) FI;
+	    IF A[i] <> A[j]
+              THEN swap := swap + 1;
+	           same := 0;           
+                   <A[i] := A[j], A[j] := A[i]> FI;
+            IF swap > 1
+	      THEN C:" No point in checking further ";
+	           DO DO i := i + 1;
+                         IF A[i] >= v THEN EXIT(1) FI OD;
+                      DO j := j - 1;
+                         IF A[j] <= v THEN EXIT(1) FI OD;
+                      IF i >= j THEN EXIT(1) FI;
+                      <A[i] := A[j], A[j] := A[i]> OD;
+                   EXIT(1) FI OD;
+         <A[a] := A[j], A[j] := A[a]>;
+         IF swap <= 1 THEN k := 10 * k FI;
+         IF same = 1
+	   THEN C:" All elements are the same: so the array is sorted "
+         ELSIF j - a > b - j - 1
+           THEN @Quick_sort_rec5(k, j + 1, b VAR A);
+	        @Quick_sort_rec5(k, a, j VAR A)
+           ELSE @Quick_sort_rec5(k, a, j VAR A);
+	        @Quick_sort_rec5(k, j + 1, b VAR A) FI FI ENDVAR .;
+
+
+MW_PROC @Shell_sort(N, k VAR A) ==
+  VAR < gap := 1, i := 0, j := 0, v := 0, index := 0 >:
+  WHILE gap <= N DO gap := 3 * gap + 1 OD;
+
+  DO gap := (gap - 1) DIV 3;
+     i := gap + 1;
+     WHILE i <= N DO
+       v := A[i]; j := i;
+       DO index := j - gap;
+          IF A[index] > v
+	    THEN A[j] := A[index];
+	         j := j - gap;
+		 IF j <= gap THEN EXIT(1) FI
+            ELSE EXIT(1) FI OD;
+       A[j] := v;
+       i := i + 1 OD;
+     IF gap = 1 THEN EXIT(1) FI OD ENDVAR .;
+
+
+MW_PROC @Insertion_sort(N, k VAR A) ==
+  FOR i := 2 TO N STEP 1 DO 
+    v := A[i]; j := i;
+    WHILE j > 1 AND A[j - 1] > v DO 
+      A[j] := A[j - 1]; j := j - 1 OD;
+    A[j] := v OD .;
+
+
+MW_PROC @Bubble_sort1(N, k VAR A) ==
+  FOR i := N TO 1 STEP -1 DO
+    FOR j := 2 TO i STEP 1 DO
+      IF A[j-1] > A[j]
+        THEN <A[j-1] := A[j], A[j] := A[j-1]> FI OD OD .;
+
+
+MW_PROC @Bubble_sort(N, k VAR A) ==
+  VAR < swap := 0 >:
+  DO swap := 0;
+     FOR j := 2 TO N STEP 1 DO
+       IF A[j-1] > A[j]
+         THEN <A[j-1] := A[j], A[j] := A[j-1]>;
+              swap := 1 FI OD;
+     IF swap = 0 THEN EXIT(1) FI OD ENDVAR .;
+
+
+C:" Dual-Pivot Quicksort ";
+
+MW_PROC @DPQ_sort(N, k VAR A) ==
+  IF N <= 1000 THEN PRINT("Start  = ", A) FI;
+  @DPQ_sort_iter(k, 1, N VAR A);
+  IF N <= 1000 THEN PRINT("Result = ", A) FI;
+  IF k > 1
+    THEN PRINT("Final insertion sort... ", @Runtime);
+         @Insertion_sort(N, k VAR A) FI .;
+
+MW_PROC @DPQ2_sort(N, k VAR A) ==
+  IF N <= 1000 THEN PRINT("Start  = ", A) FI;
+  @DPQ_sort_test(k, 1, N VAR A);
+  IF N <= 1000 THEN PRINT("Result = ", A) FI;
+  IF k > 1
+    THEN PRINT("Final insertion sort... ", @Runtime);
+         @Insertion_sort(N, k VAR A) FI .;
+
+
+MW_PROC @DPQ_sort_test(k, i, j VAR A) ==
+  VAR < P1 := 0, P2 := 0, L := 0, K := 0, G := 0,
+        e2 := 0, e4 := 0, A2 := 0, A4 := 0,
+	e1 := 0, e3 := 0, e5 := 0, A1 := 0, A3 := 0, A5 := 0,
+	sixth := 0, swap := 0 >:
+  IF j - i + 1 > k
+     THEN C:" Pick two pivot elements. ";
+          C:" NB these five indices must be distinct! ";
+          sixth := (j - i + 1) DIV 6;
+          e1 := i + sixth;
+          e3 := (i + j) DIV 2;
+          e2 := e3 - sixth;
+          e4 := e3 + sixth;
+          e5 := j - sixth;
+          A1 := A[e1]; A2 := A[e2]; A3 := A[e3]; A4 := A[e4]; A5 := A[e5];
+          IF A1 > A2 THEN <A1 := A2, A2 := A1> FI;
+          IF A4 > A5 THEN <A4 := A5, A5 := A4> FI;
+          IF A1 > A3 THEN <A1 := A3, A3 := A1> FI;
+          IF A2 > A3 THEN <A2 := A3, A3 := A2> FI;
+          IF A1 > A4 THEN <A1 := A4, A4 := A1> FI;
+          IF A3 > A4 THEN <A3 := A4, A4 := A3> FI;
+          IF A2 > A5 THEN <A2 := A5, A5 := A2> FI;
+          IF A2 > A3 THEN <A2 := A3, A3 := A2> FI;
+          IF A4 > A5 THEN <A4 := A5, A5 := A4> FI;
+
+          A[e1] := A1; A[e3] := A3; A[e5] := A5;
+
+          C:" Swap the pivot values to the ends: ";
+          P1 := A2; A[e2] := A[i];
+          P2 := A4; A[e4] := A[j];
+
+          L := i + 1;
+          G := j - 1;
+
+          C:" Partitioning algorithm (my version): ";
+          K := L;
+          WHILE K <= G DO
+            AK := A[K];
+            IF AK < P1
+              THEN A[K] := A[L]; A[L] := AK;
+                   L := L + 1; K := K + 1
+            ELSIF AK > P2
+              THEN A[K] := A[G]; A[G] := AK;
+                   G := G - 1
+              ELSE K := K + 1 FI OD;
+
+          A[i] := P1; A[j] := P2;
+
+          C:" Swap the pivot values back to the right places: ";
+          A[i] := A[L-1]; A[L-1] := P1;
+	  A[j] := A[G+1]; A[G+1] := P2; 
+
+          C:" sort the sub-arrays ";
+
+IF N <= 1000 THEN
+PRINT("pivots = A[", e2, "] = ", P1, " A[", e4, "] = ", P2);
+PRINT("partition = ", i, " -- ", L - 2, " -- ", G + 2, " -- ", j);
+VAR < i := G + 2, part := < > >:
+sixth := (j - i + 1) DIV 6;
+e1 := i + sixth;
+e3 := (i + j) DIV 2;
+e2 := e3 - sixth;
+e4 := e3 + sixth;
+e5 := j - sixth;
+part := <<i, e1>, <e1, e2>, <e2, e3>, <e3, e4>, <e4, e5>, <e5, j>>;
+FOR pair IN part DO
+  @Print_Ar("== ", A, pair[1], pair[2]) OD ENDVAR FI;
+
+@DPQ_sort_test(k, G + 2, j VAR A);
+
+          IF P1 <> P2 THEN @DPQ_sort_test(k, L, G VAR A) FI;
+	  @DPQ_sort_test(k, i, L - 2 VAR A);
+
+          SKIP FI ENDVAR .;
+
+
+MW_PROC @DPQ_sort_iter(k, i, j VAR A) ==
+  VAR < AS := < >, P1 := 0, P2 := 0, L := 0, K := 0, G := 0,
+        e2 := 0, e4 := 0, A2 := 0, A4 := 0,
+	e1 := 0, e3 := 0, e5 := 0, A1 := 0, A3 := 0, A5 := 0,
+	sixth := 0 >:
+  DO IF j - i + 1 > k
+       THEN C:" Pick two pivot elements ";
+            sixth := (j - i + 1) DIV 6;
+	    e1 := i + sixth;
+	    e3 := (i + j) DIV 2;
+	    e2 := e3 - sixth;
+	    e4 := e3 + sixth;
+	    e5 := j - sixth;
+            A1 := A[e1]; A2 := A[e2]; A3 := A[e3]; A4 := A[e4]; A5 := A[e5];
+            IF A1 > A2 THEN <A1 := A2, A2 := A1> FI;
+            IF A4 > A5 THEN <A4 := A5, A5 := A4> FI;
+            IF A1 > A3 THEN <A1 := A3, A3 := A1> FI;
+            IF A2 > A3 THEN <A2 := A3, A3 := A2> FI;
+            IF A1 > A4 THEN <A1 := A4, A4 := A1> FI;
+            IF A3 > A4 THEN <A3 := A4, A4 := A3> FI;
+            IF A2 > A5 THEN <A2 := A5, A5 := A2> FI;
+            IF A2 > A3 THEN <A2 := A3, A3 := A2> FI;
+            IF A4 > A5 THEN <A4 := A5, A5 := A4> FI;
+
+            A[e1] := A1; A[e3] := A3; A[e5] := A5;
+
+            C:" Swap the pivot values to the ends: ";
+            P1 := A2; A[e2] := A[i];
+            P2 := A4; A[e4] := A[j];
+
+            L := i + 1;
+            G := j - 1;
+
+            C:" Partitioning algorithm (my version): ";
+            K := L;
+            WHILE K <= G DO
+              AK := A[K];
+              IF AK < P1
+                THEN A[K] := A[L]; A[L] := AK;
+                     L := L + 1; K := K + 1
+              ELSIF AK > P2
+                THEN A[K] := A[G]; A[G] := AK;
+                     G := G - 1
+                ELSE K := K + 1 FI OD;
+
+            C:" Swap the pivot values back to the right places: ";
+            A[i] := A[L-1]; A[L-1] := P1;
+            A[j] := A[G+1]; A[G+1] := P2;
+
+            C:" sort the sub-arrays ";
+
+	    PUSH(AS, i); PUSH(AS, L - 2);
+            IF P1 <> P2 THEN PUSH(AS, L); PUSH(AS, G) FI;
+            i := G + 2
+
+       ELSE IF AS = < > THEN EXIT(1)
+                        ELSE POP(j, AS); POP(i, AS) FI FI OD ENDVAR .;
+
+
+MW_PROC @DPQ_sort_opt(k, i, j VAR A) ==
+  VAR < AS := < >, P1 := 0, P2 := 0, L := 0, K := 0, G := 0,
+	e1 := 0, e2 := 0, e3 := 0, e4 := 0, e5 := 0,
+	A1 := 0, A2 := 0, A3 := 0, A4 := 0, A5 := 0, AK := 0,
+	sixth := 0 >:
+  DO IF j - i + 1 > k
+       THEN C:" Pick two pivot elements ";
+            sixth := (j - i + 1) DIV 6;
+	    e1 := i + sixth;
+	    e3 := (i + j) DIV 2;
+	    e2 := e3 - sixth;
+	    e4 := e3 + sixth;
+	    e5 := j - sixth;
+            A1 := A[e1]; A2 := A[e2]; A3 := A[e3]; A4 := A[e4]; A5 := A[e5];
+            IF A1 > A2 THEN <A1 := A2, A2 := A1> FI;
+            IF A4 > A5 THEN <A4 := A5, A5 := A4> FI;
+            IF A1 > A3 THEN <A1 := A3, A3 := A1> FI;
+            IF A2 > A3 THEN <A2 := A3, A3 := A2> FI;
+            IF A1 > A4 THEN <A1 := A4, A4 := A1> FI;
+            IF A3 > A4 THEN <A3 := A4, A4 := A3> FI;
+            IF A2 > A5 THEN <A2 := A5, A5 := A2> FI;
+            IF A2 > A3 THEN <A2 := A3, A3 := A2> FI;
+            IF A4 > A5 THEN <A4 := A5, A5 := A4> FI;
+
+            A[e1] := A1; A[e3] := A3; A[e5] := A5;
+
+            C:" Swap the pivot values to the ends: ";
+            P1 := A2; A[e2] := A[i];
+            P2 := A4; A[e4] := A[j];
+
+            L := i + 1;
+            G := j - 1;
+
+            C:" Partitioning algorithm (optimised version): ";
+            K := L;
+            DO IF K > G THEN EXIT(1) FI;
+               AK := A[K];
+	       IF AK < P1
+                 THEN C:" Move A[K] to left part ";
+                      IF K <> L
+                        THEN A[K] := A[L]; A[L] := AK FI;
+                      L := L + 1
+               ELSIF AK > P2
+                 THEN DO IF A[G] <= P2 THEN EXIT(1) FI;
+                         G := G - 1;
+                         IF G + 1 = K THEN EXIT(2) FI OD;
+	              IF A[G] < P1
+                        THEN A[K] := A[L];
+                             A[L] := A[G];
+                             L := L + 1;
+                             A[G] := AK;
+                             G := G - 1
+                        ELSE A[K] := A[G];
+                             A[G] := AK;
+                             G := G - 1 FI FI;
+               K := K + 1 OD;
+
+            C:" Swap the pivot values back to the right places: ";
+            A[i] := A[L-1]; A[L-1] := P1;
+            A[j] := A[G+1]; A[G+1] := P2;
+
+            C:" sort the sub-arrays ";
+
+	    PUSH(AS, i); PUSH(AS, L - 2);
+            IF P1 <> P2 THEN PUSH(AS, L); PUSH(AS, G) FI;
+            i := G + 2
+
+       ELSE IF AS = < > THEN EXIT(1)
+                        ELSE POP(j, AS); POP(i, AS) FI FI OD ENDVAR .;
+
+
+MW_PROC @DPQ_sort_rec(k, i, j VAR A) ==
+  WHILE j - i + 1 > k DO
+    VAR < P1 := 0, P2 := 0, L := 0, K := 0, G := 0,
+          sixth := (j - i + 1) DIV 6, e3 := (i + j) DIV 2 >:
+    C:" Pick two pivot elements ";
+    VAR < e2 := i,
+          e4 := j >:
+    VAR < A2 := A[e2], A4 := A[e4] >:
+    IF A2 > A4 THEN <A2 := A4, A4 := A2> FI;
+
+    C:" Swap the pivot values to the ends: ";
+    P1 := A2; A[e2] := A[i];
+    P2 := A4; A[e4] := A[j];
+
+    L := i + 1;
+    G := j - 1;
+
+    C:" Partitioning algorithm (my version): ";
+    K := L;
+    WHILE K <= G DO
+      IF A[K] < P1
+        THEN <A[L] := A[K], A[K] := A[L]>;
+             L := L + 1; K := K + 1
+      ELSIF A[K] > P2
+        THEN <A[K] := A[G], A[G] := A[K]>;
+             G := G - 1
+        ELSE K := K + 1 FI OD;
+
+    C:" Swap the pivot values back to the right places: ";
+    A[i] := A[L-1]; A[L-1] := P1;
+    A[j] := A[G+1]; A[G+1] := P2;
+
+    C:" Recursively sort the sub-arrays, excluding the pivot values: ";
+
+    @DPQ_sort_rec(k, i, L - 2 VAR A);
+    IF P1 <> P2 THEN @DPQ_sort_rec(k, L, G VAR A) FI;
+    i := G + 2 ENDVAR ENDVAR ENDVAR OD .;
+
+
+MW_PROC @Print_Ar(str, A, i, j) ==
+  PRINFLUSH(str);
+  FOR k := i TO j STEP 1 DO
+    PRINFLUSH(A[k], " ") OD;
+  PRINT("") .;
+
+
+MW_PROC @DPQ_sort_rec_dumb_pivot(k, i, j VAR A) ==
+  IF j - i + 1 > k
+    THEN VAR < P1 := 0, P2 := 0, L := 0, K := 0, G := 0,
+               sixth := (j - i + 1) DIV 6, e3 := (i + j) DIV 2 >:
+         C:" Pick two pivot elements ";
+	 VAR < e2 := i,
+	       e4 := j >:
+	 VAR < A2 := A[e2], A4 := A[e4] >:
+	 IF A2 > A4 THEN <A2 := A4, A4 := A2> FI;
+
+         C:" Swap the pivot values to the ends: ";
+         P1 := A2; A[e2] := A[i];
+         P2 := A4; A[e4] := A[j];
+
+         L := i + 1;
+	 G := j - 1;
+
+	 C:" Partitioning algorithm (my version): ";
+         K := L;
+	 WHILE K <= G DO
+	   IF A[K] < P1
+	     THEN <A[L] := A[K], A[K] := A[L]>;
+	          L := L + 1; K := K + 1
+           ELSIF A[K] > P2
+	     THEN <A[K] := A[G], A[G] := A[K]>;
+	          G := G - 1
+	     ELSE K := K + 1 FI OD;
+
+         C:" Swap the pivot values back to the right places: ";
+         A[i] := A[L-1]; A[L-1] := P1;
+         A[j] := A[G+1]; A[G+1] := P2;
+
+         C:" Recursively sort the sub-arrays, excluding the pivot values: ";
+
+	 @DPQ_sort_rec_dumb_pivot(k, i, L - 2 VAR A);
+	 IF P1 <> P2 THEN @DPQ_sort_rec_dumb_pivot(k, L, G VAR A) FI;
+	 @DPQ_sort_rec_dumb_pivot(k, G + 2, j VAR A) ENDVAR ENDVAR ENDVAR FI .;
+
+
+
+
+MW_PROC @DPQ_sort_rec_mine(k, i, j VAR A) ==
+  IF j - i + 1 > k
+    THEN VAR < P1 := 0, P2 := 0, L := 0, K := 0, G := 0,
+               sixth := (j - i + 1) DIV 6, e3 := (i + j) DIV 2 >:
+         C:" Pick two pivot elements ";
+	 VAR < e1 := i + sixth,  e2 := e3 - sixth,
+	       e4 := e3 + sixth, e5 := j - sixth >:
+	 VAR < A1 := A[e1], A2 := A[e2], A3 := A[e3], A4 := A[e4], A5 := A[e5] >:
+	 IF A1 > A2 THEN <A1 := A2, A2 := A1> FI;
+	 IF A4 > A5 THEN <A4 := A5, A5 := A4> FI;
+	 IF A1 > A3 THEN <A1 := A3, A3 := A1> FI;
+	 IF A2 > A3 THEN <A2 := A3, A3 := A2> FI;
+	 IF A1 > A4 THEN <A1 := A4, A4 := A1> FI;
+	 IF A3 > A4 THEN <A3 := A4, A4 := A3> FI;
+	 IF A2 > A5 THEN <A2 := A5, A5 := A2> FI;
+	 IF A2 > A3 THEN <A2 := A3, A3 := A2> FI;
+	 IF A4 > A5 THEN <A4 := A5, A5 := A4> FI;
+
+         A[e1] := A1; A[e3] := A3; A[e5] := A5;
+
+         C:" Swap the pivot values to the ends: ";
+         P1 := A2; A[e2] := A[i];
+         P2 := A4; A[e4] := A[j];
+
+         L := i + 1;
+	 G := j - 1;
+
+	 C:" Partitioning algorithm (my version): ";
+         K := L;
+	 WHILE K <= G DO
+	   IF A[K] < P1
+	     THEN <A[L] := A[K], A[K] := A[L]>;
+	          L := L + 1; K := K + 1
+           ELSIF A[K] > P2
+	     THEN <A[K] := A[G], A[G] := A[K]>;
+	          G := G - 1
+	     ELSE K := K + 1 FI OD;
+
+         C:" Swap the pivot values back to the right places: ";
+         A[i] := A[L-1]; A[L-1] := P1;
+         A[j] := A[G+1]; A[G+1] := P2;
+
+         C:" Recursively sort the sub-arrays, excluding the pivot values: ";
+
+	 @DPQ_sort_rec_mine(k, i, L - 2 VAR A);
+	 IF P1 <> P2 THEN @DPQ_sort_rec_mine(k, L, G VAR A) FI;
+	 @DPQ_sort_rec_mine(k, G + 2, j VAR A) ENDVAR ENDVAR ENDVAR FI .;
+
+
+
+
+
+MW_FUNCT @Powerset(set) ==
+  VAR < R := < >, x := < >, s1 := < >, y := < > >:
+  IF EMPTY?(set)
+    THEN R := << >>
+    ELSE x := HEAD(set);
+	 s1 := @Powerset(TAIL(set));
+	 FOR y IN s1 DO
+	   R := <<x> ++ y> ++ R OD;
+	 R := s1 ++ R FI;
+  (R) .;
+
+
+MW_FUNCT @fib(n) == : SKIP;
+  (IF n <= 1 THEN 1 ELSE @fib(n-1) + @fib(n-2) FI) .;
+
+
+
+C: " ----------------------------------------------------------------------- "

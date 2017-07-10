@@ -1,0 +1,112 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+##########
+##########   wsl file[.wsl] [arg...]
+##########
+##########   Loads and executes a WSL program.
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/\"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+
+$proc_num = ($$ % 32768);
+$tmpfile1 = "${tmpdir}t1$proc_num.scm";
+$tmpfile2 = "${tmpdir}t1$proc_num-mac.scm";
+
+push(@goners, $tmpfile1, $tmpfile2);
+
+($myname = $0) =~ s|(.*/)*||;   # strip path component from name
+$Usage = "Usage: $myname file.wsl [arg...]\n";
+
+# Check for one argument:
+die $Usage if ($#ARGV < 0);
+$ARGV[0] .= ".wsl" if (!-f $ARGV[0] && -f "$ARGV[0].wsl");
+&parse_args();
+
+($base = $input) =~ s/\.wsl$//;
+$base =~ s/\s+/_/g;
+my $argv = join(" ", map { '"' . $_ . '"' } @files);
+
+$cmds = <<END_OF_INPUT;
+  (if (file-exists? "patch.scm")
+      (load "patch.scm")
+      (if (file-exists? "patch.tr")
+	  (load "patch.tr")))
+  (define //W/S/L_/Option_/Quiet $quiet)
+  (\@WSL_To_Scheme (\@Parse_File "$input" //T_/Statements) "$tmpfile1" "$base")
+END_OF_INPUT
+
+# Don't use guile or gambit to do the WSL to Scheme translation:
+my $impl = $ENV{SCM_IMPL};
+undef($ENV{SCM_IMPL}) if ($impl eq "guile") || ($impl eq "gambit");
+&fermat($cmds);
+$ENV{SCM_IMPL} = $impl;
+
+
+# Scan for globals:
+%globals;
+$globals{'//Standard_/Input_/Port'}++;
+$globals{'//Standard_/Output_/Port'}++;
+%new;
+find_globals("patch.scm", \%globals) if -f "patch.scm";
+find_globals("patch.tr", \%globals) if -f "patch.tr";
+find_globals($tmpfile1, \%new);
+
+my $defns = "";
+foreach my $name (keys %new) {
+  next if $globals{$name};
+  print STDERR "Found new global: $name\n" unless $quiet;
+  $defns .= "\n  (define $name '())";
+}
+
+if ($quiet) {
+  $cmd1 = "";
+  $cmd2 = "";
+} else {
+  $cmd1 = '(display-list "Starting Execution... ")(newline)';
+  $cmd2 = '(newline)(display-list "Execution time: " '
+            . '(- (get-internal-run-time) tr-runtime))';
+}
+
+$cmds = <<END_OF_INPUT;
+  (if (file-exists? "patch.scm")
+      (load "patch.scm")
+      (if (file-exists? "patch.tr")
+	  (load "patch.tr")))
+  (define (\@Argv) '($argv))
+  $cmd1
+  (define tr-runtime (get-internal-run-time))
+
+  $defns
+  (load "$tmpfile1")
+
+  $cmd2
+END_OF_INPUT
+
+&fermat($cmds);
+
+exit(0);

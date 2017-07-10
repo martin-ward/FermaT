@@ -1,0 +1,756 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" A different version of @Summarise which is used for data flow analysis ";
+C:" (in particular, for program slicing and Static Single Assignment construction). ";
+
+C:" It is more complex in that we need to know which vars contribute to the modified ";
+C:" values of each modified variable, but simpler in that we don't need to keep ";
+C:" track of copied variables, constant assignments and incremented variable, ";
+C:" nor do we need to treat exit_flag as a special case. ";
+
+C:" NB: An item may access variables but not modify any: ";
+C:" eg the condition in a while loop or cond. ";
+C:" In this case the accessed variables are control dependencies. ";
+
+C:" @Summ2(I) returns: ";
+C:" <<d1, <c1, c2, ...>, <v1, e11, e12,...>, <v2, e21, e22, ...>, ...>, ";
+C:"  <d2, ...>, ";
+C:"  ...> ";
+
+C:" dn are the depth levels (cf Constant_Propagation lists) ";
+C:" cn are accessed variables which are control dependencies ";
+C:" vn are the updated variables ";
+C:" enm are the variables whose values are used to update vn ";
+
+C:" A control dependency is a variable which is accessed in order to change ";
+C:" the control flow (eg vars in the condition of an IF or WHILE). ";
+C:" It does not directly affect another variable, but may do so indirectly. ";
+C:" Consider: IF x = 1 THEN y := 1 ELSE y := 2 FI ";
+C:" @Summ2 is <0, <x>, <y>> ";
+C:" Without the <x> we would assume that y is constant, but y actually ";
+C:" depends on the initial value of x. ";
+
+
+C:" Proc summaries are in the form: ";
+C:"   <body, val_pars, var_pars, cd_vars, <v1, e11, ..>, ...> ";
+C:" (Currently we assume that Functs and BFuncts are `pure': ie they depend only ";
+C:" on their parameters and don't reference any global variables) ";
+C:" The inital hash table allows for proc calls with no body. ";
+
+Proc_Summaries := <HASH_TABLE>;
+
+C:" Used to check for recursion: ";
+
+Proc_Stack := HASH_TABLE;
+
+C:" Use this to rename local variables and formal pars to avoid name clashes: ";
+
+S2_Par_Count := -1;
+
+
+ind := "";
+
+MW_FUNCT @Summ2(I) ==
+  VAR < R := < >, ST := @ST(I), GT := @GT(I), ind := ind ++ "  " >:
+     IF GT = T_Statements  THEN R := @S2_Sequence(@Cs(I))
+  ELSIF GT = T_Expression  THEN R := @S2_Default(I)
+  ELSIF GT = T_Condition   THEN R := @S2_Default(I)
+     
+  ELSIF ST = T_Cond	   THEN R := @S2_Cond(@Cs(I))
+  ELSIF ST = T_D_If	   THEN R := @S2_Cond(@Cs(I))
+  ELSIF ST = T_Assignment  THEN R := @S2_Assigns(@Cs(I))
+  ELSIF ST = T_Assigns     THEN R := @S2_Assigns(@Cs(I))
+  ELSIF ST = T_Floop       THEN R := @S2_Floop(I)
+  ELSIF ST = T_While       THEN R := @S2_While(I)  
+  ELSIF ST = T_Var	   THEN R := @S2_Var(I)
+  ELSIF ST = T_For	   THEN R := @S2_For(I)
+  ELSIF ST = T_Proc_Call   THEN R := @S2_Proc_Call(I)
+  ELSIF ST = T_Where	   THEN R := @S2_Where(I)
+  ELSIF ST = T_Lvalues	   THEN R := @S2_Lvalues(I)
+
+			   ELSE R := @S2_Default(I) FI;
+  (R) .;
+
+
+C:" Construct a summary of a sequential list of items (of arbitrary types): ";
+
+MW_FUNCT @Summ2_List(L) == : SKIP;
+  (@S2_Sequence(L)) .;
+
+
+MW_FUNCT @S2_Sequence(comps) ==
+  VAR < R := <<0, < >>>, comp := < > >:
+  WHILE NOT EMPTY?(comps) DO
+    comp := HEAD(comps); comps := TAIL(comps);
+    IF @ST(comp) = T_Exit
+      THEN R := @S2_Increment(R, @V(comp)); comps := < >
+      ELSE R := @S2_Seq(R, @Summ2(comp)) FI OD;
+  (R) .;
+
+
+C:" If there is already an n level element in L then we must ";
+C:" merge the 0 level element with it: ";
+
+MW_FUNCT @S2_Increment(L, n) == : SKIP;
+  (IF EMPTY?(L) OR L[1][1] > 0
+     THEN L
+     ELSE @S2_Merge(<<n> ++ TAIL(L[1])>, TAIL(L)) FI) .;
+
+
+C:" Apply the level 0 results (if any) sequentially to the rest of the list ";
+C:" and then decrement the list. ";
+
+MW_FUNCT @S2_Floop(I) ==
+  VAR < R := < >, L := @S2_Loop(@S2_Sequence(@Cs(I^1))) >:
+  IF EMPTY?(L)
+    THEN R := < >
+  ELSIF L[1][1] > 0
+    THEN R := @S2_Decrement(L, 1)
+    ELSE R := @S2_Decrement(@S2_Seq_Sub(TAIL(L[1]), TAIL(L)), 1) FI;
+  (R) .;
+
+
+C:" A while loop may not execute at all: so all modified variables also ";
+C:" depend on their initial values (ie no variable is unconditionally clobbered). ";
+
+MW_FUNCT @S2_While(I) ==
+  VAR < body := @S2_Maybe(@S2_Loop(@Summ2(I^2))),
+	cond_vars := @Elements(I^1) >:
+  IF NOT EMPTY?(body) AND body[1][1] = 0
+    THEN body := <<0, cond_vars \/ body[1][2]> ++ body[1][3..]> ++ TAIL(body) FI;
+  (body) .;
+
+
+C:" Indicate that a summary refers to a statement that may not be executed ";
+C:" by making each modified variable also depend on its initial value: ";
+
+MW_FUNCT @S2_Maybe(L) == : SKIP;
+  (IF NOT EMPTY?(L) AND L[1][1] = 0
+     THEN <<0, L[1][2]> ++ @S2_Maybe_Sub(L[1][3..])> ++ TAIL(L)
+     ELSE L FI) .;
+
+MW_FUNCT @S2_Maybe_Sub(assigns) == : SKIP;
+  (IF EMPTY?(assigns)
+     THEN < >
+   ELSE IF assigns[1][1] IN assigns[1][2..]
+     THEN <HEAD(assigns)> ++ @S2_Maybe_Sub(TAIL(assigns))
+     ELSE <<assigns[1][1]> ++ <assigns[1][1]> \/ assigns[1][2..]>
+	     ++ @S2_Maybe_Sub(TAIL(assigns)) FI FI) .;
+
+
+
+C:" Process a summary of a statement which is iterated at least once. ";
+C:" If a := f(b) and b := g(c) then in the result, a also depends on c. ";
+C:" In effect, this is a graph marking problem: find all the reachable vars. ";
+C:" If v is clobbered in the statement (ie v doesn't depend on its initial value) ";
+C:" then it is also clobbered by the loop. ";
+
+MW_FUNCT @S2_Loop(L) ==
+  VAR < R := < > >:
+  IF EMPTY?(L)
+    THEN R := L
+  ELSIF L[1][1] > 0
+    THEN R := L
+    ELSE VAR < old := @S2_List_To_Hash(L[1][3..]),
+	       new := HASH_TABLE, done := HASH_TABLE, newl := < > >:
+	 FOR pair IN L[1][3..] DO
+	   newl := <<pair[1]> ++ @S2_Reachable(pair[1])> ++ newl OD;
+	 R := <<L[1][1], L[1][2]> ++ newl> ++ TAIL(L) ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @S2_Reachable(x) ==
+  VAR < R := < > >:
+  IF NOT EMPTY?(done.(x))
+    THEN R := new.(x);
+	 IF NUMBER?(R) THEN R := < > FI
+    ELSE R := old.(x);
+	 IF NUMBER?(R) THEN R := < > FI;
+	 done.(x) := 1;
+	 FOR y IN R DO
+	   R := R \/ @S2_Reachable(y) OD;
+	 new.(x) := R FI;
+  (R) .;
+
+
+C:" Convert a list of the form <<key, val1, val2, ...>, ...> to a hash table. ";
+C:" NB: If the list of values is empty, then we need to store something ";
+C:" other than < > in the hash table to show that the key is present. ";
+
+MW_FUNCT @S2_List_To_Hash(L) ==
+  VAR < R := HASH_TABLE, pair := < > >:
+  FOR pair IN L DO
+    IF EMPTY?(pair[2..])
+      THEN R.(pair[1]) := 0
+      ELSE R.(pair[1]) := pair[2..] FI OD;
+  (R) .;
+
+
+MW_FUNCT @S2_Decrement(L, n) == : SKIP;
+  (IF EMPTY?(L)
+     THEN < >
+   ELSE IF L[1][1] < n
+     THEN @S2_Decrement(TAIL(L), n)
+     ELSE <<L[1][1] - n> ++ TAIL(L[1])> ++ @S2_Decrement(TAIL(L), n) FI FI) .;
+
+
+C:" Sequential merging of two summaries: ";
+C:" If the first statement is improper (ie L1[1][1] > 0), ";
+C:" then the second statement is unreachable and has no effect. ";
+C:" Otherwise, sequentially merge L1[1] with ALL of L2 ";
+C:" and then parallel merge the rest of L1 with the new L2 tail: ";
+ 
+MW_FUNCT @S2_Seq(L1, L2) == : SKIP;
+  (IF EMPTY?(L1) OR EMPTY?(L2)
+     THEN < >
+     ELSE IF L1[1][1] > 0
+	    THEN L1
+	    ELSE <<L2[1][1]> ++ @S2_Seq_Vars(TAIL(L1[1]), TAIL(L2[1]))>
+		   ++ @S2_Merge(TAIL(L1), @S2_Seq_Sub(TAIL(L1[1]), TAIL(L2))) FI FI) .;
+
+
+C:" Sequentially merge the vars with everything in the list: ";
+
+MW_FUNCT @S2_Seq_Sub(vars, L) == : SKIP;
+  (IF EMPTY?(L)
+     THEN < >
+     ELSE <<L[1][1]> ++ @S2_Seq_Vars(vars, TAIL(L[1]))> ++ @S2_Seq_Sub(vars, TAIL(L)) FI) .;
+
+
+C:" <controls, <v1, e11, e12...>, ...> ";
+
+C:" Apply the first assigns to the second set of control vars. ";
+
+C:" Take the second list of assigns and apply the first assigns to each RHS. ";
+C:" Add any new assigns from the first list. ";
+
+MW_FUNCT @S2_Seq_Vars(L1, L2) ==
+  VAR < R := < >, assigns1 := L1[2..], done := HASH_TABLE >:
+  FOR pair IN L2[2..] DO
+    R := <<pair[1]> ++ @S2_Apply(pair[2..], assigns1)> ++ R;
+    done.(pair[1]) := 1 OD;
+  FOR pair IN L1[2..] DO
+    IF EMPTY?(done.(pair[1]))
+      THEN R := <pair> ++ R FI OD;
+  (<L1[1] \/ @S2_Apply(L2[1], assigns1)> ++ REVERSE(R)) .;
+
+
+C:" Apply a list of assigns to each of a list of variables. ";
+C:" If an assign overwrites *part* of a variable, keep the variable ";
+C:" plus the values from the assign. ";
+C:" If an assign overwrites the struct containing the variable, ";
+C:" replace the variable by the values. ";
+
+MW_FUNCT @S2_Apply(L, assigns) ==
+  VAR < R := < >, val := < >, overwrite := 0 >:
+  FOR var IN L DO
+    overwrite := 0;
+    FOR pair IN assigns DO
+      IF @Prefix?(pair[1], var)
+	THEN C:" This assign overwrites all of the var ";
+	     R := R \/ pair[2..];
+	     overwrite := 1
+      ELSIF @Prefix?(var, pair[1])
+	THEN C:" This assign overwrites part of the var ";
+	     R := R \/ pair[2..] FI OD;
+    IF overwrite = 0
+      THEN R := R \/ <var> FI OD;
+  (R) .;
+	     
+
+
+
+C:" Merging two summaries in parallel (eg arms of an IF): ";
+
+MW_FUNCT @S2_Merge(L1, L2) == : SKIP;
+  (IF EMPTY?(L1)
+     THEN L2
+   ELSE IF EMPTY?(L2)
+     THEN L1
+   ELSE IF L1[1][1] < L2[1][1]
+     THEN <L1[1]> ++ @S2_Merge(TAIL(L1), L2)
+   ELSE IF L1[1][1] > L2[1][1]
+     THEN <L2[1]> ++ @S2_Merge(L1, TAIL(L2))
+     ELSE <<L1[1][1]> ++ @S2_Merge_Vars(TAIL(L1[1]), TAIL(L2[1]))>
+		++ @S2_Merge(TAIL(L1), TAIL(L2)) FI FI FI FI) .;
+
+
+
+C:" <e, <v, e1, e2...>, ...> ";
+
+C:" If a variable is assigned in one arm, but not in the other, ";
+C:" then its final value depends on its initial value ";
+C:" (since the final value may be the unchanged initial value): ";
+
+MW_FUNCT @S2_Merge_Vars(L1, L2) ==
+  VAR < R := < >, val := < >,
+	assign1 := @S2_List_To_Hash(L1[2..]),
+	assign2 := @S2_List_To_Hash(L2[2..]),
+	done := HASH_TABLE >:
+  FOR pair IN L1[2..] DO
+    done.(pair[1]) := 1;
+    val := assign2.(pair[1]);
+    IF EMPTY?(val)
+      THEN C:" pair[1] is assigned in L1 but not in L2, so its final value also ";
+	   C:" depends on its initial value: ";
+	   R := <<pair[1]> ++ (pair[2..] \/ <pair[1]>)> ++ R
+    ELSIF NUMBER?(val)
+      THEN R := <pair> ++ R
+      ELSE R := <<pair[1]> ++ (pair[2..] \/ val)> ++ R FI OD;
+  FOR pair IN L2[2..] DO
+    IF EMPTY?(done.(pair[1]))
+      THEN val := assign1.(pair[1]);
+	   IF EMPTY?(val)
+	     THEN R := <<pair[1]> ++ (pair[2..] \/ <pair[1]>)> ++ R
+	   ELSIF NUMBER?(val)
+	     THEN R := <pair> ++ R
+	     ELSE R := <<pair[1]> ++ (pair[2..] \/ val)> ++ R FI FI OD;
+  (<L1[1] \/ L2[1]> ++ REVERSE(R)) .;
+  
+
+
+C:" The comps are all of type T_Guarded ";
+C:" The conditions are evaluated until one is true, then the corresponding ";
+C:" code is executed. So the nth arm includes the result of evaluating ";
+C:" the first n conditions: ";
+
+MW_FUNCT @S2_Cond(comps) ==
+  VAR < R := < >, comp := < >, B := < > >:
+  WHILE NOT EMPTY?(comps) DO
+    comp := HEAD(comps); comps := TAIL(comps);
+    C:" Get the results of the condition and apply to rest of sequence: ";
+    IF EMPTY?(B)
+      THEN B := @S2_Cond_Test(comp^1)
+      ELSE B := @S2_Seq(B, @S2_Cond_Test(comp^1)) FI;
+    R := @S2_Merge(R, @S2_Seq(B, @Summ2(comp^2))) OD;
+  (R) .;
+
+
+MW_FUNCT @S2_Cond_Test(I) == : SKIP;
+  (<<0, @Elts_Used(I)>>) .;
+
+
+C:" There are no control variables in an assignment statement: ";
+
+MW_FUNCT @S2_Assigns(comps) ==
+  VAR < R := < >, used := < > >:
+  FOR I IN comps DO
+    used := @Elts_Used(I);
+    FOR var IN @Elts_Assigned(I^1) DO
+      R := <<var> ++ used> ++ R OD OD;
+  (<<0, < >> ++ R>) .;
+
+
+C:" The default is to assume that every assigned element depends on ";
+C:" every used element. If there are no assigned elements in a statement, ";
+C:" then take os as the single assigned element, ";
+C:" otherwise (eg for a condition) assume all used elements are control vars. ";
+
+MW_FUNCT @S2_Default(I) ==
+  VAR < R := < >, vals := @Elts_Used(I), vars := @Elts_Assigned(I) >:
+  IF EMPTY?(vars) AND NOT EMPTY?(vals) AND @GT(I) = T_Statement
+    THEN vars := <<@Make_Name("os")>>;
+	 vals := vars ++ vals FI;
+  IF EMPTY?(vars)
+    THEN R := <<0, vals>>
+    ELSE FOR var IN vars DO
+	   R := <<var> ++ vals> ++ R OD;
+	 R := <<0, < >> ++ R> FI;
+  (R) .;
+
+
+C:" This is used by @Basic_Blocks to generate the return node for a procedure. ";
+C:" Generate a reference to and update of each returned variable ";
+C:" x := <x>, y := <y> etc. ";
+
+MW_FUNCT @S2_Lvalues(I) ==
+  VAR < R := < > >:
+  FOR var IN @Elts_Assigned(I) DO
+    R := <<var, var>> ++ R OD;
+  (<<0, < >> ++ R>) .;
+
+
+C:" Remove local variables from a summary: ";
+
+MW_FUNCT @S2_Remove(L, names) ==
+  VAR < R := < >, L1 := < >, controls := < >, assigns := < > >:
+  IF EMPTY?(L) OR L[1][1] > 0
+    THEN R := L
+    ELSE controls := L[1][2];
+	 FOR pair IN L[1][3..] DO
+	   IF pair[1] IN names
+	     THEN C:" Assignment to a local var, ";
+		  C:" convert the referenced vars to control vars. ";
+		  controls := controls \/ @Elt_Subtract(pair[2..], names)
+	     ELSE assigns := <<pair[1]> ++ @Elt_Subtract(pair[2..], names)> ++ assigns FI OD;
+	 R := <<0, @Elt_Subtract(controls, names)> ++ assigns> ++ TAIL(L) FI;
+  (R) .;
+
+
+C:" Add accessed variables to a summary: ";
+
+MW_FUNCT @S2_Add(L, vars) ==
+  VAR < R := L >:
+  IF EMPTY?(L) OR L[1][1] > 0
+    THEN SKIP
+    ELSE R[1][2] := R[1][2] \/ vars FI;
+  (R) .;
+
+
+C:" Rename a variable in a summary: ";
+
+MW_FUNCT @S2_Rename(L, old, new) ==
+  VAR < R := < > >:
+  IF EMPTY?(L) OR L[1][1] > 0
+    THEN R := L
+    ELSE FOR pair IN L[1][2..] DO
+	   R := <@S2_Rename_sub(pair, old, new)> ++ R OD;
+	 R := <<0> ++ REVERSE(R)> ++ TAIL(L) FI;
+  (R) .;
+
+
+C:" Rename a variable in a list of variables: ";
+
+MW_FUNCT @S2_Rename_sub(L, old, new) ==
+  VAR < R := < > >:
+  FOR elt IN L DO
+    IF elt = old
+      THEN R := <new> ++ R
+      ELSE R := <elt> ++ R FI OD;
+  (REVERSE(R)) .;
+
+
+C:" Add a prefix to all variables in a summary: ";
+C:" Drop an initial `a' and convert structured variables to simple variables. ";
+
+MW_FUNCT @S2_Prefix(L, str) ==
+  VAR < R := < > >:
+  IF EMPTY?(L) OR L[1][1] > 0
+    THEN R := L
+    ELSE FOR pair IN L[1][2..] DO
+	   R := <@S2_Prefix_List(pair, str)> ++ R OD;
+	 R := <<0> ++ REVERSE(R)> ++ TAIL(L) FI;
+  (R) .;
+
+
+C:" Add a prefix to all variables in a list: ";
+C:" (a.FOO.BAR becomes prefix__foo.bar) ";
+
+MW_FUNCT @S2_Prefix_List(L, str) ==
+  VAR < R := < > >:
+  FOR elt IN L DO
+    IF elt[1] > 0
+      THEN IF elt[1] = a_name AND LENGTH(elt) > 1
+	     THEN elt := TAIL(elt) FI;
+	   IF LAST(elt) < 0
+	     THEN R := <<@S2_Join(str, BUTLAST(elt)), LAST(elt)>> ++ R
+	     ELSE R := <<@S2_Join(str, elt)>> ++ R FI
+      ELSE R := <elt> ++ R FI OD;
+  (REVERSE(R)) .;
+
+C:" Join the elements with _dot_ and add the prefix to make a new name: ";
+C:" (NB: The result has to be a simple variable since field names ";
+C:" have to be unique: ie each child has a unique parent field) ";
+
+MW_FUNCT @S2_Join(str, elt) == : SKIP;
+  (@Make_Name(str ++ @Join("_dot_", MAP("@N_String", elt)))) .;
+
+
+C:" Rename the local vars (to avoid clashes), ";
+C:" Add the initial assignments to the body and remove the local vars: ";
+
+MW_FUNCT @S2_Var(I) ==
+  VAR < R := @S2_Sequence(@Cs(I^2)), init := < >, var := < >, vars := < > >:
+  FOR assign IN @Cs(I^1) DO
+    var := @CP_Var_Name(assign^1);
+    IF NOT EMPTY?(var)
+      THEN S2_Par_Count := S2_Par_Count - 1;
+	   vars := <<S2_Par_Count>> ++ vars;
+	   R := @S2_Rename(R, var, <S2_Par_Count>);
+	   init := <<<S2_Par_Count>> ++ @Elts_Used(assign^2)> ++ init FI OD;
+  init := <<0, < >> ++ init>;
+  R := @S2_Remove(@S2_Seq(init, R), @Make_Set(vars));
+  (R) .;
+
+
+MW_FUNCT @S2_For(I) == : SKIP;
+  (@S2_Add(@S2_Remove(@S2_Loop(@S2_Sequence(@Cs(I^5))), <<@V(I^1)>>),
+	   @Elts_Used(I^2) \/ @Elts_Used(I^3) \/ @Elts_Used(I^4))) .;
+
+
+C:" Look for a summary of the proc body and update according to the parameters: ";
+C:" A proc summary is: <body, val_pars, var_pars, control_vars, <v1, e11, ..>, ...> ";
+
+C:" This avoids an error when the proc call is not in the WHERE clause: ";
+proc_done := HASH_TABLE;
+
+MW_FUNCT @S2_Proc_Call(I) ==
+  VAR < R := < >, summ := @S2_Get_Proc_Summary(@V(I^1), Proc_Summaries),
+	actual_vals := < >, formal_vals := < >, formal_vars := < >,
+	actual := < >, init := < >, prefix := @N_String(@V(I^1)) ++ "__" >:
+  IF EMPTY?(summ)
+    THEN C:" Either we haven't processed the definition, or its a recursive call: ";
+	 IF NOT EMPTY?(proc_done.(@V(I^1)))
+	   THEN C:" Recursive call: ";
+		R := <<0, < >>>
+	   ELSE R := @S2_Default(I) FI
+    ELSE R := @Proc_To_Summ2(summ);
+	 IF LENGTH(summ[2]) <> @Size(I^2) OR LENGTH(summ[3]) <> @Size(I^3)
+	   THEN PRINT("Formal/Actual parameter mismatch in proc call:");
+		PRINT("summ[2] = ", summ[2]);
+		PRINT("summ[3] = ", summ[3]);
+		@Print_WSL(I, "")
+	 ELSIF EMPTY?(summ[2]) AND EMPTY?(summ[3])
+	   THEN C:" parameterless proc call "
+	   ELSE R := @S2_Prefix(R, prefix);
+		formal_vals := @S2_Prefix_List(summ[2], prefix);
+		formal_vars := @S2_Prefix_List(summ[3], prefix);
+		C:" create init as formal_vals := actual_vals ";
+		FOR actual IN @Cs(I^2) DO
+		  init := <<HEAD(formal_vals)> ++ @Elts_Used(actual)> ++ init;
+		  formal_vals := TAIL(formal_vals) OD;
+		init := <<0, < >> ++ init>;
+		FOR actual IN @Cs(I^3) DO
+		  R := @S2_Rename(R, HEAD(formal_vars), @CP_Var_Name(actual));
+		  formal_vars := TAIL(formal_vars) OD;
+		R := @S2_Seq(init, R);
+		R := @S2_Remove(R, @Make_Set(@S2_Prefix_List(summ[2], prefix))) FI FI;
+  (R) .;
+
+
+C:" Return the summary of the proc from the list, given its name: ";
+C:" bodies is a list of tables: ";
+C:" name -> <body, val_pars, var_pars, cd_vars, <v1, e1, ...>, ...> ";
+
+C:" NB: formal parameters in the summary are replaced by negative integers ";
+C:" which indicate their position in the parameter list. ";
+
+MW_FUNCT @S2_Get_Proc_Summary(name, bodies) ==
+  VAR < tab := < >, R := < > >:
+  IF NOT EMPTY?(bodies)
+    THEN tab := HEAD(bodies);
+	 R := tab.(name);
+	 IF EMPTY?(R)
+	   THEN R := @S2_Get_Proc_Summary(name, TAIL(bodies)) FI FI;
+  (R) .;
+
+
+C:" Process the proc/funct bodies (depth first order) and temporarily prepend ";
+C:" a table to Proc_Summaries while we process the body of the where. ";
+
+MW_FUNCT @S2_Where(I) ==
+  VAR < R := < > >:
+  Proc_Summaries := <HASH_TABLE> ++ Proc_Summaries;
+  @Summ2_Where_Defns(@Cs(I^2));
+  R := @Summ2(I^1);
+  Proc_Summaries := TAIL(Proc_Summaries);
+  (R) .;
+
+
+C:" Add summaries of all the procs to the first table in Proc_Summaries: ";
+C:" (This is also used in Constant_Propagation and Basic_Blocks) ";
+
+MW_PROC @Summ2_Where_Defns(L) ==
+  VAR < body := < >, proc_done := HASH_TABLE, bodies := HASH_TABLE >:
+  FOR body IN L DO
+    bodies.(@V(body^1)) := body OD;
+  FOR body IN L DO
+    IF EMPTY?(proc_done.(@V(body^1)))
+      THEN C:" Summarise the body, first summarising any (non-recursivaly) called procs: ";
+	   @S2_Summarise_Body(bodies, body VAR done) FI OD ENDVAR .;
+
+
+C:" NB could have a call to a higher WHERE clause: ";
+
+MW_PROC @S2_Summarise_Body(bodies, body VAR done) ==
+  VAR < calls := < >, pair := < >, name := < > >:
+  proc_done.(@V(body^1)) := 1;
+  IF @ST(body) = T_Proc
+    THEN calls := @Proc_Calls(body^4);
+	 FOR pair IN calls DO
+	   name := HEAD(pair);
+	   IF EMPTY?(proc_done.(name)) AND NOT EMPTY?(bodies.(name))
+	     THEN C:" Find the body and process it first: ";
+		  @S2_Summarise_Body(bodies, bodies.(name) VAR done) FI OD FI;
+  C:" All called procs have been processed: ";
+  @S2_Summarise_Body_Sub(body) ENDVAR .;
+
+
+C:" The old version renames parameters in the val, var and summary ";
+C:" to negative integers using S2_Par_Count. ";
+C:" This is to avoid name clashes. ";
+
+C:" Check for a var par which is also a val par: ";
+C:" (val pars are copied to var pars for the SSA transformation) ";
+
+MW_PROC @S2_Summarise_Body_Sub_Orig(body) ==
+  VAR < summ := < >, vals := < >, vars := < >, par := < >,
+	par_tab := HASH_TABLE, tab := HASH_TABLE, n := 0 >:
+  summ := @Summ2(body^4);
+  IF NOT EMPTY?(summ) AND summ[1][1] = 0
+    THEN FOR par IN @Cs(body^2) DO
+	   S2_Par_Count := S2_Par_Count - 1;
+	   summ := @S2_Rename(summ, @CP_Var_Name(par), <S2_Par_Count>);
+	   vals := <<S2_Par_Count>> ++ vals;
+	   par_tab.(@CP_Var_Name(par)) := S2_Par_Count OD;
+	 FOR par IN @Cs(body^3) DO
+	   IF EMPTY?(par_tab.(@CP_Var_Name(par)))
+	     THEN S2_Par_Count := S2_Par_Count - 1;
+		  n := S2_Par_Count
+	     ELSE n := par_tab.(@CP_Var_Name(par)) FI;
+	   summ := @S2_Rename(summ, @CP_Var_Name(par), <n>);
+	   vars := <<n>> ++ vars OD;
+	 tab := HEAD(Proc_Summaries);
+	 tab.(@V(body^1)) := <body, REVERSE(vals), REVERSE(vars)> ++ TAIL(summ[1]);
+	 Proc_Summaries[1] := tab FI ENDVAR .;
+
+
+C:" For the basic blocks list we need to know what the original name ";
+C:" of each parameter is.  We do the renaming (to avoid name clashes) ";
+C:" when we process the proc call. ";
+
+MW_PROC @S2_Summarise_Body_Sub(body) ==
+  VAR < summ := < >, vals := < >, vars := < >, tab := HASH_TABLE >:
+  summ := @Summ2(body^4);
+  IF NOT EMPTY?(summ) AND summ[1][1] = 0
+    THEN vals := MAP("@CP_Var_Name", @Cs(body^2));
+	 vars := MAP("@CP_Var_Name", @Cs(body^3));
+	 tab := HEAD(Proc_Summaries);
+	 tab.(@V(body^1)) := <body, vals, vars> ++ summ[1][2..];
+	 Proc_Summaries[1] := tab FI ENDVAR .;
+
+
+C:" Convert a summary to an equivalent WSL schema: ";
+
+MW_FUNCT @Summ2_To_WSL(L) ==
+  VAR < R := < >, body := < > >:
+  IF EMPTY?(L)
+    THEN R := FILL Statements exit_flag := 1 ENDFILL
+  ELSIF LENGTH(L) = 1
+    THEN R := @Summ2_To_WSL_Sub(TAIL(L[1])[1], TAIL(L[1])[2..]);
+	 IF L[1][1] > 0
+	   THEN R := @Make(T_Statements, < >, @Cs(R) ++ <@Make(T_Exit, L[1][1], < >)>)
+	 ELSIF @Size(R) = 0
+	   THEN R := @Skips FI
+    ELSE C:" Multiple exit values to be accounted for ";
+	 VAR < expns := < >, body := < > >:
+	 WHILE NOT EMPTY?(L) DO
+	   expns := MAP("@Name_To_WSL", L[1][2]);
+	   body := @Summ2_To_WSL_Sub(< >, TAIL(L[1])[2..]);
+	   IF L[1][1] > 0
+	     THEN body := @Make(T_Statements, < >,
+				@Cs(body) ++ <@Make(T_Exit, L[1][1], < >)>)
+	   ELSIF @Size(body) = 0
+	     THEN body := @Skips FI;
+	   L := TAIL(L);
+	   IF EMPTY?(L)
+	     THEN cond := @Make(T_True, < >, < >)
+	     ELSE cond := FILL Condition !XC test?(~*expns) ENDFILL FI;
+	   R := <@Make(T_Guarded, < >, <cond, body>)> ++ R OD ENDVAR;
+	 R := @Make(T_Statements, < >, <@Make(T_Cond, < >, REVERSE(R))>) FI;
+  @Edit;
+  @New_Program(R);
+  C:" Rename funct and test so that they are all different ";
+  VAR < n := 0 >:
+    FOREACH Expression DO
+      IF @ST(@I) = T_X_Funct_Call
+	THEN @Down; C:" to name ";
+	     n := n + 1;
+	     @Paste_Over(@Name(@Make_Name("funct" ++ @String(n)))) FI OD;
+    n := 0;
+    FOREACH Condition DO
+      IF @ST(@I) = T_X_BFunct_Call
+	THEN @Down; C:" to name ";
+	     n := n + 1;
+	     @Paste_Over(@Name(@Make_Name("test" ++ @String(n) ++ "?"))) FI OD ENDVAR;
+  R := @Program;
+  @Undo_Edit;
+  (R) .;
+
+
+C:" assigns are <<v1, e11, ...>, ...> ";
+
+MW_FUNCT @Summ2_To_WSL_Sub(control, assigns) ==
+  VAR < vars := < >, R := < > >:
+  FOR pair IN assigns DO
+    vars := MAP("@Elt_To_Expn", pair[2..]);
+    R := <@Make(T_Assign, < >,
+		<@Elt_To_Lvalue(pair[1]), 
+		 FILL Expression !XF funct(~*vars) ENDFILL>)> ++ R OD;
+  IF EMPTY?(R)
+    THEN R := @Skip
+    ELSE R := @Make(T_Assignment, < >, REVERSE(R)) FI;
+  IF NOT EMPTY?(control)
+    THEN vars := MAP("@Elt_To_Expn", control);
+	 R := FILL Statement IF !XC B?(~*vars) THEN ~?R FI ENDFILL FI;
+  (@Make(T_Statements, < >, <R>)) .;
+
+
+
+MW_PROC @Print_Summ2(L) ==
+  FOR L1 IN L DO
+    PRINFLUSH(L1[1], ": <", @Join(", ", MAP("@Elt_To_String", L1[2])), ">");
+    FOR pair IN L1[3..] DO
+      PRINT("");
+      PRINFLUSH("   ", @Elt_To_String(pair[1]), " := <");
+      PRINFLUSH(@Join(", ", MAP("@Elt_To_String", pair[2..])), ">") OD;
+    PRINT("") OD .;
+
+
+MW_PROC @Write_Summ2(L) ==
+  FOR L1 IN L DO
+    @WS(@String(L1[1]) ++ ": <" ++ @Join(", ", MAP("@Elt_To_String", L1[2])) ++ ">");
+    FOR pair IN L1[3..] DO
+      @WL("");
+      @WS("   " ++ @Elt_To_String(pair[1]) ++ " := <");
+      @WS(@Join(", ", MAP("@Elt_To_String", pair[2..])) ++ ">") OD;
+    @WL("") OD .;
+
+
+C:" Use this to list the summaries of all procedures in all WHERE clauses: ";
+
+MW_PROC @Print_Proc_Summ2() ==
+  VAR < summ := < > >:
+  FOREACH Statement DO
+    IF @ST(@I) = T_Where
+      THEN Proc_Summaries := <HASH_TABLE> ++ Proc_Summaries;
+	   @Summ2_Where_Defns(@Cs(@I^2));
+	   FOR body IN @Cs(@I^2) DO
+	     summ := @S2_Get_Proc_Summary(@V(body^1), Proc_Summaries);
+	     IF @ST(body) = T_Proc AND NOT EMPTY?(summ)
+	       THEN PRINT(@N_String(@V(body^1)));
+		    @Print_Summ2(@Proc_To_Summ2(summ)) FI OD;
+	   Proc_Summaries := TAIL(Proc_Summaries) FI OD ENDVAR END;
+
+
+C:" Convert a proc summary (eg from the Proc_Summaries tables) ";
+C:" to an ordinary summary: ";
+
+MW_FUNCT @Proc_To_Summ2(summ) == : SKIP;
+  (<<0> ++ summ[4..]>) .;
+
+
+
+
+
+SKIP
+
+

@@ -1,0 +1,37 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+TR_Partially_Join_Cases := @New_TR_Number;
+
+TRs_Name[TR_Partially_Join_Cases] := "Partially Join Cases";
+
+TRs_Proc_Name[TR_Partially_Join_Cases] := "Partially_Join_Cases";
+TRs_Test[TR_Partially_Join_Cases]:=!XF funct(@Partially_Join_Cases_Test);
+TRs_Code[TR_Partially_Join_Cases]:=!XF funct(@Partially_Join_Cases_Code);
+
+TRs_Keywords[TR_Partially_Join_Cases] := < "Rewrite", "Join" >;
+
+TRs_Help[TR_Partially_Join_Cases] := "This transformation will join any guards in an `If' statement which contain almost the same sequence of statements (thus reducing their number) by introducing a nested `If' and changing the conditions of all the guards as appropriate.";
+
+TRs_Prompt[TR_Partially_Join_Cases] := "";
+
+TRs_Data_Gen_Type[TR_Partially_Join_Cases] := "" 
+
+

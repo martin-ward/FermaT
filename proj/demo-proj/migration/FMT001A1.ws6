@@ -1,0 +1,219 @@
+BEGIN
+  D_IF entry_point = "_enter_"
+           -> C:" <ENTRY POINT> ";
+         C:" <NAME=FMT001A1> ";
+         r1 := __r1_init__;
+         r2 := __r2_init__;
+         r3 := __r3_init__;
+         r4 := __r4_init__;
+         r5 := __r5_init__;
+         r6 := __r6_init__;
+         r7 := __r7_init__;
+         r8 := __r8_init__;
+         r9 := __r9_init__;
+         r10 := __r10_init__;
+         r11 := __r11_init__;
+         r12 := __r12_init__;
+         r13 := __r13_init__;
+         r14 := __r14_init__;
+         C:"*********************************************************************";
+         C:"<FermaT> 00000123 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+         !P push_regs(r0,
+                       r1,
+                       r2,
+                       r3,
+                       r4,
+                       r5,
+                       r6,
+                       r7,
+                       r8,
+                       r9,
+                       r10,
+                       r11,
+                       r12,
+                       r13,
+                       r14
+           VAR reg_stack);
+         !P chain_reg( VAR r13, os);
+         C:"<FermaT> 00000124 r3 r15";
+         C:"*        <FERMAT><ML><0><>";
+         C:"<FermaT> 00000126 WSAVE WSAVE[5] WSAVE[6] WSAVE[7] WSAVE[8] r3 r13";
+         C:"*        <FERMAT><ML><0><>";
+         C:"<FermaT> 00000127 WSAVE r14 r3";
+         C:"<FermaT> 00000128 r13 r14";
+         C:"*        <FERMAT><ML><0><>";
+         C:"<FermaT> 00000129 WSAVE r13 r3";
+         C:"*";
+         C:"<FermaT> 00000131 DDIN r15";
+         result_code := NOT_USED;
+         !P OPEN(DDIN, "INPUT" VAR result_code, os);
+         C:"<FermaT> 00000137 RDSOUT r15";
+         result_code := NOT_USED;
+         !P OPEN(RDSOUT, "OUTPUT" VAR result_code, os);
+         C:"READ FIRST RECORD";
+         C:"<FermaT> 00000143 GETREC r10";
+         GETREC();
+         IF exit_flag <> 1
+           THEN C:"<FermaT> 00000144 LAB110";
+                DO C:"STORE INDEX WORD IN PRINT LINE";
+                   C:"Execute instruction successfully processed:";
+                   C:" <EXEC TARGET 162: 230 230> ";
+                   C:"<FermaT> 00000162 WPRT LAB110 r4 r5 r3";
+                   WPRT[1..r5 + 1] := a[r4, r5 + 1];
+                   C:"*WMVC1   MVC   WPRT(1),0(R4)";
+                   C:"ADDRESS PRINT LINE";
+                   C:"<FermaT> 00000164 WPRT r8 r3";
+                   C:"SKIP OVER WORD";
+                   C:"<FermaT> 00000165 r8 r5";
+                   r8 := !XF address_of(WPRT) + r5 + 2;
+                   C:"<FermaT> 00000166 LAB130";
+                   DO C:"STORE PAGE NUMBER";
+                      C:"Execute instruction successfully processed:";
+                      C:" <EXEC TARGET 169: 231 231> ";
+                      C:"<FermaT> 00000169 LAB130 r6 r7 r8";
+                      a[r8, r7 + 1] := a[r6, r7 + 1];
+                      C:"*WMVC2   MVC   0(1,R8),0(R6)";
+                      C:"INDEX OVER PAGE NUMBER";
+                      C:"<FermaT> 00000171 r8 r7";
+                      r8 := r7 + r8 + 1;
+                      C:"STORE LAST WORD";
+                      C:"Execute instruction successfully processed:";
+                      C:" <EXEC TARGET 172: 232 232> ";
+                      C:"<FermaT> 00000172 WLAST WREC r3 r5";
+                      WLAST[1..r5 + 1] := WREC[1..r5 + 1];
+                      C:"*WMVC3   MVC   WLAST(1),WREC";
+                      C:"<FermaT> 00000174 LAB100";
+                      C:"READ NEXT RECORD";
+                      C:"<FermaT> 00000145 GETREC LAB100 r10";
+                      GETREC();
+                      IF exit_flag = 1 THEN EXIT(2) FI;
+                      C:"INDEX WORD CHANGED ?";
+                      C:"Execute instruction successfully processed:";
+                      C:" <EXEC TARGET 151: 229 229> ";
+                      C:"<FermaT> 00000151 WLAST r3 r5 r4";
+                      C:"*WCLC1   CLC   WLAST(1),0(R4)";
+                      C:"NO.";
+                      C:"<FermaT> 00000153 LAB120";
+                      IF WLAST[1..r5 + 1] <> a[r4, r5 + 1]
+                        THEN EXIT(1)
+                        ELSE C:"ADD SEPARATOR";
+  C:"<FermaT> 00000167 LAB120 r8";
+  a[r8] := !XF mvi(",");
+  C:"INDEX OVER SEPARATOR";
+  C:"<FermaT> 00000168 r8";
+  r8 := r8 + 1 FI OD;
+                   C:"YES - WRITE PRINT LINE";
+                   C:"<FermaT> 00000154 RDSOUT WPRT r15";
+                   C:"FIXME: Unknown File max for RDSOUT ";
+                   C:"FIXME: Unknown File max for RDSOUT ";
+                   C:"FIXME: Unknown File min for RDSOUT ";
+                   C:"FIXME: Unknown File max for RDSOUT ";
+                   C:"FIXME: Unknown File max for RDSOUT ";
+                   C:"FIXME: Unknown File min for RDSOUT ";
+                   result_code := NOT_USED;
+                   !P PUT_FIXED(RDSOUT, WPRT[1] VAR result_code, os);
+                   C:"CLEAR PRINT LINE";
+                   C:"<FermaT> 00000160 WPRT WPRT[1] r3";
+                   C:"<FermaT> 00000161 WPRT WPRT[1] r3";
+                   !P fill(!XF mvi(" ") VAR WPRT) OD FI
+    [] entry_point = "WCLC1"
+           -> C:"*";
+         C:"<FermaT> 00000229 WLAST WLAST[1] WCLC1 r3 r4";
+         C:"<FermaT> 00000230 WPRT WPRT[1] WMVC1 r4 r3";
+         WPRT[1] := a[r4];
+         C:"<FermaT> 00000231 WMVC2 r6 r8";
+         a[r8] := a[r6];
+         C:"<FermaT> 00000232 WLAST WLAST[1] WREC WREC[1] WMVC3 r3";
+         WLAST[1] := WREC[1] FI
+WHERE
+  PROC GETREC() ==
+    C:"*";
+    C:"READ RECORD";
+    C:"<FermaT> 00000200 DDIN WREC GETREC r0 r1 r15 r14";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File min for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File min for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File min for DDIN ";
+    r0 := NOT_USED;
+    r1 := NOT_USED;
+    result_code := NOT_USED;
+    !P GET_FIXED(DDIN
+      VAR WREC[1], r0, r1, result_code, os);
+    r15 := DDIN_STATUS;
+    IF !XC end_of_file(DDIN)
+      THEN C:"*";
+           C:"<FermaT> 00000176 RDSOUT WPRT LAB140 r15";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File min for RDSOUT ";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File min for RDSOUT ";
+           result_code := NOT_USED;
+           !P PUT_FIXED(RDSOUT, WPRT[1] VAR result_code, os);
+           C:"<FermaT> 00000182 DDIN r15";
+           result_code := NOT_USED;
+           !P CLOSE(DDIN VAR result_code, os);
+           C:"<FermaT> 00000188 RDSOUT r15";
+           result_code := NOT_USED;
+           !P CLOSE(RDSOUT VAR result_code, os);
+           C:"*";
+           C:"*        <FERMAT><ML><0><>";
+           C:"<FermaT> 00000195 WSAVE WSAVE[5] WSAVE[6] WSAVE[7] WSAVE[8] LAB999 r13 r3";
+           C:"<FermaT> 00000196 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+           C:"<FermaT> 00000197 r15";
+           C:"<FermaT> 00000198 r14";
+           exit_flag := 1
+      ELSE C:"START OF WORD";
+           C:"<FermaT> 00000211 WREC r4 r3";
+           r4 := !XF address_of(WREC);
+           C:"<FermaT> 00000212 r5 r4";
+           r5 := !XF address_of(WREC);
+           DO C:"SEPARATOR (,) ?";
+              C:"<FermaT> 00000213 L10A r5";
+              C:"YES.";
+              C:"<FermaT> 00000214 L10B";
+              IF a[r5] = ","
+                THEN EXIT(1)
+                ELSE C:"INDEX NEXT CHARACTER";
+                     C:"<FermaT> 00000215 r5";
+                     r5 := r5 + 1;
+                     C:"<FermaT> 00000216 L10A" FI OD;
+           C:"SAVE START OF PAGE NUMBER";
+           C:"<FermaT> 00000217 L10B r7 r5";
+           r7 := r5 + 1;
+           C:"LENGTH OF WORD";
+           C:"<FermaT> 00000218 r5 r4";
+           r5 := r5 - !XF address_of(WREC);
+           C:"DECREMENT FOR EXECUTE";
+           C:"<FermaT> 00000219 r5 r0";
+           C:"START OF PAGE NUMBER";
+           C:"<FermaT> 00000220 r6 r7";
+           r6 := r7;
+           DO C:"END ?";
+              C:"<FermaT> 00000221 L10C r7";
+              C:"YES.";
+              C:"<FermaT> 00000222 L10D";
+              IF a[r7] = " "
+                THEN EXIT(1)
+                ELSE C:"INDEX NEXT CHARACTER";
+                     C:"<FermaT> 00000223 r7";
+                     r7 := r7 + 1;
+                     C:"<FermaT> 00000224 L10C" FI OD;
+           C:"LENGTH OF PAGE NUMBER";
+           C:"<FermaT> 00000225 L10D r7 r6";
+           r7 := r7 - r6;
+           C:"DECREMENT FOR EXECUTE";
+           C:"<FermaT> 00000226 r7 r0";
+           r5 := r5 - 1;
+           r7 := r7 - 1;
+           C:"RETURN";
+           C:"<FermaT> 00000227 r10";
+           exit_flag := 0 FI END
+END

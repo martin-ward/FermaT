@@ -1,0 +1,167 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Simple_Slice_Test() ==
+  IF @GT(@I) <> T_Statements AND @GT(@I) <> T_Statement
+    THEN @Fail("Can only slice statements.")
+  ELSIF SUBSET?(@Stat_Types(@I),
+		@Make_Set(<T_Cond, T_D_If, T_While, T_Assignment, T_Var,
+			   T_Assert, T_Skip, T_Abort, T_Comment, T_Spec>))
+    THEN FOREACH Lvalue DO
+	   IF @ST(@I) <> T_Var_Lvalue
+	     THEN @Fail("All assignments must be to simple variables.") FI OD;
+	 FOREACH Statement DO
+	   IF @ST(@I) = T_Assignment AND @Size(@I) > 1
+		OR @ST(@I) = T_Var AND @Size(@I^1) > 1
+	     THEN @Fail("Statement contains a parallel assignment.") FI OD;
+	 IF NOT @Failed? THEN @Pass FI
+    ELSE @Fail("The current item contains a statement which cannot be sliced.") FI .;
+
+
+MW_PROC @Simple_Slice_Code(Data) ==
+  VAR < x := MAP("@Make_Name", @Split(Data)), I := @I,
+        bottom := @Make(T_Variable, @Make_Name("BOTTOM"), < >) >:
+  PRINT("Simple Slice, initial variables are: ", @Join(" ", MAP("@N_String", x)));
+  @Slice;
+  @Paste_Over(I);
+  PRINT("Simple Slice,   final variables are: ",
+        @Join(" ", MAP("@N_String", x))) ENDVAR .;
+
+C:" Implements: <I, x> := <I', x'>.(I' \slice{x'}{x} I) ";
+
+MW_PROC @Slice() ==
+  IF @GT(I) = T_Statements
+    THEN VAR < L := < > >:
+         FOR I IN REVERSE(@Cs(I)) DO
+	   @Slice;
+	   L := <I> ++ L OD;
+	 I := @Make(T_Statements, < >, L) ENDVAR
+
+  ELSIF @GT(I) = T_Guarded
+    THEN VAR < B := I^1 >:
+         I := I^2;
+	 @Slice;
+	 x := x \/ @Used(B);
+	 I := @Make(T_Guarded, < >, <B, I>) ENDVAR
+
+  ELSIF @ST(I) = T_Abort
+    THEN x := < >
+
+  ELSIF @GT(I) = T_Statement AND EMPTY?(x /\ @Assigned(I))
+    THEN I := @Skip
+
+  ELSIF @ST(I) = T_Assignment OR @ST(I) = T_Spec
+    THEN x := (x \ @Assigned(I)) \/ @Used(I)
+
+  ELSIF @ST(I) = T_Var
+    THEN VAR < assign := I^1^1 >:
+         VAR < v := @V(assign^1), e := @Used(assign^2), x0 := x >:
+         I := I^2;
+	 @Slice;
+         IF v NOTIN x
+	   THEN assign := @Make(T_Assign, < >, <assign^1, bottom>) FI;
+         x := (x \ <v>) \/ (<v> /\ x0) \/ e;
+         I := @Make(T_Var, < >, <@Make(T_Assigns, < >, <assign>), I>) ENDVAR ENDVAR
+
+  ELSIF @ST(I) = T_Cond OR @ST(I) = T_D_If
+    THEN VAR < x1 := < >, x0 := x, G := < >, ST := @ST(I) >:
+         FOR guard IN @Cs(I) DO
+           I := guard;
+	   x := x0;
+	   @Slice;
+	   G := <I> ++ G;
+	   x1 := x1 \/ x OD;
+         x := x1;
+	 I := @Make(ST, < >, REVERSE(G)) ENDVAR
+
+  ELSIF @ST(I) = T_While
+    THEN C:" Keep processing the body and adding the original vars ";
+	 C:" plus the vars in the condition, until the result converges ";
+	 VAR < B := I^1, I0 := I^2, x1 := x \/ @Used(I^1) >:
+	 DO I := I0;
+	    x := x1;
+	    @Slice;
+	    IF SUBSET?(x, x1) THEN EXIT(1) FI;
+	    x1 := x1 \/ x OD;
+         I := @Make(T_While, < >, <B, I>);
+	 x := x1 ENDVAR
+
+    ELSE ERROR("Unexpected type: ", @Type_Name(@ST(I))) FI .;
+
+
+
+C:" Slices the given item with the given slicing criterion ";
+C:" (set of final variables required). ";
+C:" Returns the sliced program plus new slicing criterion ";
+C:" (the set of input variables required) ";
+
+MW_FUNCT @Slice_orig(I, X) ==
+  VAR < R := < >, new := < >, newX := < > >:
+  IF @ST(I) = T_Statements
+    THEN FOR S IN REVERSE(@Cs(I)) DO
+	   R := @Slice_orig(S, X);
+	   new := <R[1]> ++ new;
+	   X := R[2] OD;
+	 R := <@Make(T_Statements, < >, new), X>
+
+  ELSIF @ST(I) = T_Abort
+    THEN R := <I, < >>
+
+  ELSIF @GT(I) = T_Statement AND EMPTY?(X /\ @Assigned(I))
+    THEN R := <@Skip, X>
+
+  ELSIF @ST(I) = T_Assignment
+    THEN R := <I, (X \ @Assigned(I)) \/ @Used(I)>
+
+  ELSIF @ST(I) = T_Cond OR @ST(I) = T_D_If
+    THEN FOR guard IN @Cs(I) DO
+	   R := @Slice_orig(guard^2, X);
+	   new := <@Make(T_Guarded, < >, <guard^1, R[1]>)> ++ new;
+	   newX := newX \/ @Variables(guard^1) \/ R[2] OD;
+	 R := <@Make(@ST(I), < >, REVERSE(new)), newX>
+
+  ELSIF @ST(I) = T_While
+    THEN C:" Keep processing the body and adding the original vars ";
+	 C:" plus the vars in the condition, until the result converges ";
+	 VAR < B := @Variables(I^1), S := I^2, newX := X >:
+	 DO R := @Slice_orig(S, newX);
+	    R[2] := R[2] \/ newX \/ B;
+	    IF R[2] = newX THEN EXIT(1) FI;
+	    newX := R[2] OD ENDVAR;
+	 R := <@Make(T_While, < >, <I^1, R[1]>), R[2]>
+
+  ELSIF @ST(I) = T_Var
+    THEN VAR < v := I^1^1^1, e := I^1^1^2, S := I^2, newX := < > >:
+	 R := @Slice_orig(I^2, X \ <@V(v)>);
+	 S := R[1];
+	 newX := (R[2] \ <@V(v)>) \/ (<@V(v)> /\ X);
+	 IF @V(v) IN R[2]
+	   THEN R := < FILL Statement VAR < ~?v := ~?e >: ~?S ENDVAR ENDFILL,
+		       newX \/ @Used(e) >
+	   ELSE R := < FILL Statement VAR < ~?v := BOTTOM >: ~?S ENDVAR ENDFILL,
+		       newX > FI ENDVAR 
+
+    ELSE ERROR("Unexpected type: ", @Type_Name(@ST(I))) FI;
+  (R) .;
+	 
+
+SKIP
+

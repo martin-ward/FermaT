@@ -1,0 +1,14 @@
+<TypeTransformations>
+  <Transformation Name="Declare Undeclared Variables" Type="native" CodeSource="fme.components.typesystemeditor.transformations.InsertTypeAnnotations" />
+  <Transformation Name="Externalise Undeclared Variables" Type="native" CodeSource="fme.components.typesystemeditor.transformations.ExternaliseUndeclaredVariables" />
+  <Transformation Name="Check Types" Type="native" CodeSource="fme.components.typesystemeditor.transformations.CheckTypes" />
+  <Transformation Name="Check Type Usage" Type="native" CodeSource="fme.components.typesystemeditor.transformations.CheckTypeUsage" />
+  <Transformation Name="Infer Types" Type="native" CodeSource="fme.components.typesystemeditor.transformations.InferTypes" />
+  <Transformation Name="Infer Location" Type="native" CodeSource="fme.components.typesystemeditor.transformations.InferLocation" />
+  <Transformation Name="Infer Variables" Type="native" CodeSource="fme.components.typesystemeditor.transformations.InferVariables" />
+  <Transformation Name="Insert Type Annotations" Type="native" CodeSource="fme.components.typesystemeditor.transformations.InsertTypeAnnotations" />
+  <Transformation Name="Delete Inference Results" Type="native" CodeSource="fme.components.typesystemeditor.transformations.DeleteInferenceResults" />
+  <Transformation Name="Specify Scalar Variables" Type="native" CodeSource="fme.components.typesystemeditor.transformations.SpecifyScalarVariables" />
+  <Transformation Name="Check Subroutine Interfaces" Type="native" CodeSource="fme.components.typesystemeditor.transformations.CheckSubroutineInterfaces"/>
+  <Transformation Name="Insert Type Annotations from DA2 File" Type="native" CodeSource="fme.components.typesystemeditor.transformations.InsertTypeAnnotationsFromDA2File"/>
+</TypeTransformations>

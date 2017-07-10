@@ -1,0 +1,37 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+TR_Use_Assertion := @New_TR_Number;
+
+TRs_Name[TR_Use_Assertion] := "Use_Assertion";
+
+TRs_Proc_Name[TR_Use_Assertion] := "Use_Assertion";
+TRs_Test[TR_Use_Assertion]:=!XF funct(@Use_Assertion_Test);
+TRs_Code[TR_Use_Assertion]:=!XF funct(@Use_Assertion_Code);
+
+TRs_Keywords[TR_Use_Assertion] := < "Use/Apply" >;
+
+TRs_Help[TR_Use_Assertion] := "Use the currently selected assertion to simplify code.";
+
+TRs_Prompt[TR_Use_Assertion] := ""; 
+
+TRs_Data_Gen_Type[TR_Use_Assertion] := "" 
+ 

@@ -1,0 +1,303 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Prog_To_Spec' ",
+	    FILL Statements x := 123 ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements SPEC <x>: x' = 123 ENDSPEC ENDFILL);
+
+
+@Test_Trans(" 2nd test of `Prog_To_Spec' ",
+	    FILL Statements x := 2 * x + 1 ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements SPEC <x>: x' = 2 * x + 1 ENDSPEC ENDFILL);
+
+
+@Test_Trans(" 3rd test of `Prog_To_Spec' ",
+	    FILL Statements IF y = 1 THEN x := 1 ELSE x := 2 FI ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements SPEC <x>: x' = 1 AND y = 1
+	                           OR x' = 2 AND y <> 1 ENDSPEC ENDFILL);
+
+
+@Test_Trans(" 4th test of `Prog_To_Spec' ",
+	    FILL Statements IF y = 1
+                              THEN IF z = 1
+                                     THEN x := p
+                                     ELSE x := q FI
+                              ELSE x := r FI ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements SPEC <x>:
+	                    ((x' = q OR z = 1) AND x' = p OR x' = q AND z <> 1)
+                                   AND (x' = r OR y = 1)
+                              OR x' = r AND y <> 1 ENDSPEC ENDFILL);
+
+
+
+@Test_Trans(" 5th test of `Prog_To_Spec' ",
+	    FILL Statements D_IF TRUE -> p := 1
+	                      [] TRUE -> p := 2 FI ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements SPEC <p>: p' = 1 OR p' = 2 ENDSPEC ENDFILL);
+
+
+
+@Test_Trans(" 6th test of `Prog_To_Spec' ",
+	    (FILL Statements WHILE x > 0 DO x := x - 1 OD ENDFILL),
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    "Fail");
+
+
+
+@Test_Trans(" 7th test of `Prog_To_Spec' ",
+	    FILL Statements
+
+            {age >= 65 AND age < 75};
+            VAR < income := 36000, blind := 0, married := 1, pc10 := 0 >:
+            
+            IF age >= 75 
+              THEN personal := 5980
+              ELSE IF age >= 65
+                     THEN personal := 5720
+                     ELSE personal := 4335 FI FI;
+            IF age >= 65 AND income > 16800
+                THEN VAR < t := personal - ((income-16800)/2) >:
+                     IF t > 4335
+                       THEN personal := t
+                       ELSE personal := 4335 FI ENDVAR FI;
+            IF blind = 1 THEN personal := personal + 1380 FI;
+            IF married = 1 AND age >= 75
+              THEN pc10 := 6692
+              ELSE  pc10 := 1500 FI ENDVAR 
+
+            ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements
+
+            SPEC <personal>:
+            personal' = 4335 AND age < 75 AND age >= 65 ENDSPEC
+            
+            ENDFILL);
+
+
+
+@Test_Trans(" 8th test of `Prog_To_Spec' ",
+	    FILL Statements
+
+           {age > 68};
+           VAR < income := Income, tax := 0,
+                 blind := 1, married := 0, widow := 1 >:
+           
+           IF age >= 75 
+             THEN personal := 5980
+             ELSE IF age >= 65
+                    THEN personal := 5720
+                    ELSE personal := 4335 FI FI;
+           IF age >= 65 AND income > 16800
+               THEN VAR < t := personal - ((income-16800)/2) >:
+                    IF t > 4335
+                      THEN personal := t
+                      ELSE personal := 4335 FI ENDVAR FI;
+           IF blind = 1 THEN personal := personal + 1380 FI;
+           VAR < pc10 := 0 >:
+           IF married = 1 AND age >= 75
+             THEN pc10 := 6692
+             ELSE IF married = 1 AND age >= 65
+                    THEN pc10 := 6625
+                    ELSE IF married = 1 OR widow = 1
+                           THEN pc10 := 3470
+                           ELSE pc10 := 1500 FI FI FI;
+           IF married = 1 AND age >= 65 AND income > 16800
+             THEN VAR < t := pc10 - ((income-16800)/2) >:
+                  IF t > 3740
+                    THEN pc10 := t
+                    ELSE pc10 := 3740 FI ENDVAR FI;
+           IF income <= personal
+             THEN tax := 0
+             ELSE income := income - personal;
+                  IF income <= pc10
+                    THEN tax := income * rate10
+                    ELSE tax := pc10 * rate10;
+                         income := income - pc10;
+                         IF income <= 28000
+                           THEN tax := tax + income * rate23
+                           ELSE tax := tax + 28000 * rate23;
+                                income := income - 28000;
+                                tax := tax + income * rate40 FI FI FI ENDVAR ENDVAR 
+
+            ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements
+
+            SPEC <personal>:
+            ((personal' = (16800 - Income) / 2 + 7360
+                                    AND Income < 20090
+                               OR personal' = 5715 AND Income >= 20090
+                               OR personal' = 7360 AND Income <= 16800)
+                         AND (personal' = 7360 OR Income > 16800)
+                         AND age >= 75
+                    OR (personal' = (16800 - Income) / 2 + 7100
+                                    AND Income < 19570
+                               OR personal' = 5715 AND Income >= 19570
+                               OR personal' = 7100 AND Income <= 16800)
+                         AND (personal' = 7100 OR Income > 16800))
+              AND ((personal' = (16800 - Income) / 2 + 7360
+                                    AND Income < 20090
+                               OR personal' = 5715 AND Income >= 20090
+                               OR personal' = 7360 AND Income <= 16800)
+                         AND (personal' = 7360 OR Income > 16800)
+                    OR age < 75)
+              AND age > 68 ENDSPEC
+
+            ENDFILL);
+
+
+@Test_Trans(" 9th test of `Prog_To_Spec' ",
+	    FILL Statements
+
+            VAR < x := x >:
+            IF p = q
+              THEN x := 18
+              ELSE x := 17 FI;
+            IF p <> q
+              THEN y := x
+              ELSE  y := 2 FI ENDVAR
+
+            ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements
+
+            SPEC <y>:
+            y' = 2 AND p = q OR y' = 17 AND p <> q ENDSPEC
+            
+            ENDFILL);
+
+
+@Test_Trans("10th test of `Prog_To_Spec' ",
+	    FILL Statements
+
+            IF x = 1 THEN y := 2 
+            ELSIF x = 2 THEN y := 3
+                        ELSE y := 4 FI
+
+            ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements
+
+            SPEC <y>:
+            y' = 4 AND x <> 1 AND x <> 2
+              OR y' = 2 AND x = 1
+              OR y' = 3 AND x = 2 ENDSPEC
+            
+            ENDFILL);
+
+
+@Test_Trans("11th test of `Prog_To_Spec' ",
+	    FILL Statements
+
+VAR < x := y >:
+IF p > q THEN x := x + 2
+         ELSE x := x - 2 FI;
+{x = 10} ENDVAR
+
+            ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements
+
+{y = 8 AND p > q OR y = 12 AND p <= q}
+            
+            ENDFILL);
+
+
+
+@Test_Trans("12th test of `Prog_To_Spec' ",
+	    FILL Statements
+
+IF x = 0 THEN y := 1
+ELSIF x = 1 THEN y := 10
+ELSIF x = 2 THEN y := 4
+            ELSE y := 5 FI;
+IF z = 1 THEN y := y + 1 FI;
+{y < 5}
+
+            ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements
+
+SPEC <y>:
+(y' = 1 AND z <> 1 OR y' = 2 AND z = 1) AND x = 0
+  OR y' = 4 AND x = 2 AND z <> 1 ENDSPEC
+
+            ENDFILL);
+
+
+@Test_Trans("13th test of `Prog_To_Spec' ",
+	    FILL Statements
+
+r := q + 1;
+IF p = q
+  THEN z := r - 1; x := z + 3; y := 10
+ELSIF p <> r - 1
+  THEN y := 10; x := r + y - 8
+  ELSE x := q FI
+
+            ENDFILL,
+	    < >,
+	    TR_Prog_To_Spec,
+	    < >,
+	    FILL Statements
+
+SPEC <r, x, y, z>:
+(z' = q AND p = q OR z' = z AND p <> q)
+  AND r' = q + 1
+  AND x' = q + 3
+  AND y' = 10 ENDSPEC
+
+            ENDFILL);
+
+
+
+
+SKIP
+

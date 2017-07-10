@@ -1,0 +1,42 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2015 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+MW_PROC @All_Proc_Stacks_To_Pars_Test() ==
+  FOREACH Statement DO
+    IF @ST(@I) = T_Where
+      THEN @Down_To(2); @Down; C:" to first defn ";
+	   DO IF @ST(@I) = T_Proc
+	        THEN IF @Trans?(TR_Stack_To_Par) THEN @Pass FI FI;
+              IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+           @Up; @Up FI OD;
+  IF NOT @Passed? THEN @Fail("No suitable procedure definitions found") FI .;
+	
+MW_PROC @All_Proc_Stacks_To_Pars_Code(Data) ==
+  FOREACH Statement DO
+    IF @ST(@I) = T_Where
+      THEN @Down_To(2); @Down; C:" to first defn ";
+	   DO IF @ST(@I) = T_Proc
+	        THEN IF @Trans?(TR_Stack_To_Par)
+		       THEN @Trans(TR_Stack_To_Par, "") FI FI;
+              IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+           @Up; @Up FI OD .;
+	
+SKIP
+

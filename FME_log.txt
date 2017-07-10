@@ -1,0 +1,158 @@
+INFO fme.config.CM.<init>(): Config: StartDirectory -> _CurrentDir_
+INFO fme.config.CM.<init>(): Config: gui.Editor.FontColor -> java.awt.Color[r=0,g=0,b=0]
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.InitXPosOffset -> 50
+INFO fme.config.CM.<init>(): Config: gui.MainFrame.InitHeight -> 600
+INFO fme.config.CM.<init>(): Config: fme.components.console.ConsoleObserver -> default
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.LineColor -> java.awt.Color[r=0,g=0,b=0]
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.Editor.InitYPosOffset -> 100
+INFO fme.config.CM.<init>(): Config: gui.MainFrame.Background -> java.awt.Color[r=192,g=192,b=255]
+INFO fme.config.CM.<init>(): Config: gui.InternalFrame.InitYPos -> 50
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.External_FUNCTION -> java.awt.Color[r=128,g=128,b=128]
+INFO fme.config.CM.<init>(): Config: gui.ProjectManager.InitWidth -> 450
+INFO fme.config.CM.<init>(): Config: gui.Console.BackgroundColor -> java.awt.Color[r=0,g=0,b=0]
+INFO fme.config.CM.<init>(): Config: gui.ProjectManager.InitXPos -> 150
+INFO fme.config.CM.<init>(): Config: gui.HistoryGraph.LineColor -> java.awt.Color[r=0,g=0,b=0]
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.External_A_PROCEDURE -> java.awt.Color[r=64,g=64,b=64]
+INFO fme.config.CM.<init>(): Config: ExecutionCommand -> engine/exec.sh noecho
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.VariableMarking -> java.awt.Color[r=255,g=200,b=0]
+INFO fme.config.CM.<init>(): Config: gui.ProjectManager.InitHeight -> 300
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.Editor.InitWidth -> 800
+INFO fme.config.CM.<init>(): Config: gui.HistoryGraph.NodeColor -> java.awt.Color[r=255,g=255,b=0]
+INFO fme.config.CM.<init>(): Config: gui.Console.Font -> Courier-BOLD-12
+INFO fme.config.CM.<init>(): Config: gui.TypeTransformationCatalogue.InitWidth -> 250
+INFO fme.config.CM.<init>(): Config: gui.TypeTransformationCatalogue.InitXPosOffset -> 300
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.PROCEDURE -> java.awt.Color[r=0,g=255,b=0]
+INFO fme.config.CM.<init>(): Config: version -> 0.1
+INFO fme.config.CM.<init>(): Config: gui.InternalFrame.InitXPos -> 100
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.External_PROCEDURE -> java.awt.Color[r=128,g=128,b=128]
+INFO fme.config.CM.<init>(): Config: gui.Editor.BackgroundColor -> java.awt.Color[r=255,g=255,b=255]
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.InitHeight -> 600
+INFO fme.config.CM.<init>(): Config: gui.InternalFrame.Gap -> 50
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.SearchMarking -> java.awt.Color[r=0,g=255,b=255]
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.MetaWSL_BFUNCTION -> java.awt.Color[r=0,g=255,b=255]
+INFO fme.config.CM.<init>(): Config: gui.MainFrame.InitWidth -> 800
+INFO fme.config.CM.<init>(): Config: gui.TypeTransformationCatalogue.InitYPosOffset -> 80
+INFO fme.config.CM.<init>(): Config: gui.Editor.CaretColor -> java.awt.Color[r=255,g=175,b=175]
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.InitWidth -> 800
+INFO fme.config.CM.<init>(): Config: gui.InternalFrame.InitWidth -> 450
+INFO fme.config.CM.<init>(): Config: gui.Editor.Font -> Courier-BOLD-12
+INFO fme.config.CM.<init>(): Config: Look_and_Feel -> Tonic
+INFO fme.config.CM.<init>(): Config: gui.MainFrame.InitYPos -> 50
+INFO fme.config.CM.<init>(): Config: gui.InternalFrame.InitHeight -> 350
+INFO fme.config.CM.<init>(): Config: gui.Console.FontColor -> java.awt.Color[r=255,g=255,b=255]
+INFO fme.config.CM.<init>(): Config: ConsoleCommand -> engine/fermat_console.sh noecho
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.BFUNCTION -> java.awt.Color[r=0,g=255,b=0]
+INFO fme.config.CM.<init>(): Config: gui.TypeTransformationCatalogue.InitHeight -> 300
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.MODULE -> java.awt.Color[r=255,g=255,b=0]
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.MetaWSL_FUNCTION -> java.awt.Color[r=0,g=255,b=255]
+INFO fme.config.CM.<init>(): Config: gui.Editor.BlockColor -> java.awt.Color[r=255,g=200,b=0]
+INFO fme.config.CM.<init>(): Config: gui.ActionSystemCallGraph.MarkedLineColor -> java.awt.Color[r=0,g=255,b=255]
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.Font -> Courier-PLAIN-14
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.BlockMarking -> java.awt.Color[r=255,g=255,b=0]
+INFO fme.config.CM.<init>(): Config: gui.MainFrame.InitXPos -> 50
+INFO fme.config.CM.<init>(): Config: gui.Editor.FontLarge -> Courier-BOLD-20
+INFO fme.config.CM.<init>(): Config: gui.Editor.SearchColor -> java.awt.Color[r=0,g=255,b=255]
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.Editor.InitHeight -> 600
+INFO fme.config.CM.<init>(): Config: gui.Console.CaretColor -> java.awt.Color[r=255,g=175,b=175]
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.InitYPosOffset -> 50
+INFO fme.config.CM.<init>(): Config: gui.TypeSystemEditor.Editor.InitXPosOffset -> 100
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.MarkedLineColor -> java.awt.Color[r=0,g=255,b=255]
+INFO fme.config.CM.<init>(): Config: MetricsCommand -> engine/metrics.sh noecho
+INFO fme.config.CM.<init>(): Config: ExperimentalFeatures -> 0
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.MetaWSL_PROCEDURE -> java.awt.Color[r=0,g=255,b=255]
+INFO fme.config.CM.<init>(): Config: gui.Editor.BlockColorUnidentified -> java.awt.Color[r=255,g=0,b=255]
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.FUNCTION -> java.awt.Color[r=0,g=255,b=0]
+INFO fme.config.CM.<init>(): Config: gui.ActionSystemCallGraph.LineColor -> java.awt.Color[r=0,g=0,b=0]
+INFO fme.config.CM.<init>(): Config: gui.ProjectManager.InitYPos -> 50
+INFO fme.config.CM.<init>(): Config: gui.HistoryGraph.MarkedLineColor -> java.awt.Color[r=0,g=255,b=255]
+INFO fme.config.CM.<init>(): Config: gui.ActionSystemCallGraph.NodeColor -> java.awt.Color[r=255,g=255,b=0]
+INFO fme.config.CM.<init>(): Config: gui.FunctionProcedureCallGraph.NodeColor.External_BFUNCTION -> java.awt.Color[r=128,g=128,b=128]
+INFO fme.FMEMain.main(): Parsing WSL definition ...
+INFO fme.gui.MainFrame.<init>(): Initialising GUI ...
+INFO fme.components.console.ConsoleGUI.<init>(): Initializing component: Console (fme.components.console.ConsoleGUI)
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:WindowsDefault
+INFO fme.components.tree.TreeGUI.<init>(): Initializing component: Abstract Syntax Tree (fme.components.tree.TreeGUI)
+INFO fme.components.editor.EditorGUI.<init>(): Initializing component: WSL Editor (fme.components.editor.EditorGUI)
+INFO fme.components.catalogue.CatalogueGUI.<init>(): Initializing component: Transformation Catalogue (fme.components.catalogue.CatalogueGUI)
+INFO fme.gui.MainFrame.showComponents(): Showing component Transformation Catalogue
+INFO fme.components.console.ConsoleObserver.run(): Starting console ...
+INFO fme.components.console.ConsoleObserver.run(): Executing engine/fermat_console.sh noecho
+INFO fme.components.console.ConsoleObserver.run(): Initialise engine:(define fermat ".")
+INFO fme.components.console.ConsoleObserver.run(): Initialise engine:(define perl "perl")
+INFO fme.components.console.ConsoleObserver.run(): Initialise engine:(define ds "/")
+INFO fme.gui.MainFrame.showComponents(): Showing component WSL Editor
+INFO fme.gui.MainFrame.showComponents(): Showing component Console
+INFO fme.gui.MainFrame.showComponents(): Showing component Abstract Syntax Tree
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:WindowsDefault
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:WindowsDefault
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:WindowsDefault
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:WindowsDefault
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:WindowsDefault
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:WindowsDefault
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:WindowsDefault
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:OpenProject
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:ShowProjectManager
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:Menu:NewProject
+INFO fme.components.MainEventHandler.actionPerformed(): Action Event:comboBoxChanged
+INFO fme.components.console.Console.loadFile(): Loading file:/home/martin/work/fme/my-projects/t3/t3.wsl
+INFO fme.wsl.ast.AST.parseTree(): New tree successfully parsed.
+INFO fme.wsl.ast.AST.identifyTokens(): Trying to link the tree nodes with the WSL source code.
+INFO fme.wsl.lexer.WSLLexer.parseWSL(): Parsing WSL file ...
+INFO fme.wsl.lexer.WSLLexer.parseWSL(): Parsing WSL file ...
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.tree.TreeListener.valueChanged(): Click on Tree Node:T_Statements
+INFO fme.components.tree.TreeListener.valueChanged():   Marking block from:0 to 1044
+INFO fme.components.editor.EditorListener.caretUpdate(): Click on Token:S_VAR
+INFO fme.components.editor.EditorListener.caretUpdate(): Click on Tree Node:Var
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.editor.EditorListener.caretUpdate():   Marking block from:0 to 1044
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.ProjectManager.recordEvent(): RecordEvent:LoadFile File:t3.wsl ASTNode:null
+INFO fme.components.ProjectManager.saveProjectFile(): Saving project file...
+INFO fme.components.editor.EditorListener.caretUpdate(): Click on Token:S_DO
+INFO fme.components.editor.EditorListener.caretUpdate(): Click on Tree Node:Floop
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.tree.TreeListener.valueChanged(): Click on Tree Node:T_Floop
+INFO fme.components.tree.TreeListener.valueChanged():   Marking block from:201 to 948
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.editor.EditorListener.caretUpdate():   Marking block from:201 to 948
+WARNING fme.components.console.Console.testAllTransformations(): Cannot find transformation: Fix Dispatch
+INFO fme.components.console.Console.testAllTransformations(): Test all transformations - result:  Constant Propagation(18) Delete All Redundant(23) Delete All Skips(24) Find_Terminals(-1) Floop To While(38) Loop_Doubling(53) Make_Loop(56) Make Procedure(57) Reduce Loop(76) Replace Accs With Value(84) Simplify(94) Static_Single_Assignment(103) Unroll_Loop(111)
+INFO fme.components.editor.EditorListener.caretUpdate(): Click on Token:S_DO
+INFO fme.components.editor.EditorListener.caretUpdate(): Click on Tree Node:Floop
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.tree.TreeListener.valueChanged(): Click on Tree Node:T_Floop
+INFO fme.components.tree.TreeListener.valueChanged():   Marking block from:369 to 942
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.editor.EditorListener.caretUpdate():   Marking block from:369 to 942
+WARNING fme.components.console.Console.testAllTransformations(): Cannot find transformation: Fix Dispatch
+INFO fme.components.console.Console.testAllTransformations(): Test all transformations - result:  Constant Propagation(18) Delete All Redundant(23) Delete All Skips(24) Find_Terminals(-1) Floop To While(38) Loop_Doubling(53) Loop_Inversion(54) Make_Loop(56) Make Procedure(57) Reduce Loop(76) Replace Accs With Value(84) Separate_Exit_Code(91) Separate_Right(93) Simplify(94) Static_Single_Assignment(103) Unroll_Loop(111)
+INFO fme.components.console.Console.testTransformation(): Test transformation: //T/R_/Loop_/Inversion result:#t
+
+INFO fme.components.console.Console.applyTransformation(): Transformation //T/R_/Loop_/Inversion was successful!
+INFO fme.components.console.Console.applyTransformation(): New Position is:(1 2 4 1 2 1)
+
+INFO fme.components.ProjectManager.recordEvent(): RecordEvent:ApplyTransformation#//T/R_/Loop_/Inversion#Data# File:t3-0.wsl ASTNode:Floop
+INFO fme.components.console.Console.loadFile(): Loading file:/home/martin/work/fme/my-projects/t3/t3-0.wsl
+INFO fme.wsl.ast.AST.parseTree(): New tree successfully parsed.
+INFO fme.wsl.ast.AST.identifyTokens(): Trying to link the tree nodes with the WSL source code.
+INFO fme.wsl.lexer.WSLLexer.parseWSL(): Parsing WSL file ...
+INFO fme.wsl.lexer.WSLLexer.parseWSL(): Parsing WSL file ...
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.tree.TreeListener.valueChanged(): Click on Tree Node:T_Statements
+INFO fme.components.tree.TreeListener.valueChanged():   Marking block from:0 to 1315
+INFO fme.components.editor.EditorListener.caretUpdate(): Click on Token:S_VAR
+INFO fme.components.editor.EditorListener.caretUpdate(): Click on Tree Node:Var
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.editor.EditorListener.caretUpdate():   Marking block from:0 to 1315
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.ProjectManager.recordEvent(): RecordEvent:LoadFile File:t3-0.wsl ASTNode:null
+INFO fme.components.UndoManager.storeEvent(): Store Event:Apply transformation (/home/martin/work/fme/my-projects/t3/t3.wsl#/home/martin/work/fme/my-projects/t3/t3-0.wsl#78)
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.tree.TreeListener.valueChanged(): Click on Tree Node:T_Cond
+INFO fme.components.tree.TreeListener.valueChanged():   Marking block from:201 to 1219
+INFO fme.components.editor.EditorListener.caretUpdate(): Click on Token:S_IF
+INFO fme.components.editor.EditorListener.caretUpdate(): Click on Tree Node:Cond
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree
+INFO fme.components.editor.EditorListener.caretUpdate():   Marking block from:201 to 1219
+INFO fme.components.tree.TreeGUI.expandTreeToRow(): Expand tree

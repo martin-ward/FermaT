@@ -1,0 +1,212 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Take_Out_Of_Loop_Test() ==
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF NOT @Up?
+    THEN @Fail("It is not possible to take the whole program out of anything.")
+  ELSIF @GT(@I) <> T_Statement
+    THEN @Fail("The selected item is not a statement.")
+    ELSE @Take_Out_Of_Loop_Test2 FI .;
+
+
+MW_PROC @Take_Out_Of_Loop_Test2() ==
+  VAR < S := < >, AS_Type := @AS_Type, loops := 0, posns := HASH_TABLE >:
+  C:" If the selected item is a statement which occurs in a statement sequence ";
+  C:" then we should take all the statements up to the end of that sequence.   ";
+  S := @Cs(@Parent);
+  S := @Make(T_Statements, < >, S[@Posn_n..]);
+  IF 0 IN @Gen_TVs(S, AS_Type)
+    THEN @Fail("The statement will not always lead to termination of the loop")
+    ELSE @TOL_Count_Loops(S, AS_Type VAR loops, posns);
+	 IF loops = 0
+	   THEN @Fail("The statement is not in a suitable loop.")
+	   ELSE @Pass FI FI ENDVAR .;
+
+
+C:" ------------------------------------------------------------------------- ";
+
+
+MW_PROC @Take_Out_Of_Loop_Code(Data) ==
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  VAR < S := < >, AS_Type := @AS_Type, loops := 0, posns := HASH_TABLE,
+        OK := 0, inc := 0 >:
+  C:" If the selected item is a statement which occurs in a statement sequence ";
+  C:" then we should take all the statements up to the end of that sequence.   ";
+  S := @Cs(@Parent);
+  S := @Make(T_Statements, < >, S[@Posn_n..]);
+  C:" Move up to the loop which works: ";
+  @TOL_Count_Loops(S, AS_Type VAR loops, posns);
+  C:" Carry out the edits from the posns table: ";
+  @Edit;
+  @Trans(TR_Delete_All_Skips, "");
+  ATEACH Statement DO
+    IF NOT EMPTY?(posns.(@Posn))
+      THEN @Delete_Rest; @Paste_Over(@Make(T_Exit, Depth, < >)) FI OD;
+  @End_Edit;
+  C:" Append an appropriately decremented statement sequence to the loop: ";
+  S := @Cs(@Increment(S, AS_Type, -loops, 0));
+  IF @ST(LAST(S)) = T_Skip THEN S := BUTLAST(S) FI;
+  @Splice_After(S) ENDVAR .;
+
+
+C:" The statement S == IF x = 0 THEN EXIT(2) ELSE EXIT(3) FI ";
+C:" has a Min_TV of 2 and therefore could be taken out of either one or two loops. ";
+C:" This procedure checks the enclosing loops to see how many it can be taken out of. ";
+C:" To check a loop we check each simple terminal statement: calculate the increment ";
+C:" of S that we are looking for and move up until we either get a match or ";
+C:" reach the loop body (in which case we have failed for this loop). ";
+C:" If everything matches OK, then return how many loops we moved up through ";
+C:" and leave this loop selected. ";
+
+MW_PROC @TOL_Count_Loops(S, AS_Type VAR loops, posns) ==
+  VAR < Min_TV := @TOL_Min_TV(@Gen_TVs(S, AS_Type)),
+	Max_TV := @TOL_Max_TV(@Gen_TVs(S, AS_Type)), OK := 0 >:
+  C:" First we normalise S by decrementing by Min_TV (if necessary): ";
+  S := @TOL_Normalise(S, AS_Type, Min_TV);
+  DO C:" Move up to the next enclosing loop: ";
+     DO IF NOT @Up? OR @Simple?(@Parent)
+	  THEN C:" We have failed to find a loop: ";
+	       loops := 0;
+	       EXIT(2) FI;
+	@Up;
+	IF @ST(@I) = T_Floop THEN EXIT(1) FI OD;
+     loops := loops + 1;
+     IF Min_TV <> Omega AND loops > Min_TV
+       THEN loops := 0; EXIT(1) FI;
+     C:" Check this loop for validity: ";
+     posns := HASH_TABLE;
+     @TOL_Check_Loop(S, AS_Type, Min_TV, Max_TV, loops, 0 VAR OK, posns);
+     IF OK = 1 THEN EXIT(1) FI OD ENDVAR .;
+
+
+C:" Check all the terminal statements in a loop to see if they ";
+C:" occur in a suitable increment of the statement sequence S. ";
+
+MW_PROC @TOL_Check_Loop(S, AS_Type, Min_TV, Max_TV, loops, Update VAR OK, posns) ==
+  VAR < inc := 0, Incs := <S>, S1 := < >, posn := < >, L := < > >:
+  @Reset_Pass_Status;
+  OK := 1;
+  @Edit;
+  @Trans(TR_Delete_All_Skips, "");
+  ATEACH STS DO
+    C:" If this exit is outside our range, then ignore it. ";
+    IF @ST(@I) = T_Exit AND @V(@I) - Depth > Max_TV - loops
+      THEN SKIP
+      ELSE C:" Compute the required increment for this depth: ";
+	   IF Min_TV = Omega
+	     THEN C:" Incrementing S has no effect: ";
+		  S1 := HEAD(Incs)
+	     ELSE inc := Depth + (Min_TV - loops);
+		  IF LENGTH(Incs) <= inc + 1
+		    THEN Incs := @TOL_Add_Incs(Incs, S, AS_Type, inc) FI;
+		  S1 := Incs[inc + 1] FI;
+	   C:" Check if the current statement matches, move up ";
+	   C:" until a match is reached or we reach the top: ";
+	   L := REVERSE(@Cs(S1));
+	   IF @Equal?(HEAD(L), @I)
+	     THEN C:" Possible match at this level: ";
+		  @TOL_Check_List(L, AS_Type, Depth VAR OK, posns);
+		  @To_Last
+	     ELSE OK := 0 FI;
+	   IF OK = 0
+	     THEN C:" We need to move up and check again ";
+		  OK := 1;
+		  posn := @Posn;
+		  C:" Adjust Depth as we move up and restore it at the end ";
+		  VAR < Depth := Depth >:
+		  DO @Up; @Up_To_Statement;
+		     IF NOT @Up? THEN OK := 0; EXIT(1) FI;
+		     IF @ST(@I) = T_Floop
+		       THEN C:" We had to move out of a loop, so adjust Depth and L ";
+			    Depth := Depth - 1;
+			    IF Min_TV <> Omega
+			      THEN inc := inc - 1;
+				   L := REVERSE(@Cs(Incs[inc + 1])) FI FI;
+		     IF @Equal?(HEAD(L), @I)
+		       THEN C:" Possible match at this level: ";
+			    @TOL_Check_List(L, AS_Type, Depth VAR OK, posns);
+			    IF OK = 1 THEN EXIT(1) FI FI OD ENDVAR;
+		  @Goto(posn) FI;
+	   C:" If we started on a CALL in a regular action system, ";
+	   C:" then don't worry if we couldn't fix it: ";
+	   IF OK = 0 AND @Gen_TVs(@I, AS_Type) = <Omega> THEN OK := 1 FI;
+	   IF OK = 0
+	     THEN @Fail("Not all terminal statements match the selected statement") FI FI OD;
+  C:" Have finished processing this loop ";
+  IF Update = 1 THEN @End_Edit ELSE @Undo_Edit FI ENDVAR .;
+
+
+C:" Check the list of statements to the left of the current statement ";
+C:" against the list L, if there is a match then add the position to posns. ";
+
+MW_PROC @TOL_Check_List(L, AS_Type, Depth VAR OK, posns) ==
+  IF @Posn_n < LENGTH(L)
+    THEN OK := 0
+    ELSE DO L := TAIL(L);
+	    IF EMPTY?(L) THEN OK := 1; EXIT(1) FI;
+	    @Left;
+	    IF NOT @Equal?(HEAD(L), @I) THEN OK := 0; EXIT(1) FI OD;
+	 IF OK = 1 THEN posns.(@Posn) := 1 FI FI .;
+
+
+C:" This will return Omega if all the list is just <Omega> ";
+
+MW_FUNCT @TOL_Min_TV(list) ==
+  VAR < Min := Omega >:
+  FOR TV IN list DO
+    IF Min = Omega OR (TV <> Omega AND TV < Min)
+      THEN Min := TV FI OD;
+  (Min) .;
+
+
+MW_FUNCT @TOL_Max_TV(list) ==
+  VAR < Max := Omega >:
+  FOR TV IN list DO
+    IF Max = Omega OR (TV <> Omega AND TV < Max)
+      THEN Max := TV FI OD;
+  (Max) .;
+
+
+C:" Add one or more increments to the list and return a new list: ";
+MW_FUNCT @TOL_Add_Incs(Incs, S, AS_Type, inc) ==
+  VAR < new := REVERSE(Incs), last_inc := LENGTH(Incs) - 1 >:
+  WHILE last_inc < inc DO
+    last_inc := last_inc + 1;
+    new := <@Increment(S, AS_Type, last_inc, 0)> ++ new OD;
+  (REVERSE(new)) .;
+
+
+C:" Normalise a statement by decrementing it by the amount given ";
+C:" and chopping any trailing SKIP: ";
+
+MW_FUNCT @TOL_Normalise(S, AS_Type, inc) == : 
+  IF inc <> Omega AND inc > 0
+    THEN S := @Increment(S, AS_Type, -inc, 0) FI;
+  IF @Size(S) > 1 AND @ST(S^(@Size(S))) = T_Skip
+    THEN S := @Make(T_Statements, < >, BUTLAST(@Cs(S))) FI;
+  (S) .;
+
+
+
+
+SKIP
+

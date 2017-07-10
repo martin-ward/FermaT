@@ -1,0 +1,140 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+# bbtovcg [input] [output]
+# Convert a list of basic blocks into a VCG call graph
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+use Blocks;
+use VCG;
+use warnings;
+use strict;
+use Data::Dumper;
+
+use vars qw(@bb);
+
+sub node($$$);
+sub edge($$$);
+
+$| = 1;
+
+read_options();
+
+my ($myname, $Usage, @succslist, $num);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [input] [output]\n";
+
+my $orientation = "top_to_bottom";
+if (@ARGV && ($ARGV[0] eq "-lr")) {
+  $orientation = "left_to_right";
+  shift;
+}
+
+my ($input, $output);
+
+# Check zero to two arguments:
+shift while (@ARGV && ($ARGV[0] =~ /^-/));
+if (@ARGV == 2) {
+  ($input, $output) = @ARGV;
+} elsif (@ARGV == 1) {
+  $input = $ARGV[0];
+  $output = $input;
+  $output .= ".vg" unless ($output =~ s/\.bb/\.vg/);
+} elsif (@ARGV == 0) {
+  ($input, $output) = ("-", "-");
+} else {
+  die $Usage;
+}
+
+my $base;
+($base = $input) =~ s/\.bb$//;
+
+my ($bb, $start, $end, $cpu);
+
+# This is the slow idom calculation:
+if (0) {
+  ($bb, $start, $end) = bb_read($input);
+  delete_unreachable($bb, $start, "succs");
+  $cpu = cpu();
+  calculate_idom($bb, $start, "succs", "preds", "idom");
+  print "calculate_idom took ", cpu() - $cpu, " secs.\n";
+  bb_callgraph($bb, {edges => "idom", reverse => 1, output => "$base.slow"});
+}
+
+
+($bb, $start, $end) = bb_read($input);
+
+delete_unreachable($bb, $start, "succs");
+
+bb_callgraph($bb, {edges => "succs", output => "$base.cfg"});
+
+
+calculate_idom_fast2($bb, $start, "succs", "preds", "idom");
+bb_callgraph($bb, {edges => "idom", reverse => 1, output => "$base.idom"});
+
+calculate_idom_fast2($bb, $end, "preds", "succs", "ipdom");
+bb_callgraph($bb, {edges => "ipdom", reverse => 1, output => "$base.ipdom"});
+
+
+exit (0);
+
+$cpu = cpu();
+
+calculate_idom_fast2($bb, $end, "preds", "succs", "ipdom");
+
+#print "calculate_idom_fast2 took ", cpu() - $cpu, " secs.\n";
+
+calculate_reverse($bb, "ipdom", "rev_ipdom");
+
+calculate_level($bb, $end, "rev_ipdom", "level");
+
+foreach my $n (@$bb) {
+#  $n->{code} = "$n->{dfs_num}:: $n->{code}";
+#  $n->{code} = "$n->{level}:: $n->{code}";
+}
+
+bb_callgraph($bb, {edges => "ipdom", reverse => 1, output => "$base.ipdom"});
+
+
+exit (0);
+
+calculate_idom($bb, $start, "succs", "preds", "idom");
+
+my %edge_type = ();
+calculate_back_edges($bb, \%edge_type);
+calculate_retreating_edges($bb, \%edge_type);
+
+bb_callgraph($bb, {edges => "idom", reverse => 1, output => $output});
+#bb_callgraph($bb, {edges => "succs", output => $output});
+#bb_callgraph($bb, {edges => "succs", output => $output, types => \%edge_type});
+
+
+sub cpu {
+  my ($user,$system,$cuser,$csystem) = times;
+  return($user + $system + $cuser + $csystem);
+}
+

@@ -1,0 +1,143 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2008 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Increment_Statement'.",
+            FILL Statements
+
+DO DO IF m = 1
+        THEN p := number[i]; line := line ++ ", " ++ p FI;
+      last := item[i];
+      i := i + 1;
+      IF i = n + 1 THEN EXIT(2) FI;
+      m := 1;
+      IF last <> item[i]
+        THEN !P write(line VAR os);
+             line := "";
+             m := 0;
+             inhere() FI OD OD
+
+                ENDFILL,
+		<1, 1, 1, 1, 6, 1, 2, 4>,
+		TR_Increment_Statement,
+		< >,
+		FILL Statements 
+
+DO DO IF m = 1
+        THEN p := number[i]; line := line ++ ", " ++ p FI;
+      last := item[i];
+      i := i + 1;
+      IF i = n + 1 THEN EXIT(2) FI;
+      m := 1;
+      IF last <> item[i]
+        THEN !P write(line VAR os);
+             line := "";
+             m := 0;
+             inhere();
+             EXIT(1) FI OD OD 
+
+                ENDFILL);
+
+
+@Test_Trans(" 2nd test of `Increment_Statement'.",
+            FILL Statements
+
+DO IF m = 1
+     THEN p := number[i]; line := line ++ ", " ++ p FI;
+   last := item[i];
+   i := i + 1;
+   IF i = n + 1 THEN EXIT(2) FI;
+   m := 1;
+   IF last <> item[i]
+     THEN !P write(line VAR os);
+          line := "";
+          m := 0;
+          inhere() FI OD
+
+                ENDFILL,
+		<1, 1, 6, 1, 2, 4>,
+		TR_Increment_Statement,
+		< >,
+		"Fail");
+
+
+
+@Test_Trans(" 3rd test of `Increment_Statement'.",
+            FILL Statements
+
+DO DO DO IF m = 1
+           THEN p := number[i]; line := line ++ ", " ++ p FI;
+         last := item[i];
+         i := i + 1;
+         IF i = n + 1 THEN EXIT(3) FI;
+         m := 1;
+         IF last <> item[i]
+           THEN !P write(line VAR os);
+                line := "";
+                m := 0;
+                IF x = 0 THEN EXIT(1) ELSE inhere() FI FI OD OD OD
+
+                ENDFILL,
+		<1, 1, 1, 1, 1, 1, 6, 1, 2, 4>,
+		TR_Increment_Statement,
+		< >,
+		FILL Statements
+
+DO DO DO IF m = 1
+           THEN p := number[i]; line := line ++ ", " ++ p FI;
+         last := item[i];
+         i := i + 1;
+         IF i = n + 1 THEN EXIT(3) FI;
+         m := 1;
+         IF last <> item[i]
+           THEN !P write(line VAR os);
+                line := "";
+                m := 0;
+                IF x = 0
+		  THEN EXIT(2)
+		  ELSE inhere();
+		       EXIT(1) FI FI OD OD OD
+
+                ENDFILL);
+
+@Test_Trans(" 4th test of `Increment_Statement'.",
+            FILL Statements
+
+DO DO DO IF m = 1
+           THEN p := number[i]; line := line ++ ", " ++ p FI;
+         last := item[i];
+         i := i + 1;
+         IF i = n + 1 THEN EXIT(3) FI;
+         m := 1;
+         IF last <> item[i]
+           THEN !P write(line VAR os);
+                line := "";
+                m := 0;
+                IF x = 0 THEN EXIT(2) ELSE inhere() FI FI OD OD OD
+
+                ENDFILL,
+		<1, 1, 1, 1, 1, 1, 6, 1, 2, 4>,
+		TR_Increment_Statement,
+		< >,
+		"Fail");
+
+SKIP
+
+
+

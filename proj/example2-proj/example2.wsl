@@ -1,0 +1,49 @@
+BEGIN
+ VAR < m := 0, p := 0, last := "" >:
+   exit_flag_1 := 0;
+   ACTIONS prog:
+   prog ==
+      line := "";
+      m := 0;
+      i := 1;
+      CALL inhere
+   END
+   l ==
+      i := (i + 1);
+      IF i = (n + 1) THEN
+          CALL alldone
+      FI;
+      m := 1;
+      IF item[i] <> last THEN
+          !P write(line VAR os);
+          line := "";
+          m := 0;
+          CALL inhere
+      FI;
+      CALL more
+   END
+   inhere ==
+      inhere( VAR );
+      CALL more
+   END
+   more ==
+      IF m = 1 THEN
+          p := number[i];
+          line := line ++ ", " ++ p
+      FI;
+      last := item[i];
+      CALL l
+   END
+   alldone ==
+      !P write(line VAR os);
+      CALL Z
+   END
+   ENDACTIONS
+ ENDVAR
+WHERE
+PROC inhere( VAR ) ==
+ p := number[i];
+ line := item[i];
+ line := line ++ "" ++ p
+END
+END

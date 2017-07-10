@@ -1,0 +1,261 @@
+@Test_Trans(" 1st test of `Take_Out_Of_Loop'",
+	   (FILL Statements DO  X:=1; EXIT(1) OD ENDFILL),
+	   <1,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements DO EXIT(1) OD; X:=1 ENDFILL));
+	    
+
+@Test_Trans(" 2nd test of `Take_Out_Of_Loop'",
+	   (FILL Statements DO IF X=1 THEN Y:=1; X:=0; EXIT(1)
+			       ELSIF X=2 THEN Y:=1; X:=0; EXIT(1)
+				  ELSE X:=X-Y FI OD ENDFILL),
+	   <1,1,1,1,2,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements DO IF X=1 THEN EXIT(1)
+			       ELSIF X=2 THEN EXIT(1)
+				  ELSE X:=X-Y FI OD; Y:=1; X:=0 ENDFILL));
+
+@Test_Trans(" 3rd test of `Take_Out_Of_Loop'",
+	   (FILL Statements DO IF X=1 THEN Y:=1; X:=0; EXIT(1)
+			       ELSIF X=2 THEN Y:=1; X:=0; EXIT(1)
+				  ELSE X:=X-Y FI OD ENDFILL),
+	   <1,1,1,1,2,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements DO IF X=1 THEN EXIT(1)
+			       ELSIF X=2 THEN EXIT(1)
+				  ELSE X:=X-Y FI OD; Y:=1; X:=0 ENDFILL));
+
+@Test_Trans(" 4th test of `Take_Out_Of_Loop'",
+	   (FILL Statements DO DO IF X=1 THEN Y:=1; X:=0; EXIT(1)
+				  ELSIF X=2 THEN Y:=1; X:=0; EXIT(1)
+				     ELSE X:=X-Y FI OD OD ENDFILL),
+	   <1,1,1,1,1,1,2,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements DO DO IF X=1 THEN EXIT(1)
+				  ELSIF X=2 THEN EXIT(1)
+				     ELSE X:=X-Y FI OD; Y:=1; X:=0 OD ENDFILL));
+
+@Test_Trans(" 5th test of `Take_Out_Of_Loop'",
+	   (FILL Statements DO DO IF X=1 THEN EXIT(2) FI; X:=X-1 OD OD ENDFILL),
+	   <1,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements DO EXIT(1) OD; DO IF X=1 THEN EXIT(1) FI; X:=X-1 OD ENDFILL));
+
+
+@Test_Trans(" 6th test of `Take_Out_Of_Loop'",
+	   (FILL Statements DO DO IF X=1 THEN Y:=1; X:=0; EXIT(1)
+				  ELSIF X=2 THEN DO Z:=1; Y:=1; X:=0; EXIT(2) OD
+				     ELSE X:=X-Y FI OD OD ENDFILL),
+	   <1,1,1,1,1,1,2,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements DO DO IF X=1 THEN EXIT(1)
+				  ELSIF X=2 THEN DO Z:=1; EXIT(2) OD
+				     ELSE X:=X-Y FI OD; Y:=1; X:=0 OD ENDFILL));
+
+@Test_Trans(" 7th test of `Take_Out_Of_Loop'",
+	   (FILL Statements DO DO IF X=1 THEN Y:=1; X:=0; EXIT(1)
+				  ELSIF X=2 THEN DO Y:=1; X:=1; EXIT(2) OD
+				     ELSE X:=X-Y FI OD OD ENDFILL),
+	   <1,1,1,1,1,1,2,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   "Fail");
+
+@Test_Trans(" 8th test of `Take_Out_Of_Loop'",
+	   (FILL Statements DO  X:=1; IF X<Y THEN EXIT(1) FI OD ENDFILL),
+	   <1,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   "Fail");
+
+@Test_Trans(" 9th test of `Take_Out_Of_Loop'",
+	   (FILL Statements  DO IF X=1 THEN EXIT(1) ELSE EXIT(2) FI OD  ENDFILL),
+	   <1,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements DO EXIT(1) OD;  
+			    IF X=1 THEN SKIP ELSE EXIT(1) FI ENDFILL));
+
+@Test_Trans("10th test of `Take_Out_Of_Loop'",
+	   (FILL Statements ACTIONS A:
+				   A == DO  X:=1; CALL B OD.
+				   B == CALL Z. ENDACTIONS ENDFILL),
+	   <1,2,1,2,1,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements ACTIONS A:
+				   A == DO EXIT(1) OD; X:=1; CALL B.
+				   B == CALL Z. ENDACTIONS ENDFILL));
+
+
+
+@Test_Trans("11th test of `Take_Out_Of_Loop'",
+	   (FILL Statements DO IF X=1 THEN Y:=1; X:=0; EXIT(2)
+			       ELSIF X=2 THEN Y:=1; X:=0; EXIT(2)
+				  ELSE X:=X-Y FI OD ENDFILL),
+	   <1,1,1,1,2,1,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements DO IF X=1 THEN EXIT(1)
+			       ELSIF X=2 THEN EXIT(1)
+				  ELSE X:=X-Y FI OD; Y:=1; X:=0; EXIT(1) ENDFILL));
+
+
+
+@Test_Trans("12th test of `Take_Out_Of_Loop'",
+	   (FILL Statements
+ACTIONS start:
+  start ==
+    DO DO DO IF x = 0
+	       THEN IF y = 0
+		      THEN CALL FOO
+		      ELSE EXIT(2) FI FI;
+	     x := x - 1;
+	     IF y = 0
+	       THEN CALL FOO
+	       ELSE EXIT(1) FI OD OD OD;
+    CALL FOO END
+  FOO == CALL Z END ENDACTIONS
+ENDFILL),
+	   <1,2,1,2,1,1,1,1,1,1,1,1,2,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements
+ACTIONS start:
+  start ==
+    DO DO DO IF x = 0 THEN EXIT(2) FI;
+	     x := x - 1;
+	     IF y = 0 THEN CALL FOO ELSE EXIT(1) FI OD OD;
+       IF y = 0 THEN CALL FOO FI OD;
+    CALL FOO END
+  FOO == CALL Z END ENDACTIONS
+ENDFILL));
+
+
+
+@Test_Trans("13th test of `Take_Out_Of_Loop'",
+	   (FILL Statements
+ACTIONS start:
+  start ==
+    DO DO DO IF x = 0
+	       THEN IF y = 0
+		      THEN CALL FOO
+		      ELSE EXIT(2) FI FI;
+	     x := x - 1;
+	     IF y = 0
+	       THEN CALL FOO
+	       ELSE EXIT(2) FI OD OD OD;
+    CALL FOO END
+  FOO == CALL Z END ENDACTIONS
+ENDFILL),
+	   <1,2,1,2,1,1,1,1,1,1,1,1,2,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements
+ACTIONS start:
+  start ==
+    DO DO DO IF x = 0 THEN EXIT(1) FI;
+	     x := x - 1;
+	     EXIT(1) OD;
+	  IF y = 0 THEN CALL FOO ELSE EXIT(1) FI OD OD;
+    CALL FOO END
+  FOO == CALL Z END ENDACTIONS
+ENDFILL));
+
+
+
+@Test_Trans("14th test of `Take_Out_Of_Loop'",
+	   (FILL Statements
+ACTIONS start:
+  start ==
+    DO DO DO IF x = 0
+	       THEN IF y = 0
+		      THEN CALL FOO
+		      ELSE EXIT(2) FI FI;
+	     x := x - 1;
+	     IF y = 0
+	       THEN CALL FOO
+	       ELSE EXIT(3) FI OD OD OD;
+    CALL FOO END
+  FOO == CALL Z END ENDACTIONS
+ENDFILL),
+	   <1,2,1,2,1,1,1,1,1,1,1,1,2,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements
+ACTIONS start:
+  start ==
+    DO DO DO IF x = 0 THEN EXIT(1) FI;
+	     x := x - 1;
+	     IF y = 0
+	       THEN CALL FOO
+	       ELSE EXIT(3) FI OD;
+	  IF y = 0 THEN CALL FOO ELSE EXIT(1) FI OD OD;
+    CALL FOO END
+  FOO == CALL Z END ENDACTIONS
+ENDFILL));
+
+
+
+@Test_Trans("15th test of `Take_Out_Of_Loop'",
+	   (FILL Statements
+
+!P Produce_Heading( VAR sys);
+!P read( VAR stuff,sys);
+IF NOT !XC eof?(stuff) THEN
+ DO
+   !P Process_Start_Of_New_Group( VAR sys);
+   DO
+      !P Process_Card( VAR sys);
+      !P read( VAR stuff);
+      IF NOT !XC First_Card_In_Group?(stuff) AND NOT !XC eof?(stuff) THEN
+          SKIP
+      ELSE 
+          IF !XC eof?(stuff) THEN
+               !P Process_End_Of_Group( VAR sys);
+               EXIT(2)
+          ELSE 
+               !P Process_End_Of_Group( VAR sys);
+               EXIT(1)
+          FI
+      FI
+   OD
+ OD
+FI;
+!P Produce_Summary( VAR sys)
+
+           ENDFILL),
+	   <3,1,2,1,1,2,1,3,2,2,1>,
+	   TR_Take_Out_Of_Loop,
+	   < >,
+	   (FILL Statements
+
+!P Produce_Heading( VAR sys);
+!P read( VAR stuff, sys);
+IF NOT (!XC eof?(stuff))
+  THEN DO !P Process_Start_Of_New_Group( VAR sys);
+          DO !P Process_Card( VAR sys);
+             !P read( VAR stuff);
+             IF !XC First_Card_In_Group?(stuff) OR !XC eof?(stuff)
+               THEN EXIT(1) FI OD;
+          IF !XC eof?(stuff)
+            THEN !P Process_End_Of_Group( VAR sys); EXIT(1)
+            ELSE !P Process_End_Of_Group( VAR sys); SKIP FI
+       OD FI;
+!P Produce_Summary( VAR sys)
+
+           ENDFILL));
+
+
+SKIP
+
+
+
+
+

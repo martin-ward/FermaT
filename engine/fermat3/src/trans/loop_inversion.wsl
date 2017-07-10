@@ -1,0 +1,68 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Loop_Inversion_Test() ==
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF @GT(@I) <> T_Statement
+    THEN @Fail("Selected item is not a Statement")
+  ELSIF LENGTH(@Posn) < 2 OR @ST(@GParent) <> T_Floop
+    THEN @Fail("Selected statement is not at the top level of an Floop body")
+  ELSIF @Posn_n = 1
+    THEN @Fail("Selected statement is already the first statement in the loop")
+    ELSE @Pass FI .;
+
+
+MW_PROC @Loop_Inversion_Code(Data) ==
+  VAR < S1 := < >, S2 := < >, S := < >, assert := < >, test := < >, done := 0 >:
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF NOT @Right?
+    THEN IFMATCH Statement IF ~?B THEN EXIT(1) FI
+           THEN test := B ENDMATCH FI;
+  @Left;
+  @Cut_Rest;
+  S1 := @Cs(@Parent);
+  S2 := @Buffer;
+  @Up; @Up; C:" to the Floop ";
+  IF NOT EMPTY?(test)
+    THEN @Look_For_Assertion(VAR assert);
+         IF NOT EMPTY?(assert) AND @Implies?(assert, @Not(test))
+           THEN @Paste_Over(FILL Statement DO ~*S2; ~*S1 OD ENDFILL);
+                done := 1;
+                IF LENGTH(@Posn) >= 3
+                  THEN VAR < posn := @Posn >:
+                       @Up; @Up; @Up;
+                       IFMATCH Statement IF ~?(assert) THEN DO ~*S OD FI
+                         THEN @Paste_Over(FILL Statement DO ~*S OD ENDFILL)
+                         ELSE @Goto(posn) ENDMATCH ENDVAR FI FI FI;
+
+  IF done = 0
+    THEN S := @Increment(FILL Statement DO ~*S2; ~*S1 OD ENDFILL,
+                         @AS_Type, 1, 0);
+         @Paste_Over(FILL Statement DO ~*S1; ~*S OD ENDFILL);
+         C:" Check if the outer loop is really needed: ";
+         IF @Trans?(TR_Remove_Dummy_Loop)
+           THEN @Trans(TR_Remove_Dummy_Loop, < >) FI FI ENDVAR .;
+
+
+
+SKIP
+
+

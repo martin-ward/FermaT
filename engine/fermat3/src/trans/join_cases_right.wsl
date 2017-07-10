@@ -1,0 +1,66 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Join_Cases_Right_Test () ==
+  VAR < bad_types := @Make_Set(<T_X_Proc_Call, T_Proc_Call, T_MW_Proc_Call>),
+        funct_types := @Make_Set(<T_Funct_Call, T_X_Funct_Call, T_MW_Funct_Call>) >:
+  IF @ST(@I) <> T_Guarded
+    THEN @Fail("Current item is not a Guarded")
+  ELSIF NOT @Right?
+    THEN @Fail("There is no Guarded to the right of this one")
+  ELSIF NOT @Equal?(@I^2^1, @Parent^(@Posn_n + 1)^2^1)
+    THEN @Fail("Initial statements in the two clauses do not match")
+  ELSIF NOT EMPTY?(@Spec_Types(@I^1) /\ funct_types)
+    THEN @Fail("Function calls in first condition")
+  ELSIF NOT EMPTY?(@Spec_Types(@Parent^(@Posn_n + 1)^1) /\ funct_types)
+    THEN @Fail("Function calls in second condition")
+  ELSIF NOT EMPTY?(@Assigned(@I^2) /\ @Used(@I^1))
+    THEN @Fail("Assigned variable is referenced in first condition")
+  ELSIF NOT EMPTY?(@Assigned(@I^2) /\ @Used(@Parent^(@Posn_n + 1)^1))
+    THEN @Fail("Assigned variable is referenced in second condition")
+  ELSIF @ST(@I^2^1) = T_Skip OR NOT EMPTY?(bad_types /\ @Stat_Types(@I^2))
+    THEN @Fail("Won't take out skips, can't take out proc calls")
+    ELSE @Pass FI ENDVAR .;
+
+
+MW_PROC @Join_Cases_Right_Code (Data) ==
+  VAR < B1 := @I^1, S1 := @Cs(@I^2), B2 := < >, S2 := < >, B := < >, S := < > >:
+  @Right;
+  B2 := @I^1; S2 := @Cs(@I^2);
+  @Delete;
+  @Left;
+  B := @Or(B1, B2);
+  @Paste_Over(FILL Guarded ~?B -> IF ~?B1 THEN ~*S1 ELSE ~*S2 FI ENDFILL);
+  @Down_To(2); @Down;
+  IF NOT @Trans?(TR_Separate_Left)
+    THEN @Checkpoint("zzz-join_cases_right_error.wsl");
+         PRINT("Posn = ", @Posn);
+         ERROR("Separate_Left failed in @Join_Cases_Right_Code")
+    ELSE @Trans(TR_Separate_Left, "") FI;
+  @Up; @Up; C:" back to guarded " ENDVAR .;
+
+
+
+SKIP
+
+
+
+

@@ -1,0 +1,183 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+
+MW_PROC @Merge_Calls_In_Action_Test() ==
+   VAR < Orig_Pos := @Posn, Orig_Act := @Item, P := < >, found := "false",
+         N := 0, el:= < >, freq := 0, Calls := < >, ASType := @AS_Type >:
+  @Edit;
+  IF (@Spec_Type(@Item)<>T_Action) THEN @Fail("Not an action")
+    ELSE
+     Old_Calls:=@Calls(@Item);
+     IF (LENGTH(Old_Calls)=1) AND (HEAD(TAIL(HEAD(Old_Calls)))=1)
+	  THEN @Fail("Only one call in this action")
+      ELSE
+       IF @Trans?(TR_Delete_Unreachable_Code) 
+	 THEN  @Trans(TR_Delete_Unreachable_Code,< >) FI;
+
+C:"  1. For each IF statement which contains calls, in a regular action       ";
+C:"     system, try to absorb any calls which follow it. Some of these        ";
+C:"     will then be deleteable.                                              ";
+
+       IF ASType="Reg" THEN
+	FOREACH Statements DO
+	 @Down;
+	 DO IF (@Spec_Type(@Item)=T_Cond) AND MEMBER?(T_Call,@Stat_Types(@Item))
+	      THEN 
+		   C:"If this IF is followed by a Call then absorb it";
+		   P:=@Posn;
+		   IF @Right? 
+		    THEN @Right;
+		      WHILE NOT(@Components?(@Item)) AND 
+			     (@Spec_Type(@Item)<>T_Call) AND @Right? 
+			    DO @Right OD;
+		      IF @Spec_Type(@Item)=T_Call 
+			THEN @Goto(P);
+			  WHILE @Spec_Type(@Get_n(@Parent,(@Posn_n+1)))<>T_Call
+			     DO @Trans(TR_Absorb_Right,"") OD;
+			  @Trans(TR_Absorb_Right,"");
+			  @Down;
+			  DO IF MEMBER?(T_Call,@Stat_Types(@Item)) THEN
+			       @Down_Last; @Down;
+			       WHILE (@Spec_Type(@Item)<>T_Call) AND @Right? DO
+				      @Right OD;
+			       IF (@Spec_Type(@Item)=T_Call) AND @Right? THEN
+				  @Delete_Rest FI; 
+			       @Up; @Up; 
+			       IF @Right? THEN @Right ELSE @Up; EXIT(1) FI FI OD
+			ELSE @Goto(P) FI FI FI;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD OD FI;
+
+
+C:"  2. Try to simplify any IF statements which contain calls.                ";
+C:"     This might result in calls to the same action being                   ";
+C:"     taken out and merged, or branches containing calls being deleted      ";
+
+       FOREACH Statement DO 
+	  IF (@Spec_Type(@Item)=T_Cond) 
+	     AND MEMBER?(T_Call, @Stat_Types(@Item))  
+	     AND @Trans?(TR_Simplify_If)
+	      THEN @Trans(TR_Simplify_If,"") FI OD;
+       Calls_Now:=@Calls(@Item);
+  C:"Have the number of calls been reduced?";
+       IF LENGTH(Calls_Now)<LENGTH(Old_Calls) THEN @Pass
+	   ELSE WHILE NOT(EMPTY?(Old_Calls)) DO 
+		  el:= HEAD(Old_Calls);
+		  N:= el[1];
+		  Freq:= el[2];
+		  IF @Call_Freq(N,@Item) < Freq THEN
+		     C: "# of calls is less, so Pass."; @Pass FI;
+		  Old_Calls:=TAIL(Old_Calls) OD FI;
+
+
+C: "3. If we're in a regular system, and an IF statement is improper, ";
+C: "   we can take out right any call (which terminates a branch).    ";
+C: "   If so, and two or more calls are to the same action, we can    ";
+C: "   take these out and merge them - so Pass.                       ";
+
+       IF NOT(@Passed?) AND @In_Reg_System? THEN
+	ATEACH Statement DO
+	  IF (@Spec_Type(@Item)=T_Cond) AND @Gen_Improper?(@Item,ASType)
+	      THEN 
+		 Calls:=@Calls(@Item);
+		 WHILE NOT(EMPTY?(Calls)) AND NOT(@Passed?) DO 
+			el:=HEAD(Calls); Calls:=TAIL(Calls);
+			IF el[2]>1 THEN @Pass FI OD FI OD FI;
+       IF NOT(@Passed?) THEN @Fail("Cannot merge any calls") FI FI FI;
+   @Undo_Edit ENDVAR.;
+
+
+MW_PROC @Merge_Calls_In_Action_Code(Data)==
+  VAR < Calls := < >, 
+        el := < >, 
+        found := "false", 
+        Target := < >, 
+        N := < >, 
+        freq := < >, 
+        Orig_Pos := @Posn,
+        P := < >,
+        Orig_Act := @I, 
+        ASType := @AS_Type >:
+
+   @Trans(TR_Delete_Unreachable_Code, "");
+   @Goto(Orig_Pos);
+
+   @Edit;
+   IF ASType = "Reg"
+     THEN FOREACH Statements DO  
+            @Down;
+            DO IF @ST(@I) = T_Cond AND T_Call IN @Stat_Types(@I) 
+                 THEN IF @Right? 
+                        THEN P := @Posn; @Right;
+                             WHILE NOT @Cs?(@I) AND @ST(@I) <> T_Call AND @Right? DO
+                               @Right OD;
+                             IF @ST(@I) = T_Call 
+                               THEN @Goto(P);
+                                    WHILE @ST(@Parent^(@Posn_n+1)) <> T_Call DO
+                                      @Trans(TR_Absorb_Right,"") OD;
+                                    @Trans(TR_Absorb_Right,"");
+                                    @Down;  C:" to first guarded";
+                                    DO @Down_Last; C:"down to statement sequence";
+                                       IF T_Call IN  MAP("@ST", @Cs(@I)) 
+                                         THEN @Down;
+                                              WHILE @ST(@I) <> T_Call AND @Right? DO 
+                                                @Right OD;
+                                              IF @ST(@I) = T_Call THEN @Delete_Rest FI;
+                                              C:"Up to statement sequence"; @Up FI;
+                                       @Up; C:"To guarded";
+                                       IF @Right? THEN @Right ELSE @Up; EXIT(1) FI OD
+                               ELSE @Goto(P) FI FI FI;
+               IF @Right? THEN @Right ELSE EXIT(1) FI OD OD FI;
+
+   FOREACH Statement DO
+     IF @ST(@I) = T_Cond AND T_Call IN @Stat_Types(@I)
+      THEN IF @Trans?(TR_Simplify_If) THEN @Trans(TR_Simplify_If,"") FI;
+           IF ASType = "Reg" AND @Gen_Improper?(@I, ASType)
+	     THEN Calls := @Calls(@I);
+                  freq := 0;
+                  WHILE NOT(EMPTY?(Calls)) DO
+                    el := HEAD(Calls);
+                    IF el[2] > freq THEN freq := el[2]; Target := el[1] FI;
+                    Calls := TAIL(Calls) OD;
+                  IF freq > 1
+		    THEN @Down;
+                         DO @Down_To(2); @Down_Last;
+                            IF @V(@I) = Target 
+                              THEN @Paste_Over(@Make(T_Skip,< >,< >));
+                                   @Goto(@Posn) FI;
+                            @Up; @Up;
+                            IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+                         @Up;
+                         @Splice_After(<@Make(T_Call, Target, < >)>);
+                         @Goto(@Posn) FI FI FI OD;
+
+    @Goto(< >);
+    IF @Equal?(@I,Orig_Act)
+      THEN @Notice("Transformation `Merge Calls In Action' had nothing to do") FI;
+    IF @Trans?(TR_Delete_All_Skips) THEN @Trans(TR_Delete_All_Skips,"") FI; 
+    @End_Edit ENDVAR .
+       
+		   
+		   
+
+		      
+

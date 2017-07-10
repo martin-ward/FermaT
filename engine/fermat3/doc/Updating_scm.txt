@@ -1,0 +1,14 @@
+Instructions for updating to a new version of scm:
+
+Download scmXXX.zip and slibXXX.zip from:
+http://swissnet.ai.mit.edu/~jaffer/SCM.html
+
+Copy required files into FermaT/scm and FermaT/slib
+
+Apply patches to FermaT/scm/scmfig.h and FermaT/scm/setjump.h
+
+Edit FermaT/scm/scmfmags.h to get the right value for IMPLINIT
+
+make clean
+make test
+

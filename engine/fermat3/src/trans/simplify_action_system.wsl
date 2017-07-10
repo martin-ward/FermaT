@@ -1,0 +1,545 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Simplify_Action_System_Test() ==
+  IF @ST(@I) = T_A_S THEN @Pass ELSE @Fail("Not an action system") FI .;
+
+
+MW_PROC @Simplify_Action_System_Code(Data) ==
+  @Edit;
+  VAR < Old_Size := 0, Size := @Size(@I^2),
+	Leave_Alone_Names := @Parse_String(Data),
+	AS_Type := @System_Type(@I) >:
+  PRINT(Size," actions, type = ", AS_Type);
+  PRINFLUSH("Deleting unreachable code: ");
+  FOREACH Statements DO
+    @Down;
+    DO IF @Gen_Improper?(@I, AS_Type) AND @Right?
+	 THEN @Delete_Rest; PRINFLUSH("x"); EXIT(1)
+       ELSIF @Right?
+	 THEN @Right
+	 ELSE EXIT(1) FI OD OD;
+  PRINT("");
+
+  DO VAR < N := @Size(@I^2) >:
+     VAR < AS_Name := @V(@I^1),
+	   AS_Type := < >,
+	   Starting_Action := 0,
+	   N_Actions := 0, n := 0,
+	   Bodies := ARRAY(N, < >), Replace := ARRAY(N+1, 0), Changed := ARRAY(N+1, 1),
+	   Names := ARRAY(N+1, < >), Succs := ARRAY(N+1, < >), Preds := ARRAY(N+1, < >),
+	   Name2Num := HASH_TABLE, Num_Calls := HASH_TABLE, Leave_Alone := < >,
+	   name := < >, i := 0, Actions := < >,
+	   dispatch := @Make_Name("dispatch"), dn := -1 >:
+ 
+     AS_Type := @System_Type(@I);
+     PRINT("Action system type is ", AS_Type);
+     PRINT("Leave_Alone_Names = ", @Join(", ", MAP("@N_String", Leave_Alone_Names)));
+     C:" Calculate Bodies, Names, Name2Num ";
+     C:" Hash table Name2Num maps action names (keys) to action numbers   ";
+     @FD_Init(N VAR Bodies, Names, Name2Num);
+     Leave_Alone := < >;
+     FOR name IN Leave_Alone_Names DO
+       IF name = dispatch THEN dn := Name2Num.(name) FI;
+       Leave_Alone := <Name2Num.(name)> ++ Leave_Alone OD;
+     Leave_Alone := @Make_Set(Leave_Alone);
+
+     C:" Find the starting action: ";
+     Starting_Action := Name2Num.(AS_Name);
+ 
+     FOR i := 1 TO N+1 STEP 1 DO
+       Replace[i] := i OD;
+ 
+     C:"Simplify all IF statements which contain calls";
+     PRINFLUSH("Simplifying conditional statements: ");
+     FOR i := 1 TO N STEP 1 DO 
+	IF Replace[i] > 0 AND i <> dn
+	   AND T_Cond IN @Stat_Types(Bodies[i]) THEN
+	     @New_Program(Bodies[i]);
+	     FOREACH NAS DO 
+		 IF @ST(@I) = T_Cond AND T_Call IN @Stat_Types(@I)
+		   THEN @Trans(TR_Simplify_Item, "") FI OD;
+	     Bodies[i] := @Program FI OD;
+     PRINT("");
+ 
+     @SAS_Succs_And_Preds(N, Bodies, Starting_Action VAR Succs, Preds, Num_Calls);
+ 
+     @Substitute_Once_Called(Leave_Alone, dn);
+ 
+     @Remove_Elementary(Leave_Alone, dn);
+ 
+     C:" Loop until no more actions can be removed. ";
+     C:" How many actions are left ?";
+     N_Actions := 0;
+     FOR I := 1 TO N STEP 1 DO
+       IF Replace[I] > 0 THEN N_Actions := N_Actions + 1 FI OD;
+     DO C:" Recalculate action system type ";
+	AS_Type := @SAS_AS_Type;
+	PRINT("");
+	PRINT("Action system type is ", AS_Type);
+	PRINT(N_Actions, " actions");
+	 
+	C:" Simplify action bodies to merge calls and remove recursion. ";
+	PRINT("");
+	PRINFLUSH("Simplifying action bodies: ");
+	FOR I := 1 TO N STEP 1 DO
+	  IF Replace[I] > 0
+	    THEN IF @SAS_Call_Freq(I, I) > 0 AND I <> dn
+		   THEN @Remove_Recursion(I, Names[I], AS_Type); Changed[I] := 1 FI;
+		 IF Changed[I] = 1 AND I <> dn
+		   THEN @Merge_Calls(I); Changed[I] := 0 FI FI OD;
+	PRINT("");
+	IF N_Actions = 1 THEN EXIT(1) FI;
+
+	@Substitute_Once_Called(Leave_Alone, dn);
+ 
+	C:" If any actions have now become unreachable ";
+	C:" then mark them and remove their bodies. ";
+	FOR I := 1 TO N STEP 1 DO
+	  IF (Replace[I] > 0) AND (I <> Starting_Action)
+	       AND (EMPTY?(Preds[I]) OR (LENGTH(Preds[I]) = 1 AND HEAD(Preds[I]) = I))
+	    THEN Replace[I] := 0; Bodies[I] := < > FI OD;
+
+	C:" If no actions were removed in this pass then exit.     ";
+	n := 0;
+	FOR I := 1 TO N STEP 1 DO
+	  IF Replace[I] > 0 THEN n := n + 1 FI OD;
+	IF n = N_Actions THEN EXIT(1) FI;
+	N_Actions := n OD;
+
+     @FD_Rebuild_AS(N, Bodies, Names, AS_Name, < >);
+     IF @Syntax_OK?(@Program) THEN PRINT("Syntax is OK.")
+			      ELSE PRINT("Syntax NOT OK!") FI ENDVAR ENDVAR;
+
+     Old_Size := Size;
+     Size := @Size(@I^2);
+     IF Size > 1 AND Size <> Old_Size
+       THEN PRINT(""); PRINT("REITERATING...")
+       ELSE EXIT(1) FI OD ENDVAR;
+
+  @End_Edit;
+
+  IF @System_Type(@I) = "Rec" AND @Size(@I^2) > 1
+    THEN VAR < calls := < >, name := @V(@I^1) >:
+         C:" Convert suitable actions to procs ";
+         @Down_To(2); @Down; C:" to first action ";
+	 DO IF @V(@I^1) = name
+	      THEN C:" starting action "
+	    ELSIF @Stat_Count(@I) < 2
+	      THEN C:" too small "
+	      ELSE calls := @Calls(@I);
+	           IF LENGTH(calls) = 0
+		        OR (LENGTH(calls) = 1 AND @V(@I^1) = calls[1][1])
+	             THEN @Trans(TR_Make_Proc, "") FI FI;
+            IF @Right? THEN @Right ELSE EXIT(1) FI OD ENDVAR FI;
+  
+
+  PRINT("Done") .;
+
+
+MW_FUNCT @Parse_String(S) ==
+  VAR <L := < >, I := < >>:
+    IF S <> ""
+      THEN DO I := INDEX(" ", S, 0);
+	      IF I < 0
+		THEN L := <@Make_Name(S)> ++ L; EXIT(1)
+		ELSE L := <@Make_Name(SUBSTR(S, 0, I))> ++ L;
+	      S := SUBSTR(S, I + 1) FI OD FI;
+  (L).;
+
+
+MW_PROC @Substitute_Once_Called(Leave_Alone, dn) ==
+  PRINFLUSH("Eliminating actions which are only called once: ");
+  C:" First find and mark the `once called' actions, then unfold them. ";
+  C:" Before unfolding an action body, recursively unfold all the once called actions. ";
+  VAR < J := 0, I := 0, H := 0 >:
+  FOR I := 1 TO N STEP 1 DO
+    IF Replace[I] > 0 AND I <> Starting_Action
+         AND LENGTH(Preds[I]) = 0
+      THEN Replace[I] := 0;
+           Bodies[I] := < >
+    ELSIF Replace[I] > 0 AND I <> Starting_Action
+	    AND I NOTIN Leave_Alone
+            AND LENGTH(Preds[I]) = 1 AND HEAD(Preds[I]) <> I
+            AND @SAS_Call_Freq(I, HEAD(Preds[I])) = 1
+            AND HEAD(Preds[I]) <> dn
+      THEN Replace[I] := -1 FI OD;
+  FOR J := 1 TO N STEP 1 DO
+    IF Replace[J] > 0
+      THEN @New_Program(Bodies[J]);
+	   @SAS_Unfold_Once_Called(J);
+	   Bodies[J] := @Program;
+	   C:" If action is now recursive then remove recursion";
+	   IF @SAS_Call_Freq(J, J) > 0 AND J <> dn
+	     THEN PRINT("");
+		  @Remove_Recursion(J, Names[J], AS_Type) FI FI OD ENDVAR;
+  PRINT("") .;
+
+
+C:" Check all the calls in the program, unfold calls to once called actions: ";
+MW_PROC @SAS_Unfold_Once_Called(J) ==
+  VAR < body := < >, I := 0, n := 0 >:
+  FOREACH NAS DO
+    IF @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND @V(@I) < 0 AND -@V(@I) <= N
+      THEN n := -@V(@I);
+	   IF Replace[n] = 0
+	     THEN PRINT("");
+		  PRINT("Found a call to a non-existant action: ",
+			    @N_String(Names[n]), "(", n, ")");
+		  PRINT("In the body of action: ", @N_String(Names[J]), "(", J, ")");
+		  @Paste_Over(@Make(T_Comment, " Bad call: " ++ @N_String(Names[n]), < >))
+	   ELSIF Replace[n] = -1
+	     THEN PRINFLUSH(".");
+		  I := n;
+		  @Edit;
+		  @New_Program(Bodies[I]);
+		  Replace[I] := 0;
+		  Bodies[I] := < >;
+		  @SAS_Unfold_Once_Called(I);
+		  body := @Program;
+		  @Undo_Edit;
+		  @Splice_Over(@Cs(body));
+		  C:" The actions which were called by I are now called by J ";
+		  C:" So increase the call frequency of each sucessor of I in J by one. ";
+		  C:" Note that we don't care what I used to call, or who used to call I ";
+		  Succs[J] := (Succs[J] \/ Succs[I]) \ <I>;
+		  @SAS_New_Call_Freq(I, J, 0);
+		  WHILE NOT EMPTY?(Succs[I]) DO
+		    H := HEAD(Succs[I]); Succs[I] := TAIL(Succs[I]);
+		    @SAS_Update_Call_Freq(H, J, @SAS_Call_Freq(H, I));
+		    IF H < N+1 THEN Preds[H] := (Preds[H] \/ <J>) \ <I>;
+		    SKIP FI OD FI FI OD ENDVAR .;
+
+
+MW_PROC @Remove_Elementary(Leave_Alone, dn) ==
+  PRINT("Finding elementary actions");
+  FOR J := 1 TO N STEP 1 DO
+     IF J <> Starting_Action AND Replace[J] > 0 AND NOT (J IN Leave_Alone)
+	  AND LENGTH(Succs[J]) = 1 AND HEAD(Succs[J]) <> J
+	  AND @SAS_Call_Freq(HEAD(Succs[J]), J) = 1
+	  AND @Total_Size(Bodies[J]) <= 10
+	  AND dn NOTIN Preds[J]
+	  AND SUBSET?(@Stat_Types(Bodies[J]), @Make_Set(<T_Call, T_Comment, T_Skip>))
+       THEN Replace[J] := HEAD(Succs[J]) FI OD;
+  PRINFLUSH("Removing elementary actions: ");
+  FOR I := 1 TO N STEP 1 DO
+    IF Replace[I] > 0 AND Replace[I] <> I
+      THEN C: "Action #I is elementary";
+	   PRINFLUSH(@N_String(Names[I]), "=", Replace[I], " ");
+	   @SAS_Replace_Elem_Action_Calls(I, Leave_Alone, dn) FI OD;
+  PRINT("") .;
+
+
+MW_PROC @SAS_Replace_Elem_Action_Calls(I, Leave_Alone, dn) ==
+  VAR < S := HEAD(Succs[I]), P := Preds[I], H := < > >:
+  Replace[I] := 0; C:"Signifies that the action has been / is being dealt with";
+  C:"If successor is elementary then deal with it first";
+  IF NOT EMPTY?(Succs[I]) AND (Replace[S] > 0) AND (Replace[S] <> S)
+    THEN @SAS_Replace_Elem_Action_Calls(S, Leave_Alone, dn) FI;
+  C:" Update the predecessors list of the (single) action called by this action. ";
+  C:" In the action's predecessors, expand calls to this action and ";
+  C:" update successors list accordingly. ";
+  IF NOT EMPTY?(Succs[I])
+    THEN Preds[S] := (Preds[S] \/ P) \ <I> FI;
+  WHILE NOT EMPTY?(P) DO
+    H := HEAD(P); P := TAIL(P);
+    Succs[H] := (Succs[H] \/ Succs[I]) \ <I>;
+    C:" H now calls HEAD(Succs[I]) more often: ";
+    VAR < calls := 0 >:
+    @SAS_Expand_Calls_In_Body(I, H, Leave_Alone, dn VAR calls);
+    IF NOT EMPTY?(Succs[I])
+      THEN @SAS_Update_Call_Freq(HEAD(Succs[I]), H, calls) FI ENDVAR;
+    Changed[H] := 1 OD;
+  Bodies[I] := < > ENDVAR.;
+
+
+MW_PROC @SAS_Expand_Calls_In_Body(I, H, Leave_Alone, dn VAR calls) ==
+  C:" Unfold calls to action number I in the body of action number H ";
+  IF NOT EMPTY?(Bodies[H])
+    THEN @New_Program(Bodies[H]);
+	 FOREACH NAS DO
+	   IF @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND -@V(@I) = I
+	     THEN calls := calls + 1;
+	          @Splice_Over(@Cs(Bodies[I])) FI OD;
+	 Bodies[H] := @Program;
+	 C:"If the action has become recursive as a result,  ";
+	 C:" remove the recursion immediately";
+	 IF H IN Succs[H] AND H <> dn
+	   THEN PRINT(""); @Remove_Recursion(H, Names[H], AS_Type); PRINT("") FI FI .;
+
+
+C:" Remove the recursion in Bodies[I]: ";
+MW_PROC @Remove_Recursion(I, name, AS_Type) ==
+  VAR < Calls := < >, OK := 0, Message := "" >:
+  @New_Program(Bodies[I]);
+  IF AS_Type = "Reg" OR @SAS_Calls_Terminal?(name, AS_Type)
+    THEN C:" Turn recursive body into loop ";
+	 PRINT("Removing recursion in action ", @N_String(Names[I]), "(", I, "), dn = ", dn);
+	 @Paste_Over(@Increment(@I, AS_Type, 2, 0));
+	 FOREACH NAS DO
+	   IF @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND -@V(@I) = I
+	     THEN @Paste_Over(@Make(T_Exit, Depth + 1, < >)) FI OD;
+	 VAR < S := @Cs(@I) >:
+	 @Paste_Over(FILL Statements DO DO ~*S OD OD ENDFILL) ENDVAR;
+	 C:" Update the successor and predecessor lists for the action ";
+	 Succs[I] := Succs[I] \ <I>;
+	 Preds[I] := Preds[I] \ <I>;
+	 @SAS_New_Call_Freq(I, I, 0);
+	 C:"  Simplify the double loop if possible                             ";
+	 C:"Down to outer DO loop";
+	 @Down;
+	 IF @Trans?(TR_Delete_All_Skips) 
+	   THEN @Trans(TR_Delete_All_Skips, "") FI;
+	 @Trans(TR_Delete_Unreachable_Code, "");
+	 @SR_Floop_Test(AS_Type VAR OK, Message);
+	 IF OK = 1 THEN @SR_Floop(AS_Type) FI;
+	 IF @Trans?(TR_Double_To_Single_Loop) 
+	   THEN @Trans(TR_Double_To_Single_Loop, "") FI;
+	 IF @Gen_Dummy?(@I, AS_Type)
+	   THEN @Splice_Over(@Cs(@Increment(@I^1, AS_Type, -1, 0))) FI;
+	 Bodies[I] := @Program FI ENDVAR.;
+
+
+MW_FUNCT @SAS_AS_Type() ==
+  VAR < J := 1, Type := "Reg", Rec := 1 >:
+  FOR J := 1 TO N STEP 1 DO
+    IF Replace[J] > 0 AND NOT EMPTY?(Bodies[J])
+      THEN IF EMPTY?(@Gen_TVs(Bodies[J], "Reg"))
+	     THEN PRINT("Action ", @N_String(Names[J]), " is a non-terminating loop.");
+		  PRINT("Converting to a CALL Z.");
+		  Bodies[J] := @Make(T_Statements, < >, <@Make(T_Call, -(N+1), < >)>) FI;
+	   IF NOT @Regular?(Bodies[J])
+	     THEN PRINT("Action ", @N_String(Names[J]), " is non regular"); Type := "Hyb" FI;
+	   IF N+1 IN Succs[J] THEN Rec := 0 FI FI OD;
+  IF Rec = 1 THEN Type := "Rec" FI;
+  (Type) .;
+
+
+MW_PROC @Merge_Calls(I)==
+  VAR < Calls := @Calls(Bodies[I]), P := < >, New_Succs := < >, SS := < > >:
+  IF LENGTH(Calls) > 1 OR (LENGTH(Calls) = 1 AND Calls[1][2] > 1)
+    THEN PRINFLUSH(".");
+	 @New_Program(@Make(T_Action, < >, <@Name(Names[I]), Bodies[I]>));
+	 IF AS_Type = "Reg"
+	   THEN FOREACH Statements DO
+		  VAR <ST := MAP("@ST", @Cs(@I))>:
+		  C:"Delete code which follows calls, either directly, or by absorbing";
+		  C:"statement sequences containing calls into IF statements which";
+		  C:"contain calls and then deleting.";
+		  IF T_Call IN ST AND T_Cond IN ST
+		    THEN @Down;
+			 DO IF NOT @Right? THEN EXIT(1) FI;
+			    IF @Gen_Improper?(@I, AS_Type)
+			      THEN @Delete_Rest; EXIT(1)
+			    ELSIF @ST(@I) = T_Cond
+				    AND T_Call IN @Stat_Types(@I)
+			      THEN @Merge_Calls_In_Cond FI;
+			    IF @Right? THEN @Right ELSE EXIT(1) FI OD FI ENDVAR OD FI;
+	 C:"For each IF statement, see if it is possible to take out duplicated";
+	 C:"calls from the end of two or more branches, thus merging them.";
+
+	 FOREACH NAS DO
+	   IF @ST(@I) = T_Cond AND T_Call IN @Stat_Types(@I)
+	     THEN IF @Trans?(TR_Separate_Right)
+	               AND (@ST(LAST(@Cs(@I^1^2))) <> T_Call
+		              OR -@V(LAST(@Cs(@I^1^2))) NOTIN Leave_Alone)
+		    THEN @Trans(TR_Separate_Right, "") FI;
+		  IF @Trans?(TR_Delete_All_Assertions) 
+		    THEN @Trans(TR_Delete_All_Assertions, "") FI;
+		  IF @Trans?(TR_Else_If_To_Elsif) 
+		    THEN @Trans(TR_Else_If_To_Elsif, "") FI;
+		  IF AS_Type = "Reg" AND @Gen_Improper?(@I, AS_Type)
+		       AND  @Size(@I) <= Max_Cond_Size
+		    THEN @SAS_Take_Out_Dup_Calls FI FI OD;
+	 IF NOT @Equal?(Bodies[I], @Program^2)
+	   THEN Bodies[I] := @Program^2;
+		C:" If the action now calls different actions than before, ";
+		C:" then update its successors list, and the predecessors list ";
+		C:" of those actions which are no longer called. ";
+		New_Succs := < >;
+		FOR call IN @Calls(@Program) DO
+		  New_Succs := <-call[1]> ++ New_Succs;
+		  @SAS_New_Call_Freq(-call[1], I, call[2]) OD;
+		New_Succs := @Make_Set(New_Succs);
+		SS := Succs[I] \ New_Succs;
+		C:" SS is the list of actions which used to be called, but no longer are. ";
+		Succs[I] := New_Succs;
+		WHILE NOT EMPTY?(SS) DO
+		  Preds[HEAD(SS)] := Preds[HEAD(SS)] \ <I>;
+		  SS := TAIL(SS) OD FI FI ENDVAR .;
+
+
+C:" Check for two or more calls to the same action at the ends of the arms ";
+C:" of the IF statement which is currently selected. ";
+
+MW_PROC @SAS_Take_Out_Dup_Calls() ==
+  VAR < n := 0 >:
+  FOR el IN @Calls(@I) DO
+    IF -el[1] NOTIN Leave_Alone AND el[2] > n THEN n := el[2] FI OD;
+  IF n > 1
+    THEN C:" Something is called more than once ";
+	 C:" Check for two or more calls at the ends of the arms: ";
+	 VAR < freq := HASH_TABLE, Target := < > >:
+	 n := 1;
+	 @Down; C:" to first guarded ";
+	 DO @Down_To(2); @Down_Last;
+	    IF @ST(@I) = T_Call AND -@V(@I) NOTIN Leave_Alone
+	      THEN IF EMPTY?(freq.(@V(@I)))
+		     THEN freq.(@V(@I)) := 1
+		     ELSE freq.(@V(@I)) := freq.(@V(@I)) + 1 FI;
+		   IF freq.(@V(@I)) > n
+		     THEN Target := @V(@I);
+			  n := freq.(@V(@I)) FI FI;
+	    @Up; @Up;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up; C:" to IF statement ";
+	 IF NOT EMPTY?(Target)
+	   THEN C:"  ";
+		@Down; C:" to first guarded";
+		DO @Down_To(2); @Down_Last;
+		   IF @ST(@I) = T_Call AND @V(@I) = Target 
+		     THEN @Paste_Over(@Make(T_Skip, < >, < >)) FI;
+		   @Up; @Up; C:" up to guarded";
+		   IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+		@Up; C:" to IF statement";
+		@Splice_After(<@Make(T_Call, Target, < >)>) FI ENDVAR FI ENDVAR .;
+  
+
+C:" A Cond is selected which contains calls. Try to merge calls by absorption ";
+MW_PROC @Merge_Calls_In_Cond()==
+  VAR < P := @Posn >:
+  @Right;
+  C:"Look for a call following this IF statement";
+  WHILE NOT @Cs?(@I) AND @ST(@I) <> T_Call AND @Right? DO
+    @Right OD;
+  IF @ST(@I) <> T_Call
+    THEN @Goto(P)
+    ELSE C:"Absorb the statements up to this call";
+	 @Goto(P);
+	 WHILE @ST(@Parent^(@Posn_n + 1)) <> T_Call DO
+	   @Trans(TR_Absorb_Right, "") OD;
+	 C:"Now absorb the call itself";
+	 @Trans(TR_Absorb_Right, "");
+	 C:"Now delete after each call in the IF statement";
+	 @Down; C:" to guarded";
+	 DO @Down_Last; C:" down to statement sequence";
+	    IF T_Call IN MAP("@ST", @Cs(@I))
+	     THEN @Down;
+		  WHILE @ST(@I) <> T_Call AND @Right? DO @Right OD;
+		  IF @ST(@I) = T_Call THEN @Delete_Rest FI;
+		  @Up FI;
+	    @Up; C:" to guarded";
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up FI ENDVAR .;
+
+
+
+C:" Find the next statement with the given type and value. ";
+C:" Useful for processing action calls and proc calls. ";
+
+MW_PROC @Find_Statement(type, value) ==
+  DO DO IF @Gen_Type(@I) = T_Expression OR @Gen_Type(@I) = T_Expressions
+	    OR @Gen_Type(@I) = T_Condition
+	 THEN IF @Right?
+		THEN @Right
+	      ELSIF @Up?
+		THEN @Up; WHILE @Up? AND NOT @Right? DO @Up OD;
+		     IF @Right? THEN @Right ELSE EXIT(2) FI
+		ELSE EXIT(2) FI
+	 ELSE EXIT(1) FI OD;
+     IF @ST(@I) = type AND @V(@I) = value THEN EXIT(1) FI;
+     IF @ST(@I) = type AND @Size(@I) > 1 AND @ST(@I^1) = T_Name AND @V(@I^1) = value
+       THEN EXIT(1) FI;
+     IF @Down? AND type IN @Stat_Types(@I) THEN @Down
+     ELSIF @Right? THEN @Right
+     ELSIF @Up?
+       THEN @Up; WHILE @Up? AND NOT @Right? DO @Up OD;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI
+       ELSE EXIT(1) FI OD .;
+
+
+C:" Calculate Succs and Preds arrays and Num_Calls hash table. ";
+C:" NB: the calls in Bodies have numbers instead of names, ";
+C:"     Succs and Preds are arrays of < > and Num_Calls is empty ";
+MW_PROC @SAS_Succs_And_Preds(N, Bodies, Starting_Action VAR Succs, Preds, Num_Calls) ==
+  PRINFLUSH("Calculating Succs and Preds... ");
+  VAR < calls := < >, J := 0, n := 0 >:
+  FOR I := 1 TO N STEP 1 DO
+    IF NOT EMPTY?(Bodies[I])
+      THEN calls := @Calls(Bodies[I]);
+	   C:" Returns a list of <call, number> pairs ";
+	   WHILE NOT EMPTY?(calls) DO
+	     J := -calls[1][1]; n := calls[1][2]; calls := TAIL(calls);
+	     IF NOT NUMBER?(J)
+	       THEN PRINT("Check me: ", J); J := N+1 FI;
+	     @SAS_Update_Call_Freq(J, I, n);
+	     Succs[I] := <J> \/ Succs[I];
+	     Preds[J] := Preds[J] \/ <I> OD FI OD ENDVAR;
+  PRINT("Done.") .;
+
+
+
+MW_BFUNCT @SAS_Calls_Terminal?(name, AS_Type) ==
+  VAR < Valid := @SAS_Reachable_Calls(name, AS_Type), R := 0 >:
+  WHILE NOT EMPTY?(Valid) AND R = 1 DO
+    IF NOT @Is_Terminal_Posn?(HEAD(Valid)) THEN R := 0 FI;
+    Valid := TAIL(Valid) OD;
+  (R = 1) .;
+
+
+MW_FUNCT @SAS_Reachable_Calls(name, AS_Type) ==
+  VAR < Calls := < >, Valid := < > >:
+  @Edit;
+  ATEACH Statement DO 
+    IF (@ST(@I) = T_Call) 
+	 AND -@V(@I) = name AND @Gen_Reachable?(@Program, @Posn, AS_Type)
+      THEN Valid := Valid ++ <@Posn> FI OD;
+  @Undo_Edit;
+  (Valid) .;
+
+
+
+C:" Return the call frequency from the Num_Calls hash table, ";
+C:" ie the number of times J is called in the body of I ";
+MW_FUNCT @SAS_Call_Freq(J, I) ==
+  VAR < R := Num_Calls.(<J, I>) >:
+  IF EMPTY?(R) THEN R := 0 FI;
+  (R) .;
+
+
+C:" Update the call frequency in the Num_Calls hash table, ";
+C:" ie the number of times J is called in the body of I, ";
+C:" by the given amount ";
+MW_PROC @SAS_Update_Call_Freq(J, I, increment) ==
+  VAR < old := Num_Calls.(<J, I>) >:
+  IF EMPTY?(old)
+    THEN Num_Calls.(<J, I>) := increment
+    ELSE Num_Calls.(<J, I>) := old + increment FI ENDVAR .;
+
+
+C:" Record a new call frequency -- number of calls of J in I ";
+MW_PROC @SAS_New_Call_Freq(J, I, new) ==
+  Num_Calls.(<J, I>) := new;
+  SKIP .;
+
+
+SKIP
+

@@ -1,0 +1,200 @@
+#!/usr/bin/perl
+# This is a perl starter script with some standard stuff
+# Description here
+# Usage: perlcg [-max N] [-U] [-I module]* [-nomodules] script [output]
+#
+# -max N : Ignore "utility" subroutines which call no other routines
+#	   and are called at least N times (-max 0 means include everything)
+#
+# -U : Include unreachable subroutines in the call graph
+#
+# -I module : Ignore subroutines in this module (by default we ignore
+#             Comm, UNIVERSAL, Exporter, strict and DynaLoader).
+#
+# -nomodules : Only look at calls in the given file (ignore ALL modules)
+#
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [-max N] [-U] [-I module]* script [output]\n";
+
+# Modules to ignore:
+@ignore = qw(Comm UNIVERSAL Exporter strict DynaLoader);
+
+# If a subroutine is called at least this many times, but calls nothing else
+# then remove it from the graph (0 means keep everything):
+$max_calls = 0;
+
+# Include nodes which are unreachable from the root?
+$include_unreached = 0;
+
+# If set, then don't look at any included perl modules:
+$nomodules = 0;
+
+# Option processing:
+
+while (@ARGV && ($ARGV[0] =~ /^-/)) {
+  $opt = shift;
+  if ($opt eq "-max") {
+    $max_calls = shift;
+    die $Usage unless ($max_calls =~ /^\d+$/);
+  } elsif ($opt eq "-U") {
+    $include_unreached = 1;
+  } elsif ($opt eq "-I") {
+    push(@ignore, shift);
+  } elsif ($opt eq "-nomodules") {
+    $nomodules = 1;
+  } else {
+    die $Usage;
+  }
+}
+    
+# A pattern which matches on names in ignored packages:
+$ignore = "^(?:" . join("|", @ignore) . ")::";
+
+# Check one or two arguments:
+die $Usage if (($#ARGV < 0) || ($#ARGV > 1));
+
+$tmpfile = "/tmp/perlcg-$$";
+
+$script = $ARGV[0];
+if ($#ARGV > 0) {
+  open(OUT, ">$ARGV[1]") or die "Can't write to $ARGV[1]: $!\n";
+  select OUT;
+}
+
+# Find the script using the PATH:
+if ($script =~ m!/!) {
+  @path = ($script);
+} elsif (-f $script) {
+  @path = ("./$script");
+} else {
+  @path = map { "$_/$script" } split(/:/, $ENV{'PATH'});
+}
+
+# Pick the first one which exists in the path:
+$file = "";
+foreach $name (@path) {
+  if (-f $name) {
+    $file = $name;
+    last;
+  }
+}
+die "Can't find $script!\n" if ($file eq "");
+
+# Modify the script so that it exits immediately:
+open(IN, $file) or die "Can't read $file: $!\n";
+open(TMP, ">$tmpfile") or die "Can't write to $tmpfile: $!\n";
+print TMP "exit(0);\n";
+while (<IN>) {
+  if ($nomodules) {
+    1 while (s/^\s*use \w+;//);
+  }
+  print TMP;
+}
+close(TMP);
+close(IN);
+
+# Run perld -D1024 on the script:
+
+@data = `perld -D1024 $tmpfile 2>&1 | egrep '^SUB | *GV = '`;
+unlink($tmpfile);
+
+# Get a list of all the subroutines, then record the calls
+# within each subroutine:
+
+%subs = ();
+%calls = ();	# $calls{'foo'} is a list of subs called by foo
+%calln = ();	# $calln{'foo'}{'bar'} records the number of times 'foo' calls 'bar'
+%module = ();	# The module which contains the subroutine
+%ignore = ();	# Calls to ignore
+# Note that the tree may have main::open_port as well as Comm::open_port
+# If the latter is present, then ignore open_port despite the former.
+# Yes, this may miss some 
+
+grep { $subs{$1} = 1  } @data;
+
+$sub = "BEGIN";
+@subs = ($sub);
+$subs{$sub} = 1;
+foreach $_ (@data) {
+  if (/^SUB (\S+)/) {
+    $name = $1;
+    # Extract the leaf component of the name:
+    ($leaf = $name) =~ s/^(\S+)::(\S+)$/$2/;
+    $module{$leaf} = $1 if ($1 && ($1 ne "main"));
+    if (($name =~ /$ignore/) || ($nomodules && ($name !~ /^main::/))) {
+      $ignore{$leaf}++;
+    } else {
+      if (!$subs{$leaf}) {
+	$subs{$leaf} = 1;
+	push(@subs, $leaf);
+      }
+    }
+  }
+}
+
+# BEGIN is really the main routine, despite appearences:
+$module{'BEGIN'} = "";
+
+# Remove the subroutines which should be ignored from the list and table:
+@subs = grep { !$ignore{$_} } @subs;
+grep { $subs{$_} = 0 } keys %ignore;
+
+foreach $item (@data) {
+  if ($item =~ /^SUB (\S+)/) {
+    ($sub = $1) =~ s/^\S+::(\S+)$/$1/;
+  } elsif ($item =~ /GV = (\S+)/) {
+    $name = $1;
+    $name =~ s/^\S+::(\S+)$/$1/;
+    next unless ($subs{$name});
+    push(@{$calls{$sub}}, $name) unless ($calln{$sub}{$name});
+    $calln{$sub}{$name}++;
+    #print "$sub --> $name\n";
+  }
+}
+
+# Post-processing:
+if ($max_calls) {
+  %calls_to = ();
+  %calls_by = ();
+  foreach $name (@subs) {
+    foreach $sub (@{$calls{$name}}) {
+      $calls_to{$sub}++;
+      $calls_by{$name}++;
+    }
+  }
+  @subs = grep { $calls_by{$_} || ($calls_to{$_} < $max_calls) } @subs;
+}
+
+if (!$include_unreached) {
+  %reached = ();
+  @queue = ($subs[0]);
+  while (@queue) {
+    $name = pop(@queue);
+    if (!$reached{$name}) {
+      $reached{$name}++;
+      push(@queue, grep { !$reached{$_} } @{$calls{$name}});
+    }
+  }
+  @subs = grep { $reached{$_} } @subs;
+}
+
+# Print the call graph in the order in which subroutines were encountered:
+foreach $name (@subs) {
+  print "$module{$name}::" if ($module{$name});
+  print "$name: ";
+  foreach $sub (@{$calls{$name}}) {
+    next if ($max_calls && !$calls_by{$sub} && ($calls_to{$sub} >= $max_calls));
+    print "$module{$sub}::" if ($module{$sub});
+    print "$sub $calln{$name}{$sub} ";
+  }
+  print "\n";
+}
+
+exit(0);
+
+
+
+
+
+

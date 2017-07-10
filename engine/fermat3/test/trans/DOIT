@@ -1,0 +1,13 @@
+cp /dev/null LOG
+foreach i (*_TEST.wsl)
+echo ==== $i ====
+wsl $i |& tee -a LOG
+echo " "
+end
+echo " "
+echo "========================================================"
+echo " "
+echo "Now checking the log file for failures:"
+echo ""
+egrep -i 'failed|ERROR|segmentation|supposed' LOG || echo '---- All files passed \! ----'
+echo ""

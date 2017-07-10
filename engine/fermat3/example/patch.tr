@@ -1,0 +1,7 @@
+(display-list "Reading patch.tr")
+(define //T/R_/Reverse_/If '())
+(load "reverse_if.scm")
+(load "reverse_if_d.scm")
+(define //T/R_/Reverse_/All_/Ifs '())
+(load "reverse_all_ifs.scm")
+(load "reverse_all_ifs_d.scm")

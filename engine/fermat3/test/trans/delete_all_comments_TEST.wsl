@@ -1,0 +1,58 @@
+@Test_Trans(" 1st test of `Delete All Comments'",
+            (FILL Statements IF x=y THEN C:"foo" ELSE PRINT("Hello world") FI 
+ENDFILL),
+            < >,
+            TR_Delete_All_Comments,
+            < >,
+            (FILL Statements IF x<>y THEN PRINT("Hello world") FI ENDFILL));
+
+@Test_Trans(" 2nd test of `Delete All Comments'",
+            (FILL Statements C:"foo"; C:"foo"; C:"foo" ENDFILL),
+            < >,
+            TR_Delete_All_Comments,
+            < >,
+            (FILL Statements SKIP ENDFILL));
+            
+@Test_Trans(" 3rd test of `Delete All Comments'",
+            (FILL Statements PRINT("This program does not contain a comment") 
+ENDFILL),
+            < >,
+            TR_Delete_All_Comments,
+            < >,
+            "Fail");
+            
+@Test_Trans(" 4th test of `Delete All Comments'",
+            (FILL Statements I:=FILL Statement C:"foo" ENDFILL ENDFILL),
+            < >,
+            TR_Delete_All_Comments,
+            < >,
+            "Fail");
+            
+@Test_Trans(" 5th test of `Delete All Comments'",
+            (FILL Statements IF x=y THEN C:"foo" ELSE C:"foo" FI ENDFILL),
+            < >,
+            TR_Delete_All_Comments,
+            < >,
+            (FILL Statements SKIP ENDFILL));
+            
+@Test_Trans(" 6th test of `Delete All Comments'",
+            (FILL Statements FOR n:=1 TO 10 STEP 1 DO C:"foo" OD ENDFILL),
+            < >,
+            TR_Delete_All_Comments,
+            < >,
+            (FILL Statements SKIP ENDFILL));        
+
+@Test_Trans(" 7th test of `Delete All Comments'",
+            (FILL Statements n:=5; WHILE n<>10 DO n:=n+1; C:"foo" OD ENDFILL),
+            < >,
+            TR_Delete_All_Comments,
+            < >,
+            (FILL Statements n:=5; WHILE n<>10 DO n:=n+1 OD ENDFILL));
+            
+@Test_Trans(" 8th test of `Delete All Comments'",
+            (FILL Statements n:=5; WHILE n<>10 DO C:"foo" OD ENDFILL),
+            < >,
+            TR_Delete_All_Comments,
+            < >,
+            (FILL Statements n := 5; {n = 10} ENDFILL))
+            

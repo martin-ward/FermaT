@@ -1,0 +1,8 @@
+DO DO IF i > n THEN EXIT(2) FI;
+      i := i + 1;
+      IF A[i] = v THEN EXIT(1) FI OD;
+   last := i;
+   count := count + 1;
+   IF count > limit THEN EXIT(1) FI OD;
+IF count > limit THEN PRINT(last) FI
+

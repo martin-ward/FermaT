@@ -1,0 +1,1111 @@
+
+WSL Programmer's Reference Manual
+=================================
+
+To unpack the tar file and build FermaT:
+
+gunzip < fermat3.tar.gz | tar xf -
+cd fermat3
+source DOIT.csh (OR "source DOIT.sh" depending on your shell)
+make test
+
+
+Now the "wsl", "dotrans", "wsl2scm" etc. commands should work.
+
+See the files in fermat3/example for how to write and execute
+your own transformations.
+
+
+Hello world in WSL:
+
+PRINT("Hello World!")
+
+Save this line to a files "hello.wsl" and type:
+
+wsl hello.wsl
+
+to execute it.  The output should look something like this:
+
+
+> Writing: t13467.scm
+> Starting Execution... 
+> 
+> Hello World!
+> 
+> Execution time: 0
+
+
+A simple guessing game in WSL:
+
+num := @Random(100);
+PRINT("I have thought of a number between 1 and 100");
+DO PRINFLUSH("What is your guess? ");
+   guess := @String_To_Num(@Read_Line(Standard_Input_Port));
+   IF guess = num THEN PRINT("Correct!"); EXIT(1) FI;
+   IF guess < num
+     THEN PRINT("Too low.")
+     ELSE PRINT("Too high.") FI OD;
+PRINT("Goodbye.")
+
+   
+
+Expressions
+-----------
+
+
+Numeric Operators:
+
++, -. *, /, **, MOD, DIV, ABS(), INT(), SGN(), MAX(), MIN()
+
+SGN(x) returns -1 if x < 0, 0 if x = 0 and +1 if x > 0.
+
+
+
+String Operators:
+
+SLENGTH(str) returns the length of string str.
+
+SUBSTR(str, start, len) returns len characters of str starting
+with the character at position start (where the first character
+of the string is at position zero). SUBSTR("abcdef", 2, 3) = "cde".
+
+SUBSTR(str, start) returns the characters from start to the end
+of the string.
+
+s1 ++ s2: concatenate two strings. (Note: this is the same operator
+as list concatenation, see below)
+
+INDEX(s1, s2) returns the position of string s1 in s2, or -1 if
+the string s1 is not present in s2.
+
+
+
+List/Array Operators:
+
+Lists and arrays use the same operators, but are implemented differently.
+An assignment to a whole array will copy a pointer to the array
+rather than the whole array and therefore create an alias.
+Technically, this is an error in the implementation
+(the WSL specification does not allow aliasing)
+which might be fixed in a future version, so it should
+be avoided.
+
+ARRAY(len, init) create an array if len elements (indexed from 1 to len)
+and initialise each element to init. For example:
+
+A := ARRAY(10, 5);
+A[1] := A[1] + 1;
+PRINT(A[1]);
+
+Note that arrays are indexed from 1 (not from 0 as in C).
+Any reference to A[0] is an error.
+
+a1 ++ a2: concatenate two lists.
+
+<e1, e2, e3>: Create a new list with the given elements.
+Note: the empty list is < > (note the space), since <>
+is the inequality operator.
+
+HEAD(L): return the first element of the list
+TAIL(L): return the list L with the first element removed.
+Note that L = <HEAD(L)> ++ TAIL(L) for any non-empty list L.
+LAST(L): return the last element of the list
+BUTLAST(L): returh the list L with the last element removed.
+Note that  L = BUTLAST(L) ++ <LAST(L)> for any non-empty list L.
+LENGTH(L): return the length of the list.
+L[n]: return the nth element of an array or list
+L[n..m]: return the sublist of elements n to m inclusive.
+L[n..]: return the sublist from element n to the end of the list.
+
+Note that:
+
+HEAD(L) = L[1]
+TAIL(L) = L[2..]
+LAST(L) = L[LENGTH(L)]
+BUTLAST(L) = L[1..LENGTH(L)-1]
+
+REVERSE(L): return the reversed list.
+
+It is much more efficient to access and update the head of a list,
+rather than the tail of a list.  So, to construct a long list,
+append the elements to the front and then reverse the result:
+
+list := < >;
+FOR i := 1 TO 10000 STEP 1 DO
+  list := <i> ++ list OD;
+list := REVERSE(list)
+
+will be much faster than:
+
+list := < >;
+FOR i := 1 TO 10000 STEP 1  DO
+  list := list ++ <i> OD
+
+since the latter has to rebuild the whole list for each iteration,
+so it is O(n^2) in processing time. (On my machine the first takes
+about 30ms while the second takes nearly 11 seconds.)
+
+
+
+Set Operators:
+
+Currently sets are implemented as ordered lists,
+but this should not be relied upon. Set and list
+operations should not be intermixed.
+
+@Make_Set(list): convert a list to a set, ie returns
+the set of all the elements in the list.
+
+s1 \/ s2, s1 /\ s2, s1 \ s2: set union, intersection and difference.
+
+POWERSET(s): return the set of all subsets of s.
+
+
+Generic Expressions
+-------------------
+
+IF condition THEN e1 ELSE e2 FI: conditional expression.
+
+MAP("funct", list):  apply the function to each element of the list
+and return the resulting list. For example: MAP("head", <<1, 2>, <3, 4>>)
+returns <1, 3>.
+
+REDUCE("funct", list): insert the function or operator (which must
+take two arguments) between each pair of elements of the list
+(which must be non-empty). For example: REDUCE("+", list)
+adds up the elements of a list of numbers and returns the result.
+
+HASH_TABLE: create and return a new empty hash table.
+
+tab.(key): extract the element of the hash table stored under the given key.
+The elements and keys can be of any type. For example:
+
+tab1 := HASH_TABLE;
+tab1.("foo") := "bar";
+tab1.(<<1, 2, 3, <4>>>) := <"hello world", 99>;
+PRINT(tab1.("foo"));
+PRINT(tab1.(<<1, 2, 3, <4>>>)[1])
+
+prints:
+
+bar
+hello world
+
+
+
+
+Conditions
+----------
+
+a < b, a > b, a = b, a <> b, a <= b, a >= b: the usual relations.
+
+ODD?(n), EVEN?(n)
+
+EMPTY?(s): true if the set s is empty.
+
+elt IN set
+els NOTIN set: set membership and its negation.
+
+SUBSET?(s1, s2): true if the set s1 is a subset of s2.
+
+
+TRUE, FALSE: universally true and universally false conditions.
+
+AND, OR, NOT: the usual logical operators.
+
+IMPLIES?(a, b): equivalent to NOT a OR b
+
+NUMBER?(x): true if x is a number
+STRING?(x): true if x is a string
+SEQUENCE?(x): true if x is a list (or a set)
+
+
+
+Statements
+----------
+
+Note that in WSL semicolon (;) is a statement *separator* not a statement
+*terminator*. A sequence of statements is separated by semicolons,
+but there should be no semicolon at the end of the sequence
+(although the parser usually won't complain if there is).
+
+
+
+ABORT
+
+is a statement which aborts.
+
+SKIP
+
+is a statement with no effect.
+
+C:" ... "
+
+is a comment statement. Note that in WSL a comment is
+actually a statement and can only appear where a statement can appear.
+
+{condition}
+
+is an assertion which aborts if the condition is false.
+
+PRINT(e1, e2, ...)
+
+print the list of expressions followed by a newline.
+
+PRINFLUSH(e1, e2, ....)
+
+prints the expressions and does not start a new line.
+
+
+ERROR(string, ...)
+
+raise an error and print the given strings.
+
+x := e
+
+is an assignment statement.
+
+<x1 := e1, x2 := e2>
+
+is a parallel assignment which evaluates all of the expressions
+and then assigns to all of the variables.  For example:
+<x := y, y := x> will exchange the values of two variables.
+
+PUSH(exp, stack)
+
+is equivalent to: stack := <exp> ++ stack;
+
+POP(var, stack)
+
+is equivalent to: var := HEAD(stack); stack := TAIL(stack)
+
+
+ACTIONS start:
+start == ... END
+name == ... END
+... ENDACTIONS
+
+is an "action system", a collection of mutually recursive
+parameterless procedures.  The system starts by executing the body
+of the start action (the action named on the ACTIONS line).
+Within the action system a statment of the form "CALL name"
+will call another action.  The special action call "CALL Z"
+will terminate the whole action system immediately.  An action system
+in which execution of every action body leads to a CALL is called
+a "regular action system" and is equivalent to a collection of labels
+and GOTOs since no action call can ever return.  Note:  action calls
+can only appear inside IF, D_IF and DO...OD statements.
+
+DO ... OD
+
+is a loop which can only be terminated by executing a statement
+of the form EXIT(n) where n is an integer (not a variable
+or expression).  EXIT(n) will terminate n enclosing loops.
+An EXIT(n) within less than n loops can only appear inside
+a IF, D_IF or DO...OD statements (so, for example,
+you cannot terminate a WHILE loop via an EXIT statement).
+
+WHILE condition DO ... OD
+
+is the usual while loop.
+
+FOR var := start TO end STEP step DO ... OD
+
+is the usual FOR loop.  Note that var is a local variable whose
+scope extends to the body of the loop only.
+
+FOR var IN list DO ... OD
+
+is an iteration over the elements of a list or set.  The list can
+be an expression, eg: FOR comp IN @Cs(I^2) ++ @Cs(I^3) DO ... OD
+
+IF cond1 THEN stat1
+ELSIF cond2 THEN stat2
+...
+	ELSE stat n FI
+
+is a conditional statement, the conditions are evaluated in order
+and the corresponding statement executed when a true condition is reached.
+If there is no ELSE clause, then and ELSE SKIP is assumed.
+
+D_IF cond1 -> stat1
+  [] cond2 -> stat2
+...
+  [] condn -> statn FI
+
+is Dijkstra's guarded command.  Each of the conditions is evaluated,
+one of the true conditions is selected and the corresponding
+statement executed.  If none of the conditions are true then
+the whole statement aborts.
+
+D_DO cond1 -> stat1
+  [] cond2 -> stat2
+...
+  [] condn -> statn OD
+
+is Dijkstra's guarded command looping construct and is equivalent to:
+
+WHILE cond1 OR cond2 OR ... OR condn DO
+  D_IF cond1 -> stat1
+    [] cond2 -> stat2
+  ...
+    [] condn -> statn FI OD
+
+
+VAR < v1 := e1, v2 := e2, ... >:
+  body ENDVAR
+
+is a local procedure block. Note that every variable has
+to be initialised, and the expressions refer to the *global*
+versions of v1, v2, etc. So the following will initialise
+local variable x to its global value:
+
+VAR < x := x >:
+  ... statements which can modify x ... ENDVAR
+
+Note that local variable are dynamically bound rather than
+statically bound.  To find the binding of a global variable
+in a prodecure body, look in the environment of the proc call,
+not the environment of the proc definition. For example:
+
+x := 1;
+BEGIN
+  foo(VAR);
+  VAR < x := 2 >:
+    foo(VAR) ENDVAR
+WHERE
+  PROC foo(VAR) ==
+    PRINT("Value of x = ", x) END
+END
+
+prints:
+
+Value of x = 1
+Value of x = 2
+
+(With static binding, the value of x is 1 for *every* call of foo).
+
+
+
+Procedures, Functions and Boolean Functions
+-------------------------------------------
+
+Local procedures and functions can be defined in a "WHERE clause":
+
+BEGIN
+  ...statements...
+WHERE
+  PROC foo(x VAR y) ==
+    ... statements ... END
+  FUNCT bar1(x, y) ==
+    VAR < v1 := e1, v2 := e2 >:
+    (expression) END
+  FUNCT bar2(x, y) == :
+    (expression) END
+  BFUNCT baz?(x, y) ==
+    VAR < v1 := e1, v2 := e2 >:
+    (condition) END
+END
+
+Parameter x of foo is a value parameter, while y is a value-result
+parameter (the final value of y is copied back into the corresponding
+actual parameter in the call). The general format of a proc call is:
+name(e1, e2, ... VAR v1, v2, ...) and the VAR keyword is mandatary,
+even if there are no value parameters.
+
+The body of the WHERE clause consists of a statement sequence
+which may contain calls to any of the procedures or functions.
+Any proc or funct body may also contain calls to the other
+procs or functions.
+
+A WHERE clause is just an ordinary statement which may be part
+of another statement or WHERE clause.
+
+The body of a FUNCT or BFUNCT consists of:
+
+(1) An optional VAR < ... > which assigns to local variables.
+The local variables may be referenced in the final expression
+or condition. Note that there is no ENDVAR since this
+is not a VAR clause. (A PROC may introduce local variables
+by using a VAR ... ENDVAR clause).
+
+(2) A mandatary ":"
+
+(3) An expression or condition enclosed in parentheses
+
+(4) The keyword END
+
+A "minimal" function which contains no local variables may be
+defined like this:
+
+FUNCT fib(n) == :
+  (IF n <= 1 THEN 1 ELSE fib(n-1) + fib(n-2) FI) END
+
+Note: The FermaT transformation system assumes that all functions
+(and Boolean functions) are "pure" functions which always terminate
+and which depend only on their parameters.
+
+
+
+MW procedures and functions
+---------------------------
+
+The "MW" procedures and functions are used for implementing
+the FermaT transformation system. These are statements which
+define procedures and functions, and the functions are allowed
+to have side-effects (but the transformation system will
+still assume that there are none: so it is up to the programmer
+to ensure that any side-effects are "benign").
+
+MW_PROC @foo(x VAR y) ==
+  ...statements... END;
+
+MW_FUNCT @bar(x, y) ==
+  VAR < v1 := e1, v2 := e2 >:
+  ...statements...;
+  (expression) END;
+
+MW_BFUNCT @baz?(x, y) ==
+  VAR < v1 := e1, v2 := e2 >:
+  ...statements...;
+  (condition) END;
+
+...more statements and declarations...
+
+
+Note that the semicolon after each END is not part of the declaration,
+it is the normal statement separator.  Each proc or funct name
+must start with an "@" and each Boolean function name ends with a "?".
+
+The body of an MW_FUNCT or MW_BFUNCT consists of:
+
+(1) An optional VAR < ... > which assigns to local variables.
+The local variables may be referenced in the final expression
+or condition. Note that there is no ENDVAR since this
+is not a VAR clause. (An MW_PROC may introduce local variables
+by using a VAR ... ENDVAR clause).
+
+(2) A mandatary ":"
+
+(3) A non-empty statement sequence
+
+(4) A mandatary ";"
+
+(5) An expression or condition enclosed in parentheses
+
+(6) The keyword END (or a full stop).
+
+A "minimal" function which contains no local variables may be
+defined like this:
+
+MW_FUNCT fib(n) == : SKIP;
+  (IF n <= 1 THEN 1 ELSE fib(n-1) + fib(n-2) FI) END
+
+
+
+
+Internal Representation
+-----------------------
+
+
+WSL statements, expressions, conditions etc.  are collectively
+called "items". Each WSL "item" has a generic type, a specific
+type and either a value or a (possibly empty) list of components.
+
+The set of specific types is partitioned into the generic types:
+so the generic type of any item can be inferred from the specific type.
+
+
+For example, the WSL statement:
+
+WHILE x > 0 DO x := x - 1 OD
+
+is represented internally as an item of type T_While
+(generic type T_Statement) with two components, a T_Greater
+(generic type T_Condition) and a T_Statements.  The T_Statements
+item has one component, a T_Assignment (generic type T_Statement),
+... and so on.
+
+
+
+
+Generic Types are:
+
+T_Statement, T_Expression, T_Condition, T_Definition, T_Lvalue, T_Assign
+T_Guarded, T_Action, T_Name, T_Expressions, T_Conditions, T_Lvalues
+T_Assigns, T_Definitions, T_Actions, T_Guardeds, T_Statements
+
+If the generic type of an item is one of:
+
+T_Assign, T_Guarded, T_Name, T_Expressions, T_Conditions, T_Lvalues,
+T_Assigns, T_Definitions, T_Actions, T_Guardeds, T_Statements
+
+then the specific type is the same as the generic type.
+
+
+List Types are the following:
+
+T_Assignment, T_Cond, T_D_If, T_D_Do, T_Plus, T_Minus, T_Times
+T_Divide, T_Exponent, T_Max, T_Min, T_Intersection, T_Union, T_Concat
+T_And, T_Or, T_Statements, T_Expressions, T_Conditions, T_Lvalues
+T_Assigns, T_Definitions, T_Actions
+
+A list type can have a variable number of components (one or more)
+but all components must be of the same generic type.
+
+All other types either have a value or a fixed number of components
+(zero or more). The specific type of the item determines the allowed
+generic type of each component.
+
+For example: any T_While item has exactly two components,
+the first is a T_Condition and the second is a T_Statements.
+
+A T_Statements item can have any number of components (greater than zero),
+each of which must be of type T_Statement.
+
+
+The following types have values (and therefore have no components):
+
+T_Name
+T_Call
+T_Comment
+T_Exit
+T_Number
+T_String
+T_Variable
+T_Var_Lvalue
+
+plus all the different pattern match symbols:
+
+T_Stat_Pat_One, T_Stat_Pat_Many, T_Stat_Pat_Any, T_Expn_Pat_One
+T_Expn_Pat_Many, T_Expn_Pat_Any, T_Cond_Pat_One, T_Cond_Pat_Many
+T_Cond_Pat_Any, T_Defn_Pat_One, T_Defn_Pat_Many, T_Defn_Pat_Any
+T_Lvalue_Pat_One, T_Lvalue_Pat_Many, T_Lvalue_Pat_Any, T_Assign_Pat_One
+T_Assign_Pat_Many, T_Assign_Pat_Any, T_Guarded_Pat_One, T_Guarded_Pat_Many
+T_Guarded_Pat_Any, T_Action_Pat_One, T_Action_Pat_Many, T_Action_Pat_Any
+T_Name_Pat_One
+
+
+
+
+
+
+
+MetaWSL Expressions and Conditions
+----------------------------------
+
+@I: return the currently selected item.
+
+@Parent, @GParent: return the parent and grandparent of the current item.
+
+@Program: return the current program.
+
+I^n: the nth component of item I.
+
+I^^L: select the subcomponent at position L within I, I^n = I^^<n>.
+
+@Posn: return the current position.
+
+@Posn_n: return the current position in the current parent,
+@Posn_n = LAST(@Posn).
+
+@ST(I): specific type of I
+@GT(I): generic type of I
+@Size(I): number of components in I
+@V(I): value of I (only works on items with a value)
+@Value(I): value of I or < > (works on any item)
+@Cs(I): components of I (only works on items which don't have a value)
+@Components(I): components of I (works on any item)
+
+@Cs?(I), @Components?(I): true if I has components.
+@Has_Value_Type?(st): true if the specific type st is one which has a value
+@Has_Comps_Type?(st): true if the specific type st is one which may have components
+
+@Variables(I): set of all variables in I
+@Used(I): set of all variables referenced in I
+@Assigned(I): set of all variables assignmed in I
+@Assd_Only(I) = @Assigned(I) \ @Used(I)
+@Used_Only = @Used(I) \ @Assigned(I)
+@Assd_To_Self(I): set of variables which are only used
+	in assignments to themselves.
+
+@Clobbered(I): set of variables which are always assigned in I.
+
+@Redefined(I): set of variables which are always redefined,
+and not in terms of themselves.
+
+@UBA(I): set of variables whose initial values are used before any
+new values are assigned to them in I.
+
+@Calls(I): return a list of pairs the form <<name1, n1>, <name2, n2>...>
+giving the actions called and number of times each action is called.
+
+@Proc_Calls(I), @Funct_Calls(I), @X_Funct_Calls(I):
+ditto but for PROC calls, FUNCT calls and !XF calls.
+
+@Call_Freq(n, I): how many times the action n is called in I.
+@Proc_Call_Freq(n, I), @Funct_Call_Freq(n, I), @X_Funct_Call_Freq(n, I)
+
+
+@TVs: the list of terminal values of the current item (this list
+includes the special value Omega if there are action calls
+and the action system includes a CALL Z)
+
+@Is_Terminal?(p): true if posn p is terminal in the current item.
+
+
+
+@Make(type, value, comps): construct a new item with the given
+type, value and list of components. For example:
+@Make(T_Assignment, < >,
+      <@Make(T_Assign, < >, <@Make(T_Lvalue, @Make_Name("x"), < >),
+			     @Make(T_Number, 3, < >)>)>)
+creates an assignment statement with a single assign.
+It is equivalent to:
+FILL Statement x := 3 ENDFILL
+(aren't you glad there is a FILL when you need it?).
+
+@Make_Name(string): converts a string to a "name"
+suitable to use as the value for various item types.
+For example, a T_Variable needs a "name" as the value:
+@Make(T_Variable, @Make_Name("foo"), < >). (Implementation note:
+the "name" is actually an index into the array N_Symbol_Table.
+The hash table N_String_To_Symbol returns the array index for each
+string in the symbol table).
+
+@N_String(name): convert a name to a string (this is implemented
+via the N_String_To_Symbol lookup table).
+
+
+FILL type schema ENDFILL
+
+returns an item of the given generic type by "filling in"
+the patterns in the schema with the current values of
+the appropriate variables. For example:
+
+n := @Make(T_Number, 3, < >);
+S := FILL Statement x := ~?n ENDFILL;
+
+The patterns in a schema take the following form:
+
+"~" plus ("+", "*" or "?") plus (a variable name)
+
+For example:
+
+~?S1, ~+vars, ~*B2
+
+"~?foo" means insert the single item contained in variable foo.
+
+"~+foo" means splice in the non-empty list of items stored in foo.
+
+"~*foo" means splice in the possibly-empty list of items stored in foo.
+
+For example:
+
+S1 := <FILL Statement x := x+1 ENDFILL, FILL Statement y := y+x ENDFILL>;
+S2 := FILL Statements x :=1; ~*S1 ENDFILL
+
+sets S2 to an item which is a statement sequence with three components,
+each of which is an assignment statement.
+
+Note that: FILL Statement SKIP ENDFILL is equivalent to @Make(T_Skip, < >, < >)
+FILL Statements SKIP ENDFILL is equivalent to
+@Make(T_Statements, < >, <@Make(T_Skip, < >, < >)>)
+
+
+@Trans?(n): true if transformation n is valid on the current item.
+This works by calling the appropriate @XXX_Test?() procedure and
+checking whether @Pass or @Fail was called. If the result is false
+(ie @Fail was called) then @Fail_Message returns the message
+passed to @Fail.
+
+
+@Left?, @Right?, @Up?, @Down?: test if the appropriate move is possible
+(eg @Up? is true if @Posn is non-empty).
+
+@Valid_Posn?(item, posn):  test if the given position is valid
+in the given item.
+
+
+
+Maths Simplifier:
+
+
+@Simplify(item, budget): return a simplified item. The integer "budget"
+indicates how much "effort" to exert in trying to simplify the item.
+
+@Simplify_Expn(expn), @Simplify_Cond(condition): call @Simplify
+with the default budget value of 10.
+
+@True?(cond), @False?(cond): check if the given condition will
+simplify to TRUE or FALSE.
+
+@Implies?(B1, B2):  check if the condition "NOT B1 OR B2"
+simplifies to TRUE.
+
+@And(B1, B2), @Or(B1, B2), @Not(B): construct the appropriate
+condition and then simplify it. For example:
+@Not(FILL Condition x = 0) will return the condition x <> 0.
+
+@Invert(x, v, exp): exp should contain exactly one occurrence of
+the name v. This returns an expression exp2 which inverts the effect
+of exp such that "x := exp; x := exp2" is equivalent to SKIP.
+In other words, replacing v in exp by exp2 will give an expression
+that simplifies to x.
+
+For example:
+@Invert(FILL Expression x ENDFILL, @Make_Name("v"),
+	FILL Expression 2*v - 1 ENDFILL)
+will return the expression (x + 1)/2
+
+@Invert(FILL Expression x ENDFILL, @Make_Name("v"),
+	FILL Expression 3 - 2*v ENDFILL)
+will return the expression (3 - x)/2
+
+
+Metrics:
+
+@Stat_Types(I): return set of statement types appearing in I
+@Total_Size(I): total number of nodes (items) in I
+@Stat_Count(I): total number of statement items
+@Gen_Type_Count(type, I): number of occurrences of given generic type
+@Spec_Type_Count(type, I): ditto for a specific type
+@McCabe(I): McCabe cycolmetric complexity measure for I
+@CFDF_Metric(I): control-flow / data-flow metric for I
+@BL_Metric(I): branch-loop metric for I
+@Struct_Metric(I): a weighted sum over all the nodes (items) in I
+
+
+Utility function:
+
+@Expn_To_Lvalue, @Lvalue_To_Expn, @String_To_Num
+
+@String: convert a string, number, symbol or character to a string.
+
+@Word_In_String?(word, string): check if the given word is in the string
+(treated as a space-separated list of words)
+
+@Join(str, list): join a list of strings using str as the "glue".
+
+@Join_Removing_Dups(str, list): like @Join but removes duplicates
+in the list first.
+
+@List_To_String(list): convert a list to a string with spaces
+as separators (roughly like PRINT does).
+
+@Split(str): split a string into a list of words.
+
+@Ends_With?(str, extn): check if the string ends with the given extn
+@Starts_With?(str, extn)
+
+@Sort_List(list): sort a list of names or lists of names alphabetically.
+
+
+
+
+
+MetaWSL Statements
+------------------
+
+@Trans(n, data):  executes transformation n on the current item,
+passing the given data to the @XXX_Code() procedure.  Assumes that
+the transformation is valid (ie @Trans?(n) would be true if called).
+
+@Rename(old, new): rename a variable throughout the current item.
+
+@Left, @Right, @Up, @Down, @To(n), @Down_To(n), @Down_Last: move
+the current position through the program.  @To(n) moves to the
+nth sibling, @Down_To(n) moves to the nth component, @Down_Last moves
+to the @Size(@I)th component.
+
+@Goto(posn): move to the given position.
+
+@Find_Type(type): move "forwards" (down and right) to the first
+component with the given specific type. It is used by the dotrans
+script option type=T_xxx.
+
+@Delete: delete the current item (without worrying about the resulting syntax)
+This leaves @Posn unchanged, even if the resulting position is invalid.
+
+@Delete_Rest: delete any items to the right of the current item.
+This leaves @I and @Posn inchanged.
+
+@Clever_Delete: delete the current item and "fix up" the syntax of
+the resulting program. This may change @Posn, but the resulting
+position will be valid.
+
+@Paste_Over(I): replace the current item by I
+@Paste_Before(I): insert I as a new sibling to the left of the current item.
+@Paste_After(I): insert I as a new sibling to the right of the current item.
+
+@Splice_Over(L): replace the current item by the list of items in L
+@Splice_Over(< >) is equivalent to @Delete.
+
+@Splice_Before(L), @Splice_After(@L): insert the list L of items
+to the left or right of the current item. @Splice_Before(<I>)
+is equivalent to @Paste_Before(I).
+
+@Cut: delete the current item and store it in the cut buffer
+@Cut_Rest: delete any items to the right of the current item
+and store the list of deleted items in the cut buffer.
+@Buffer: returns the item or list of items in the buffer.
+
+
+@Edit: start editing the current item. This will create a new
+program in which the current item is the whole program.
+This has two uses: (1) Editing operations on the current item
+are more efficient since they only need to create a new item,
+not a whole new program. (2) The result of the edit can be
+"undone" very efficiently.
+
+@End_Edit: stop editing the current item and paste the result
+back into the original program.
+
+@Undo_Edit: throw away the current program and go back
+to the original program.
+
+@Edit_Parent: start editing the current item, but the parent
+of this item is the new whole program. This is like @Edit
+but preserves a little more "context".
+
+@Edit ...@End_Edit/@Undo_Edit operations can be nested to any depth.
+
+
+One application of the editing operations is to write a function
+which takes a WSL item, applies some transformations, edits etc.
+and then returns the result. For example, a @Delete_Skips function
+could be implemented as:
+
+MW_FUNCT @Delete_Skips(I) ==
+  VAR < R := < > >:
+  @Edit;
+  @New_Program(I);
+  FOREACH Statement DO
+    IF @ST(@I) = T_Skip THEN @Delete FI OD;
+  R := @Program;
+  @Undo_Edit;
+  (R) END
+
+This acts like a pure function: it has no effect on the current
+program, item or position, even though it uses a FOREACH loop
+and editing operations.
+
+
+
+FOREACH type DO
+  ...statements... OD
+
+Iterate over every component of the current item, executing the body
+on each component of the right type.  The iteration is done
+in a "bottom up" fashion:  ie all subcomponents of a component
+will be processed before the component itself.
+
+The possible types are:
+
+Statement
+Statements
+Terminal Statement
+Terminal Statements
+STS (short for Simple Terminal Statement)
+NAS (short for Non-Action System)
+Expression
+Condition
+Variable
+Global Variable
+Lvalue
+
+FOREACH NAS DO ... OD
+will not descend into an action system.
+This is used for unfolding action calls:
+
+FOREACH NAS DO
+  IF @ST(@I) = T_Call AND @V(@I) = name
+    THEN @Splice_Over(body) FI OD
+
+where we don't need to worry about a sub-action system
+which uses the same action name.
+
+While executing the body of the loop, the currently selected item
+will appear to be the entire program (if the item is a statement then
+it will appear as the only statement in an outer statement sequence).
+The body of the loop can delete the statement or insert extra
+statements and the FOREACH loop will sort out the resulting syntax.
+
+For example, this loop:
+
+FOREACH Statement DO
+  IF @ST(@I) = T_Skip THEN @Delete FI OD;
+
+will transform:
+
+WHILE x = 0 DO SKIP OD
+
+into the assertion:
+
+{x <> 0}
+
+
+
+
+ATEACH type DO
+  ...statements... OD
+
+
+Similar to a FOREACH loop but with three differences:
+
+(1) Components are processed in a top down fashion:  ie an item
+is processed first and then the components of the (processed)
+item are processed.
+
+(2) Executing a @Fail() in the loop body will cause the loop
+to terminate.
+
+(3) A new program is not created for the current item: this means
+that the "context" of the item is available to the loop body,
+but care must be taken to return to the starting point
+if the loop body contains move operations. Otherwise the loop
+might miss out some components or iterate indefinitely.
+For example this WSL program will loop forever:
+
+@New_Program(FILL Statements SKIP; SKIP ENDFILL);
+ATEACH Statement DO
+  IF @Left? THEN @Left FI OD
+
+The list of types is the same as for FOREACH.
+
+
+
+IFMATCH type schema
+THEN ...statements...
+ELSE ...statements... ENDMATCH
+
+This statement does a pattern match on the current item.
+Pattern variables in the schema (eg ~?S) are either matched
+against the current value of the corresponding variable (eg S
+for the pattern variable ~?S) or, if the current value is < >
+then the corresponding variable is set to the matched
+item or list of items.
+
+For example, here is a statement which will match against
+a simple IF statement and rewrite it by reversing the two
+arms of the IF and inverting the test:
+
+VAR < B := < >, S1 := < >, S2 := < > >:
+IFMATCH Statement IF ~?B THEN ~?S1 ELSE ~?S2 FI
+THEN B := @Not(B);
+     @Paste_Over(FILL Statement IF ~?B THEN ~?S2 ELSE ~?S1 FI ENDMATCH ENDVAR
+
+This statement will match an IF statement of the form:
+IF condition THEN SKIP ELSE statements FI
+
+VAR < B := < >, S1 := FILL Statements SKIP ENDFILL, S2 := < > >:
+IFMATCH Statement IF ~?B THEN ~?S1 ELSE ~?S2 FI
+THEN B := @Not(B);
+     @Paste_Over(FILL Statement IF ~?B THEN ~?S2 FI ENDMATCH ENDVAR
+
+
+
+										
+
+
+I/O Facilities in WSL
+---------------------
+
+In the following, "filename" is a string or an expression
+returning a string.
+
+port := @Open_Input_File(filename)
+
+returns a "port" which you can use to read from the file.
+The filename is a string.
+
+
+port := @Open_Output_File(filename)
+
+returns a port which you can use to write to the file.
+
+
+@Close_Input_Port(port)
+@Close_Output_Port(port)
+
+These procedures close a port returned by @Open_Input_File
+or @Open_Output_File
+
+
+@Delete_File(filename)
+
+delete the given file.
+
+
+str := @Read_Line(port)
+
+Read a line from the file, returns either a string or an end of file object.
+The string doesn't include the newline character at the end
+(ie a blank line will return the empty string).
+
+
+@Write_Line(str, port)
+
+Write the line in str to the file, adding a newline.
+
+
+@Write(str, port)
+
+Write the string without adding a newline.
+
+
+IF @File_Exists?(filename) THEN ... FI
+
+A Boolean function which tests if the file already exists.
+
+
+IF @EOF?(obj) THEN ... FI
+
+Test if the given object (returned by @Read_Char, @Peek_Char
+or @Read_Line) is an end of file object
+
+
+IF @EOL?(obj) THEN ... FI
+
+Test if the given object (returned by @Read_Char or @Peek_Char)
+is an end of line character.
+
+
+chr := @Read_Char(port)
+
+Read a character from a port. Returns an end of file object on end of file.
+
+
+chr := @Peek_Char(port)
+
+Peek at the next character which is about to be read from the port.
+
+
+The variables Standard_Input_Port and Standard_Output_Port
+can be used to access standard input and standard output.
+
+The variable Quote contains a quote character. Note: currently
+there is no quoting convention in WSL strings,
+so it is a bit tricky to get a string containing a quote.
+
+
+Simple file writing:
+
+For the following functions, the "current output" starts out
+as standard output.
+
+@Write_To(filename): open the given file and start writing to it.
+If the filename is the empty string, start writing to standard output.
+
+@WS(str): write the string to the current output
+@WL(str): write the string plus a newline to the current output
+@WN(num): write the number to the current output
+
+@End_Write(): close the currently open file (if any) and redirect
+output back to the previous output.
+
+
+@Write_To()...@End_Write operations can be nested to any depth.
+
+
+

@@ -1,0 +1,797 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Write a VCG-format flowchart for the given program to the given file. ";
+
+C:" We use backedge for loops (FOR, DO...OD and WHILE) and for action calls ";
+C:" to higher actions in the system. ";
+C:" Conditional statements use labelled bentnearedge type edges. ";
+C:" Loop_Exits is a stack which records the node for the end of each enclosing loop. ";
+
+MW_PROC @Flowchart(I, Filename) ==
+  VAR < Name2Num := HASH_TABLE,
+	Z := @Make_Name("Z"),
+	entry_point := @Make_Name("entry_point"),
+	dispatch := @Make_Name("dispatch"),
+	NOT_USED := @Make_Name("NOT_USED"),
+	dispatch_n := -1,
+	dispatch_node := 0,
+	Next_Node := 2,
+	End_Node := 2,
+	Return_Node := HASH_TABLE,
+	entry := 0,
+	Subgraph := 0,
+	Subgraph_N := 0,
+	Loop_Exits := < >, Current_Action := 0,
+	Options := HASH_TABLE,
+	skipped_vars := HASH_TABLE,
+	Dispatch_Nodes := 1, Runtime_Flow := 0, Thin_Back_Edges := 1,
+	Max_Box_Lines1 := 8, Max_Box_Lines2 := 2,
+	Max_Box_Chars := 25, Max_Rhomb_Chars := 20 >:
+
+  @Write_To(Filename);
+
+  Options := @Read_Options_File(Options_File);
+  IF NOT EMPTY?(Options.("Dispatch_Nodes"))
+    THEN Dispatch_Nodes  := Options.("Dispatch_Nodes") FI;
+  IF NOT EMPTY?(Options.("Runtime_Flow"))
+    THEN Runtime_Flow    := Options.("Runtime_Flow") FI;
+  IF NOT EMPTY?(Options.("Thin_Back_Edges"))
+    THEN Thin_Back_Edges := Options.("Thin_Back_Edges") FI;
+  IF NOT EMPTY?(Options.("Max_Box_Lines1"))
+    THEN Max_Box_Lines1  := Options.("Max_Box_Lines1") FI;
+  IF NOT EMPTY?(Options.("Max_Box_Lines2"))
+    THEN Max_Box_Lines2  := Options.("Max_Box_Lines2") FI;
+  IF NOT EMPTY?(Options.("Max_Box_Chars"))
+    THEN Max_Box_Chars   := Options.("Max_Box_Chars") FI;
+  IF NOT EMPTY?(Options.("Max_Rhomb_Chars"))
+    THEN Max_Rhomb_Chars := Options.("Max_Rhomb_Chars") FI;
+
+  C:" Simplify any action systems: ";
+  @Edit;
+  @New_Program(I);
+IF FALSE THEN
+  FOREACH Statement DO
+    IF @ST(@I) = T_A_S
+      THEN @Trans(TR_Simplify_Action_System, "dispatch") FI OD;
+  @Trans(TR_Constant_Propagation, 256);
+  @Trans(TR_Delete_All_Redundant, "");
+  @Trans(TR_Simplify, "");
+SKIP FI;
+
+  C:" Check which variables to skip: ";
+  skipped_vars.(NOT_USED) := 1;
+  VAR < v := < > >:
+    FOR v IN @Variables(@Program) DO
+      IF @Starts_With?(v, "NOTUSED_")
+	THEN skipped_vars.(v) := 1 FI OD ENDVAR;
+
+  PRINT("Writing flowchart...");
+  @FC_Initialise;
+
+  C:" The trick is to work _backwards_ through the program, from the end node ";
+  C:" to the start node. Each fragment of the flowchart may have several ";
+  C:" outgoing edges (eg exits from a loop body) but a single incoming edge. ";
+  C:" So, to process an item we pass it the node to which it is to link ";
+  C:" its outcoming edges and it returns the node which is its entry point. ";
+  C:" (loop exits and action body entry nodes are stored in global variables) ";
+  C:" A SKIP statement just returns the exit node as its entry: ie it adds ";
+  C:" no nodes or edges to the flowchart. ";
+
+  C:" We pass a negated node number to indicate to the item that the node ";
+  C:" it is linking to is _above_ it: ie any linking edges must be backedge types. ";
+
+  @FC_Start_Subgraph("start", 0);
+  @FC_Node("ellipse", 0, "start", "", "");
+
+  C:" Generate a flowchart for @Program and link it to node 1: ";
+  C:" (Each link to node 1 creates a new end node) ";
+
+  entry := @FC_Generic(@Program, 1);
+
+  C:" Write the start node and link it in: ";
+  @FC_Edge("edge", "", 0, ABS(entry));
+
+  IF Subgraph = 1 THEN @FC_End_Subgraph FI;
+  @FC_Finalise;
+
+  PRINT("Done.");
+  @End_Write;
+  @Undo_Edit ENDVAR .;
+  
+
+MW_FUNCT @FC_Generic(I, to) ==
+  VAR < GT := @GT(I), node := to >:
+     IF GT = T_Statement     THEN node := @FC_Statement   (I, to)
+  ELSIF GT = T_Assigns       THEN node := @FC_Block       (I, to)
+  ELSIF GT = T_Expression    THEN node := @FC_Block       (I, to)
+  ELSIF GT = T_Condition     THEN node := @FC_Block       (I, to)
+  ELSIF GT = T_Definition    THEN node := @FC_Definition  (I, to)
+  ELSIF GT = T_Lvalue        THEN node := @FC_Block       (I, to)
+  ELSIF GT = T_Guarded       THEN node := @FC_Guarded     (I, to)
+  ELSIF GT = T_Action        THEN node := @FC_Action      (I, to)
+  ELSIF GT = T_Statements    THEN node := @FC_Statements  (I, to)
+  ELSIF GT = T_Expressions   THEN node := @FC_Block       (I, to)
+  ELSIF GT = T_Lvalues       THEN node := @FC_Block       (I, to)
+  ELSIF GT = T_Definitions   THEN node := @FC_Definitions (I, to)
+  ELSIF GT = T_Actions       THEN node := @FC_Actions     (I, to)
+  ELSIF GT = T_Guardeds      THEN node := @FC_Guardeds    (I, to)
+    ELSE PRINT("UNRECOGNISED TYPE " ++
+		@Type_Name(@GT(I)) ++ "(" ++ @String(@GT(I))  ++ ")") FI;
+  (node) .;
+
+
+C:" Fill in the flowchart for the given statement and join it to node to. ";
+
+MW_FUNCT @FC_Statement(I, to) ==
+  VAR < ST := @ST(I), node := to >:
+     IF ST = T_A_Proc_Call   THEN node := @FC_Block (I, to)
+  ELSIF ST = T_X_Proc_Call   THEN node := @FC_Block (I, to)
+  ELSIF ST = T_MW_Proc       THEN node := @FC_Block (I, to)
+  ELSIF ST = T_Assignment    THEN node := @FC_Block (I, to)
+  ELSIF ST = T_A_S           THEN node := @FC_A_S   (I, to)
+  ELSIF ST = T_Call          THEN node := @FC_Call  (I, to)
+  ELSIF ST = T_Comment       THEN node := @FC_Block (I, to)
+  ELSIF ST = T_Cond          THEN node := @FC_Cond  (I, to)
+  ELSIF ST = T_Exit          THEN node := @FC_Exit  (I, to)
+  ELSIF ST = T_For           THEN node := @FC_For   (I, to)
+  ELSIF ST = T_Floop         THEN node := @FC_Floop (I, to)
+  ELSIF ST = T_Proc_Call     THEN node := @FC_Block (I, to)
+  ELSIF ST = T_Skip          THEN node := @FC_Block (I, to)
+  ELSIF ST = T_Abort         THEN node := @FC_Abort (I, to)
+  ELSIF ST = T_Var           THEN node := @FC_Var   (I, to)
+  ELSIF ST = T_Where         THEN node := @FC_Where (I, to)
+  ELSIF ST = T_While         THEN node := @FC_While (I, to)
+  ELSIF ST = T_D_If          THEN node := @FC_D_If  (I, to)
+  ELSIF ST = T_Print         THEN node := @FC_Block (I, to)
+    ELSE PRINT("UNRECOGNISED STATEMENT: " ++
+		@Type_Name(@ST(I)) ++ "(" ++ @String(@ST(I))  ++ ") */") FI;
+  (node) .;
+
+
+
+MW_FUNCT @FC_Statements(I, to) == : SKIP;
+  (@FC_Statement_List(REVERSE(@Cs(I)), to)) .;
+
+
+C:" Process a sequence of statements: ";
+C:" First try to construct a block of statements with no CALLs or IFs, ";
+C:" starting at the end of the sequence. ";
+C:" If this can't be done, then process the last statement and try again. ";
+C:" NB: list contains the sequence of statements in reverse order. ";
+
+MW_FUNCT @FC_Statement_List(list, to) ==
+  VAR < block := < >, node := to, stat := < > >:
+  WHILE NOT EMPTY?(list) AND @FC_Block_OK?(HEAD(list)) DO
+    stat := HEAD(list);
+    IF @ST(stat) = T_Assignment AND @Size(stat) = 1 AND @ST(stat^1^2) = T_Variable
+	 AND NOT EMPTY?(skipped_vars.(@V(stat^1^2)))
+      THEN SKIP
+      ELSE block := <stat> ++ block FI;
+    list := TAIL(list) OD;
+  IF NOT EMPTY?(block)
+    THEN C:" Create a node for the block, use one line per statement ";
+	 node := @FC_Multi_Block(block, to) FI;
+  C:" If there are any statements left, then process the first one: ";
+  IF NOT EMPTY?(list)
+    THEN node := @FC_Statement(HEAD(list), node);
+	 C:" Process the rest of the list, if any: ";
+	 node := @FC_Statement_List(TAIL(list), node) FI;
+  (node) .;
+
+
+C:" A simple basic block (expression, condition etc.) ";
+C:" This does nothing if the label would be empty (eg an empty expression list) ";
+
+MW_FUNCT @FC_Block(I, to) ==
+  VAR < code := @FC_Code(I), comments := @FC_Comments(I), label := "", node := to >:
+  IF code <> "" THEN label := code ELSE label := comments FI;
+  IF !XF slength(label) > Max_Box_Chars
+    THEN label := !XF substr(label, 0, Max_Box_Chars - 1) ++ "|" FI;
+  IF label <> ""
+    THEN node := Next_Node; Next_Node := Next_Node + 1;
+	 @FC_Node("box", node, label, code, comments);
+	 @FC_Edge("edge", "", node, to) FI;
+  (node) .;
+
+
+C:" A multi-line basic block, eg to summarise a sequence of statements: ";
+
+MW_FUNCT @FC_Multi_Block(list, to) ==
+  VAR < code := "", comments := "", label := "", node := to >:
+  C:" Truncate the list, if necessary: ";
+  IF LENGTH(list) > Max_Box_Lines1 + Max_Box_Lines2
+    THEN list := list[1..Max_Box_Lines1] ++ <@Make(T_Comment, "...", < >)>
+		   ++ list[LENGTH(list) - Max_Box_Lines2 + 1 ..] FI;
+  FOR I IN list DO
+    IF @ST(I) = T_Skip
+      THEN C:" Ignore SKIP statements ";
+    ELSIF @ST(I) = T_Comment
+      THEN comments := @FC_Append(comments, @V(I), 0);
+	   label := @FC_Append(label, @V(I), Max_Box_Chars)
+      ELSE code := @FC_Append(code, @FC_Code(I), 0);
+	   comments := @FC_Append(comments, @FC_Comments(I), 0);
+	   label := @FC_Append(label, @FC_Code(I), Max_Box_Chars) FI OD;
+  C:" If the label is still empty, then don't generate a node: ";
+  IF label <> ""
+    THEN node := Next_Node; Next_Node := Next_Node + 1;
+	 @FC_Node("box", node, label, code, comments);
+	 @FC_Edge("edge", "", node, to) FI;
+  (node) .;
+
+
+C:" Append a string to the given string with a newline if necessary. ";
+C:" Trim the string before appending if max > 0 ";
+
+MW_FUNCT @FC_Append(str, new, max) ==
+  VAR < R := "" >:
+  IF max > 0
+    THEN IF !XF slength(new) > max
+	   THEN new := !XF substr(new, 0, max - 1) ++ "|" FI FI;
+  IF str <> "" AND new <> ""
+    THEN R := str ++ Newline ++ new
+    ELSE R := str ++ new FI;
+  (R) .;
+
+
+
+C:" Write a node to the file: ";
+C:" shape is either box, rhomb, ellipse or triangle: ";
+
+MW_PROC @FC_Node(shape, title, label, code, comments) ==
+  title := @FC_Protect(title);
+  label := @FC_Protect(label);
+  code := @FC_Protect(code);
+  comments := @FC_Protect(comments);
+  @WL("node: { shape: " ++ shape ++ " title: " ++ title ++ " label: " ++ label);
+  @WL("        info1: " ++ code ++ " info2: " ++ comments ++ " }") .;
+
+
+C:" Write an edge to the file: ";
+C:" type is either edge, nearedge, bentnearedge or backedge. ";
+C:" If the target node is negative, then convert an edge to a backedge ";
+C:" (unless it is a bentnearedge) and make it thinner if Thin_Back_Edges = 1 ";
+
+MW_PROC @FC_Edge(type, label, source, target) ==
+  IF Runtime_Flow = 0 AND (source = dispatch_n OR target = dispatch_n)
+    THEN C:" Ignore branches to/from dispatch unless Runtime_Flow is set "
+  ELSIF source = dispatch_n AND ABS(target) = 1
+    THEN C:" Ignore an edge from dispatch to the end "
+    ELSE @FC_Edge2(type, label, source, target) FI .;
+
+MW_PROC @FC_Edge2(type, label, source, target) ==
+  VAR < class := "", style := "", thick := "" >:
+  IF target < 0
+    THEN IF type = "edge" THEN type := "backedge" FI;
+	 target := ABS(target);
+	 IF Thin_Back_Edges = 1 THEN thick := " thickness: 1" FI FI;
+  IF source = dispatch_n
+    THEN IF type = "edge" THEN type := "backedge" FI;
+	 class := " class: 2";
+	 thick := " thickness: 1";
+	 IF Dispatch_Nodes = 1
+	   THEN dispatch_node := dispatch_node + 1;
+		source := "d" ++ @String(dispatch_node);
+		@FC_Node("triangle", source, "?", "", "");
+		type := "nearedge";
+		label := "" FI
+  ELSIF target = dispatch_n
+    THEN class := " class: 3";
+	 thick := " thickness: 1";
+	 IF Dispatch_Nodes = 1
+	   THEN dispatch_node := dispatch_node + 1;
+		target := "d" ++ @String(dispatch_node);
+		@FC_Node("triangle", target, "?", "", "");
+		type := "nearedge";
+		label := "" FI
+  ELSIF target = 1
+    THEN target := Next_Node; Next_Node := Next_Node + 1;
+	 @FC_Node("ellipse", target, "end", "", "")
+  ELSIF NOT EMPTY?(Return_Node.(target))
+    THEN target := Next_Node; Next_Node := Next_Node + 1;
+	 @FC_Node("ellipse", target, "return", "", "") FI;
+  IF label <> "" THEN label := " label: " ++ @FC_Protect(label) FI;
+  @WS(type ++ ": { sourcename: " ++ @FC_Protect(source));
+  @WS(" targetname: " ++ @FC_Protect(target));
+  @WS(label ++ class ++ style ++ thick);
+  @WL(" }") ENDVAR .;
+
+
+C:" Protect a string with backslashes and add quotes ";
+
+MW_FUNCT @FC_Protect(str) == : SKIP;
+  (Quote ++ @WS_Replace(Quote, Backslash ++ Quote,
+			@WS_Replace(Backslash, Backslash ++ Backslash,
+				    @String(str))) ++ Quote) .;
+
+
+C:" Return the WSL code for the given item as a string: ";
+MW_FUNCT @FC_Code(I) == :
+  @New_Program(I);
+  @Trans(TR_Delete_All_Comments, "");
+  (@PP_1(@Program, 0)) .;
+
+
+MW_FUNCT @FC_Comments(I) ==
+  VAR < R := < > >:
+  @New_Program(I);
+  FOREACH Statement DO
+    IF @ST(@I) = T_Comment
+      THEN R := <@V(@I)> ++ R FI OD;
+  (@Join(Newline, REVERSE(R))) .;
+
+
+C:" Check if a statement is suitable for adding to a basic block ";
+C:" ie no IF statements, exits, action calls, loops etc.: ";
+C:" A proc call must go in a separate block ";
+
+MW_BFUNCT @FC_Block_OK?(I) == : SKIP;
+  (EMPTY?(@Stat_Types(I)
+	    /\ @Make_Set(<T_Cond, T_D_If, T_While, T_For, T_Floop, T_D_Do,
+			  T_Call, T_A_S, T_Exit, T_Var, T_Where, T_Proc_Call>))) .;
+
+
+
+C:" An action system starts by calling the first action. ";
+C:" We set up a table giving node numbers for each action, ";
+C:" including Z which is mapped to `to' ";
+C:" To decide if a call is a backedge we need to know the action name or number ";
+C:" for the current action: this is stored in the global variable Current_Action. ";
+C:" We process all the action bodies in turn and return the node for the start action. ";
+
+MW_FUNCT @FC_A_S(I, to) ==
+  VAR < N := @Size(I^2), node := to >:
+  VAR < AS_Type := @System_Type(I),
+	Bodies := ARRAY(N, < >),
+	Names := ARRAY(N+1, < >),
+	Nodes := ARRAY(N+1, < >),
+	Name2Num := HASH_TABLE,
+	dispatch_n := -1 >:
+  C:" Calculate Bodies, Names, Name2Num ";
+  C:" Hash table Name2Num maps action names (keys) to action numbers ";
+  @New_Program(I);
+  @FD_Init(N VAR Bodies, Names, Name2Num);
+  C:" Create a node for each action: ";
+  FOR i := 1 TO N STEP 1 DO
+    Nodes[i] := Next_Node; Next_Node := Next_Node + 1;
+    IF Names[i] = dispatch AND Dispatch_Nodes = 1
+      THEN SKIP
+      ELSE @FC_Node("box", Nodes[i], @N_String(Names[i]), "", "") FI OD;
+  C:" CALL Z passes control to the next node after the action system: ";
+  Nodes[N + 1] := to;
+  IF NOT EMPTY?(Name2Num.(dispatch))
+    THEN dispatch_n := Nodes[Name2Num.(dispatch)]
+    ELSE dispatch_n := -1 FI;
+  C:" Flowchart each action (we know they are all connected, ";
+  C:" since we simplified all action systems): ";
+  FOR i := 1 TO N STEP 1 DO
+    Current_Action := i;
+    C:" Special case for dispatch action: ";
+    IF Names[i] = dispatch
+      THEN @FC_Dispatch(Nodes[i], Bodies[i])
+      ELSE node := @FC_Statements(Bodies[i], to);
+	   C:" Link the entry node for the action to its body: ";
+	   @FC_Edge("edge", "", Nodes[i], node) FI OD;
+  C:" Return the starting action node: ";
+  node := Nodes[Name2Num.(@V(I^1))] ENDVAR;
+  (node) .;
+
+
+C:" The dispatch action is a single node with a lot of backedges coming out. ";
+C:" (@FC_Edge ensures that edges from dispatch and not to end are backedges) ";
+
+MW_PROC @FC_Dispatch(node, body) ==
+  FOR call IN @Calls(body) DO
+    @FC_Edge("edge", "", node, Nodes[-call[1]]) OD .;
+
+
+C:" To process a call, we simply return the called node for our predecessor ";
+C:" to link to. We negate it if the call is a backedge: ";
+
+MW_FUNCT @FC_Call(I, to) ==
+  VAR < node := Nodes[-@V(I)] >:
+  IF NOT EMPTY?(Name2Num.(@V(I))) AND Name2Num.(@V(I)) <= Current_Action
+    THEN node := -node FI;
+  (node) .;
+
+
+MW_FUNCT @FC_Cond(I, to) == : SKIP;
+  (@FC_Guarded_List(@Cs(I), to)) .;
+
+
+C:" Process a list of guardeds: ";
+
+MW_FUNCT @FC_Guarded_List(list, to) ==
+  VAR < node := to >:
+  IF EMPTY?(list)
+    THEN node := to
+  ELSIF EMPTY?(TAIL(list))
+    THEN C:" process the ELSE clause: ";
+	 node := @FC_Statements(HEAD(list)^2, to)
+    ELSE C:" Generate a rhombus and link in the two arms: ";
+	 VAR < true_node := @FC_Statements(HEAD(list)^2, to),
+	       false_node := @FC_Guarded_List(TAIL(list), to) >:
+	 node := Next_Node;
+	 Next_Node := Next_Node + 1;
+	 @FC_Test(HEAD(list)^1, node, true_node, false_node, 0) ENDVAR FI;
+  (node) .;
+
+
+C:" Make a rhombus node containing the test with links to the given nodes, ";
+C:" type = 0 for an IF, 1 for a WHILE, 2 for a FOR loop: ";
+MW_PROC @FC_Test(cond, node, true_node, false_node, type) ==
+  VAR < code := @FC_Code(cond), label := "" >:
+  C:" Chop off the DO SKIP OD which comes from a FOR node: ";
+  IF @Ends_With?(code, " DO SKIP OD")
+    THEN code := !XF substr(code, 0, !XF slength(code) - 11) FI;
+  IF !XF slength(code) > Max_Rhomb_Chars
+    THEN label := !XF substr(code, 0, Max_Rhomb_Chars - 1) ++ "|"
+    ELSE label := code FI;
+  @FC_Node("rhomb", node, label, code, "");
+  IF type = 0
+    THEN @FC_Edge("bentnearedge", "Y", node, true_node);
+	 @FC_Edge("bentnearedge", "N", node, false_node)
+  ELSIF type = 1
+    THEN @FC_Edge("edge", "Y", node, true_node);
+	 @FC_Edge("bentnearedge", "N", node, false_node)
+    ELSE @FC_Edge("edge", "", node, true_node);
+	 @FC_Edge("bentnearedge", "done", node, false_node) FI ENDVAR .;
+
+
+MW_FUNCT @FC_Floop(I, to) ==
+  VAR < node := Next_Node, top := 0 >:
+  Next_Node := Next_Node + 1;
+  C:" Create a node for the top of the loop, this is the target node ";
+  C:" for the loop body: ";
+  @FC_Node("box", node, "FLOOP " ++ @String(LENGTH(Loop_Exits) + 1), "", "");
+  Loop_Exits := <to> ++ Loop_Exits;
+  top := @FC_Statements(I^1, -node);
+  Loop_Exits := TAIL(Loop_Exits);
+  C:" Link the loop's node to the top of the body and return the node: ";
+  @FC_Edge("edge", "", node, top);
+  (node) .;
+
+
+C:" An EXIT returns the appropriate loop exit node: ";
+
+MW_FUNCT @FC_Exit(I, to) ==
+  VAR < exit := 0 >:
+  IF EMPTY?(Loop_Exits)
+    THEN exit := 0
+  ELSIF @V(I) > LENGTH(Loop_Exits)
+    THEN exit := LAST(Loop_Exits)
+    ELSE exit := Loop_Exits[@V(I)] FI;
+  (exit) .;
+
+
+C:" Check for entry points. ";
+C:" We use the given node for the first entry point and return its entry. ";
+C:" We create separate entry and exit nodes for the other entry points: ";
+
+MW_FUNCT @FC_D_If(I, to) ==
+  VAR < node := to, guards := @Cs(I), start := 0, end := 0 >:
+  IF NOT EMPTY?(guards) AND @FC_Entry_Point?(I^1^1)
+    THEN node := @FC_Statements(HEAD(guards)^2, to);
+	 FOR guard IN TAIL(guards) DO
+	   IF @FC_Entry_Point?(guard^1)
+	     THEN start := Next_Node; Next_Node := Next_Node + 1;
+		  @FC_Force_To_End(start);
+		  end := Next_Node; Next_Node := Next_Node + 1;
+		  @FC_Start_Subgraph(@V(guard^1^2), 1);
+		  @FC_Node("ellipse", start, @V(guard^1^2), "", "");
+		  Return_Node.(end) := 1;
+		  end := @FC_Statements(guard^2, end);
+		  @FC_Edge("edge", "", start, end) FI OD
+    ELSE node := @FC_Cond(I, to) FI;
+  (node) .;
+
+
+C:" Tests for Entry_Point = string: ";
+MW_BFUNCT @FC_Entry_Point?(cond) == : SKIP;
+  (@ST(cond) = T_Equal AND @ST(cond^1) = T_Variable AND @V(cond^1) = entry_point) .;
+
+
+MW_FUNCT @FC_Guardeds(I, to) == : SKIP;
+  (@FC_Cond(I, to)) .;
+
+
+C:" Note that abort doesn't link to the target node: ";
+MW_FUNCT @FC_Abort(I, to) ==
+  VAR < node := Next_Node >:
+  Next_Node := Next_Node + 1;
+  @FC_Node("ellipse", node, "ABORT", "ABORT", "ABORT causes an error");
+  (node) .;
+
+
+MW_FUNCT @FC_While(I, to) ==
+  VAR < test := Next_Node, top := 0 >:
+  Next_Node := Next_Node + 1;
+  C:" Process the loop body: it exits by returning to the test node: ";
+  top := @FC_Statements(I^2, -test);
+  C:" Now create the test node and link it to the body ";
+  @FC_Test(I^1, test, top, to, 1);
+  (test) .;
+
+
+MW_FUNCT @FC_For(I, to) ==
+  VAR < test := Next_Node, top := 0,
+	for := @Make(T_For, @V(I^1), <I^2, I^3, I^4, @Skips>) >:
+  Next_Node := Next_Node + 1;
+  C:" Process the loop body: it exits by returning to the test node: ";
+  top := @FC_Statements(I^5, -test);
+  C:" Now create the test node and link it to the body ";
+  @FC_Test(for, test, top, to, 2);
+  (test) .;
+
+
+MW_FUNCT @FC_Var(I, to) ==
+  VAR < node := 0 >:
+  node := @FC_Statements(I^2, to);
+  IF dispatch NOTIN @Assigned(I^1)
+    THEN node := @FC_Block(I^1, node) FI;
+  (node) .;
+
+
+
+MW_FUNCT @FC_Where(I, to) ==
+  VAR < node := to >:
+  node := @FC_Statements(I^1, node);
+  node := @FC_Definitions(I^2, node);
+  (node) .;
+
+
+C:" Each definition is a free-standing flowchart on its own, so ignore the given nodes: ";
+MW_FUNCT @FC_Definition(I, to) ==
+  VAR < start := Next_Node, end := Next_Node + 1, comments := "" >:
+  @FC_Force_To_End(start);
+  Next_Node := Next_Node + 2;
+  IF @ST(I) = T_Proc
+    THEN comments := "Procedure definition"
+    ELSE comments := "Function definition" FI;
+  @FC_Start_Subgraph(@V(I^1), 1);
+  @FC_Node("ellipse", start, @N_String(@V(I^1)), "", comments);
+  Return_Node.(end) := 1;
+  FOR comp IN REVERSE(TAIL(@Cs(I))) DO
+    end := @FC_Generic(comp, end) OD;
+  @FC_Edge("edge", "", start, end);
+  (to) .;
+
+
+MW_FUNCT @FC_Definitions(I, to) ==
+  VAR < dummy := 0 >:
+  FOR comp IN @Cs(I) DO
+    dummy := @FC_Definition(comp, to) OD;
+  (to) .;
+
+
+MW_FUNCT @FC_Guarded(I, to) == :
+  PRINT("ERROR: bare Guarded item encountered!");
+  (to) .;
+
+
+MW_FUNCT @FC_Action(I, to) == :
+  PRINT("ERROR: bare Action encountered!");
+  (to) .;
+
+
+MW_FUNCT @FC_Actions(I, to) == :
+  PRINT("ERROR: bare Actions encountered!");
+  (to) .;
+
+
+C:" Create invisible, priority 0 edges which force this node to appear ";
+C:" after all the previous nodes: ";
+
+MW_PROC @FC_Force_To_End_(node) ==
+  VAR < target := " targetname: " ++ @FC_Protect(ABS(node)) >:
+  target := target ++ " linestyle: invisible priority: 0 }";
+  FOR i := End_Node TO node - 1 STEP 1 DO
+    IF EMPTY?(Return_Node.(i))
+      THEN @WL("edge: { sourcename: " ++ @FC_Protect(i) ++ target) FI OD;
+  End_Node := node ENDVAR .;
+
+
+MW_PROC @FC_Force_To_End(node) ==
+  SKIP; SKIP .;
+
+
+MW_PROC @FC_Initialise() ==
+  @WL("graph: { title: " ++ Quote ++ "Flowchart" ++ Quote);
+  @WL("
+
+  width: 1142
+  height: 930
+  x: 0 
+  y: 0
+
+  manhatten_edges: yes
+  smanhatten_edges: no
+  layoutalgorithm: minbackward
+  // layoutalgorithm: dfs
+  port_sharing: yes
+  edge.thickness: 4
+  foldnode.textcolor: red
+
+  color: white
+  xmax: 1200
+  ymax: 1024
+  xbase: 5
+  ybase: 5
+  xspace: 20
+  xlspace: 12
+  yspace: 50
+  xraster: 1
+  xlraster: 1
+  yraster: 1
+  shrink:  1
+  stretch: 1
+  layout_downfactor: 100
+  layout_upfactor: 1
+  layout_nearfactor: 0
+  layout_splinefactor: 70
+  spreadlevel: 1
+  treefactor: 0.500000
+  bmax: 50
+  cmin: 0
+  cmax: 10
+  pmin: 0
+  pmax: 20
+  rmin: 0
+  rmax: 30
+  smax: 50
+  node_alignment: center
+  orientation: top_to_bottom
+  late_edge_labels: no
+  display_edge_labels: yes
+  dirty_edge_labels: yes
+  finetuning: yes
+  nearedges: yes
+  splines: no
+  ignoresingles: no
+  straight_phase: yes
+  priority_phase: yes
+  crossingphase2: yes
+  crossingoptimization: yes
+  crossingweight: barymedian
+  arrow_mode: free
+  colorentry 7 :  85 85 85
+  colorentry 8 :  0 0 128
+  colorentry 9 :  128 0 0
+  colorentry 10 :  0 128 0
+  colorentry 11 :  128 128 0
+  colorentry 12 :  128 0 128
+  colorentry 13 :  0 128 128
+  colorentry 14 :  255 215 0
+  colorentry 15 :  170 170 170
+  colorentry 16 :  128 128 255
+  colorentry 17 :  255 128 128
+  colorentry 18 :  128 255 128
+  colorentry 19 :  255 255 128
+  colorentry 20 :  255 128 255
+  colorentry 21 :  128 255 255
+  colorentry 22 :  238 130 238
+  colorentry 23 :  64 224 208
+  colorentry 24 :  127 255 212
+  colorentry 25 :  240 230 140
+  colorentry 26 :  160 32 240
+  colorentry 27 :  154 205 50
+  colorentry 28 :  255 192 203
+  colorentry 29 :  255 165 0
+  colorentry 30 :  218 112 214
+
+");
+  VAR < classes := <"normal", "from dispatch", "to dispatch"> >:
+  FOR i := 1 TO 3 STEP 1 DO
+    @WL("  classname " ++ @String(i) ++ " : " ++ @FC_Protect(classes[i])) OD ENDVAR;
+  @WL("");
+  VAR < names := <"WSL", "comments", "assembler"> >:
+  FOR i := 1 TO 3 STEP 1 DO
+    @WL("  infoname " ++ @String(i) ++ " : " ++ @FC_Protect(names[i])) OD ENDVAR;
+  @WL("") .;
+
+
+MW_PROC @FC_Finalise() ==
+  @WL("");
+  @WL("}") .;
+
+
+
+MW_PROC @FC_Start_Subgraph_(title, fold) ==
+  C:" End a current subgraph if necessary: ";
+  IF Subgraph = 1 THEN @FC_End_Subgraph FI;
+  Subgraph := 1;
+  Subgraph_N := Subgraph_N + 1;
+  @WL("");
+  @WL("graph: { title: " ++ @FC_Protect(title) ++ " folding: " ++ @String(fold));
+  @WL("  horizontal_order: " ++ @String(Subgraph_N));
+  @WL("") .;
+
+MW_PROC @FC_End_Subgraph_() ==
+  @WL("}"); @WL("") .;
+
+MW_PROC @FC_Start_Subgraph(title, fold) ==
+  @WL("") .;
+
+MW_PROC @FC_End_Subgraph() ==
+  @WL("") .;
+
+
+
+C:" Read the options file into a hash table and return it ";
+
+MW_FUNCT @Read_Options_File(file) ==
+  VAR < Options := HASH_TABLE, port := @Open_Input_File(file), line := < >,
+	var := "", n := 0, m := 0,
+	space := " =" ++ Tab,
+	alphanum := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_",
+	num := "0123456789" >:
+  PRINT("Reading options file: ", file);
+  DO line := @Read_Line(port);
+     IF @EOF?(line) THEN EXIT(1) FI;
+     IF line <> "" AND SUBSTR(line, 0, 1) <> "#"
+       THEN C:" parse line as var = value ";
+	    n := 0;
+	    DO IF @Char_In_Str?(line, n, space) THEN EXIT(1) FI;
+	       IF NOT @Char_In_Str?(line, n, alphanum)
+		 THEN PRINT("ERROR 1 in options file, n = ", n);
+		      PRINT(line); ERROR("@Read_Options_File:");
+		      EXIT(2) FI;
+	       IF n = SLENGTH(line) THEN EXIT(1) FI;
+	       n := n + 1 OD;
+	    var := SUBSTR(line, 0, n);
+	    WHILE @Char_In_Str?(line, n, space) DO
+	      n := n + 1 OD;
+	    IF n >= SLENGTH(line)
+	      THEN C:" Skip this blank line "
+	      ELSE C:" Check for string or number: ";
+		   IF SUBSTR(line, n, 1) = Quote
+		     THEN n := n + 1;
+			  m := n;
+			  WHILE SUBSTR(line, SLENGTH(line) - 1, 1) = Backslash DO
+			    line := SUBSTR(line, 0, SLENGTH(line) - 1);
+			    line := line ++ @Read_Line(port) OD;
+			  WHILE m < SLENGTH(line) - 1 AND SUBSTR(line, m, 1) <> Quote DO
+			    m := m + 1 OD;
+			  IF SUBSTR(line, m, 1) <> Quote
+			    THEN PRINT("ERROR 3 in options file:");
+				 PRINT(line); ERROR("@Read_Options_File:");
+				 EXIT(1) FI;
+                          IF EMPTY?(Options.(var))
+			    THEN Options.(var) := SUBSTR(line, n, m - n)
+			    ELSE Options.(var) := Options.(var) ++ " "
+			                            ++ SUBSTR(line, n, m - n) FI;
+			  IF FALSE
+			    THEN PRINT("Options.(", var, ") = ",
+			               Quote, Options.(var), Quote) FI
+		   ELSIF @Char_In_Str?(line, n, num)
+		     THEN m := n;
+			  WHILE @Char_In_Str?(line, m, num) DO
+			    m := m + 1 OD;
+			  Options.(var) := @String_To_Num(SUBSTR(line, n, m - n));
+			  IF FALSE
+			    THEN PRINT("Options.(", var, ") = ", Options.(var)) FI
+		     ELSE PRINT("ERROR 4 in options file:");
+			  PRINT(line); ERROR("@Read_Options_File:");
+			  EXIT(1) FI FI FI OD;
+  (Options) .;
+
+
+
+C:" ----------------------------------------------------------------------- "

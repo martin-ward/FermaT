@@ -1,0 +1,29 @@
+VAR < flag_z := 0, flag_c := 0 >:
+ACTIONS A_S_start:
+A_S_start ==
+ax := 12;
+bx := 8;
+CALL compare
+END
+compare ==
+IF ax = bx THEN flag_z := 1 ELSE flag_z := 0 FI;
+IF ax < bx THEN flag_c := 1 ELSE flag_c := 0 FI;
+IF flag_z = 1 THEN CALL theend FI;
+IF flag_z = 0 AND flag_c = 0 THEN CALL greater FI;
+IF bx = ax THEN flag_z := 1 ELSE flag_z := 0 FI;
+IF bx < ax THEN flag_c := 1 ELSE flag_c := 0 FI;
+bx := bx - ax;
+CALL compare;
+CALL greater
+END
+greater ==
+IF ax = bx THEN flag_z := 1 ELSE flag_z := 0 FI;
+IF ax < bx THEN flag_c := 1 ELSE flag_c := 0 FI;
+ax := ax - bx;
+CALL compare;
+CALL theend
+END
+theend == CALL Z
+END
+ENDACTIONS ENDVAR
+

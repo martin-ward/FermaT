@@ -1,0 +1,153 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+  
+
+MW_PROC @Make_Reducible_Test() ==
+  IF @GT(@I) <> T_Statement AND @GT(@I) <> T_Statements
+    THEN @Fail("Item is not a statement or statement sequence")
+  ELSIF @Gen_Reducible?(@I, @AS_Type)
+    THEN @Fail("Selected item is already reducible")
+    ELSE @Pass FI .;
+
+
+MW_PROC @Make_Reducible_Code(Data) ==
+  VAR < as := @AS_Type, calls := @MP_Proc_Calls, call_n := 1 >:
+  @MR_Process(as VAR calls, call_n);
+  C:" First MR_Process might make second one succeed ";
+  IF NOT @Gen_Reducible?(@I, @AS_Type)
+    THEN @MR_Process(as VAR calls, call_n) FI;
+  IF @Gen_Reducible?(@I, @AS_Type)
+    THEN C:" @MR_Process succeeded "
+    ELSE C:" Use absorption to make the item reducible ";
+         PRINT("Using absorption as last resort in Make_Reducible:");
+         ATEACH Statements DO
+	   IF Depth = 0
+	     THEN @Down_Last;
+	          DO IF @Right? AND 1 IN @Gen_TVs(@I, as)
+                      THEN IF @ST(@I) = T_Cond THEN @GCR_Cond_Fix FI;
+                           @Trans(TR_Fully_Absorb_Right, "") FI;
+                     IF @Left? THEN @Left ELSE EXIT(1) FI OD;
+                  @Up FI OD FI ENDVAR .;
+
+
+
+MW_PROC @MR_Process(as VAR calls, call_n) ==
+  IF @Cs?(@I) AND NOT @Gen_Proper?(@I, as)
+    THEN IF @ST(@I) = T_Statements 
+	   THEN @MR_Statements(as VAR calls, call_n)
+	   ELSE @Down;
+		DO @MR_Process(as VAR calls, call_n);
+		   IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+		@Up FI FI .;
+
+
+MW_PROC @MR_Statements(as VAR calls, call_n) ==
+  VAR < tvs := < >, n := 0, trans := 0 >:
+  @Down; C:" to first statement ";
+  DO C:" process this statement's components: ";
+     IF @ST(@I) <> T_Floop THEN @MR_Process(as VAR calls, call_n) FI;
+     IF NOT @Right? THEN EXIT(1) FI;
+     tvs := @Gen_TVs(@I, as);
+     IF 1 IN tvs
+       THEN C:" See if a simple absorb will be OK, ";
+	    C:" ie there are <=1 terminal sts with tv zero ";
+	    C:" First check for a COND which we can fully expand (<=1 arm with tv=0) ";
+	    C:" If not, then check the number of STS's with tv=0 and absorb if <=1 ";
+	    n := 0; 
+	    IF @ST(@I) = T_Cond 
+	      THEN trans := TR_Fully_Expand_Forward;
+		   @Down;
+		   DO IF 0 IN @Gen_TVs(@I, as) THEN n := n+1 FI;
+		      IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+		   @Up
+	      ELSE trans := TR_Fully_Absorb_Right;
+		   Depth := 0;
+		   ATEACH STS DO
+		     IF Depth IN @Gen_TVs(@I, as) THEN n := n+1 FI OD FI;
+	    IF TRUE THEN PRINT("P = ", @Posn, " has n = ", n) FI;
+	    IF n <= 1 
+	      THEN IF @Trans?(trans) 
+		     THEN @Trans(trans, "")
+		     ELSE @Right FI
+	      ELSE C:" If the next statement is `small' and is the last in  ";
+	           C:" the sequence then absorb and copy it. ";
+		   C:" Otherwise, turn the rest of the sequence ";
+		   C:" into a procedure (if possible) and absorb the proc call. ";
+		   @Right;
+		   IF NOT @Right? AND @Stat_Count(@I) <= 1 AND @Total_Size(@I) <= 20
+		     THEN @Left;
+			  IF @Trans?(TR_Absorb_Right) 
+			    THEN @Trans(TR_Absorb_Right, "")
+			    ELSE @Right FI
+		     ELSE @MR_Make_And_Absorb_Proc(as VAR calls, call_n) FI FI
+       ELSE @Right FI OD;
+   @Up ENDVAR .;
+
+
+C:" Make the sequence from @I onwards into a proc (if possible) ";
+C:" and absorb the proc call into the preceding statement. ";
+C:" NB: Don't put references to cc into a proc: we may not be able to remove them! ";
+
+MW_PROC @MR_Make_And_Absorb_Proc(as VAR calls, call_n) ==
+  VAR < posn_n := @Posn_n, span := 0, cc_name := @Make_Name("cc"),
+	tvs := < >, new_tvs := < >, name := < > >:
+  DO IF NOT EMPTY?(@Calls(@I)) THEN EXIT(1) FI;
+     C:" Test the current statement for inclusion in the proc ";
+     C:" If it is suitable, copy the new_tvs into tvs and continue ";
+     new_tvs := @Gen_TVs(@I, as);
+     IF NOT @Gen_Proper?(@I, as)
+       THEN C:" If the item is reducible and has a single terminal value of 1, ";
+	    C:" then it can still be included in the procedure, provided it contains ";
+	    C:" two or more statements ";
+	    IF new_tvs = <1> AND @Gen_Reducible?(@I, as)
+		 AND (span > 0 OR @Stat_Count(@I) >= 2)
+	      THEN span := span + 1; tvs := new_tvs FI; 
+	    EXIT(1) FI;
+     IF cc_name IN @Variables(@I) THEN EXIT(1) FI;
+     span := span + 1;
+     tvs := new_tvs;
+     IF NOT @Right? THEN EXIT(1) ELSE @Right FI OD;
+  IF span = 0 OR @Right?
+    THEN C:" Either we can't make a proc or the proc doesn't cover the whole sequence ";
+    ELSE @To(posn_n);
+	 C:" If there is a single small item (eg a proc call), then don't make a proc: ";
+	 IF span = 1 AND @Stat_Count(@I) <= 1 AND @Total_Size(@I) <= 20
+	   THEN SKIP
+	   ELSE C:" Choose a suitable name for the proc ";
+		DO name := @Make_Name("p_" ++ @String(call_n));
+		   IF name NOTIN calls THEN EXIT(1) FI;
+		   call_n := call_n + 1 OD;
+		calls := <name> \/ calls;
+		IF EMPTY?(tvs)
+		  THEN @Make_Proc(name, span, 0)
+		  ELSE @Make_Proc(name, span, HEAD(tvs)) FI FI;
+	 IF NOT @Left? THEN ERROR("Can't move left in @MR_Make_And_Absorb_Proc!!!") FI;
+	 @Left;
+	 IF @Trans?(TR_Absorb_Right) 
+	   THEN PRINT("Absorbing right...");
+		@Trans(TR_Absorb_Right, "")
+	   ELSE ERROR("Cannot Absorb_Right at: ", @Posn) FI FI ENDVAR .;
+
+
+
+
+SKIP
+
+

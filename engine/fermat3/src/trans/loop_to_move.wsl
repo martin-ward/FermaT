@@ -1,0 +1,316 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" Attempt to convert a loop to a data move operation ";
+
+LTM_Types := @Make_Set(<T_Comment, T_Assignment, T_Cond, T_Exit, T_Skip>);
+
+MW_PROC @Loop_To_Move_Test() ==
+  VAR < assert := < > >:
+  IF @ST(@I) <> T_Floop AND @ST(@I) <> T_While
+    THEN @Fail("Selected item is not a DO...OD or WHILE loop.")
+  ELSIF @ST(@I) = T_Floop AND NOT SUBSET?(@Stat_Types(@I^1), LTM_Types)
+    THEN @Fail("DO...OD loop body contains unsuitable types")
+  ELSIF @ST(@I) = T_While AND NOT SUBSET?(@Stat_Types(@I^2), LTM_Types)
+    THEN @Fail("WHILE loop body contains unsuitable types")
+  ELSIF @ST(@I) = T_Floop
+    THEN @Look_For_Assertion(VAR assert);
+         @Edit_Parent;
+	 @Floop_To_While_Sub("-", assert);
+	 IF @ST(@I) = T_While
+	   THEN @Loop_To_Move_Sub;
+                IF @ST(@I) = T_While AND @ST(@I^1) = T_Greater_Eq
+		     AND @ST(@I^1^2) = T_Number AND @V(@I^1^2) = 0
+		  THEN @Loop_To_Move_Sub2(@I^1^1) FI;
+	        IF @ST(@I) = T_While
+		  THEN @Fail("Could not process the WHILE loop")
+		  ELSE @Pass FI
+           ELSE @Fail("Could not convert the DO...OD loop") FI;
+         @Undo_Edit
+  ELSIF @ST(@I) = T_While
+    THEN @Edit_Parent;
+	 @Loop_To_Move_Sub();
+         IF @ST(@I) = T_While
+           THEN @Fail("Could not process the WHILE loop")
+           ELSE @Pass FI;
+         @Undo_Edit
+    ELSE @Fail("Internal error!!!") FI ENDVAR .;
+
+
+C:" Sample loop:
+
+WHILE r5 <> 0 DO
+  r9[4] := a[r1];
+  a[r6] := a[r1];
+  r6 := r6 + 1;
+  r1 := r1 + 1;
+  r5 := r5 - 1 OD
+
+Another sample:
+
+WHILE r5 <> 0 DO
+  r9[4] := a[r1];
+  a[r6] := r9[4];
+  r6 := r6 + 1;
+  r1 := r1 + 1;
+  r5 := r5 - 1 OD
+
+And another:
+
+WHILE r1 <> 0 DO
+  a[r14] := a[r15];
+  r14 := r14 - 1;
+  r15 := r15 - 1;
+  r1 := r1 - 1 OD
+
+";
+
+
+MW_PROC @Loop_To_Move_Code(Data) ==
+  VAR < assert := < > >:
+  IF @ST(@I) = T_Floop
+    THEN @Look_For_Assertion(VAR assert);
+         @Edit_Parent;
+	 @Floop_To_While_Sub("-", assert);
+	 IF @ST(@I) = T_While
+	   THEN @Loop_To_Move_Sub();
+                IF @ST(@I) = T_While AND @ST(@I^1) = T_Greater_Eq
+		     AND @ST(@I^1^2) = T_Number AND @V(@I^1^2) = 0
+		  THEN @Loop_To_Move_Sub2(@I^1^1) FI;
+	        IF @ST(@I) = T_While
+		  THEN ERROR("@Loop_To_Move_Code: Could not process the WHILE loop")
+		  ELSE @Pass FI
+           ELSE @Fail("Could not convert the DO...OD loop") FI;
+         @End_Edit
+  ELSIF @ST(@I) = T_While
+    THEN @Edit_Parent;
+	 @Loop_To_Move_Sub();
+         IF @ST(@I) = T_While
+           THEN ERROR("@Loop_To_Move_Code: Could not process the WHILE loop")
+           ELSE @Pass FI;
+         @End_Edit
+    ELSE ERROR("@Loop_To_Move_Code: Internal error!!!") FI ENDVAR .;
+
+
+
+C:" p1 is dest pointer, p2 is source pointer, var is extra variable ";
+C:" i1, i2, i3 indicate if p1 and p2 are incremented and count is decremented ";
+
+MW_PROC @Loop_To_Move_Sub() ==
+  VAR < count := < >, p1 := < >, p2 := < >, var := < >,
+        i1 := 0, i2 := 0, i3 := 0, d1 := 0, d2 := 0,
+	OK := 1, match := 0, comments := < >, p := 0 >:
+  @Down;
+  IFMATCH Condition ~?v <> 0
+    THEN count := v
+    ELSE OK := 0 ENDMATCH;
+  @Up;
+  IF OK = 1
+    THEN @Down_To(2); @Down; C:" to start of body ";
+         DO match := 0;
+	    IF @ST(@I) = T_Comment
+	      THEN match := 1;
+	           comments := <@I> ++ comments
+	    ELSIF @ST(@I) = T_Skip
+	      THEN match := 1 FI;
+	    IFMATCH Statement ~?v := a[~?e2]
+	      THEN IF @ST(v) = T_Var_Lvalue OR @ST(v) = T_Struct_Lvalue
+		        OR (@ST(v) = T_Aref_Lvalue AND @ST(v^2^1) = T_Number)
+		     THEN match := 1;
+	                  var := v;
+                          IF EMPTY?(p2)
+                            THEN p2 := e2
+                          ELSIF NOT @Equal?(p2, e2)
+                            THEN OK := 0 FI FI ENDMATCH;
+	    IFMATCH Statement a[~?e1] := ~?v
+	      THEN IF NOT EMPTY?(var) AND @LR_Equal?(var, v)
+		     THEN match := 1;
+                          IF EMPTY?(p1)
+	                    THEN p1 := e1
+                          ELSIF NOT @Equal?(p1, e1)
+                            THEN OK := 0 FI FI ENDMATCH;
+            IF match = 0
+	      THEN IFMATCH Statement a[~?e1] := a[~?e2]
+                     THEN match := 1;
+                          IF EMPTY?(p1)
+                            THEN p1 := e1
+                          ELSIF NOT @Equal?(p1, e1)
+                            THEN OK := 0 FI;
+                          IF EMPTY?(p2)
+                            THEN p2 := e2
+                          ELSIF NOT @Equal?(p2, e2)
+                            THEN OK := 0 FI ENDMATCH FI;
+            IFMATCH Statement ~?e1 := ~?=e1 + 1
+	      THEN match := 1;
+	           IF NOT EMPTY?(p1) AND @LR_Equal?(e1, p1)
+		     THEN i1 := 1
+		   ELSIF NOT EMPTY?(p2) AND @LR_Equal?(e1, p2)
+		     THEN i2 := 1
+		     ELSE OK := 0 FI ENDMATCH;
+            IFMATCH Statement ~?e1 := ~?=e1 - 1
+	      THEN match := 1;
+	           IF @LR_Equal?(e1, count)
+		     THEN i3 := 1
+		   ELSIF NOT EMPTY?(p1) AND @LR_Equal?(e1, p1)
+		     THEN d1 := 1
+		   ELSIF NOT EMPTY?(p2) AND @LR_Equal?(e1, p2)
+		     THEN d2 := 1
+		     ELSE OK := 0 FI ENDMATCH;
+
+            IF FALSE AND @ST(@I) NOTIN <T_Skip, T_Comment>
+              THEN PRINT("");
+                   @PP_Item(@I, 80, "");
+                   PRINT("match = ", match);
+                   PRINT("p1 = ", p1);
+                   PRINT("p2 = ", p2);
+                   PRINT("var = ", var);
+                   PRINT("i1 = ", i1, " i2 = ", i2, " i3 = ", i3);
+		   PRINT("d1 = ", d1, " d2 = ", d2) FI;
+
+            IF match = 0 THEN OK := 0 FI;
+            IF OK = 0 THEN EXIT(1) FI;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+         @Up; @Up;
+	 IF ((i1 = 0 OR i2 = 0) AND (d1 = 0 OR d2 = 0)) OR i3 = 0 THEN OK := 0 FI;
+	 IF EMPTY?(p1) OR EMPTY?(p2) THEN OK := 0 FI;
+	 IF i1 = 1 AND i2 = 1 AND i3 = 1
+	   THEN p := @Posn_n;
+	        @Splice_Over(@Cs(FILL Statements
+		                   a[~?p1, ~?count] := a[~?p2, ~?count];
+                                   ~?p1 := ~?p1 + ~?count;
+                                   ~?p2 := ~?p2 + ~?count ENDFILL));
+		@Right; @Right;
+		IF NOT EMPTY?(var)
+		  THEN @Paste_After(FILL Statement ~?var := a[~?p2 - 1] ENDFILL);
+		       @Right FI;
+                @Paste_After(FILL Statement ~?count := 0 ENDFILL);
+		@To(p);
+		@Splice_Before(REVERSE(comments));
+		@To(p + LENGTH(comments))
+         ELSIF d1 = 1 AND d2 = 1 AND i3 = 1
+	   THEN p := @Posn_n;
+	        @Splice_Over(@Cs(FILL Statements
+                                 ~?p1 := ~?p1 - ~?count;
+                                 ~?p2 := ~?p2 - ~?count;
+                                 a[~?p1 + 1, ~?count] := a[~?p2 + 1, ~?count] ENDFILL));
+		@Right; @Right;
+		IF NOT EMPTY?(var)
+		  THEN @Paste_After(FILL Statement ~?var := a[~?p2 - 1] ENDFILL);
+		       @Right FI;
+                @Paste_After(FILL Statement ~?count := 0 ENDFILL);
+		@To(p);
+		@Splice_Before(REVERSE(comments));
+		@To(p + LENGTH(comments)) FI FI ENDVAR .;
+
+
+C:" Look for a loop of this form:
+
+WHILE count >= 0 DO
+  a[dest, 256] := a[src, 256];
+  dest := dest + 256;
+  src := src + 256;
+  count := count - 256 OD;
+count := count + 256;
+IF count <> 0
+  THEN a[dest, count] := a[src, count] FI
+
+";
+
+
+MW_PROC @Loop_To_Move_Sub2(count) ==
+  VAR < dest := < >, src := < >, i1 := 0, i2 := 0, i3 := 0, OK := 1, p := @Posn_n,
+        p1 := 0, p2 := 0 >:
+  @Down_To(2); @Down; C:" to start of body ";
+  DO match := 0;
+     IF @ST(@I) = T_Comment
+       THEN match := 1;
+            comments := <@I> ++ comments
+     ELSIF @ST(@I) = T_Skip
+       THEN match := 1 FI;
+     IFMATCH Statement a[~?e1, 256] := a[~?e2, 256]
+       THEN match := 1;
+            IF EMPTY?(dest) THEN dest := e1
+	    ELSIF NOT @Equal?(dest, e1) THEN OK := 0 FI;
+            IF EMPTY?(src) THEN src := e2
+	    ELSIF NOT @Equal?(src, e2) THEN OK := 0 FI ENDMATCH;
+     IFMATCH Statement ~?v := ~?=v + 256
+       THEN match := 1;
+            IF EMPTY?(dest) OR EMPTY?(src) THEN OK := 0
+	    ELSIF @LR_Equal?(v, dest) THEN i1 := i1 + 1
+	    ELSIF @LR_Equal?(v, src) THEN i2 := i2 + 1
+	      ELSE OK := 0 FI ENDMATCH;
+     IFMATCH Statement ~?(count) := ~?(count) - 256
+       THEN match := 1;
+            i3 := i3 + 1 ENDMATCH;
+
+     IF FALSE AND @ST(@I) NOTIN <T_Skip, T_Comment>
+       THEN PRINT("");
+            @PP_Item(@I, 80, "");
+            PRINT("match = ", match);
+            PRINT("dest = ", dest);
+            PRINT("src  = ", src);
+            PRINT("i1 = ", i1, " i2 = ", i2, " i3 = ", i3) FI;
+
+     IF match = 0 THEN OK := 0 FI;
+     IF OK = 0 THEN EXIT(1) FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up; @Up;
+  IF OK = 1 AND i1 = 1 AND i2 = 1 AND i3 = 1
+    THEN C:" Search for surrounding count := count - 256 ... count := count + 256 ";
+         IF @Left? THEN @Left FI;
+	 WHILE @ST(@I) = T_Comment AND @Left? DO @Left OD;
+	 IFMATCH Statement ~?(count) := ~?(count) - 256
+	   THEN p1 := @Posn_n
+	   ELSE OK := 0 ENDMATCH;
+	 @To(p);
+	 IF @Right? THEN @Right FI;
+	 WHILE @ST(@I) = T_Comment AND @Right? DO @Right OD;
+	 IFMATCH Statement ~?(count) := ~?(count) + 256
+	   THEN p2 := @Posn_n
+	   ELSE OK := 0 ENDMATCH;
+	 C:" Look for IF count <> 0 THEN a[dest, count] := a[source, count] FI ";
+         IF @Right? THEN @Right FI;
+         WHILE @ST(@I) = T_Comment AND @Right? DO @Right OD;
+	 IF FALSE
+	   THEN PRINT("");
+                PRINT("p1 = ", p1, " p = ", p, " p2 = ", p2, " OK = ", OK);
+                @PP_Item(@I, 80, "") FI;
+	 IF OK = 1 AND @ST(@I) = T_Cond AND @ST(@I^1^1) = T_Not_Equal
+	   THEN FOREACH Statement DO
+                  IF @ST(@I) = T_Comment THEN @Delete FI OD;
+                IFMATCH Statement
+		         IF ~?(count) <> 0
+			   THEN a[~?(dest), ~?(count)] := a[~?(src), ~?(count)];
+                                ~*S FI
+                   THEN @Paste_Over(FILL Statement
+		                    a[~?(dest), ~?(count)] := a[~?(src), ~?(count)]
+				    ENDFILL);
+                        @Splice_After(S);
+                        @To(p1); @Paste_Over(@Skip);
+			@To(p2); @Paste_Over(@Skip);
+			@To(p); @Paste_Over(@Skip)
+                   ELSE OK := 0 ENDMATCH FI;
+         @To(p) FI ENDVAR .;
+
+
+SKIP
+
+

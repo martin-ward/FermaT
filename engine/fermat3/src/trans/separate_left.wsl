@@ -1,0 +1,131 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+MW_PROC @Separate_Left_Test() ==
+  VAR < S := < >, types := < >, F := 0, assigned := < >, V := < >,
+	Cond_Vars := < >, ST := @ST(@I),
+	bad_types := @Make_Set(<T_X_Proc_Call, T_Proc_Call, T_MW_Proc_Call>),
+	funct_types := @Make_Set(<T_Funct_Call, T_X_Funct_Call, T_MW_Funct_Call>) >:
+  IF ST = T_Cond OR ST = T_D_If
+   THEN @Down_Last; @Down_Last; @Down; C:" to first statement in first guard ";
+	S := @I;
+	types := @Stat_Types(@I);
+	IF @ST(S) = T_Skip OR NOT EMPTY?(bad_types /\ types)
+	  THEN @Fail("Won't take out skips, can't take out proc calls")
+	  ELSE assigned := @Assigned(S);
+	       @Up; @Up; C:" back to first guard ";
+	       DO IF @Left? THEN @Left ELSE EXIT(1) FI;
+		  @Down_Last; @Down; C:" to first statement of guard ";
+		  IF @Equal?(@I, S)
+		    THEN @Up; @To(1);
+			 IF NOT EMPTY?(@Spec_Types(@I) /\ funct_types)
+			   THEN @Fail("Function calls in condition")
+			 ELSIF NOT EMPTY?(@Used(@I) /\ assigned)
+			   THEN IF @ST(S) = T_Assignment
+			             AND @Invertible?(@Used(@I) /\ assigned, @Cs(S))
+                                  THEN C:" OK "
+                                  ELSE @Fail("Variable occurs in condition") FI FI; 
+			 @Up;
+			 IF @Failed? THEN EXIT(1) FI
+		    ELSE @Fail("Nothing to take out"); EXIT(1) FI OD FI;
+	 IF NOT(@Failed?) THEN @Pass FI
+
+  ELSIF ST = T_Where
+    THEN @Down; @Down;
+	 VAR < calls := @Make_Set(MAP("HEAD", @Proc_Calls(@I))
+					++ MAP("HEAD", @Funct_Calls(@I))) >:
+	 @Up; @Right;
+	 IF EMPTY?(calls /\ @Make_Set(MAP("@V1", @Cs(@I))))
+	   THEN @Pass
+	   ELSE @Fail("The statement uses procs or funct defined in the WHERE") FI ENDVAR
+
+  ELSIF ST = T_Var
+    THEN VAR < local := @Assigned(@I^1), used := @Used(@I^1) >:
+	 @Down_Last; @Down;
+	 IF NOT EMPTY?(local /\ @Variables(@I))
+	   THEN @Fail("The statement uses the local variables")
+	 ELSIF NOT EMPTY?(used /\ @Assigned(@I))
+	   THEN @Fail("The statement assigns to variables needed for initalisation")
+	   ELSE @Pass FI ENDVAR
+
+  ELSIF ST IN <T_While, T_For>
+    THEN @Down_Last; @Down;
+	 IF @Trans?(TR_Take_Out_Left)
+	   THEN @Pass
+	   ELSE @Fail("Cannot take anything out") FI
+
+  ELSIF ST = T_Assignment AND @Size(@I) > 1
+    THEN VAR < vars := < >, first := @I^1, rest := TAIL(@Cs(@I)), assign := < > >:
+	 FOR assign IN rest DO
+	   vars := @Elts_Used(assign) \/ vars OD;
+	 IF @Elt_Clash_List?(vars, @Elts_Assigned(first))
+	   THEN @Fail("The variable assigned in the first assign is used elsewhere.")
+	   ELSE @Pass FI ENDVAR
+
+    ELSE @Fail("Cannot separate from this type of statement") FI ENDVAR.;
+
+
+MW_PROC @Separate_Left_Code(Data) ==
+  VAR < posn := @Posn, ST := @ST(@I), S:= < >, assigned := < >, i := 0, new := < > >:
+  IF ST = T_Cond OR ST = T_D_If
+    THEN @Splice_Before(<@I^^<1, 2, 1>>);
+         S := @I;
+         @Right;
+	 @Edit;
+         C:" Update conditions if necessary ";
+	 IF @ST(S) = T_Assignment
+	   THEN assigned := @Assigned(S);
+	        @Down; C:" To first guard ";
+	        DO @Down; C:" To cond ";
+                   IF NOT EMPTY?(@Used(@I) /\ assigned)
+		     THEN C:" Replace each assigned variable with its inverse ";
+                          @Invert_All(assigned, @Cs(S)) FI;
+                   @Up;
+		   IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+                @Up FI;
+	 FOR i := 1 TO @Size(@I) STEP 1 DO
+	   @Goto(<i, 2, 1>);
+	   @Delete OD;
+	 @End_Edit;
+	 IF ST = T_Cond THEN @Fix_Cond ELSE @Fix_Dijkstra FI
+
+  ELSIF ST = T_Where
+    THEN @Splice_Before(<@I^^<1, 1>>); @Right;
+	 @Down; @Down;
+	 @Delete; @Fixup; @Goto(posn);
+	 IF @Right? THEN @Right FI
+
+  ELSIF ST IN <T_While, T_For, T_Var>
+    THEN @Down_Last; @Down;
+	 S := @I; @Goto(posn);
+	 @Splice_Before(<S>); @Right;
+	 @Down_Last; @Down;
+	 @Delete; @Fixup; @Goto(posn);
+	 IF @Right? THEN @Right FI
+
+  ELSIF ST = T_Assignment
+    THEN @Down; @Cut; @Up;
+	 @Paste_Before(@Make(T_Assignment, < >, <@Buffer>));
+	 IF @Right? THEN @Right FI FI ENDVAR;
+
+  IF @Trans?(TR_Separate_Left) THEN @Trans(TR_Separate_Left, < >) FI.
+

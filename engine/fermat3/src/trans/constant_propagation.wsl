@@ -1,0 +1,3560 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+reg_inits := @Make_Set(MAP("@Make_Name", <"__r0_init__",
+                                          "__r1_init__", "__r2_init__", "__r3_init__",
+                                          "__r4_init__", "__r5_init__", "__r6_init__",
+                                          "__r7_init__", "__r8_init__", "__r9_init__",
+                                          "__r10_init__","__r11_init__","__r12_init__",
+                                          "__r13_init__","__r14_init__">));
+
+date_time_functs := MAP("@Make_Name", 
+                        <"system_time_bin", "system_time_pkd",
+                         "system_YYYYDDD_pkd", "system_YYYYMMDD_pkd",
+                         "system_MMDDYYYY_pkd", "system_DDMMYYYY_pkd",
+                         "system_time_pkds",
+                         "system_YYYYDDD_pkds", "system_YYYYMMDD_pkds",
+                         "system_MMDDYYYY_pkds", "system_DDMMYYYY_pkds",
+                         "system_time_str",
+                         "system_YYYYDDD_str", "system_YYYYMMDD_str",
+                         "system_MMDDYYYY_str", "system_DDMMYYYY_str",
+			 "system_CCYYDDD_pkds", "system_CCYYDDD_str">);
+
+
+
+MW_PROC @Constant_Propagation_Test() ==
+      IF ((@ST(@I) = T_Condition) OR (@ST(@I) = T_Expression))
+	THEN @Fail("Selection contains no statements")
+	ELSE @Pass FI.;
+
+MW_PROC @Constant_Propagation_Code(Data)==
+  VAR < L := <<0, < >>>, Entries := < >, Call_Path := < >,
+	Constants := < >, Vcons := < >, vcons := < >,
+	DSECTs := HASH_TABLE, CP_State := < >, State_Saves := 0,
+	Unfold_Dispatch := 1,
+	calls_processed := 0, call_depth := 0, call_budget := 25600, effort := 0,
+	initial_call_budget := 0,
+	registers := @Make_Set(MAP("@Make_Name",
+	                           <"r0", "r1", "r2", "r3", "r4", "r5",
+				    "r6", "r7", "r8", "r9", "r10", "r11",
+				    "r12", "r13", "r14", "r15",
+				    "ax", "bx", "cx", "dx",
+				    "bp", "si", "di", "cs", "ds", "ss", "es">)),
+        x86_regs := @Make_Set(MAP("@Make_Name", <"ax", "bx", "cx", "dx" >)),
+	cc_name := @Make_Name("cc"),
+	zf_name := @Make_Name("zf"),
+	cf_name := @Make_Name("cf"),
+	r1_name := @Make_Name("r1"),
+	push_regs := @Make_Name("push_regs"),
+	pop_regs := @Make_Name("pop_regs"),
+	chain_reg := @Make_Name("chain_reg"),
+	reg_stack := @Make_Name("reg_stack"),
+	call_stack := @Make_Name("call_stack"),
+	call_via_ptr := @Make_Name("call_via_ptr"),
+	call_via_ptr_pars := @Make_Name("call_via_ptr_pars"),
+	pack := @Make_Name("pack"),
+	EXEC_CICS := @Make_Name("EXEC_CICS"),
+        mvi := @Make_Name("mvi"),
+	true := @Make(T_True, < >, < >),
+	false := @Make(T_False, < >, < >),
+	dispatch := 0,
+	AS_Type := @AS_Type,
+	exit_flag := @Make_Name("exit_flag"),
+	sizeof := @Make_Name("sizeof"),
+	dispatch_codes := < >,
+	return_elts := < >,
+	Code_Hash := HASH_TABLE,
+	rename := HASH_TABLE,
+	posn := < >,
+	orig_program := @I,
+	Notused_Value := HASH_TABLE,
+	Migration := 1 >:
+
+  C:" If Data contains a space, then it is two numbers: effort plus budget. ";
+  C:" Otherwise, Data is the call budget. ";
+  C:" effort >= 2 -- if dispatch is to a variable which is only assigned ";
+  C:"                code values or constant values, then convert to an IF ";
+  C:" effort >= 3 -- also if dispatch is assigned to a non-constant variable ";
+  C:"                then convert to a call_via_ptr if there is a return code ";
+
+  VAR < list := MAP("@String_To_Num", @Split(@String(Data))) >:
+  IF LENGTH(list) = 3
+    THEN Migration := list[1]; effort := list[2]; call_budget := list[3]
+  ELSIF LENGTH(list) = 2
+    THEN effort := list[1]; call_budget := list[2]
+  ELSIF LENGTH(list) = 1 AND list[1] > 0
+    THEN call_budget := list[1] FI ENDVAR;
+
+  PRINT("Constant_Propagation effort = ", effort, " budget = ", call_budget);
+
+  initial_call_budget := call_budget;
+
+  IF T_A_S IN @Stat_Types(@I)
+    THEN posn := @Posn;
+         @Find_Type(T_A_S);
+	 dispatch_codes := @CP_Find_Dispatch_Codes(@Make_Name("dispatch"));
+         return_elts := @CP_Find_Return_Elts(dispatch_codes);
+         @Goto(< >);
+         FOR code IN dispatch_codes DO
+           IF code > 0 THEN Code_Hash.(code) := 1 FI OD;
+         @FD_Rename_DSECT_Code_Stores(Code_Hash VAR rename);
+         IF FALSE AND call_budget > 200
+	   THEN @CP_Once_Called_Codes(Code_Hash) FI;
+         @Goto(posn);
+	 return_elts := return_elts \/ <<@Make_Name("r14")>>;
+         return_elts := return_elts \/ @CP_Find_Return_Elts(dispatch_codes)
+    ELSE return_elts := < > FI;
+
+  C:" If dispatch destination is a symbolic constant, check for a return address ";
+  C:" in a register and if found, then generate a procedure call and dispatch ";
+  C:" on the register ";
+  C:" Ignore pop_regs calls and rx := __rx_init__ assignments when computing ";
+  C:" Constants: If the address is taken of a variable, then it may not be constant! ";
+  @Edit;
+  FOREACH Statement DO
+    IF @ST(@I) = T_A_Proc_Call AND @V(@I^1) = pop_regs
+      THEN @Delete
+    ELSIF @ST(@I) = T_Assignment AND @Size(@I) = 1
+            AND @ST(@I^1^1) = T_Var_Lvalue  AND @V(@I^1^1) IN registers
+	    AND @ST(@I^1^2) = T_Variable AND @V(@I^1^2) IN reg_inits
+      THEN @Delete FI OD;
+  Constants := < >;
+  FOR v IN (@Used(@I) \ @Assigned(@I)) \/ reg_inits DO
+    Constants := <<v>> ++ Constants OD;
+  Constants := @Make_Set(Constants) \/ (@Elts_Used(@I) \ @Elts_Assigned(@I));
+  @Undo_Edit;
+
+  VAR < new := < >, elt := < > >:
+  FOR elt IN Constants DO
+    IF LENGTH(elt) = 1 AND @Starts_With?(HEAD(elt), "NOTUSED_")
+      THEN SKIP
+    ELSIF LAST(elt) < 0
+      THEN C:" Ignore byte references unless the whole field is also constant "
+      ELSE new := <elt> ++ new FI OD;
+  Constants := @Make_Set(new) ENDVAR;
+
+  VAR < addr := < > >:
+  FOREACH Expression DO
+    IF @Is_Addr?(@I)
+      THEN addr := @Elts_Used(@Get_Addr(@I)) ++ addr FI OD;
+  Constants := Constants \ @Make_Set(addr) ENDVAR;
+
+  C:" Anything which is assigned from a vcon (v_XXX) can be treated as a constant ";
+  C:" as far as dispatch processing is concerned: ie use call_via_ptr on it. ";
+  C:" But don't include registers here! ";
+
+  VAR < Vcons_vals := HASH_TABLE >:
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment AND @ST(@I^1^2) = T_Variable
+         AND (@Starts_With?(@V(@I^1^2), "V_") OR @Starts_With?(@V(@I^1^2), "v_"))
+      THEN Vcons := @Elts_Assigned(@I^1) \/ Vcons;
+           Vcons_vals.(@Elts_Assigned(@I^1))
+	      := Vcons_vals.(@Elts_Assigned(@I^1)) \/ <@V(@I^1^2)> FI OD;
+  FOR reg IN registers DO
+    Vcons := Vcons \ <<reg>>;
+    Vcons_vals.(<<reg>>) := < > OD;
+  Vcons_vals.(<<@Make_Name("destination")>>) := < >;
+
+  FOREACH Expression DO
+    IF (@ST(@I) = T_Variable OR @ST(@I) = T_Struct)
+         AND LENGTH(Vcons_vals.(@Elements(@I))) = 1
+      THEN @Paste_Over(@Make(T_Variable, HEAD(Vcons_vals.(@Elements(@I))), < >)) FI OD;
+
+  FOR var IN @Variables(@I) DO
+    IF @Starts_With?(var, "V_") OR @Starts_With?(var, "v_")
+      THEN vcons := <var> \/ vcons FI OD ENDVAR;
+
+  PRINT("Call Budget = ", call_budget);
+  @CP_Find_DSECTs(VAR DSECTs);
+
+PRINT("DSECTs = ", @Join(" ", MAP("@N_String", @Hash_Keys(DSECTs))));
+
+  IF EMPTY?(@Posn)
+    THEN @CP_Constant_DSECT_Pointers(DSECTs) FI;
+
+  @CP_Generic(VAR L);
+
+  IF NOT EMPTY?(@Hash_Keys(rename))
+    THEN posn := @Posn;
+         @Goto(< >);
+         @FD_Restore_DSECT_Code_Stores(rename);
+         @Goto(posn) FI; 
+
+  PRINT(" ");
+  PRINT("Simplifying the result");
+  @Trans(TR_Simplify, "") ENDVAR .;
+
+
+MW_PROC @CP_Find_DSECTs(VAR DSECTs) ==
+  FOREACH Expression DO
+    IF @ST(@I) = T_Struct AND @Is_Mem?(@I^2) AND @ST(@Get_Mem(@I^2)) = T_Variable
+      THEN DSECTs.(@V(@Get_Mem(@I^2))) := 1 FI;
+    IF @ST(@I) = T_Aref AND @Is_Mem?(@I^1) AND @ST(@Get_Mem(@I^1)) = T_Variable
+      THEN DSECTs.(@V(@Get_Mem(@I^1))) := 1 FI OD;
+  FOREACH Lvalue DO
+    IF @ST(@I) = T_Struct_Lvalue AND @Is_Mem?(@I^2) AND @ST(@Get_Mem(@I^2)) = T_Variable
+      THEN DSECTs.(@V(@Get_Mem(@I^2))) := 1 FI OD .;
+
+
+
+MW_PROC @CP_Save_State() ==
+  State_Saves := State_Saves + 1;
+  CP_State := <calls_processed> ++ CP_State;
+  CP_State := <call_budget> ++ CP_State;
+  call_budget := call_budget DIV 2 END;
+
+
+MW_PROC @CP_Restore_State() ==
+  call_budget := HEAD(CP_State);
+  CP_State := TAIL(CP_State);
+  calls_processed := HEAD(CP_State);
+  CP_State := TAIL(CP_State) END;
+
+
+C:" L is a list of the form: <<n1, Ln1>, <n2, Ln2>, ...>";
+C:" where Lni are the lists of variables with known values. n1, n2, etc ";
+C:" are terminal values (in increasing order), and Ln1, Ln2 etc. are the ";
+C:" lists of (variable, value) pairs when the item terminates with ";
+C:" the corresponding terminal value. ";
+C:" Variable values are propagated through the current item. ";
+C:" The item is also updated by replacing variables with values. ";
+
+C:" All values are recorded as WSL items. ";
+C:" Variables are recorded as either <name> for simple variables, ";
+C:" or <name, n1, n2, ...> where name[n1][n2]... is a known array element, ";
+C:" or <name, name1, name2, ...> where name.name1.name2... is a structure reference. ";
+C:" Eg if a[2][3] = 1, then <<a, 2, 3>, @Make(T_Number, 1, < >)> ";
+C:" appears in the list for level zero. ";
+C:" Similarly if foo.bar.baz = 3 then <<foo, bar, baz>, @Make(T_Number, 3, < >)> ";
+C:" appears in the list for level zero. ";
+
+C:" The variable `Entries' will be set to the array of value lists ";
+C:" (one per action) when we enter an action system. ";
+
+C:" Proc_Summaries will be updated with the summaries of local procedures ";
+C:" when we enter a WHERE structure. When a call is encountered, ";
+C:" we can update L by processing the summary ";
+
+C:" Call_Path contains the `stack' of proc calls being processed. This is used ";
+C:" to detect a recursive call and prevent our simple-minded algorithm from ";
+C:" looping indefinitely. ";
+
+C:" Constants lists the simple variables which are not assigned to and which ";
+C:" can therefore also be treated as constants. A dispatch to a constant may be ";
+C:" a procedure call: check for a return address in r14. ";
+C:" NB Local variables in a VAR structure, and parameters in a proc body ";
+C:" may `shadow' global constants. These will therefore have to be (temporarily) ";
+C:" removed from the Constants list. ";
+
+
+C:" Functions for processing variable names: ";
+C:" Return the full name for the given item, return < > if the item ";
+C:" is not a simple variable, or a struct, or an array with integer indices. ";
+C:" Note: we can assume that known variables have already been replaced ";
+C:" in the indices ";
+
+C:" For a simple variable, the full name is <name>. ";
+C:" For a struct, the full name is <name, field, field, ...>. ";
+C:" For a known array element, the full name is <name, -n1, -n2, ...>. ";
+C:" Special case: a[foo].bar is <a, foo, bar> ";
+
+Qry_Var_Name := @Make_Name("Qry_var_Name");
+
+MW_FUNCT @CP_Var_Name(I) ==
+  VAR < R := < >, ST := @ST(I) >:
+  IF ST = T_Variable OR ST = T_Var_Lvalue
+    THEN R := <@V(I)>
+    ELSE VAR < Previous := @Dtable_Get(I, Qry_Var_Name) >:
+	 IF EMPTY?(Previous)
+	   THEN IF ST = T_Struct OR ST = T_Struct_Lvalue
+		  THEN IF @Is_Mem?(I^2)
+			 THEN R := <a_name> ++ @CP_Var_Name(@Get_Mem(I^2)) ++ <@V(I^1)>
+			 ELSE R := @CP_Var_Name(I^2) ++ <@V(I^1)> FI
+		ELSIF ST = T_Aref OR ST = T_Aref_Lvalue
+		  THEN IF @ST(I^1) = T_Variable OR @ST(I^1) = T_Var_Lvalue
+			 THEN IF @CP_All_Numbers?(@Cs(I^2))
+				THEN R := <@V(I^1)> 
+					  ++ MAP("@CP_Minus_V", @Cs(I^2)) FI FI FI
+	   ELSE R := @Dtable_Value_Part(Previous) FI ENDVAR FI;
+  (R) .;
+
+
+MW_FUNCT @CP_Minus_V(I) == : SKIP; (-@V(I)) .;
+
+
+MW_BFUNCT @CP_All_Numbers?(l) == :
+  SKIP;
+  (EMPTY?(l) OR (@ST(HEAD(l)) = T_Number AND @CP_All_Numbers?(TAIL(l)))) .;
+
+
+C:" Return TRUE if the given item is a simple variable, ";
+C:" or an array with known indices, or a struct: ";
+MW_BFUNCT @CP_Variable?(I) == :
+  SKIP;
+  (NOT EMPTY?(@CP_Var_Name(I))).;
+
+
+C:" Functions for processing value lists: ";
+
+MW_FUNCT @CP_Get(L, N) == : SKIP;
+  (IF EMPTY?(L)
+     THEN < >
+     ELSE IF HEAD(HEAD(L)) = N
+	    THEN HEAD(TAIL(HEAD(L)))
+	    ELSE @CP_Get(TAIL(L), N) FI FI) .;
+
+
+MW_FUNCT @CP_Put(L, N, V) ==
+  VAR < old := @CP_Get(L, N) >:
+  SKIP;
+  (IF HEAD(N) = exit_flag OR (NOT EMPTY?(old) AND @Equal?(V, old))
+     THEN L
+     ELSE <<N, V>> ++ @CP_Remove(L, N) FI) .;
+
+
+C:" Add an entry to the 0th level list in the given list ";
+C:" An entry for exit_flag is never stored, ";
+C:" while an entry of exit_flag := 1 clobbers L (as ABORT does). ";
+C:" If CP_In_Preserves_Dest > 1 then any exit value > 0 clobbers L: ";
+
+MW_FUNCT @CP_Put0(L, N, V) == : SKIP;
+  (IF EMPTY?(L) OR L[1][1] > 0 
+     THEN IF HEAD(N) <> exit_flag
+	    THEN <<0, <<N, V>>>> ++ L
+	    ELSE L FI
+     ELSE IF HEAD(N) = exit_flag
+	    THEN IF @V(V) = 1 OR (CP_In_Preserves_Dest > 1 AND @V(V) > 1)
+		   THEN TAIL(L)
+		   ELSE L FI
+	    ELSE <<0, @CP_Put(L[1][2], N, V)>> ++ TAIL(L) FI FI) .;
+
+
+
+C:" Remove a variable from the list (don't remove the whole of a) ";
+MW_FUNCT @CP_Remove_Sub(L, N) ==
+  VAR < R := < > >:
+  IF EMPTY?(L) THEN SKIP
+  ELSIF @Either_Prefix?(N, L[1][1])
+    THEN R := @CP_Remove_Sub(TAIL(L), N)
+  ELSIF @ST(L[1][2]) = T_Variable AND @V(L[1][2]) = HEAD(N)
+    THEN R := @CP_Remove_Sub(TAIL(L), N)
+  ELSIF @ST(L[1][2]) = T_Minus AND HEAD(N) IN @Variables(L[1][2])
+    THEN R := @CP_Remove_Sub(TAIL(L), N)
+  ELSIF @ST(L[1][2]) = T_Struct AND N <> <a_name>
+    THEN IF @Either_Prefix?(N, @Struct_Elts(L[1][2]))
+           THEN R := @CP_Remove_Sub(TAIL(L), N)
+	   ELSE R := <HEAD(L)> ++ @CP_Remove_Sub(TAIL(L), N) FI
+    ELSE R := <HEAD(L)> ++ @CP_Remove_Sub(TAIL(L), N) FI;
+  (R) .;
+
+
+C:" If a DSECT pointer is clobbered, also clobber all the data ";
+C:" (but clobbering a data element <a, dsect, elt> will NOT clobber dsect): ";
+
+MW_FUNCT @CP_Remove(L, N) == : SKIP;
+  (IF LENGTH(N) = 1 AND NOT EMPTY?(DSECTs.(HEAD(N)))
+     THEN @CP_Remove_Sub(@CP_Remove_Sub(L, N), <a_name> ++ N)
+     ELSE @CP_Remove_Sub(L, N) FI) .;
+
+
+C:" Function to merge two value lists: this is used whenever ";
+C:" two or more lines of control meet, for example at the end of a Cond. ";
+C:" Only consistent values in both tables are retained ";
+
+MW_FUNCT @CP_Merge(L1, L2) ==
+  VAR < R := < > >:
+  IF EMPTY?(L1) OR EMPTY?(L2) THEN R := < >
+  ELSIF @Equal?(L1[1][2], @CP_Get(L2, L1[1][1]))
+    THEN R := <HEAD(L1)> ++ @CP_Merge(TAIL(L1), L2)
+    ELSE R := @CP_Merge(TAIL(L1), L2) FI;
+  (R) .;
+
+
+C:" Similar to @CP_Merge but all values are retained in the form <var, val1, val2, ...> ";
+C:" instead of deleting variables with inconsistent values. ";
+C:" Variables in only one list ARE deleted though. ";
+C:" Note that L1 is a multi-value list, while L2 is an ordinary list. ";
+MW_FUNCT @CP_Merge_Keep(L1, L2) ==
+  VAR < R := < > >:
+  IF EMPTY?(L1) OR EMPTY?(L2)
+    THEN R := < >
+    ELSE VAR < v1values := TAIL(HEAD(L1)), v2 := @CP_Get(L2, L1[1][1]) >:
+	 IF EMPTY?(v2)
+	   THEN R := @CP_Merge_Keep(TAIL(L1), L2)
+	 ELSIF @CP_In?(v2, v1values)
+	   THEN R := <HEAD(L1)> ++ @CP_Merge_Keep(TAIL(L1), L2)
+	   ELSE R := <<L1[1][1]> ++ <v2> ++ v1values>
+		     ++ @CP_Merge_Keep(TAIL(L1), L2) FI ENDVAR FI;
+  (R) .;
+
+
+MW_BFUNCT @CP_In?(v, L) == : SKIP;
+  (NOT EMPTY?(L) AND (@Equal?(v, HEAD(L)) OR @CP_In?(v, TAIL(L)))) .;
+
+
+C:" Function to merge two lists of the form <<n0, Ln0>, <n1, Ln1>, <n2, Ln2>, ...> ";
+C:" The lists at each terminal value are merged using @CP_Merge ";
+MW_FUNCT @CP_MergeL(L1, L2) ==
+  VAR < R := < > >:
+  IF EMPTY?(L1) THEN R := L2
+  ELSIF EMPTY?(L2) THEN R := L1
+  ELSIF L1[1][1] < L2[1][1]
+    THEN R := <HEAD(L1)> ++ @CP_MergeL(TAIL(L1), L2)
+  ELSIF L1[1][1] > L2[1][1]
+    THEN R := <HEAD(L2)> ++ @CP_MergeL(L1, TAIL(L2))
+    ELSE R := <<L1[1][1], @CP_Merge(L1[1][2], L2[1][2])>>
+                 ++ @CP_MergeL(TAIL(L1), TAIL(L2)) FI;
+  (R) .;
+
+C:" A constant is a number, string, name or negated number: ";
+C:" NB: We cannot treat ADDRESS_OF(...) as a constant, consider ";
+C:" ADDRESS_OF(a[FOO].BAR) when pointer FOO gets modified! ";
+
+C:" Allow (reg + ptr) - ADDRESS_OF(a[ptr].foo.bar) as a constant ";
+
+MW_BFUNCT @CP_Constant_?(I) == VAR < R := 0 >:
+  IF @CP_Constant_?(I)
+    THEN @Print_WSL(I, ""); PRINT("-- is constant"); R := 1
+    ELSE @Print_WSL(I, ""); PRINT("-- NOT constant"); R := 0 FI;
+  (R = 1) .;
+
+
+MW_BFUNCT @CP_Constant?(I) ==
+  VAR < >:
+  SKIP;
+  (@ST(I) = T_Number OR @ST(I) = T_String
+    OR (@ST(I) = T_Struct AND @CP_Constant?(I^2) AND @Struct_Elts(I) IN Constants)
+    OR (@ST(I) = T_Variable AND @Struct_Elts(I) IN Constants)
+    OR (@Is_Mem?(I) AND @CP_Constant?(@Get_Mem(I)))
+    OR (@ST(I) = T_Negate AND @ST(I^1) = T_Number)
+    OR (@ST(I) = T_Minus AND @ST(I^1) = T_Variable AND <@V(I^1)> IN Constants
+          AND @ST(I^2) = T_Number)
+    OR (@ST(I) = T_Minus AND @ST(I^1) = T_Plus
+         AND @ST(I^1^1) = T_Variable AND @ST(I^1^2) = T_Variable
+	 AND @Is_Addr?(I^2) AND @ST(@Get_Addr(I^2)) = T_Struct
+	 AND HEAD(@WC_Struct_Elts(@Get_Addr(I^2))) = @V(I^1^2))
+    OR (@Is_Addr?(I) AND @ST(@Get_Addr(I)) IN <T_Struct, T_Variable>
+                     AND a_name NOTIN @Used(@Get_Addr(I)))
+    OR (@ST(I) = T_X_Funct_Call AND @V(I^1) IN date_time_functs)
+    OR (@ST(I) = T_Variable AND @V(I) IN vcons)
+    OR (@Variables(I) = <a_name>)
+    OR (@ST(I) = T_Array AND @CP_Constant?(I^1) AND @CP_Constant?(I^2))
+    OR (@ST(I) = T_Sequence AND @CP_Constant?(I^1))
+    OR (@GT(I) = T_Expressions AND NOT @Cs?(I))
+    OR (@GT(I) = T_Expressions AND @Cs?(I) AND @CP_Constant?(I^1)
+          AND @CP_Constant?(@Make(T_Expressions, < >, TAIL(@Cs(I)))))
+  ) .;
+
+
+MW_PROC @CP_Generic(VAR L) ==
+   VAR < GT := @GT(@I) >:
+     IF GT = T_Statement     THEN @CP_Statement  (VAR L)   
+  ELSIF GT = T_Expression    THEN @CP_Update     (VAR L)
+  ELSIF GT = T_Condition     THEN @CP_Update     (VAR L)
+  ELSIF GT = T_Definition    THEN @CP_Definition (VAR L)
+  ELSIF GT = T_Lvalue        THEN @CP_Update     (VAR L)
+  ELSIF GT = T_Guarded       THEN @CP_Guarded    (VAR L)
+  ELSIF GT = T_Action        THEN @CP_Action     (VAR L)
+  ELSIF GT = T_Statements    THEN @CP_Statements (VAR L)
+  ELSIF GT = T_Expressions   THEN @CP_Update     (VAR L)
+  ELSIF GT = T_Lvalues       THEN @CP_Update     (VAR L)
+  ELSIF GT = T_Assigns       THEN @CP_Assigns    (VAR L)
+  ELSIF GT = T_Definitions   THEN @CP_Definitions(VAR L)
+  ELSIF GT = T_Actions       THEN @CP_Actions    (VAR L)
+       ELSE PRINT("UNKNOWN GENERIC TYPE: ",
+		  @Type_Name(GT), "(", GT, ") at ", @Posn) FI ENDVAR .;
+
+
+C:" Conditions, expressions, Lvalues etc. are simply updated from the list ";
+C:" (which remains unchanged). Do nothing if the list is empty. ";
+C:" (An Lvalue might be an array reference a[x] where x has a known value) ";
+
+C:" Special case for small Sub_Seg and Rel_Seg where all the elements ";
+C:" in the segment have known values ";
+
+MW_PROC @CP_Update(VAR L) ==
+  VAR < name := < >, val := < >, l := < >, change := 0, i := 0, n := 0, p1 := < > >:
+  IF Migration = 0
+    THEN C:" Don't update anything if we are only calculating data flows "
+  ELSIF NOT EMPTY?(L) AND L[1][1] = 0 AND NOT EMPTY?(L[1][2])
+    THEN l := L[1][2];
+	 ATEACH Expression DO
+	   name := @CP_Var_Name(@I);
+
+           IF @ST(@I) = T_Plus AND @Size(@I) = 2 AND @ST(@I^1) = T_Number
+	         AND @ST(@I^2) = T_String AND @V(@I^2) = "hex 0x80000000"
+		 AND NOT EMPTY?(Code_Hash.(@V(@I^1)))
+             THEN @Paste_Over(@I^1) FI;
+
+	   C:" Check for reg__n if expn is a[reg + n, 4] ";
+	   IF @Is_Mem_Rel?(@I)
+	        AND @ST(@Get_Mem_Rel(@I)) = T_Plus
+		AND @ST(@Get_Mem_Rel(@I)^1) = T_Variable
+		AND @ST(@Get_Mem_Rel(@I)^2) = T_Number
+		AND @ST(@Get_Mem_Rel_N(@I)) = T_Number
+		AND (@V(@Get_Mem_Rel(@I)^1) IN registers
+		       OR @V(@Get_Mem_Rel(@I)^1) IN reg_inits)
+	     THEN VAR < name := @Make_Name(@N_String(@V(@Get_Mem_Rel(@I)^1))
+		                         ++ "__" ++ @String(@V(@Get_Mem_Rel(@I)^2))) >:
+		  IF NOT EMPTY?(@CP_Get(l, <name>))
+		    THEN PRINFLUSH("c");
+		         @Paste_Over(@CP_Get(l, <name>));
+		         change := change + 1 FI ENDVAR FI;
+
+           C:" Don't propagate inside ADDRESS_OF or sizeof calls: ";
+           IF LENGTH(@Posn) > 1
+	        AND (@Is_Addr?(@GParent)
+		       OR @ST(@Parent) = T_Address_Of
+	               OR @ST(@GParent) = T_X_Funct_Call
+                            AND @V(@GParent^1) = sizeof)
+	     THEN SKIP
+
+           ELSIF LENGTH(@Posn) > 1 AND @Posn_n = 2
+	           AND @ST(@Parent) IN <T_Rel_Seg, T_Rel_Seg_Lvalue>
+                   AND NOT EMPTY?(@Used(@I))
+             THEN C:" Don't replace a variable array index by a constant ";
+	          p1 := @Parent^1;
+		  @Edit;
+		  @CP_Update(VAR L);
+		  IF EMPTY?(@Used(@I))
+		    THEN C:" Index was a variable, but is now a constant. ";
+		         C:" So we need to increment it by one. ";
+			 C:" Unless it is an absolute memory address. ";
+			 IF NOT EMPTY?(@Funct_Calls(@I))
+			      OR NOT EMPTY?(@X_Funct_Calls(@I))
+			      OR a_name IN @Variables(p1)
+			   THEN @End_Edit
+			   ELSE @Paste_Over(@Make(T_Plus, < >,
+			                          <@I, @Make(T_Number, 1, < >)>));
+			        @End_Edit FI;
+		         C:" We have processed this subtree, so move away: ";
+			 @Right
+		    ELSE @End_Edit FI
+
+	   ELSIF @ST(@I) = T_Sub_Seg AND @ST(@I^2) = T_Number AND @ST(@I^3) = T_Number
+		AND @V(@I^3) - @V(@I^2) < 4
+	     THEN name := @CP_Var_Name(@I^1);
+		  IF NOT EMPTY?(name)
+		    THEN i := @V(@I^2); n := 0;
+			 DO val := @CP_Get(l, name ++ <-i>);
+			    IF EMPTY?(val) THEN EXIT(1) FI;
+			    IF @ST(val) <> T_Number THEN val := < >; EXIT(1) FI;
+			    n := (n * 256) + @V(val);
+			    i := i + 1;
+			    IF i > @V(@I^3) THEN EXIT(1) FI OD;
+			 IF NOT EMPTY?(val)
+			   THEN PRINFLUSH("b", @V(@I^3) - @V(@I^2) + 1);
+				@Paste_Over(@Make(T_Number, n, < >));
+				change := change + 1 FI FI
+
+	   ELSIF @ST(@I) = T_Rel_Seg AND @ST(@I^2) = T_Number AND @ST(@I^3) = T_Number
+		AND @V(@I^3) <= 4
+	     THEN name := @CP_Var_Name(@I^1);
+		  IF NOT EMPTY?(name)
+		    THEN i := @V(@I^2); n := 0;
+			 DO val := @CP_Get(l, name ++ <-i>);
+			    IF EMPTY?(val) THEN EXIT(1) FI;
+			    IF @ST(val) <> T_Number THEN val := < >; EXIT(1) FI;
+			    n := (n * 256) + @V(val);
+			    i := i + 1;
+			    IF i >= @V(@I^2) + @V(@I^3) THEN EXIT(1) FI OD;
+			 IF NOT EMPTY?(val)
+			   THEN PRINFLUSH("b", @V(@I^3));
+				@Paste_Over(@Make(T_Number, n, < >));
+				change := change + 1 FI FI
+
+           ELSIF @ST(@I) = T_Variable AND @Ends_With?(@V(@I), "_INDEX")
+	     THEN C:" Don't update known index values! "
+
+	   ELSIF NOT EMPTY?(name) 
+	     THEN val := @CP_Get(l, name);
+		  IF NOT EMPTY?(val)
+		    THEN C:" Don't update only part of a struct ";
+			 C:" or the first component of an array reference. ";
+			 C:" Also don't replace a[FOO] by a[n] ";
+			 C:" Also don't replace a register by another register ";
+			 C:" (it may mess up DSECT pointers) ";
+			 C:" Also don't replace a component by its parent/gparent ";
+			 C:" Also rX = rY causes problems when both are reg_inits ";
+			 IF @Posn_n = 2
+			      AND @ST(@Parent) = T_Struct
+			    THEN SKIP
+			 ELSIF @Posn_n = 1
+			      AND @ST(@Parent) IN <T_Aref, T_Sub_Seg,
+						   T_Rel_Seg, T_Final_Seg>
+			    THEN SKIP
+			 ELSIF LENGTH(@Posn) > 1
+                                 AND @Is_Mem?(@Parent)
+				 AND (LENGTH(name) > 1 OR HEAD(name) NOTIN x86_regs)
+				 AND @ST(@GParent) IN <T_Struct, T_Struct_Lvalue>
+			    THEN SKIP
+			 ELSIF LENGTH(@Posn) > 1
+                                 AND @Is_Mem?(@GParent)
+				 AND (LENGTH(name) > 1 OR HEAD(name) NOTIN x86_regs)
+				 AND @ST(@GGParent) IN <T_Struct, T_Struct_Lvalue>
+			    THEN SKIP
+			 ELSIF @ST(val) = T_Variable AND @ST(@I) = T_Variable
+				 AND @V(@I) NOTIN registers
+				 AND @V(val) NOTIN vcons
+			    THEN SKIP
+			 ELSIF @ST(val) = T_Variable AND @ST(@I) = T_Variable
+				 AND @V(val) IN registers AND @V(@I) IN registers
+			    THEN SKIP
+			 ELSIF LENGTH(@Posn) > 0 AND NOT EMPTY?(@Parent)
+			         AND @Equal?(@Parent, val)
+			    THEN SKIP
+                         ELSIF @ST(val) = T_Minus AND @ST(val^1) = T_Plus
+			    THEN SKIP
+                         ELSIF @ST(val) = T_Variable AND @V(val) IN reg_inits
+                           THEN C:" don't paste a reg init anywhere! "
+                         ELSIF @ST(val) = T_Variable AND NOT EMPTY?(rename.(@V(val)))
+                           THEN C:" don't paste a renamed variable "
+			 ELSIF HEAD(name) = a_name AND a_name IN @Used(val)
+			   THEN C:" something wierd "
+			   ELSE PRINFLUSH("x");
+	                        @Paste_Over(val);
+				IF change > 200
+				  THEN PRINT("posn = ", @Posn);
+				       PRINT("name = ", name);
+				       PRINFLUSH("val = ");
+				       @Print_WSL(val, "");
+                                       PRINT("change = ", change);
+                                       ERROR("@CP_Update:", "too many updates!") FI;
+                                change := change + 1 FI FI FI OD;
+	 IF change > 0 THEN @Trans(TR_Simplify, "") FI FI ENDVAR .;
+
+
+C:" Called when all the variables are clobbered ";
+MW_PROC @CP_Clobber(VAR L) ==
+  IF NOT EMPTY?(L) AND L[1][1] = 0
+    THEN L[1][2] := < > FI .;
+
+C:" Called when we run out of budget. ";
+MW_PROC @CP_Clobber_Broke(VAR L) ==
+  PRINFLUSH("B");
+  IF initial_call_budget <= 200
+    THEN @CP_Clobber(VAR L)
+  ELSIF NOT EMPTY?(L) AND L[1][1] = 0
+    THEN L[1][2] := @CP_Clobber_Zeros(L[1][2]);
+         C:" If we are skipping EXIT statements, then all the merges: ";
+         FOR n IN @Gen_TVs(@I, @AS_Type) DO
+           IF n > 0
+             THEN PRINFLUSH("<", n, ">");
+                  L := @CP_Exit_Sub(L[1][2], n, L) FI OD FI .;
+
+
+C:" Some form of external proc: all variables are clobbered EXCEPT ";
+C:" the vars passed as parameters. (If you passed the var as a parameter, ";
+C:" then the external proc probably doesn't have direct access to it, ";
+C:" and therefore probably doesn't modify it. So we use the convention ";
+C:" that variables passed as parameters to an external proc are guaranteed ";
+C:" to be preserved by the proc) ";
+
+C:" Delete all the pairs in l whose names are not in except. ";
+MW_FUNCT @CP_All_But(l, except) ==
+  VAR < >:
+  SKIP;
+  (IF EMPTY?(l)
+     THEN < >
+     ELSE IF l[1][1][1] IN except
+	    THEN <l[1]> ++ @CP_All_But(TAIL(l), except)
+	    ELSE @CP_All_But(TAIL(l), except) FI FI) .;
+
+
+MW_FUNCT @CP_Clobber_List(l, clobbered) ==
+  VAR < elt := < > >:
+  FOR elt IN clobbered DO
+    IF LENGTH(elt) > 1 OR HEAD(elt) <> a_name
+      THEN l := @CP_Remove(l, elt) FI OD;
+  (l) .;
+
+
+C:" Over a !P FOO(... VAR ... os) call, assume that anything which was initialised ";
+C:" to zero or spaces might be clobbered by the call ";
+C:" NB: This can also clobber return addresses which are saved as four bytes, eg: ";
+C:" FOO[1..4] := code ";
+C:" Solution: if foo.bar.1 = 0 and foo.bar.4 <> 0 or foo.bar.3 <> 0 ";
+C:" then keep this zero ";
+
+
+MW_FUNCT @CP_Clobber_Zeros(l) ==
+  VAR < R := < > >:
+  FOR pair IN l DO
+    IF pair[1] = <reg_stack> OR pair[1] = <call_stack>
+      THEN C:" Always keep reg_stack's value ";
+           R := <pair> ++ R
+    ELSIF LENGTH(pair[1]) = 1 AND @Starts_With?(@N_String(pair[1][1]), "F_")
+      THEN C:" Keep this flag value ";
+           R := <pair> ++ R
+    ELSIF LENGTH(pair[1]) = 1 AND @Starts_With?(@N_String(pair[1][1]), "HANDLE_")
+      THEN C:" Keep this handler ";
+           R := <pair> ++ R
+    ELSIF LENGTH(pair[1]) = 1 AND @Starts_With?(@N_String(pair[1][1]), "DPMS")
+             AND @Digits?(SUBSTR(@N_String(pair[1][1]), 4))
+      THEN C:" Keep this handler ";
+           R := <pair> ++ R
+    ELSIF @ST(pair[2]) = T_Variable AND @Starts_With?(@N_String(@V(pair[2])), "V_")
+      THEN C:" Keep this vcon value ";
+           R := <pair> ++ R
+    ELSIF @ST(pair[2]) = T_Variable AND @Starts_With?(@N_String(@V(pair[2])), "v_")
+      THEN C:" Keep this vcon value ";
+           R := <pair> ++ R
+    ELSIF @ST(pair[2]) = T_Variable AND @V(pair[2]) = @Make_Name("___r1_init___")
+      THEN C:" Keep this r1 initial value ";
+           R := <pair> ++ R
+    ELSIF @ST(pair[2]) = T_Variable AND @V(pair[2]) = @Make_Name("__r14_init__")
+      THEN C:" Keep this r14 initial value ";
+           R := <pair> ++ R
+    ELSIF @ST(pair[2]) = T_Variable AND @V(pair[2]) IN reg_inits
+      THEN C:" Keep this register initial value ";
+           R := <pair> ++ R
+    ELSIF (@ST(pair[2]) <> T_Number OR @V(pair[2]) < CP_Special_Value)
+            AND pair[1] NOTIN return_elts
+      THEN C:" Clobber this non-dispatch-code-containing variable "
+    ELSIF @ST(pair[2]) = T_String
+      THEN C:" Clobber this string "
+    ELSIF @ST(pair[2]) = T_Variable AND @V(pair[2]) NOTIN reg_inits
+            AND @V(pair[2]) NOTIN registers
+	    AND NOT @Starts_With?(@N_String(@V(pair[2])), "V_")
+	    AND NOT @Starts_With?(@N_String(@V(pair[2])), "v_")
+      THEN C:" Clobber this value (don't clobber a value that is a VCON) "
+    ELSIF @ST(pair[2]) = T_Number AND @V(pair[2]) = 0
+      THEN C: " Have found a zero ";
+           IF LENGTH(pair[1]) > 1 AND LAST(pair[1]) < 0
+	     THEN VAR < e1 := @CP_Get(l, BUTLAST(pair[1]) ++ <LAST(pair[1]) - 3>),
+	                e2 := @CP_Get(l, BUTLAST(pair[1]) ++ <LAST(pair[1]) - 2>),
+	                e3 := @CP_Get(l, BUTLAST(pair[1]) ++ <LAST(pair[1]) - 1>) >:
+		  IF NOT EMPTY?(e1) AND @ST(e1) = T_Number AND @V(e1) <> 0
+		    THEN R := <pair> ++ R
+		  ELSIF NOT EMPTY?(e2) AND @ST(e2) = T_Number AND @V(e2) <> 0
+		    THEN R := <pair> ++ R
+		  ELSIF NOT EMPTY?(e3) AND @ST(e3) = T_Number AND @V(e3) <> 0
+		    THEN R := <pair> ++ R
+		    ELSE C:" Clobber this zero " FI ENDVAR
+             ELSE C:" Clobber this zero " FI
+      ELSE R := <pair> ++ R FI OD;
+  (REVERSE(R)) .;
+
+
+
+MW_PROC @CP_X_Proc(VAR L) ==
+  IF NOT EMPTY?(L) AND L[1][1] = 0
+    THEN C:" delete everything except the parameters (i.e. the directly used vars) ";
+	 L[1][2] := @CP_All_But(L[1][2], @Used(@I)) FI.;
+
+
+C:" For a !P, update the value parameters and clobber the var parameters. ";
+C:" If A_Proc_Call_Filter is non-empty then clobber everything not in the filter list. ";
+C:" Check for the special cases push_regs and pop_regs. ";
+C:" push_regs will stack known register values on the value of reg_stack ";
+C:" pop_regs will check the top of value of reg_stack and restore stacked reg values. ";
+C:" Hack: don't propogate inside a !P pack ";
+
+MW_PROC @CP_A_Proc(VAR L) ==
+  IF NOT EMPTY?(L) AND L[1][1] = 0
+    THEN IF @V(@I^1) = push_regs AND reg_stack IN @Variables(@I^3)
+	   THEN @CP_Push_Regs(@Cs(@I^2), @CP_Get(L[1][2], <reg_stack>) VAR L)
+	 ELSIF @V(@I^1) = pop_regs AND reg_stack IN @Variables(@I^3)
+	   THEN @CP_Pop_Regs(@Cs(@I^3), @CP_Get(L[1][2], <reg_stack>) VAR L)
+           ELSE C:" Don't propagate inside VPP calls or pack or EXEC_CICS: ";
+	        IF @Make_Name("vpp") NOTIN @Assigned(@I) AND @V(@I^1) <> pack
+		     AND @V(@I^1) <> EXEC_CICS
+		     AND @Make_Name("regs") NOTIN @Assigned(@I)
+		     OR @V(@I^1) = call_via_ptr
+     		     OR @V(@I^1) = call_via_ptr_pars
+		  THEN @Down_To(2); C:" to the value parameters ";
+	               @CP_Update(VAR L);
+                       @Up FI;
+	        IF (@V(@I^1) = call_via_ptr OR @V(@I^1) = call_via_ptr_pars)
+		     AND @ST(@I^2^1) = T_Variable
+		     AND @V(@I^2^1) = @Make_Name("result_code")
+                  THEN C:" Scan back for an assignment of a vcon to r15 ";
+                       VAR < p := @Posn_n, v := < > >:
+		       DO IFMATCH Statement r15 := ~?e
+		            THEN IF @ST(e) = T_Variable
+			               AND (@Starts_With?(@V(e), "V_")
+				              OR @Starts_With?(@V(e), "v_"))
+			           THEN v := e FI ENDMATCH;
+                          IF @Left? THEN @Left ELSE EXIT(1) FI;
+			  IF @ST(@I) NOTIN <T_Comment, T_Assignment, T_A_Proc_Call>
+			    THEN EXIT(1) FI OD;
+		       @To(p);
+                       IF NOT EMPTY?(v)
+		         THEN @Down_To(2); @Down; @Paste_Over(v); @Up; @Up FI ENDVAR FI;
+	        IF (@V(@I^1) = call_via_ptr OR @V(@I^1) = call_via_ptr_pars)
+		     AND @ST(@I^2^1) = T_Variable
+		     AND (@Starts_With?(@V(@I^2^1), "V_")
+		            OR @Starts_With?(@V(@I^2^1), "v_"))
+	          THEN VAR < name := @V(@I^2^1) >:
+		       C:" Call to a register converted to a proc call: ";
+                       C:" we now know what the register value is: ";
+                       @Down;
+                       @Paste_Over(@Name(@Make_Name(SUBSTR(@N_String(name), 2))));
+		       C:" Delete the parameter with the function pointer: ";
+		       @Right; @Down; @Delete; @Up;
+		       @Up ENDVAR
+                ELSIF (@V(@I^1) = call_via_ptr OR @V(@I^1) = call_via_ptr_pars)
+		        AND @ST(@I^2^1) = T_Negate
+		        AND @ST(@I^2^1^1) = T_Number
+			AND dispatch > 0 AND NOT EMPTY?(Bodies[dispatch])
+		  THEN C:" Find the proc from dispatch ";
+		       VAR < n := @I^2^1, posn := @Posn, call := < > >:
+                       @Edit;
+		       @New_Program(Bodies[dispatch]);
+		       FOREACH Statement DO
+		         IF @ST(@I) = T_Cond
+			   THEN @Down;
+			        DO IFMATCH Guarded destination = ~?(n) THEN ~*S
+				     THEN call := HEAD(S) ENDMATCH;
+				   IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+                       @Undo_Edit;
+		       IF NOT EMPTY?(call) THEN @Paste_Over(call) FI ENDVAR FI;
+                IF NOT EMPTY?(A_Proc_Call_Filter) AND os_name IN @Assigned(@I^3)
+                   THEN L[1][2] := @CP_All_But(L[1][2], A_Proc_Call_Filter)
+                ELSIF os_name IN @Assigned(@I^3)
+                   THEN L[1][2] := @CP_Clobber_Zeros(L[1][2]) FI;
+                C:" delete all var parameters from L[1][2] ";
+                IF NOT EMPTY?(L) AND L[1][1] = 0
+                  THEN L[1][2] := @CP_Clobber_List(L[1][2], @Elts_Assigned(@I)) FI;
+                IF dispatch > 0 AND NOT EMPTY?(Bodies[dispatch])
+		     AND @V(@I^1) = call_via_ptr AND @CP_Reg_Init_Var?(@I^2^1)
+                  THEN @Paste_Over(@Make(T_Call, -(N+1), < >)) FI FI FI .;
+
+
+C:" Check if the given item is a reg init or currently holds a reg init value: ";
+
+MW_BFUNCT @CP_Reg_Init_Var?(I) ==
+  VAR < R := 0, val := < > >:
+  IF @ST(I) = T_Variable AND @V(I) IN reg_inits
+    THEN R := 1
+    ELSE val := @CP_Get(L[1][2], @CP_Var_Name(I));
+         IF NOT EMPTY?(val) AND @ST(val) = T_Variable AND @V(val) IN reg_inits
+           THEN R := 1 FI FI;
+  (R = 1) .;
+
+
+C:" Push known register values on top of reg_stack value in L ";
+
+MW_PROC @CP_Push_Regs(regs, stack_val VAR L) ==
+  VAR < vals := < >, val := < >, name := < > >:
+  FOR reg IN regs DO
+    val := < >;
+    name := @CP_Var_Name(reg);
+    IF NOT EMPTY?(name) AND NOT EMPTY?(@CP_Get(L[1][2], name))
+      THEN val := @CP_Get(L[1][2], name)
+    ELSIF @CP_Constant?(reg)
+      THEN val := reg FI;
+    IF EMPTY?(val)
+      THEN vals := <@CP_Make_Seq(< >)> ++ vals
+      ELSE vals := <val> ++ vals FI OD;
+  vals := @CP_Make_Seq(REVERSE(vals));
+  IF EMPTY?(stack_val) OR @ST(stack_val) <> T_Sequence
+    THEN stack_val := @CP_Make_Seq(<vals>)
+    ELSE stack_val := @CP_Make_Seq(<vals> ++ @Cs(stack_val^1)) FI;
+  L[1][2] := @CP_Put(L[1][2], <reg_stack>, stack_val) ENDVAR .;
+
+
+MW_FUNCT @CP_Make_Seq(comps) == : SKIP;
+  (@Make(T_Sequence, < >, <@Make(T_Expressions, < >, comps)>)) .;
+
+
+C:" Pop register values from stack_val into the registers: ";
+
+MW_PROC @CP_Pop_Regs(regs, stack_val VAR L) ==
+  IF NOT EMPTY?(stack_val) AND @ST(stack_val) = T_Sequence AND @Cs?(stack_val^1)
+    THEN VAR < vals := @Cs(stack_val^1^1^1), val := < > >:
+	 stack_val := @CP_Make_Seq(TAIL(@Cs(stack_val^1)));
+	 L := @CP_Put0(L, <reg_stack>, stack_val);
+	 FOR reg IN regs DO
+	   IF @V(reg) IN registers
+	     THEN val := vals[CP_Reg_To_Num.(@V(reg)) + 1];
+		  IF FALSE
+		    THEN PRINFLUSH(@N_String(@V(reg)), " = "); @PP_Item(val, 80, "") FI;
+		  IF @ST(val) = T_Sequence AND NOT @Cs?(val^1)
+		    THEN C:" Unknown value was pushed and popped: ";
+			 L[1][2] := @CP_Remove(L[1][2], <@V(reg)>)
+		    ELSE C:" Restore the known value of the register: ";
+			 L[1][2] := @CP_Put(L[1][2], <@V(reg)>, val) FI FI OD ENDVAR
+  ELSIF FALSE AND EMPTY?(stack_val)
+    THEN C:" Stack val is unknown: set r14 to zero in case we dispatch on it ";
+         L[1][2] := @CP_Put(L[1][2], <@Make_Name("r14")>, @Make(T_Number, 0, < >)) FI .;
+
+C:" PUSH(stack, expn); ...; POP(v, stack); ";
+C:" See also TR_Push_Pop ";
+
+MW_PROC @CP_Push(VAR L) ==
+  IF NOT EMPTY?(L) AND L[1][1] = 0
+    THEN VAR < v := @CP_Var_Name(@I^2), val := < >,
+               stack := @CP_Var_Name(@I^1), stack_val := < > >:
+         @CP_Update(VAR L);
+         IF @CP_Constant?(@I^2)
+	   THEN val := @I^2
+	 ELSIF NOT EMPTY?(v)
+	   THEN val := @CP_Get(L[1][2], v) FI;
+	 IF EMPTY?(val) THEN val := @CP_Make_Seq(< >) FI;
+         IF NOT EMPTY?(stack)
+	   THEN stack_val := @CP_Get(L[1][2], stack);
+	        IF EMPTY?(stack_val) OR @ST(stack_val) <> T_Sequence
+                  THEN stack_val := @CP_Make_Seq(<val>)
+                  ELSE stack_val := @CP_Make_Seq(<val> ++ @Cs(stack_val^1)) FI;
+                L[1][2] := @CP_Put(L[1][2], stack, stack_val) FI ENDVAR FI .;
+
+
+MW_PROC @CP_Pop(VAR L) ==
+  IF NOT EMPTY?(L) AND L[1][1] = 0
+    THEN VAR < v := @CP_Var_Name(@I^1), val := < >,
+               stack := @CP_Var_Name(@I^2), stack_val := < > >:
+         IF NOT EMPTY?(stack)
+	   THEN stack_val := @CP_Get(L[1][2], stack);
+	        IF NOT EMPTY?(stack_val) AND @ST(stack_val) = T_Sequence
+		     AND @Cs?(stack_val^1)
+		  THEN val := stack_val^1^1;
+		       L := @CP_Put0(L, stack, @CP_Make_Seq(TAIL(@Cs(stack_val^1))));
+		       IF @ST(val) = T_Sequence AND NOT @Cs?(val^1)
+		         THEN C:" Unknown value was pushed and popped: ";
+			      IF NOT EMPTY?(v)
+			        THEN L[1][2] := @CP_Remove(L[1][2], v) FI
+                         ELSE C:" Restore the known value: ";
+			      IF NOT EMPTY?(v)
+			        THEN L[1][2] := @CP_Put(L[1][2], v, val) FI FI
+                ELSIF NOT EMPTY?(v)
+                  THEN L[1][2] := @CP_Remove(L[1][2], v) FI FI ENDVAR FI .;
+
+
+
+
+
+C:" A specification statement has components: <lvalues, condition> ";
+MW_PROC @CP_Spec(VAR L) ==
+  IF NOT EMPTY?(L) AND L[1][1] = 0
+    THEN C:" delete the assigned vars from L[1][2] ";
+	 L[1][2] := @CP_Clobber_List(L[1][2], @Elts_Assigned(@I)) FI .;
+
+
+MW_PROC @CP_Skip(VAR L) ==
+   SKIP .;
+
+
+MW_PROC @CP_Statement(VAR L) ==
+ VAR <ST := @ST(@I)> :
+      IF ST = T_A_Proc_Call   THEN @CP_A_Proc     (VAR L)
+   ELSIF ST = T_MW_Proc_Call  THEN @CP_A_Proc     (VAR L)
+   ELSIF ST = T_X_Proc_Call   THEN @CP_X_Proc     (VAR L) 
+   ELSIF ST = T_Stat_Place    THEN @CP_Skip       (VAR L)
+   ELSIF ST = T_Stat_Pat_One  THEN @CP_Skip       (VAR L)
+   ELSIF ST = T_Stat_Pat_Many THEN @CP_Skip       (VAR L)
+   ELSIF ST = T_Stat_Pat_Any  THEN @CP_Skip       (VAR L)
+   ELSIF ST = T_Abort         THEN @CP_Abort      (VAR L)
+   ELSIF ST = T_Assert        THEN @CP_Assert     (VAR L)
+   ELSIF ST = T_Assignment    THEN @CP_Assignment (VAR L)
+   ELSIF ST = T_A_S           THEN @CP_A_S        (VAR L)
+   ELSIF ST = T_Call          THEN @CP_Call       (VAR L)
+   ELSIF ST = T_Comment       THEN @CP_Skip       (VAR L)
+   ELSIF ST = T_Cond          THEN @CP_Cond       (VAR L)
+   ELSIF ST = T_D_If          THEN @CP_Cond       (VAR L)
+   ELSIF ST = T_D_Do          THEN @CP_D_Do       (VAR L)
+   ELSIF ST = T_Exit          THEN @CP_Exit       (VAR L)
+   ELSIF ST = T_For           THEN @CP_For        (VAR L)
+   ELSIF ST = T_For_In        THEN @CP_For_In     (VAR L)
+   ELSIF ST = T_Foreach_Stat  THEN @CP_Clobber    (VAR L)
+   ELSIF ST = T_Foreach_Stats THEN @CP_Clobber    (VAR L)
+   ELSIF ST = T_Foreach_TS    THEN @CP_Clobber    (VAR L)
+   ELSIF ST = T_Foreach_TSs   THEN @CP_Clobber    (VAR L)
+   ELSIF ST = T_Foreach_STS   THEN @CP_Clobber    (VAR L)
+   ELSIF ST = T_Foreach_Cond  THEN @CP_Clobber    (VAR L)
+   ELSIF ST = T_Foreach_Expn  THEN @CP_Clobber    (VAR L)
+   ELSIF ST = T_Floop         THEN @CP_Floop      (VAR L)
+   ELSIF ST = T_Join          THEN @CP_Clobber    (VAR L)
+   ELSIF ST = T_Pop           THEN @CP_Pop        (VAR L)
+   ELSIF ST = T_Push          THEN @CP_Push       (VAR L)
+   ELSIF ST = T_Proc_Call     THEN @CP_Proc_Call  (VAR L)
+   ELSIF ST = T_Spec          THEN @CP_Spec       (VAR L)
+   ELSIF ST = T_Skip          THEN @CP_Skip       (VAR L)
+   ELSIF ST = T_Var           THEN @CP_Var        (VAR L)
+   ELSIF ST = T_Where         THEN @CP_Where      (VAR L)
+   ELSIF ST = T_While         THEN @CP_While      (VAR L)
+   ELSIF ST = T_Ifmatch_Stat  THEN @CP_Clobber    (VAR L)
+   ELSIF ST = T_Ifmatch_Expn  THEN @CP_Clobber    (VAR L)
+   ELSIF ST = T_MW_Proc       THEN @CP_Skip       (VAR L)
+   ELSIF ST = T_MW_Funct      THEN @CP_Skip       (VAR L)
+   ELSIF ST = T_MW_BFunct     THEN @CP_Skip       (VAR L)
+   ELSIF ST = T_Print         THEN @CP_Update     (VAR L)
+   ELSIF ST = T_Prinflush     THEN @CP_Update     (VAR L)
+   ELSIF EMPTY?(ST) THEN ERROR("@CP_Statement:", "Bad statement", ST)
+     ELSE PRINT("UNKNOWN STATEMENT: ",
+		@Type_Name(ST), "(", ST, ") at ", @Posn) FI ENDVAR .;
+
+
+
+MW_PROC @CP_Action(VAR L) ==
+  @Down_To(2); C:" to statements ";
+  @CP_Statements(VAR L);
+  @Up .;
+
+
+MW_PROC @CP_Actions(VAR L) ==
+  @Down; C:" to first action ";
+  DO @CP_Action(VAR L);
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up .;
+
+
+MW_PROC @CP_Definitions(VAR L) ==
+  @Down; C:" to first defn ";
+  DO @CP_Definition(VAR L);
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up .;
+
+
+MW_PROC @CP_Definition(VAR L) ==
+  IF @ST(@I) = T_Proc
+    THEN @Down_To(3); C:" to proc body ";
+	 VAR < L := <<0, < >>> >:
+	   @CP_Statements(VAR L) ENDVAR;
+	 @Up FI .;
+
+
+C:" Absorption test: ";
+C:" Consider the code: IF B THEN x:=1 ELSE x:=0 FI; IF x=1 THEN ... FI ";
+C:" Here a variable (1) has a known value at the end of each arm of a COND, ";
+C:" (2) is tested in the next statement (a conditional) ";
+C:" In this case, it would be useful to expand over the next statement ";
+C:" before carrying out constant propagation. ";
+C:" PROBLEM: if the first IF statement has more arms than the second IF ";
+C:" (as often happens with Assembler translations) then the absorption ";
+C:" will result in duplicated code -- but while the assignments to x remain, ";
+C:" the arms of the IF are not identical and cannot be fully merged. ";
+C:" -- Partially_Join_Cases ought to work, but the pattern matcher is buggy. ";
+C:" Also, after doing the absorption, the assignments are likely to be redundant ";
+C:" and can be deleted, whence Join_All_Cases will become applicable. ";
+
+MW_PROC @CP_Statements(VAR L) ==
+  VAR < loop_check := 0 >:
+  IF @ST(@I) <> T_Statements
+    THEN ERROR("@CP_Statements:", "wrong type:", @ST(@I))
+  ELSIF FALSE AND call_budget < 100
+    THEN PRINFLUSH("/"); @CP_Clobber_Broke(VAR L);
+	 FOREACH Statement DO
+	   IF FALSE AND @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND @V(@I) < 0
+	     THEN Entries[-@V(@I)] := <0, < >> FI OD
+  ELSIF State_Saves > initial_call_budget AND initial_call_budget > 200
+    THEN PRINFLUSH("#"); @CP_Clobber_Broke(VAR L);
+	 FOREACH Statement DO
+	   IF FALSE AND @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND @V(@I) < 0
+	     THEN Entries[-@V(@I)] := <0, < >> FI OD
+    ELSE @Down;
+	 DO IF EMPTY?(L) THEN EXIT(1) FI;
+	    IF @ST(@I) = T_Cond AND @Right?
+	      THEN C:" Check for common patterns of conditional cc assignments: ";
+		   C:" Moved to a separate proc to work round a bug in gsi! ";
+		   @CP_cc_Check;
+		   IF Migration = 1 THEN @CP_Maybe_Expand(L) FI FI;
+            IF @ST(@I) = T_Cond AND @Left? AND Migration = 1
+	      THEN C:" Check for rX := code before the Cond ";
+	           C:" where each branch of the Cond is either a CALL ";
+		   C:" or proc call plus CALL: ";
+		   @CP_Maybe_Absorb_Left(VAR L) FI;
+	    @CP_Statement(VAR L);
+	    IF EMPTY?(L) OR L[1][1] > 0
+	      THEN IF initial_call_budget <= 200
+	             THEN L := <<0, < >>>
+		     ELSE EXIT(1) FI FI;
+	    IF @Is_Improper? 
+	      THEN IF @Right? THEN @Delete_Rest FI;
+		   EXIT(1) FI;
+	    IF NOT EMPTY?(Entries) AND @Regular?(@I) THEN EXIT(1) FI;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI;
+	    loop_check := loop_check + 1;
+	    IF loop_check > 30000
+	      THEN ERROR("!!!Loop checker failed!!!"); EXIT(1) FI OD;
+	 @Up FI ENDVAR .;
+
+
+MW_PROC @CP_cc_Check() ==
+  IFMATCH Statement IF ~?B1 THEN ~?cc := 0
+		     ELSIF ~?B2 THEN ~?=cc := 1
+		     ELSIF ~?B3 THEN ~?=cc := 2 FI
+  THEN @CP_cc_Set(cc, B1, B2, B3, true) ENDMATCH;
+  IFMATCH Statement IF ~?B1 THEN ~?cc := 0
+		     ELSIF ~?B2 THEN ~?=cc := 1
+			        ELSE ~?=cc := 2 FI
+  THEN @CP_cc_Set(cc, B1, B2, true, false) ENDMATCH;
+  IFMATCH Statement IF ~?B1 THEN ~?cc := 0
+			     ELSE ~?=cc := 1 FI
+  THEN @CP_cc_Set(cc, B1, true, false, false) ENDMATCH;
+  IFMATCH Statement IF ~?B1 THEN ~?cc := 1
+			     ELSE ~?=cc := 0 FI
+  THEN @CP_cc_Set(cc, @Not(B1), true, false, false) ENDMATCH;
+  IFMATCH Statement IF ~?B1 THEN ~?cc := 0
+			     ELSE ~?=cc := 2 FI
+  THEN @CP_cc_Set(cc, B1, false, true, false) ENDMATCH;
+  IFMATCH Statement IF ~?B1 THEN ~?cc := 0
+		     ELSIF ~?B2 THEN ~?=cc := 3
+			        ELSE ~?=cc := 1 FI
+  THEN @CP_cc_Set(cc, B1, @Not(B2), false, true) ENDMATCH .;
+
+
+C:" We know the conditions under which cc is set to each value, ";
+C:" so scan forwards for tests of cc: ";
+
+MW_PROC @CP_cc_Set(cc, B0, B1, B2, B3) ==
+  IF @ST(cc) = T_Var_Lvalue
+    THEN VAR < call_types := @Make_Set(<T_Call, T_Proc_Call, T_X_Proc_Call,
+                                        T_MW_Proc_Call>),
+	       vars := <<@V(cc)>> \/ @Elts_Used(B0) \/ @Elts_Used(B1)
+			 \/ @Elts_Used(B2) \/ @Elts_Used(B3) >:
+	 @Right;
+	 @CP_cc_Statements(cc, B0, B1, B2, B3, vars);
+	 @Left ENDVAR FI .;
+
+
+C:" If A_Proc_Call_Filter is not empty, then these are the only vars ";
+C:" preserved by a T_A_Proc_Call ";
+
+MW_PROC @CP_cc_Statements(cc, B0, B1, B2, B3, vars) ==
+  VAR < posn_n := @Posn_n >:
+  DO IF (@ST(@I) = T_Cond OR @ST(@I) = T_D_If) AND @V(cc) IN @Used(@I)
+       THEN @CP_cc_Cond(cc, B0, B1, B2, B3, vars) FI;
+     IF @ST(@I) = T_Comment
+       THEN C:" skip comments ";
+     ELSIF NOT EMPTY?(@Stat_Types(@I) /\ call_types)
+       THEN C:" Can't (easily) track any further ";
+	    EXIT(1)
+     ELSIF T_A_Proc_Call IN @Stat_Types(@I) AND NOT EMPTY?(A_Proc_Call_Filter)
+	     AND NOT SUBSET?(@Make_Set(MAP("HEAD", vars)), A_Proc_Call_Filter)
+       THEN EXIT(1)
+     ELSIF @Elt_Clash_List?(vars, @Elts_Assigned(@I))
+       THEN EXIT(1)
+     ELSIF @V(cc) IN @Assigned(@I)
+       THEN EXIT(1)
+     ELSIF NOT @Gen_Proper?(@I, AS_Type)
+       THEN EXIT(1) FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @To(posn_n) ENDVAR .;
+
+
+MW_PROC @CP_cc_Cond(cc, B0, B1, B2, B3, vars) ==
+  @Down; C:" to first guarded ";
+  DO @Down; C:" to condition in guarded ";
+     IF @V(cc) IN @Used(@I)
+       THEN FOREACH Condition DO
+	      IF @ST(@I) = T_Equal
+		THEN IFMATCH Condition ~?(cc) = 0
+		       THEN PRINFLUSH("c0");
+			    @Paste_Over(B0) ENDMATCH;
+		     IFMATCH Condition ~?(cc) = 1
+		       THEN PRINFLUSH("c1");
+			    @Paste_Over(@And(@Not(B0), B1)) ENDMATCH;
+		     IFMATCH Condition ~?(cc) = 2
+		       THEN PRINFLUSH("c2");
+			    @Paste_Over(@And(@And(@Not(B0), @Not(B1)), B2)) ENDMATCH;
+		     IFMATCH Condition ~?(cc) = 3
+		       THEN PRINFLUSH("c3");
+			    @Paste_Over(@And(@And(@And(@Not(B0), @Not(B1)),
+						  @Not(B2)), B3)) ENDMATCH;
+	      ELSIF @ST(@I) = T_Not_Equal
+		THEN IFMATCH Condition ~?(cc) <> 0
+		       THEN PRINFLUSH("C0");
+			    @Paste_Over(@Not(B0)) ENDMATCH;
+		     IFMATCH Condition ~?(cc) <> 1
+		       THEN PRINFLUSH("C1");
+			    @Paste_Over(@Or(B0, @Not(B1))) ENDMATCH;
+		     IFMATCH Condition ~?(cc) <> 2
+		       THEN PRINFLUSH("C2");
+			    @Paste_Over(@Or(@Or(B0, B1), @Not(B2))) ENDMATCH;
+		     IFMATCH Condition ~?(cc) <> 3
+		       THEN PRINFLUSH("C3");
+			    @Paste_Over(@Or(@Or(@Or(B0, B1),
+						B2), @Not(B3))) ENDMATCH FI OD FI;
+     @Right; C:" to statements ";
+     IF @V(cc) IN @Used(@I)
+       THEN @Down;
+	    @CP_cc_Statements(cc, B0, B1, B2, B3, vars);
+	    @Up FI;
+     @Up;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up .;
+
+
+
+C:" Check if it would be worthwhile to expand over the next statement ";
+C:" if so, then do so! (move this COND past any intervening comments). ";
+C:" Current statement is a COND and there is a statement after it ";
+MW_PROC @CP_Maybe_Expand(L) ==
+VAR < P1 := @Posn, P2 := < >, cond1 := @I, used := < >, OK := 0, cc_assigned := 0,
+      comments := < >, var := 0, clash := 0, v1 := < >, v2 := < > >:
+  C:" If cc is assigned in the COND then allow expansion over a single assignment: ";
+  C:" But *don't* expand over an assignment to cc! ";
+  IF @ST(@I^1^2^1) = T_Assignment AND @ST(@I^1^2^1^1^1) = T_Var_Lvalue
+       AND @V(@I^1^2^1^1^1) = cc_name
+    THEN used := <<cc_name>> \/ @Elts_Used(@I); OK := 1; cc_assigned := 1 FI;
+  C:" Check for another COND, beyond any intervening comments and a simple assignment: ";
+  C:" P1 is this COND, P2 will be next COND or CALL dispatch ";
+  @Right;
+  DO IF NOT @Right? THEN EXIT(1) FI;
+     IF @ST(@I) = T_Assignment AND
+          (OK = 1 OR (@ST(@I^1^1) = T_Var_Lvalue AND @V(@I^1^1) = destination)
+	          OR (@ST(@I^1^2) = T_Number AND @V(@I^1^2) IN dispatch_codes))
+       THEN C:" don't skip an assignment to a DSECT pointer since Absorb_Left ";
+            C:" will then replace the pointer by its value in a[FOO].BAR ";
+	    OK := 0;
+	    FOR var IN @Elts_Assigned(@I) DO
+	      IF @Elt_Clash?(used, var)
+	           AND NOT (@ST(@I) = T_Assignment AND @ST(@I^1^1) = T_Var_Lvalue
+		             AND NOT EMPTY?(DSECTs.(@V(@I^1^1))))
+                THEN OK := -1 FI OD;
+	    @Right
+     ELSIF @ST(@I) = T_Comment
+       THEN @Right
+     ELSIF @ST(@I) = T_Cond AND cc_assigned = 1 AND  cc_name NOTIN @Used(@I)
+       THEN C:" Check if each arm is either improper or SKIP ";
+	    @Down; C:" to first guarded ";
+	    DO IF @Gen_Improper?(@I^2, "Reg")
+		 THEN C:" OK "
+	       ELSIF @Size(@I^2) = 1 AND @ST(@I^2^1) = T_Skip
+		 THEN C:" OK "
+		 ELSE EXIT(2) FI;
+	       IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	    C:" If we get here, then it is OK to skip this Cond ";
+	    C:" We will process it later (to ensure that any CALLs are processed) ";
+	    C:" See LAST(P2) below! ";
+	    @Up;
+	    @Right
+       ELSE EXIT(1) FI OD;
+
+  IF @ST(@I) = T_Cond AND OK = -1
+    THEN C:" We have something like: ";
+         C:"         IF r1 = 0 THEN cc := 0 ... FI; r1 := r3; IF cc = 0 ";
+         C:" Expand the second cond backwards over the assignment ";
+	 WHILE @ST(@Parent^(@Posn_n - 1)) <> T_Assignment AND @Trans?(TR_Absorb_Left) DO
+	   @Trans(TR_Absorb_Left, "") OD;
+         IF @Trans?(TR_Absorb_Left)
+	   THEN @Trans(TR_Absorb_Left, "") FI;
+         P2 := @Posn FI;
+
+  IF @ST(@I) = T_Cond
+    THEN P2 := @Posn;
+	 C:" Check if the second COND only has tests cc = 0 and/or cc <> 0 ";
+	 C:" If so, then we can replace the tests directly. ";
+	 IF cc_assigned = 1
+	   THEN @CP_Simple_cc0(P1, P2 VAR OK);
+		IF OK = 0
+		  THEN @CP_Simple_cc3(P1, P2 VAR OK) FI FI;
+	 C:" If either Simple_cc fix worked, then move the first COND: ";
+	 IF OK = 1
+	   THEN @Left;
+		WHILE @ST(@I) <> T_Cond DO
+		  IF @ST(@I) = T_Comment
+		    THEN comments := <@I> ++ comments; @Paste_Over(@Skip) FI;
+		  @Left OD;
+		@Right;
+		WHILE @ST(@I) <> T_Cond DO @Right OD FI;
+	 C:" Even if the above succeeded, there may be some tests in nested CONDs: ";
+	 OK := 0;
+         vars := @CP_Multi_Valued_Vars(cond1, L);
+
+         IF EMPTY?(vars) AND LENGTH(@Elts_Assigned(cond1)) = 1 AND @Size(cond1^1^2) = 1
+	     AND @ST(cond1^1^2^1) = T_Assignment AND @ST(cond1^1^2^1^1^2) = T_Number
+	   THEN vars := @Elts_Assigned(cond1) FI;
+
+	 C:" See if any of these variables appear in the tests in the next statement. ";
+	 @Down; C:" to first guard ";
+	 DO IF NOT EMPTY?(vars /\ @Elts_Used(@I^1))
+	      THEN C:" Found one: do the expand ";
+		   OK := 1; EXIT(1)
+	    ELSIF @ST(@I^2^1) = T_Cond AND NOT EMPTY?(vars /\ @Elts_Used(@I^2^1^1))
+	      THEN OK := 1; EXIT(1) FI;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+
+	 @Goto(P1); C:" back to orig position and insert any deleted comments ";
+	 IF OK = 0
+	   THEN WHILE NOT EMPTY?(comments) DO
+		  @Paste_Before(HEAD(comments));
+		  @Right;
+		  comments := TAIL(comments) OD
+	   ELSE @Paste_Over(@Skip);
+                C:" Process any Cond we skipped earlier. ";
+		WHILE @Posn_n < LAST(P2) DO
+		  @CP_Statement(VAR L);
+		  @Right OD;
+		@Goto(P2);
+		WHILE NOT EMPTY?(comments) DO
+		  @Paste_Before(HEAD(comments));
+		  @Right;
+		  comments := TAIL(comments) OD;
+		@Paste_Before(cond1);
+		C:" First cond is selected now: either expand the first cond, ";
+		C:" OR (if the first cond is a 3-way cond which sets cc) ";
+		C:" update the conditions in the second cond and leave it selected. ";
+		IF NOT EMPTY?(L) AND L[1][1] = 0
+		  THEN @CP_Maybe_Expand_cc(L, vars) FI FI
+  ELSIF @ST(@I) = T_Call AND -@V(@I) = dispatch
+    THEN P2 := @Posn;
+	 @Goto(P1); C:" back to orig position ";
+	 IF @Assigned(@I) = <cc_name>
+	   THEN C:" The Cond only sets up cc "
+	   ELSE PRINT(" ");
+                PRINFLUSH("Expanding a Cond over CALL dispatch ");
+                VAR < n := LAST(P2) - LAST(P1) >:
+                WHILE n > 1 DO
+                  IF @ST(@Parent^(@Posn_n+1)) = T_Comment
+                    THEN @Trans(TR_Move_To_Right, "")
+                    ELSE @Trans(TR_Absorb_Right, ""); PRINFLUSH("E") FI;
+                  n := n - 1 OD ENDVAR;
+                C:" Now absorb the dispatch: ";
+                @Trans(TR_Absorb_Right, "");
+                PRINT("E");
+                C:" Back to the first position (so that the assignment gets processed) ";
+                @Goto(P1) FI
+  ELSIF @ST(@I) = T_Proc_Call AND @Right?
+    THEN P2 := @Posn;
+	 @Right;
+	 WHILE @Right? AND @ST(@I) IN <T_Comment, T_Proc_Call> DO
+	   @Right OD;
+	 IF ((@ST(@I) = T_Call AND -@V(@I) = dispatch)
+	     OR (@Total_Size(@I) <= 12 AND @Call_Freq(-dispatch, @I) > 0))
+	   THEN vars := @CP_Multi_Valued_Vars(cond1, L);
+		@Goto(P1); C:" back to orig position ";
+		C:" We have to hope that one of the multi-valued variables ";
+		C:" gets copied into destination in one of the called procs. ";
+		IF NOT EMPTY?(vars)
+		  THEN @Paste_Over(@Skip);
+		       @Goto(P2);
+		       @Paste_Before(cond1);
+		       C:" First cond is selected now ";
+		       C:" Keep expanding (over proc calls and comments) ";
+		       C:" until the dispatch call is reached ";
+		       WHILE @ST(@Parent^(@Posn_n + 1)) IN <T_Comment, T_Proc_Call>
+			       AND @Trans?(TR_Expand_Forward) DO
+			 @Trans(TR_Expand_Forward, "") OD;
+		       IF @Trans?(TR_Expand_Forward) THEN @Trans(TR_Expand_Forward, "") FI;
+		       PRINFLUSH("F") FI
+	   ELSE @Goto(P1) FI
+    ELSE @Goto(P1); C:" don't expand " FI ENDVAR .;
+
+
+C:" Check for the tests cc = 0 and cc <> 0 in the second COND (selected) ";
+C:" If all the tests take this form, then replace them with a condition from ";
+C:" the first COND: ";
+
+MW_PROC @CP_Simple_cc0(P1, P2 VAR OK) ==
+  OK := 1;
+  @Down; C:" to first guarded ";
+  DO @Down;
+     FOREACH Condition DO
+       IF @ST(@I) NOTIN <T_And, T_Or, T_Not, T_X_BFunct_Call> AND cc_name IN @Variables(@I)
+	 THEN IFMATCH Condition cc = 0
+		THEN SKIP
+		ELSE IFMATCH Condition cc <> 0
+		       THEN SKIP
+		       ELSE OK := 0 ENDMATCH ENDMATCH FI OD;
+     @Up;
+     IF OK = 0 THEN EXIT(1)
+     ELSIF @Right? THEN @Right
+		   ELSE EXIT(1) FI OD;
+  @Up;
+  IF OK = 1
+    THEN @Goto(P1);
+	 IFMATCH Statement IF ~?B1 THEN cc := 0
+			    ELSIF ~?B2 THEN cc := 1
+			    ELSIF ~?B3 THEN cc := 2 FI
+	   THEN IF cc_name NOTIN @Variables(B1)
+		  THEN B2 := @Not(B1);
+		       @Goto(P2);
+		       @CP_Replace_cc0(B1, B2)
+		  ELSE OK := 0 FI
+	   ELSE IFMATCH Statement IF ~?B1 THEN cc := 0
+				   ELSIF ~?B2 THEN cc := 1
+					      ELSE cc := 2 FI
+		  THEN IF cc_name NOTIN @Variables(B1)
+			 THEN B2 := @Not(B1);
+			      @Goto(P2);
+			      @CP_Replace_cc0(B1, B2)
+			 ELSE OK := 0 FI
+		  ELSE @Goto(P2);
+		       OK := 0 ENDMATCH ENDMATCH FI .;
+
+
+MW_PROC @CP_Replace_cc0(B1, B2) ==
+  @Down; C:" to first guarded ";
+  DO @Down;
+     FOREACH Condition DO
+       IFMATCH Condition cc = 0
+	 THEN @Paste_Over(B1)
+	 ELSE IFMATCH Condition cc <> 0
+		THEN @Paste_Over(B2) ENDMATCH ENDMATCH OD;
+     @Up;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up .;
+
+
+C:" Check for the tests cc = 3 and cc <> 3 in the second COND (selected) ";
+C:" If all the tests take this form, then replace them with a condition from ";
+C:" the first COND (provided the tests in the first COND are suitable): ";
+
+MW_PROC @CP_Simple_cc3(P1, P2 VAR OK) ==
+  OK := 1;
+  @Down; C:" to first guarded ";
+  DO @Down;
+     FOREACH Condition DO
+       IF @ST(@I) NOTIN <T_And, T_Or, T_Not, T_X_BFunct_Call>
+            AND cc_name IN @Variables(@I)
+	 THEN IFMATCH Condition cc = 3
+		THEN SKIP
+		ELSE IFMATCH Condition cc <> 3
+		       THEN SKIP
+		       ELSE OK := 0 ENDMATCH ENDMATCH FI OD;
+     @Up;
+     IF OK = 0 THEN EXIT(1)
+     ELSIF @Right? THEN @Right
+		   ELSE EXIT(1) FI OD;
+  @Up;
+  IF OK = 1
+    THEN @Goto(P1);
+	 IFMATCH Statement IF ~?e1 = 0 THEN cc := 0
+			    ELSIF ~?=e1 = ~?e2 THEN cc := 3
+					       ELSE cc := 1 FI
+	   THEN @Goto(P2);
+		IF (@ST(e2) = T_Number AND @V(e2) <> 0)
+		     OR (@ST(e2) = T_String AND @V(e2) <> "hex 0x00")
+		  THEN IF cc_name NOTIN @Variables(e1)
+			 THEN @CP_Replace_cc3(@Make(T_Equal, < >, <e1, e2>),
+					      @Make(T_Not_Equal, < >, <e1, e2>))
+			 ELSE OK := 0 FI
+		  ELSE OK := 0 FI
+	   ELSE @Goto(P2);
+		OK := 0 ENDMATCH FI .;
+
+
+MW_PROC @CP_Replace_cc3(B1, B2) ==
+  @Down; C:" to first guarded ";
+  DO @Down;
+     FOREACH Condition DO
+       IFMATCH Condition cc = 3
+	 THEN @Paste_Over(B1)
+	 ELSE IFMATCH Condition cc <> 3
+		THEN @Paste_Over(B2) ENDMATCH ENDMATCH OD;
+     @Up;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up .;
+
+
+C:" Check for the case where the first cond is a three-way assignment to cc ";
+C:" and the second cond tests cc, otherwise do the expand. ";
+C:" First cond is selected, vars is the list of multi-valued vars in the first cond ";
+C:" which are accessed in the second cond. ";
+MW_PROC @CP_Maybe_Expand_cc(L, vars) ==
+  VAR < cc_values := < >, ok := 1, n := < >, tests := < >, cc_val := < >,
+	size := 0, p := 0 >:
+  cc_val := @CP_Get(L[1][2], <cc_name>);
+  C:" Count the number of guards, ignoring improper ones ";
+  C:" First cond sets cc to multiple values, and second cond tests it ";
+  C:" so expanding the first cond should not lead to code bloat ";
+  FOR guard IN @Cs(@I) DO
+    IF NOT @Gen_Improper?(guard, "Reg")
+      THEN size := size + 1 FI OD;
+  IF size <= 2
+    THEN IF @Trans?(TR_Expand_Forward)
+	   THEN @Trans(TR_Expand_Forward, "");
+		PRINFLUSH("2") FI
+  ELSIF NOT (<cc_name> IN vars)
+    THEN SKIP
+    ELSE C:" For a 3-way cond, check that each arm contains an assignment cc := n ";
+	 C:" or is a skip (the value that was assigned to cc is already there) ";
+	 C:" or is improper ";
+	 @Down; C:" to first guard ";
+	 test := true;
+	 DO tests := <@And(test, @I^1)> ++ tests;
+	    test := @And(test, @Not(@I^1));
+	    @Down_To(2); C:" to statements ";
+	    IFMATCH Statements cc := ~?n
+	      THEN IF @ST(n) = T_Number
+		     THEN cc_values := <n> ++ cc_values
+		     ELSE ok := 0 FI
+	      ELSE IFMATCH Statements SKIP
+		     THEN IF NOT EMPTY?(cc_val)
+			    THEN cc_values := <cc_val> ++ cc_values
+			    ELSE ok := 0 FI
+	      ELSE IF NOT @Is_Improper?
+	             THEN ok := 0 FI ENDMATCH ENDMATCH;
+	    @Up;
+	    IF ok = 1 AND @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 tests := REVERSE(tests);
+	 cc_values := REVERSE(cc_values);
+	 @Up; C:" back to first cond ";
+	 IF ok = 1
+	   THEN @Right; @CP_Fix_cc_Conds(cc_values, tests) FI FI ENDVAR .;
+
+
+MW_PROC @CP_Fix_cc_Conds(orig_cc_values, orig_tests) ==
+  VAR < tests := < >, newtests := < >, p := @Posn_n, cc_val := < >,
+	vars := REDUCE("\\/", MAP("@Variables", orig_tests)) \/ <cc_name> >:
+  DO C:" Process each of the tests in the cond: ";
+     C:" For each condition, find the sub-conditions which only reference cc ";
+     C:" Construct a list of all the cc values for which the condition is true, ";
+     C:" Replace the condition by an OR of the corresponding orig_tests: ";
+     @Down; C:" to first guarded ";
+     DO @Down; C:" to first cond ";
+	FOREACH Condition DO
+	  IF @Variables(@I) = <cc_name>
+	    THEN newtests := < >; tests := orig_tests;
+		 FOR cc_val IN orig_cc_values DO
+		   L := @CP_Put0(L, <cc_name>, cc_val);
+		   @Edit;
+		   VAR < Migration := 1 >:
+		     @CP_Update(VAR L) ENDVAR;
+		   IF @ST(@I) = T_True
+		     THEN newtests := <HEAD(tests)> ++ newtests FI;
+		   @Undo_Edit;
+		   tests := TAIL(tests) OD;
+		 IF LENGTH(newtests) = 0
+		   THEN @Paste_Over(@Make(T_False, < >, < >))
+		 ELSIF LENGTH(newtests) = 1
+		   THEN @Paste_Over(HEAD(newtests))
+		   ELSE @Paste_Over(@Make(T_Or, < >, newtests)) FI FI OD;
+	@Right; @Down; C:" to first statement ";
+	IF @ST(@I) = T_Cond AND cc_name IN @Variables(@I)
+	  THEN @CP_Fix_cc_Conds(orig_cc_values, orig_tests) FI;
+	@Up; @Up; C:" Back to guarded ";
+	IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+     @Up;
+     C:" Move to next Cond (if any), unless current statement clobbers cc: ";
+     IF NOT EMPTY?(vars /\ @Assigned(@I)) OR T_Proc_Call IN @Stat_Types(@I) THEN EXIT(1) FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI;
+     DO IF @ST(@I) = T_Cond AND cc_name IN @Variables(@I) THEN EXIT(1) FI;
+	IF NOT EMPTY?(vars /\ @Assigned(@I)) THEN EXIT(2) FI;
+	IF T_Proc_Call IN @Stat_Types(@I) THEN EXIT(2) FI;
+	IF @Right? THEN @Right ELSE EXIT(2) FI OD OD;
+  C:" Restore the position: ";
+  WHILE @Posn_n > p DO @Left OD ENDVAR .;
+
+
+
+
+C:" Return the set of variable names which are assigned two or more values ";
+C:" in the arms of the given Cond statement. ";
+C:" First collect the value lists for each branch into ll, ";
+C:" but combine inconsistent values into a list instead of deleting them. ";
+C:" Record the vars which end with 2 or more known values. ";
+MW_FUNCT @CP_Multi_Valued_Vars(cond, L) ==
+  VAR <ll := < >, origL := L, vars := < >, ok := 0, Unfold_Dispatch := 0 >:
+  @CP_Save_State;
+  @Edit;
+  @New_Program(cond);
+  @Down; C:" to first guarded ";
+  @CP_Guarded(VAR L);
+  IF NOT EMPTY?(L) THEN ll := L[1][2] FI;
+  C:" Merge the results of other branches with ll: ";
+  DO IF NOT @Right? THEN EXIT(1) FI;
+     @Down; @Edit; @CP_Deny_Condition(VAR origL); @Undo_Edit; @Up;
+     L := origL;
+     @Right;
+     @CP_Guarded(VAR L);
+     IF NOT EMPTY?(L) AND L[1][1] = 0 THEN ll := @CP_Merge_Keep(ll, L[1][2]) FI;
+     C:" Ignore the rest of the guards after a TRUE guard in a Cond ";
+     IF @ST(@I^1) = T_True THEN EXIT(1) FI OD;
+  C:" Extract the variables with two or more values from ll ";
+  C:" If any value is variable, then skip this one ";
+  WHILE NOT EMPTY?(ll) DO
+    IF LENGTH(ll[1]) > 2 AND T_Variable NOTIN MAP("@ST", TAIL(ll[1]))
+      THEN vars := <ll[1][1]> ++ vars FI;
+    ll := TAIL(ll) OD;
+  @Undo_Edit;
+  @CP_Restore_State;
+  (@Make_Set(vars)) .;
+
+
+C:" Update the condition, then do the body (unless the condition becomes FALSE) ";
+MW_PROC @CP_Guarded(VAR L) ==
+  @Down; C:" to condition ";
+  @CP_Update(VAR L);
+  C:" If the condition is v=n or (v=n AND ...), then we know that v=n ";
+  @CP_Assert_Condition(VAR L);
+  IF @ST(@I) = T_False
+    THEN L := < >; C:" Don't let this arm affect results from other arms "
+    ELSE @Right; C:" to statements ";
+	 @CP_Statements(VAR L) FI;
+  @Up .;
+
+
+C:" After an assertion, we know the condition is true ";
+MW_PROC @CP_Assert(VAR L) ==
+  @Down; @CP_Update(VAR L); @CP_Assert_Condition(VAR L); @Up .;
+
+C:" Update L with values provided by the condition ";
+MW_PROC @CP_Assert_Condition(VAR L) ==
+  IF @ST(@I) = T_Equal
+    THEN IF @CP_Variable?(@I^1)
+	      AND @CP_Constant?(@I^2)
+	   THEN L := @CP_Put0_If_Safe(L, @CP_Var_Name(@I^1), @I^2)
+	 ELSIF @CP_Variable?(@I^2)
+	      AND @CP_Constant?(@I^1)
+	   THEN L := @CP_Put0_If_Safe(L, @CP_Var_Name(@I^2), @I^1) FI
+  ELSIF @ST(@I) = T_And
+    THEN @Down; C:" to first conjunct ";
+	 DO @CP_Assert_Condition(VAR L);
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up
+  ELSIF @ST(@I) = T_Not
+    THEN @Down; @CP_Deny_Condition(VAR L); @Up FI .;
+
+
+C:" If an arm of a cond has v<>n then we know v=n afterwards, ";
+C:" also after WHILE v<>n DO ... OD we know v=n ";
+MW_PROC @CP_Deny_Condition(VAR L) ==
+  IF @ST(@I) = T_Not_Equal
+    THEN IF @CP_Variable?(@I^1)
+	      AND @CP_Constant?(@I^2)
+	   THEN L := @CP_Put0_If_Safe(L, @CP_Var_Name(@I^1), @I^2)
+	 ELSIF @CP_Variable?(@I^2)
+	      AND @CP_Constant?(@I^1)
+	   THEN L := @CP_Put0_If_Safe(L, @CP_Var_Name(@I^2), @I^1) FI
+  ELSIF @ST(@I) = T_Or
+    THEN @Down; C:" to first conjunct ";
+	 DO @CP_Deny_Condition(VAR L);
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up
+  ELSIF @ST(@I) = T_Not
+    THEN @Down; @CP_Assert_Condition(VAR L); @Up FI .;
+
+
+C:" A version of @CP_Put0 which doesn't clobber fields of the value if they ";
+C:" already appear in the list. The problem is this: ";
+C:" foo.bar := 1234; ";
+C:" IF foo = 0 THEN ... ELSE ... FI; ";
+C:" PRINT(foo.bar) ";
+C:" Within the THEN part of the IF we must not clobber foo.bar ";
+C:" since it will not get restored! ";
+C:" This is OK since we can assume foo = 0 but we haven't assigned to it. ";
+C:" Note: if foo is already a known value not equal to 0 then this won't be applied! ";
+
+MW_FUNCT @CP_Put0_If_Safe(L, N, V) == : SKIP;
+  (IF EMPTY?(L) OR L[1][1] > 0 
+     THEN IF HEAD(N) <> exit_flag
+            THEN <<0, <<N, V>>>> ++ L
+            ELSE L FI
+     ELSE IF HEAD(N) = exit_flag
+            THEN IF @V(V) = 1 OR (CP_In_Preserves_Dest > 1 AND @V(V) > 1)
+                   THEN TAIL(L)
+                   ELSE L FI
+            ELSE <<0, @CP_Put_If_Safe(L[1][2], N, V)>> ++ TAIL(L) FI FI) .;
+
+
+MW_FUNCT @CP_Put_If_Safe(L, N, V) ==
+  VAR < old := @CP_Get(L, N) >:
+  SKIP;
+  (IF HEAD(N) = exit_flag OR (NOT EMPTY?(old) AND @Equal?(V, old))
+     THEN L
+     ELSE <<N, V>> ++ L FI) .;
+
+
+MW_PROC @CP_Assignment(VAR L) ==
+  @CP_Assigns(VAR L);
+  C:" Replace with a SKIP if there are no assigns left: ";
+  IF NOT @Cs?(@I)
+    THEN @Paste_Over(@Make(T_Skip, < >, < >)) FI .;
+
+
+C:" For an assign: ";
+C:" (v is a `simple' variable, e is any expression, C is a constant) ";
+C:" v:=e first call @CP_Update on e, ";
+C:"   then remove v from the list and check for these cases: ";
+C:" v:=C adds v to the list with value C ";
+C:"   if we initially had v=C, then delete the assign ";
+C:" v1:=v2 where v2 is in the list with value C, adds/updates v1 to C ";
+C:"   if we initially had v1=C, then delete the assign ";
+C:"   (this case is dealt with by updating v1 and v2 before checking) ";
+
+C:" v[n..m]:=C where (n-m) < 4: split up C into separate bytes and store ";
+C:" as separate entries in L (up to 4 bytes) ";
+
+MW_PROC @CP_Assigns(VAR L) ==
+  C:" Check for an assignment to exit_flag or an increment of a variable ";
+  C:" with the special value: ";
+  IF EMPTY?(L) OR L[1][1] <> 0
+    THEN SKIP
+  ELSIF @Size(@I) = 1 AND @ST(@I^1^1) = T_Var_Lvalue
+       AND @V(@I^1^1) = exit_flag AND @ST(@I^1^2) = T_Number
+    THEN IF @V(@I^1^2) = 1 OR (CP_In_Preserves_Dest > 1 AND @V(@I^1^2) > 1)
+	   THEN L := TAIL(L) FI
+  ELSIF @Size(@I) = 1 AND @ST(@I^1^1) = T_Var_Lvalue AND @ST(@I^1^2) = T_Plus
+    THEN IF @ST(@I^1^2^1) = T_Variable AND @V(@I^1^1) = @V(@I^1^2^1)
+	      AND @ST(@I^1^2^2) = T_Number AND @V(@I^1^2^2) IN <4, 8, 12>
+	   THEN VAR < val := @CP_Get(L[1][2], <@V(@I^1^1)>), inc := @V(@I^1^2^2) >:
+		IF EMPTY?(val)
+		  THEN @CP_Assigns_Sub(VAR L)
+		ELSIF @ST(val) <> T_Number 
+		  THEN @CP_Assigns_Sub(VAR L)
+		ELSIF @V(val) = CP_Special_Value
+		  THEN PRINT("<inc: ", @N_String(@V(@I^1^1)), ">");
+		       CP_Return_Code_Inc := CP_Return_Code_Inc \/ <inc>
+		  ELSE @CP_Assigns_Sub(VAR L) FI ENDVAR
+	   ELSE @CP_Assigns_Sub(VAR L) FI
+    ELSE @CP_Assigns_Sub(VAR L) FI .;
+
+
+MW_PROC @CP_Assigns_Sub(VAR L) ==
+  VAR < newL := L[1][2], oldL := L[1][2], new := < >,
+	v := < >, e := < >, e2 := < >, keep := 1,
+	old_assign := < >, changed := 0,
+	v1 := < >, e1 := < > >:
+  @Edit;
+  @Down; C:" to first assign ";
+  DO keep := 1; C:" `keep' records whether we need to keep this assign ";
+     old_assign := @I;
+     C:" `changed' will record whether any assign has been changed or deleted ";
+     C:" Check for rX[1] := hex 0xNN where rX is known to be zero already ";
+     IF @ST(@I^1) = T_Aref_Lvalue AND @ST(@I^1^2^1) = T_Number
+          AND @V(@I^1^2^1) = 1 AND @ST(@I^1^1) = T_Var_Lvalue
+      THEN IF @ST(@I^2) = T_String
+                   AND (@V(@I^2) = " " OR @Starts_With?(@V(@I^2), "hex 0x"))
+                OR @ST(@I^2) = T_Number
+             THEN VAR < v := @I^1^1, e := @CP_Get(oldL, @CP_Var_Name(@I^1^1)),
+	                 str := "" >:
+	           IF NOT EMPTY?(e) AND @ST(e) = T_Number AND @V(e) = 0
+                     THEN @Down; C:" to rX[1] lvalue ";
+		          @Paste_Over(v);
+			  @Right; C:" to expn ";
+                          IF @ST(@I) = T_Number
+			    THEN str := @Num_To_Hex(@V(@I));
+                                 WHILE SLENGTH(str) < 2 DO
+				   str := "0" ++ str OD
+                          ELSIF @ST(@I) = T_String AND @V(@I) = " "
+			    THEN str := "hex 0x40"
+			    ELSE str := @V(@I) FI;
+                          @Paste_Over(@Make(T_String, str ++ "000000", < >));
+			  @Up FI ENDVAR FI FI;
+
+     @Down; C:" to lvalue ";
+     C:" Update both sides of the assign with current known values, ";
+     C:" then check if a variable is being assigned a constant value. ";
+     C:" (Consider the assignment v[a] := x where both a and x are known) ";
+     @CP_Update(VAR L);
+     IF @Is_Mem_Rel?(@I)
+       THEN IF @Is_Addr?(@Get_Mem_Rel(@I))
+              THEN VAR < v1 := @Expn_To_Lvalue(@Get_Addr(@Get_Mem_Rel(@I))),
+                         e1 := @Get_Mem_Rel_N(@I) >:
+                   IF @ST(v1) = T_Sub_Seg_Lvalue OR @ST(v1) = T_Rel_Seg_Lvalue
+                     THEN v1 := v1^1 FI;
+                   IF @GT(v1) = T_Lvalue
+                     THEN @Paste_Over(FILL Lvalue ~?v1[1..~?e1] ENDFILL) FI ENDVAR FI;
+     ELSIF @Is_Mem?(@I)
+       THEN IF @Is_Addr?(@Get_Mem(@I))
+              THEN VAR < v1 := @Expn_To_Lvalue(@Get_Addr(@Get_Mem(@I))) >:
+                   IF @ST(v1) = T_Aref_Lvalue
+		     THEN @Paste_Over(v1)
+                   ELSIF @ST(v1) = T_Sub_Seg_Lvalue OR @ST(v1) = T_Rel_Seg_Lvalue
+		     THEN v1 := v1^1;
+		          @Paste_Over(FILL Lvalue ~?v1[1] ENDFILL)
+		     ELSE @Paste_Over(FILL Lvalue ~?v1[1] ENDFILL) FI ENDVAR FI FI;
+     IF @Is_Mem_Rel?(@I) AND @ST(@Get_Mem_Rel_N(@I)) <> T_Number
+       THEN C:" This assignment will clobber random memory via a pointer";
+            newL := @CP_Clobber_Zeros(newL) FI;
+     v := @CP_Var_Name(@I);
+     IF FALSE AND @ST(@I) = T_Var_Lvalue AND NOT EMPTY?(DSECTs.(@V(@I)))
+       THEN C:" Don't update the expression in a DSECT pointer assignment "
+     ELSIF @ST(@I) = T_Var_Lvalue AND @V(@I) = r1_name
+       THEN C:" Hack: don't update assignment to restore r1 "
+       ELSE @Right; @CP_Update(VAR L); @Left FI;
+     IF @ST(@I) = T_Sub_Seg_Lvalue AND @ST(@I^2) = T_Number AND @ST(@I^3) = T_Number
+	  AND @V(@I^3) - @V(@I^2) < 4
+       THEN @CP_Sub_Seg_Lvalue(VAR newL)
+     ELSIF @ST(@I) = T_Rel_Seg_Lvalue AND @ST(@I^2) = T_Number AND @ST(@I^3) = T_Number
+	  AND @V(@I^3) <= 4
+       THEN @CP_Rel_Seg_Lvalue(VAR newL)
+     ELSIF NOT EMPTY?(v)
+       THEN @Right; C:" to expression ";
+	    e := @CP_Get(oldL, v);
+	    IF EMPTY?(e) OR NOT @Equal?(e, @I) THEN newL := @CP_Remove(newL, v) FI;
+            IF @ST(@I) = T_Variable AND @Starts_With?(@V(@I), "NOTUSED_")
+              THEN e2 := Notused_Value.(@V(@I));
+                   IF EMPTY?(e2)
+                     THEN e2 := @Make(T_Number,
+                                      @String_To_Num(SUBSTR(@N_String(@V(@I)), 8)),
+				      < >);
+                          Notused_Value.(@V(@I)) := e2 FI
+	    ELSIF @ST(@I) = T_Variable OR @ST(@I) = T_Struct
+	      THEN e2 := @CP_Get(oldL, @CP_Var_Name(@I));
+	           IF EMPTY?(e2) THEN e2 := @I FI
+	      ELSE e2 := @I FI;
+	    IF @CP_Constant?(e2)
+	      THEN C:" Don't record FOO.BAR as the value of FOO. ";
+		   C:" Check for incremented special value. ";
+		   IF @Prefix?(v, @CP_Var_Name(e2))
+		     THEN PRINFLUSH("^")
+		   ELSIF @ST(e2) = T_Minus AND @ST(e2^1) = T_Plus
+		     THEN C:" Hack for ptr := (reg + ptr) - ADDRESS_OF(a[ptr].foo.bar) ";
+		          newL := @CP_Put(newL, v, e2)
+		   ELSIF v IN @Elements(e2)
+		     THEN C:" Don't record a constant from v := v - n ";
+		          C:" (This shouldn't happen since v is not constant) "
+
+                   ELSIF @ST(e2) = T_Number AND @V(e2) = CP_Special_Value
+                     THEN CP_Return_Code_Normal := 1;
+		          newL := @CP_Put(newL, v, e2)
+
+		   ELSIF @ST(e2) = T_Number 
+                           AND @V(e2) IN <CP_Special_Value + 4, CP_Special_Value + 8,
+			                  CP_Special_Value + 12>
+		     THEN VAR < inc := @V(e2) - CP_Special_Value >:
+		          newL := @CP_Put(newL, v,
+		                          @Make(T_Number, CP_Special_Value, < >));
+                          PRINT("(special value inc ", inc, ")");
+			  CP_Return_Code_Inc := CP_Return_Code_Inc \/ <inc> ENDVAR
+
+		     ELSE newL := @CP_Put(newL, v, e2) FI;
+		   C:" Don't delete an assign to cc just because you know the value: ";
+		   IF NOT EMPTY?(e)
+		        AND v NOTIN <<cc_name>, <zf_name>, <cf_name>, <destination>> 
+			AND @Equal?(e, e2)
+		     THEN C:" delete this assign: the var already had this value ";
+			  PRINFLUSH("X"); keep := 0 FI FI
+       ELSE C:" For a complex assign, eg v[a]:=b, where a is unknown, ";
+	    C:" remove the assigned variable from L: ";
+	    IF @ST(@I) = T_Var_Lvalue
+	      THEN newL := @CP_Remove(newL, <@V(@I)>)
+	    ELSIF @ST(@I) IN <T_Aref_Lvalue, T_Sub_Seg_Lvalue,
+			      T_Rel_Seg_Lvalue, T_Final_Seg_Lvalue>
+	      THEN v := @CP_Var_Name(@I^1);
+                   IF EMPTY?(v)
+		     THEN SKIP
+	           ELSIF v <> <a_name>
+		     THEN newL := @CP_Remove(newL, v) FI
+	      ELSE v := @Elts_Assigned(@I);
+		   IF LENGTH(v) = 1 THEN newL := @CP_Remove(newL, HEAD(v)) FI FI FI;
+     @Up; C:" back to Assign ";
+     C:" Check for and record simple variable equivalences: ";
+     @CP_Check_Equiv(@I^1, @I^2 VAR oldL, newL, keep);
+
+     C:" Check for saving a dispatch code in memory  a[e + n, 4] := c ";
+     IF @Is_Mem_Rel?(@I^1) AND @ST(@Get_Mem_Rel_N(@I^1)) = T_Number
+          AND @V(@Get_Mem_Rel_N(@I^1)) = 4
+	  AND @ST(@Get_Mem_Rel(@I^1)) = T_Plus
+	  AND @ST(@Get_Mem_Rel(@I^1)^1) = T_Variable
+	  AND @ST(@Get_Mem_Rel(@I^1)^2) = T_Number
+	  AND (@V(@Get_Mem_Rel(@I^1)^1) IN registers
+	            OR @CP_Reg_Init_Var?(@Get_Mem_Rel(@I^1)^1))
+	  AND @ST(@I^2) = T_Number AND @V(@I^2) IN dispatch_codes AND @V(@I^2) > 0
+       THEN PRINFLUSH("C");
+            VAR < name := @Make_Name(@N_String(@V(@Get_Mem_Rel(@I^1)^1))
+	                               ++ "__" ++ @String(@V(@Get_Mem_Rel(@I^1)^2))) >:
+            newL := @CP_Put(newL, <name>, @I^2) ENDVAR FI;
+
+     C:" Don't replace a register by a reg_init (but do propagate the init) ";
+     IF @ST(old_assign^2) = T_Variable AND @ST(@I^2) = T_Variable
+          AND @V(@I^2) IN reg_inits AND @V(old_assign^2) IN registers
+       THEN @Paste_Over(old_assign) FI;
+
+     C:" If a reg_init is incremented, then keep it: ";
+     IF @ST(@I^1) = T_Var_Lvalue AND @ST(@I^2) = T_Plus AND @ST(@I^2^1) = T_Variable
+          AND @ST(@I^2^2) = T_Number AND @V(@I^1) = @V(@I^2^1)
+       THEN C:" Incremented register ";
+            VAR < val := @CP_Get(oldL, @CP_Var_Name(@I^1)) >:
+	    IF NOT EMPTY?(val) AND @ST(val) = T_Variable AND @V(val) IN reg_inits
+	      THEN newL := oldL FI ENDVAR FI;
+
+     IF keep = 1 OR destination IN @Variables(@I^1)
+       THEN new := <@I> ++ new;
+	    IF changed = 0 AND NOT !XC eq?(old_assign, @I)
+	      THEN changed := 1 FI
+       ELSE changed := 1 FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  L := <<0, newL>> ++ TAIL(L);
+  @Up; C:" to Assigns/Assignment ";
+  @Undo_Edit;
+  IF changed = 1
+    THEN @Paste_Over(@Make(@ST(@I), < >, REVERSE(new))) FI ENDVAR .;
+
+
+
+C:" Check for simple variable equivalences, if foo = bar already in oldL, ";
+C:" then set keep := 0, otherwise record the equivalence in newL. ";
+C:" The main use for this is in eliminating redundant reloads of dsect pointers ";
+C:" from the base register. ";
+
+MW_PROC @CP_Check_Equiv(var, expn VAR oldL, newL, keep) ==
+  IF @ST(var) = T_Var_Lvalue AND @ST(expn) = T_Variable
+    THEN VAR < val1 := @CP_Get(oldL, <@V(var)>),
+               val2 := @CP_Get(oldL, <@V(expn)>) >:
+	 IF NOT EMPTY?(val1) AND @ST(val1) = T_Variable AND @V(val1) = @V(expn)
+	   THEN keep := 0
+	 ELSIF NOT EMPTY?(val2) AND @ST(val2) = T_Variable AND @V(val2) = @V(var)
+	   THEN keep := 0
+         ELSIF @Starts_With?(@V(expn), "NOTUSED_")
+	   THEN C:" Propagate NOTUSED_nnn not nnn ";
+	        newL := @CP_Put(newL, <@V(var)>, expn)
+         ELSIF NOT EMPTY?(@CP_Get(newL, <@V(var)>))
+	   THEN C:" The assignment gave a known value to var "
+	   ELSE newL := @CP_Put(newL, <@V(var)>, expn) FI ENDVAR FI .;
+
+
+
+
+C:" Assigning a number to a 4 or fewer byte segment ";
+MW_PROC @CP_Sub_Seg_Lvalue(VAR newL) ==
+  VAR < v := @CP_Var_Name(@I^1), e := < >, n := @V(@I^2), m := @V(@I^3) >:
+  IF NOT EMPTY?(v)
+    THEN C:" Remove the old values of the segments: ";
+	 FOR i := n TO m STEP 1 DO
+	   newL := @CP_Remove(newL, v ++ <-i>) OD;
+	 @Right; C:" to expression ";
+	 IF @ST(@I) = T_Number
+	   THEN FOR i := n TO m STEP 1 DO
+		  e := @Make(T_Number, @Byte(@V(@I), m - i), < >);
+		  newL := @CP_Put(newL, v ++ <-i>, e) OD FI FI ENDVAR .;
+
+
+MW_PROC @CP_Rel_Seg_Lvalue(VAR newL) ==
+  VAR < v := @CP_Var_Name(@I^1), e := < >, n := @V(@I^2), m := @V(@I^2) + @V(@I^3) - 1 >:
+  IF NOT EMPTY?(v)
+    THEN C:" Remove the old values of the segments: ";
+	 FOR i := n TO m STEP 1 DO
+	   newL := @CP_Remove(newL, v ++ <-i>) OD;
+	 @Right; C:" to expression ";
+	 IF @ST(@I) = T_Number
+	   THEN FOR i := n TO m STEP 1 DO
+		  e := @Make(T_Number, @Byte(@V(@I), m - i), < >);
+		  newL := @CP_Put(newL, v ++ <-i>, e) OD FI FI ENDVAR .;
+
+
+C:" Return the nth most significant byte of an integer: ";
+MW_FUNCT @Byte(i, n) == : SKIP;
+  (IF n = 0 THEN (i MOD 256)
+	    ELSE @Byte(i DIV 256, n - 1) FI) .;
+
+
+C:" For an Action System (which may have thousands of actions) we take this approach: ";
+C:" (1) Put the action bodies into an array ";
+C:" (2) Initialise `entry' tables for each action (including Z) ";
+C:"     These are initialised to empty, apart from the entry action, ";
+C:"     which is initialised with the values known on entry to the system. ";
+C:" (3) Iterate over all the actions, updating entry tables with new information, ";
+C:"     but NOT modifying any of the bodies with this `tentative' information ";
+C:" (4) Once this process converges, we can update the bodies using ";
+C:"     the entry tables for each action. Rebuild the action system. ";
+C:" (5) The entry table for Z is the result. ";
+
+C:" TODO: the iteration over actions should be carried out in dominator tree order ";
+C:" rather than a simple breadth-first order (to minimise the number of passes required.) ";
+C:" See the makepict stript for algorithms, the method is: ";
+C:"   (1) Calculate predecessor sets ";
+C:"   (2) Calculate a BFS ordering ";
+C:"   (3) Compute the dominator set for each node ";
+C:"   (4) Remove back edges ";
+C:"   (5) Do a topological sort (for an irreducible flowgraph there will ";
+C:"       be cycles: in this case pick an element with the minimum ";
+C:"       number of predecessors) ";
+
+C:" The entry table for each action is either < > (no information known) ";
+C:" or <0, l> where l is a list of variable-value pairs. ";
+
+C:" If we are in a proc call, then don't process a sub-action-system ";
+C:" (otherwise, the multiple passes can lead to exponential time factors) ";
+
+MW_PROC @CP_A_S(VAR L) ==
+  VAR < AS_Type := @System_Type(@I) >:
+  IF NOT @Regular_System?(@I)
+    THEN PRINT("Action-System ", @N_String(@V(@I^1)), " is not regular.");
+         @Down_To(2); @Down;
+	 DO @Down_To(2);
+	    L := <<0, < >>>;
+	    @CP_Statements(VAR L);
+	    @Up;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up; @Up;
+	 @CP_Clobber(VAR L)
+  ELSIF NOT EMPTY?(Call_Path)
+    THEN PRINT("Sub-Action-System ", @N_String(@V(@I^1)), " at ", Call_Path);
+	 @Down_To(2); @Down;
+	 DO @Down_To(2);
+	    L := <<0, < >>>;
+	    @CP_Statements(VAR L);
+	    @Up;
+	    IF NOT @Regular?(@I)
+	      THEN PRINT("Action ", @N_String(@V(@I^1)), " is not regular!") FI;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up; @Up;
+	 @CP_Clobber(VAR L)
+    ELSE @CP_A_S_Reg(VAR L) FI ENDVAR .;
+
+MW_PROC @CP_A_S_Reg(VAR L) ==
+  VAR < N := @Size(@I^2) >:
+  VAR < AS_Name := @V(@I^1),
+	Start := 0,
+	dispatch := 0,
+	destination := @Make_Name("destination"),
+	orig_Bodies := ARRAY(N, < >),
+	Bodies := ARRAY(N, < >), 
+	Names := ARRAY(N+1, < >),
+	Entries := ARRAY(N+1, < >),
+        Succs := ARRAY(N+1, < >), Preds := ARRAY(N+1, < >),
+	orig_Entries := ARRAY(N+1, < >),
+	Name2Num := HASH_TABLE,
+	runs := 1 >:
+  @Edit;
+  C:" Calculate Bodies, Names, Name2Num ";
+  @FD_Init(N VAR Bodies, Names, Name2Num);
+  C:" Find the starting action number: ";
+  Start := Name2Num.(AS_Name);
+  @FD_Succs_And_Preds(N, Bodies, Start VAR Succs, Preds);
+  C:" Check for a dispatch action: ";
+  dispatch := Name2Num.(@Make_Name("dispatch"));
+  IF EMPTY?(dispatch) THEN dispatch := -1 FI;
+  C:" On entry to the system, only one entry list is known: ";
+  Entries[Start] := HEAD(L);
+  C:" Do a breadth-first walk through the call graph, updating the entry lists. ";
+  C:" Repeat until convergence (restore bodies after each iteration).  ";
+  FOR i:=1 TO N STEP 1 DO
+    orig_Bodies[i] := Bodies[i] OD;
+  DO FOR i:=1 TO N+1 STEP 1 DO
+       orig_Entries[i] := Entries[i] OD;
+     VAR < State_Saves := 0 >:
+     @CP_Save_State;
+     @CP_Update_Entries(Start, N, Names VAR Bodies, Entries);
+     @CP_Restore_State ENDVAR;
+     PRINT("");
+     IF orig_Entries = Entries THEN EXIT(1) FI;
+     runs := runs + 1;
+     IF runs > 20
+       THEN PRINT("Too many scans required."); EXIT(1) FI;
+     PRINT("");
+     PRINT("Re-Scanning Action System, scan: ", runs);
+     C:" Restore bodies ";
+     FOR i:=1 TO N STEP 1 DO
+       Bodies[i] := orig_Bodies[i] OD OD;
+  C:" Rebuild AS with new bodies: ";
+  @FD_Rebuild_AS(N, Bodies, Names, AS_Name, < >);
+  @End_Edit;
+  IF EMPTY?(Entries[N+1])
+    THEN C:" Action system never reaches a CALL Z! ";
+	 L := TAIL(L)
+    ELSE L[1] := Entries[N+1] FI ENDVAR ENDVAR .;
+
+C:" Breadth-first search for information, updating Entries ";
+C:" TODO: Use breadth-first search of dominator graph, not call graph ";
+MW_PROC @CP_Update_Entries(Start, N, Names VAR Bodies, Entries) ==
+  VAR < todo := <Start>, done := HASH_TABLE, action := 0, L := < >,
+	calls := < >, call := < > >:
+  done.(N + 1) := 1;
+  done.(Start) := 1;
+  WHILE NOT EMPTY?(todo) DO
+    action := HEAD(todo);
+    todo := TAIL(todo);
+    C:" Update the info for this actions successors: ";
+    IF initial_call_budget <= 200
+      THEN L := <<0, < >>>
+    ELSIF NOT EMPTY?(Entries[action])
+      THEN L := <Entries[action]>
+      ELSE L := < > FI;
+    PRINFLUSH(".");
+    IF action = dispatch
+      THEN IF NOT EMPTY?(L) AND L[1][1] = 0
+	     THEN L[1][2] := @CP_Remove(L[1][2], <destination>) FI FI;
+    @New_Program(Bodies[action]);
+    C:" each CALL n will merge the current list with Entries[n] ";
+    @CP_Statements(VAR L);
+    C:" Calculate the successors from the edited body ";
+    C:" and add new successors to the end of the todo list: ";
+    calls := @Calls(@Program);
+    WHILE NOT EMPTY?(calls) DO
+      call := -HEAD(HEAD(calls)); calls := TAIL(calls);
+      IF EMPTY?(done.(call))
+	THEN todo := todo ++ <call>;
+	     done.(call) := 1 FI OD;
+    Bodies[action] := @Program OD ENDVAR .;
+
+
+MW_PROC @CP_Call(VAR L) ==
+  IF NUMBER?(@V(@I)) AND @V(@I) < 0 AND NOT EMPTY?(Entries)
+       AND NOT EMPTY?(L) AND L[1][1] = 0
+    THEN VAR < n := -@V(@I), newL := L[1][2], dest_value := 0,
+               posn_n := @Posn_n, done := 0, seen_code := 0, tmp := < > >:
+	 C:" If the call is to dispatch, and the value of destination ";
+	 C:" is known and an integer, then unfold and simplify the dispatch action ";
+	 C:" BUT don't unfold a dispatch call inside dispatch itself! ";
+	 IF n = dispatch AND action <> dispatch
+	   THEN dest_value := @CP_Get(newL, <destination>);
+	        C:" If the value is a variable, check the variable's value ";
+		C:" in case it is a reg init: ";
+                IF NOT EMPTY?(dest_value) AND @ST(dest_value) = T_Variable
+		     AND @V(dest_value) NOTIN reg_inits
+		  THEN tmp := @CP_Get(newL, <@V(dest_value)>);
+		       IF NOT EMPTY?(tmp) THEN dest_value := tmp FI FI;
+                IF EMPTY?(dest_value) OR @ST(dest_value) = T_Variable
+		  THEN DO IF @Left? THEN @Left ELSE EXIT(1) FI;
+		          IFMATCH Statement ~?v := ~?e
+			    THEN IF @ST(v) = T_Var_Lvalue AND @V(v) IN registers
+			              AND @ST(e) = T_Number AND @V(e) > 0
+				      AND @V(e) IN dispatch_codes
+				   THEN seen_code := 1 FI ENDMATCH;
+                          IF @ST(@I) NOTIN <T_Comment, T_Assignment> THEN EXIT(1) FI OD;
+		       @To(posn_n) FI;
+		IF EMPTY?(dest_value)
+		  THEN DO IF @Left? THEN @Left ELSE EXIT(1) FI;
+		          IF @ST(@I) NOTIN <T_Comment, T_Assignment> THEN EXIT(1) FI;
+                          IFMATCH Statement destination := a[~?e, 4]
+			    THEN e := @I^1^2;
+			         @To(posn_n);
+				 @CP_Unfold_Dispatch(e, action, seen_code VAR L);
+				 done := 1
+                            ELSE 
+                          IFMATCH Statement destination := ~?e
+                            THEN IF @ST(e) = T_Plus AND @ST(e^1) = T_Variable
+			              AND @ST(e^2) = T_Number AND @V(e^1) IN registers
+                                   THEN VAR < e1 := @CP_Get(newL, <@V(e^1)>) >:
+				        IF NOT EMPTY?(e1) AND @ST(e1) = T_Variable
+					     AND @V(e1) IN reg_inits
+					  THEN C:" Incremented module return ";
+					       @To(posn_n);
+					       @Paste_Over(@Make(T_Call, -(N+1), < >));
+			                       done := 1 FI ENDVAR FI;
+		                 IF done = 1
+				   THEN C:" Done "
+			         ELSIF @ST(e) IN <T_Variable, T_Struct,
+				                  T_Sub_Seg, T_Rel_Seg> 
+                                         AND (@Struct_Elts(e) NOTIN return_elts
+                                               OR @Struct_Elts(e) IN Vcons
+                                               OR seen_code = 1)
+                                   THEN @To(posn_n);
+				        @CP_Unfold_Dispatch(e, action, seen_code VAR L)
+                                 ELSIF effort >= 2 AND CP_In_Preserves_Dest = 0
+                                   THEN @CP_Multiple_Destinations(e VAR L)
+                                   ELSE PRINFLUSH("d1"); L := TAIL(L) FI;
+				 done := 1 ENDMATCH ENDMATCH;
+                           IF done = 1 THEN EXIT(1) FI OD;
+                        C:" Check for reaching the start of an entry point ";
+			IF done = 0 AND @Posn_n = 1 AND @ST(@I) = T_Comment
+			     AND @V(@I) = " <ENTRY POINT> "
+                          THEN @To(posn_n);
+			       @Paste_Over(@Make(T_Call, -(N+1), < >));
+			       done := 1 FI;
+			@To(posn_n);
+                        IF done = 0 THEN PRINFLUSH("d1"); L := TAIL(L) FI
+		  ELSE @CP_Unfold_Dispatch(dest_value, action, seen_code VAR L) FI
+         ELSIF NOT EMPTY?(L) AND L[1][1] = 0
+	   THEN L := TAIL(L) FI;
+         IF @ST(@I) = T_Call
+           THEN n := -@V(@I);
+                IF EMPTY?(Entries[n])
+                  THEN Entries[n] := <0, newL>
+                  ELSE Entries[n] := <0, @CP_Merge(newL,
+		                                   Entries[n][2])> FI FI ENDVAR
+    ELSE @CP_Clobber(VAR L) FI .;
+
+
+C:" Unfold this dispatch and add the value to the list of unfolded dispatches ";
+C:" unless it has already been unfolded (to prevent looping) ";
+C:" seen_code = 1 when destination is assigned from a variable and then ";
+C:" a register is assigned a dest code followed by the CALL dispatch. ";
+
+MW_PROC @CP_Unfold_Dispatch(val, action, seen_code VAR L) ==
+  C:" Convert a hex value to numeric, ignoring the top bits: ";
+  IF @ST(val) = T_String AND @Starts_With?(@V(val), "hex 0x")
+    THEN val := SUBSTR(@V(val), 6);
+	 IF SLENGTH(val) > 7 THEN val := SUBSTR(val, SLENGTH(val) - 7) FI;
+	 val := @Make(T_Number, @Hex_To_Num(val), < >)
+  ELSIF @ST(val) = T_Negate AND @ST(val^1) = T_Number
+    THEN val := @Make(T_Number, -@V(val^1), < >) FI;
+  IF Unfold_Dispatch = 0
+    THEN C:" dispatch unfolding is prohibited ";
+	 PRINFLUSH("d2"); L := TAIL(L)
+  ELSIF (@ST(val) = T_Number OR (@ST(val) = T_Negate AND @ST(val^1) = T_Number))
+    THEN C:" Known numeric destination ";
+	 IF @CP_Cycle?(@Posn, 20, 3)
+	   THEN PRINT("Posn cycle detected: ", @Posn);
+		VAR < posn := @Posn >:
+		C:" Clear out any other dispatch calls in this action: ";
+		C:" (desperate times...) ";
+		@Goto(< >);
+		FOREACH Statement DO
+		  IF @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND -@V(@I) = dispatch
+		    THEN @Paste_Over(@Make(T_Call, -(N+1), < >));
+		         @Paste_Before(@Make(T_Comment,
+			                     "FIXME: recursion detected!!", < >)) FI OD;
+		@Goto(posn) ENDVAR
+	   ELSE PRINFLUSH("D");
+		IF @V(val) <> 0 THEN @CP_Clobber_Value(@V(val), @Posn) FI;
+		PRINT(" ");
+		PRINT("Unfolding a dispatch: destination=", @V(val), " posn=", @Posn);
+		@Splice_Over(@Cs(Bodies[dispatch]));
+		L := @CP_Put0(L, <destination>, val);
+		C:" Simplify the dispatch before recursively processing the result. ";
+		C:" This helps @C_Clobber_Value to find more values. ";
+		FOREACH Expression DO
+		  IF @ST(@I) = T_Variable AND @V(@I) = destination
+		    THEN @Paste_Over(val) FI OD;
+		IF TRUE THEN @Trans(TR_Simplify, "") FI;
+                L[1][2] := @CP_Remove(L[1][2], <destination>);
+                C:" Check for a cycle: ";
+		IF @Left? AND @Right? AND @ST(@I) = T_Proc_Call
+		     AND @Equal?(@I, @Parent^(@Posn_n - 1))
+		     AND @ST(@Parent^(@Posn_n + 1)) = T_Call
+		     AND @V(@Parent^(@Posn_n + 1)) = -dispatch
+		  THEN PRINT("dispatch unfolding cycle detected: ", @Posn);
+		       @Right;
+		       @Paste_Over(@Make(T_Comment,
+		                         "FIXME: dispatch cycle detected!", < >));
+                       @Paste_After(@Make(T_Call, -(N+1), < >)) FI;
+		@CP_Statement(VAR L) FI
+  ELSIF NOT EMPTY?(reg_inits /\ @Variables(val))
+          OR @CP_Reg_Init_Var?(val)
+          OR @Make_Name("NOT_USED") IN @Variables(val)
+    THEN C:" A dispatch to the return address initially given in r11, r13 or r14 ";
+         C:" ie a return from the whole program! ";
+	 C:" Check for a return code in case this is a subroutine table call ";
+         VAR < done := 0 >:
+	 @CP_Scan_For_Return_Code(val VAR reg, done);
+	 IF done = 0
+	   THEN C:" No return code: convert to CALL Z ";
+	        PRINT("R");
+	        PRINFLUSH("Unfolding a dispatch: destination = ");
+		@PP_Item(val, 80, "");
+		PRINT(" posn=", @Posn);
+	        @Paste_Over(@Make(T_Call, -(N+1), < >)) FI ENDVAR
+  ELSIF @Is_Addr?(val)
+    THEN C:" destination is an (external) address ";
+         VAR < done := 0 >:
+         @CP_Scan_For_Return_Code(val VAR reg, done);
+         C:" If there is no return code assignment, assume that ";
+	 C:" the proc call *doesn't* return: ";
+	 IF done = 0
+	   THEN @Paste_Over(@Make(T_Call, -(N+1), < >));
+		@CP_Make_Proc_Call(val, @Make(T_Number, 0, < >));
+                PRINFLUSH("d8") FI ENDVAR
+
+  ELSIF @ST(val) IN <T_Variable, T_Struct, T_Sub_Seg, T_Rel_Seg>
+          AND @Struct_Elts(val) NOTIN return_elts
+          AND (effort >= 2 OR @Struct_Elts(val) IN Constants
+	         OR @Struct_Elts(val) IN Vcons)
+    THEN C:" destination is a symbolic constant -- scan for a return address ";
+         C:" (or a return code is assigned after the assignment to dispatch) ";
+	 VAR < done := 0 >:
+         @CP_Scan_For_Return_Code(val VAR reg, done);
+         C:" If there is no return code assignment, assume that ";
+	 C:" the proc call *doesn't* return (eg a BR or BNZR): ";
+	 IF done = 0
+	      AND NOT (@ST(val) = T_Variable AND @Ends_With?(@V(val), "_RETURN"))
+	   THEN C:" Replace CALL dispatch by CALL Z and add proc call ";
+                @Paste_Over(@Make(T_Call, -(N+1), < >));
+		@CP_Make_Proc_Call(val, @Make(T_Number, 0, < >));
+                PRINFLUSH("d7") FI ENDVAR
+  ELSIF @ST(val) IN <T_Variable, T_Struct, T_Sub_Seg, T_Rel_Seg> 
+    THEN VAR < done := 0 >:
+         C:" val is a variable, but not a constant. ";
+         @CP_Scan_For_Return_Code(val VAR reg, done);
+	 IF done = 0
+	   THEN C:" Check if all assignments to this variable are dispatch codes ";
+                C:" or constants: if so, then we know the list of possible targets! ";
+                C:" NB: Only do this on the later passes: effort >= 2 ";
+                IF effort >= 2 AND CP_In_Preserves_Dest = 0
+                  THEN @CP_Multiple_Destinations(val VAR L)
+                ELSIF effort < 2 AND NOT (@Struct_Elts(val) IN Constants
+	                                     OR @Struct_Elts(val) IN Vcons)
+		  THEN C:" Leave this for now "
+		ELSIF T_Times IN @Spec_Types(val)
+		        OR @Struct_Elts(val) NOTIN return_elts
+		  THEN C:" dispatch on a complex expression is a call. ";
+		       C:" Assume that any dispatch on a non-return register ";
+		       C:" is an external call and not a return: ";
+		       @CP_Make_Proc_Call(val, @Make(T_Number, 0, < >));
+		       PRINFLUSH("d8") FI FI ENDVAR
+    ELSE C:" val is neither symbolic nor a number ";
+	 PRINFLUSH("d5=");
+	 @Print_WSL(val, "");
+	 L := TAIL(L) FI .;
+
+
+
+MW_PROC @CP_Scan_For_Return_Code(val VAR reg, done) ==
+  VAR < posn_n := @Posn_n >:
+  C:" Don't simply check for return codes in a register: ";
+  C:" This might pick up the return code of a *previous* call ";
+  C:" Instead, scan backwards for the first assignment to a register. ";
+  C:" (This will pick up a normal BAL) ";
+  C:" If there is a return code, then the dispatch is almost certainly ";
+  C:" an external call: so generate a call_via_ptr ";
+  C:" (unless initial_call_budget is small). ";
+  DO IF @Left? THEN @Left ELSE EXIT(1) FI;
+     IF @ST(@I) NOTIN <T_Comment, T_Assignment> THEN EXIT(1) FI;
+     IF @ST(@I) = T_Assignment AND @ST(@I^1^1) = T_Var_Lvalue
+          AND @V(@I^1^1) <> @Make_Name("destination")
+          AND @V(@I^1^1) <> @Make_Name("exit_flag")
+       THEN IF @V(@I^1^1) NOTIN registers
+              THEN EXIT(1)
+            ELSIF @ST(@I^1^2) = T_Variable AND @V(@I^1^2) IN reg_inits
+                     AND @ST(val) = T_Variable AND @V(val) IN reg_inits
+	      THEN C:" Return code is a return from the whole program ";
+	           C:" Returning with done = 0 will cause a CALL Z to be inserted ";
+                   done := 0
+            ELSIF @ST(@I^1^2) = T_Number AND @V(@I^1^2) IN dispatch_codes
+	                AND @V(@I^1^2) > 0
+	            OR @ST(@I^1^2) = T_Variable AND @V(@I^1^2) IN reg_inits
+              THEN done := 1; C:" Note that a return code was found ";
+	           reg := @V(@I^1^1);                          
+                   @To(posn_n);
+                   IF initial_call_budget <= 200
+		     THEN done := 1; L := TAIL(L);
+		          C:" Don't unfold dispatch: val might not be accurate "
+		   ELSIF @Variables(val) = <a_name> OR @ST(val) = T_X_Funct_Call
+		     THEN C:" Must be an external call ";
+		          @CP_Make_Proc_Call(val, @Make(T_Variable, reg, < >));
+		          PRINFLUSH("d9a")
+		   ELSIF (@Struct_Elts(val) NOTIN return_elts OR <@V(val)> IN Vcons)
+	             THEN C:" Must be an external call ";
+		          @CP_Make_Proc_Call(val, @Make(T_Variable, reg, < >));
+		          PRINFLUSH("d9b")
+                   ELSIF @V(val) <> @Make_Name("r15") AND effort < 2
+                     THEN C:" See if we can find the register's value instead "
+                     ELSE @CP_Make_Proc_Call(val, @Make(T_Variable, reg, < >));
+		          PRINFLUSH("d9c") FI FI;
+            EXIT(1) FI OD;
+  C:" Check if val is loaded from memory (i.e. call_via_ptr or jump table) ";
+  IF done = 0 AND @ST(val) = T_Variable AND @ST(@I) = T_Assignment
+       AND @ST(@I^1^1) = T_Var_Lvalue AND @V(@I^1^1) = @V(val)
+       AND a_name IN @Used(@I^1^2)
+    THEN @To(posn_n);
+         @Splice_Over(<FILL Statement
+	               !P call_via_ptr(~?val, r1 VAR regs, result_code, os) ENDFILL,
+		       @Make(T_Call, -(N+1), < >)>);
+         done := 1
+    ELSE @To(posn_n) FI;
+  C:" Check for dispatch at end of small entry point: ";
+  IF done = 0 AND LENGTH(@Posn) > 1 AND @ST(@GParent) = T_Guarded
+      AND @ST(@Parent^1) = T_Comment AND @V(@Parent^1) = " <ENTRY POINT> "
+      AND SUBSET?(@Stat_Types(@Parent),
+                  @Make_Set(<T_Skip, T_Comment, T_Assignment, T_Call>))
+    THEN @Paste_Over(@Make(T_Call, -(N+1), < >)) FI ENDVAR .;
+
+
+
+MW_PROC @CP_Multiple_Destinations(v VAR L) ==
+  VAR < posn := @Posn, OK := 1, values := < > >:
+  @Edit;
+  @New_Program(orig_program);
+  FOREACH Statement DO
+    IF OK = 1 AND @ST(@I) = T_Assignment
+         AND @ST(@I^1^1) IN <T_Var_Lvalue, T_Struct_Lvalue>
+         AND @LR_Equal?(@I^1^1, v)
+      THEN IF @ST(@I^1^2) = T_Number AND @V(@I^1^2) IN dispatch_codes
+             THEN values := <@I^1^2> \/ values
+	   ELSIF @ST(@I^1^2) IN <T_Variable, T_Struct>
+	           AND (@CP_Var_Name(@I^1^2) IN Constants
+		          OR @CP_Var_Name(@I^1^2) IN Vcons)
+	     THEN values := <@I^1^2> \/ values
+	     ELSE OK := 0 FI FI OD;
+  @Undo_Edit;
+  IF OK = 1 AND NOT EMPTY?(values)
+    THEN VAR < guards := < >, call := @Make(T_Call, -dispatch, < >) >:
+         FOR e IN values DO
+            guards := <FILL Guarded ~?v = ~?e -> destination := ~?e; ~?call ENDFILL>
+                         ++ guards OD;
+	 call := @Make(T_Call, -(N+1), < >);
+         guards := <FILL Guarded TRUE -> ~?call ENDFILL> ++ guards;
+         @Paste_Over(@Make(T_Cond, < >, REVERSE(guards)));
+	 @CP_Statement(VAR L) ENDVAR FI;
+  SKIP ENDVAR .;
+
+
+C:" Make a call to the given proc pointer assuming that the given register ";
+C:" contains the return code. If val is a simple variable, then this may ";
+C:" get converted to a simple proc call ";
+
+MW_PROC @CP_Make_Proc_Call(val, reg) ==
+  PRINT(" ");
+  PRINFLUSH("Making a call to procedure: "); @PP_Item(val, 80, "");
+  PRINFLUSH(" returning via "); @PP_Item(reg, 80, "");
+  C:" Need to cope with destination := a[r14]; r14 := code; CALL dispatch ";
+  IF @Left?
+    THEN @Left;
+         IF @ST(@I) = T_Assignment AND @ST(@I^1^1) = T_Var_Lvalue
+	      AND @ST(reg) = T_Variable AND @V(@I^1^1) = @V(reg)
+	      AND @ST(@I^1^2) = T_Number AND @V(reg) IN @Variables(val)
+	   THEN L[1][2] := @CP_Remove(L[1][2], <@V(reg)>);
+                reg := @I^1^2;
+	        @Delete
+	   ELSE @Right FI FI;
+  @Splice_Before(<FILL Statement
+                  !P call_via_ptr(~?val, r1 VAR regs, result_code, os) ENDFILL,
+                  FILL Statement r15 := result_code ENDFILL,
+                  FILL Statement destination := ~?reg ENDFILL>);
+  @CP_Statement(VAR L).;
+
+
+C:" Search backwards for references to the given value, and delete them. ";
+C:" (We assume that, since the value has been `used' (to unfold a dispatch call) ";
+C:" it won't be `used' again: if it IS used again to unfold a dispatch call, ";
+C:" then we have an infinite loop and therefore a probable translation error). ";
+MW_PROC @CP_Clobber_Value(val, posn) ==
+  VAR < steps := 10, notused := < > >:
+  IF val < 0
+    THEN notused := @Make(T_Variable, @Make_Name("NOTUSED__" ++ @String(-val)), < >)
+    ELSE notused := @Make(T_Variable, @Make_Name("NOTUSED_"  ++ @String( val)), < >) FI;
+  PRINFLUSH("-", val, "-");
+  DO steps := steps - 1;
+     IF steps = 0 THEN EXIT(1) FI;
+     IF @Left? THEN @Left
+     ELSIF @Up? THEN @Up; @Up_To_Statement
+		ELSE EXIT(1) FI;
+     IF @ST(@I) = T_Assignment
+          AND NOT (@ST(@I^1^1) = T_Var_Lvalue
+	             AND @Starts_With?(@V(@I^1^1), "HANDLE_CONDITION_"))
+       THEN FOREACH Expression DO
+	      IF @ST(@I) = T_Number AND @V(@I) = val
+		THEN @Paste_Over(notused); PRINFLUSH("N") FI OD
+     ELSIF @ST(@I) NOTIN <T_Assignment, T_Skip, T_Comment, T_A_Proc_Call>
+       THEN EXIT(1) FI OD;
+
+  IF EMPTY?(@Posn) AND NOT EMPTY?(Names)
+    THEN C:" Have reached the start of and action (num is in action) ";
+         C:" If there is only one caller, then check it also ";
+	 IF LENGTH(Preds[action]) = 1
+	   THEN @Edit;
+	        @New_Program(Bodies[HEAD(Preds[action])]);
+		@Down_Last;
+		VAR < e := @Make(T_Number, < >, val), calls := < > >:
+		DO IFMATCH Statement ~?v := ~?(e)
+		     THEN @Paste_Over(FILL Statement ~?v := ~?notused ENDFILL) ENDMATCH;
+		   IF T_Proc_Call IN @Stat_Types(@I) THEN EXIT(1) FI;
+		   calls := @Calls(@I);
+		   IF NOT EMPTY?(calls)
+		     THEN IF LENGTH(calls) > 1 OR HEAD(HEAD(calls)) <> -action
+		            THEN EXIT(1) FI FI;
+		   IF @Left? THEN @Left ELSE EXIT(1) FI OD ENDVAR;
+                Bodies[HEAD(Preds[action])] := @Program;
+		@Undo_Edit FI FI;
+
+  @Goto(posn) ENDVAR .;
+
+
+C:" For a Cond we calculate the lists for each arm and merge them. ";
+C:" Assert the condition within the arm's body, and deny it for the remaining arms. ";
+MW_PROC @CP_Cond(VAR L) ==
+  VAR < R := < >, origL := L >:
+  @Down; C:" to first guarded ";
+  DO @CP_Guarded(VAR L);
+     R := @CP_MergeL(R, L); C:" If L=<> this will not change R ";
+     IF NOT @Right? THEN EXIT(1) FI;     
+     C:" Ignore the rest of the guards after a TRUE guard in a Cond ";
+     IF @ST(@I^1) = T_True
+       THEN IF @Right? THEN @Delete_Rest FI;
+	    IF @Size(@I^2) > 1 OR @ST(@I^^<2, 1>) <> T_Skip
+	      THEN @Paste_After(FILL Guarded TRUE -> SKIP ENDFILL) FI;
+	    EXIT(1) FI;
+     C:" The rest of the guards can deny this guard's condition ";
+     @Down; @CP_Deny_Condition(VAR origL); @Up;
+     @Right;
+     L := origL OD;
+  @Up;
+
+  L := R ENDVAR .;
+
+
+C:" For a D_If we simply calculate the lists for each arm and merge them. ";
+MW_PROC @CP_D_If(VAR L) ==
+  VAR < R := < >, origL := L >:
+  @Down; C:" to first guarded ";
+  DO @CP_Guarded(VAR L);
+     R := @CP_MergeL(R, L); C:" If L=<> this will not change R ";
+     IF @Right? THEN @Right ELSE EXIT(1) FI;
+     L := origL OD;
+  @Up;
+  L := R ENDVAR .;
+
+
+C:" A D_Do is equivalent to WHILE ... DO D_IF ... FI OD ";
+C:" TODO We will deal with this later ";
+MW_PROC @CP_D_Do(VAR L) ==
+  @CP_Clobber(VAR L) .;
+
+
+C:" For an EXIT(n) we merge the 0th level list with the nth level list ";
+C:" and delete the 0th level list ";
+MW_PROC @CP_Exit(VAR L) ==
+  IF NOT EMPTY?(L) AND L[1][1] = 0 AND @V(@I) > 0
+    THEN L := @CP_Exit_Sub(L[1][2], @V(@I), TAIL(L)) FI .;
+
+C:" Merge l with the nth level list in L, returning the new list ";
+MW_FUNCT @CP_Exit_Sub(l, n, L) ==
+  VAR < R := < > >:
+  IF EMPTY?(L) THEN R := <<n, l>>
+  ELSIF L[1][1] < n THEN R := <HEAD(L)> ++ @CP_Exit_Sub(l, n, TAIL(L))
+  ELSIF L[1][1] > n THEN R := <<n, l>> ++ L
+		    ELSE R := <<n, @CP_Merge(l, L[1][2])>> ++ TAIL(L) FI;
+  (R) .;
+
+
+C:" For a loop we need to determine: (a) which known values are preserved ";
+C:" and (b) which known values are exported. Consider this loop: ";
+C:" a := 1; b := 2; ";
+C:" DO a := a+1; ";
+C:"    b := 2; ";
+C:"    IF a > n THEN c := 4; EXIT FI OD ";
+C:" Here, the value b=2 is preserved over the loop, but a=1 is not. ";
+C:" MERGE the list from the END of the loop with the list on entry to the loop, ";
+C:" to form the new entry list. If this differs from the original entry list, ";
+C:" (and the loop body is NOT improper) then restore the loop body and ";
+C:" repeat the propagation with the new input list until the result converges. ";
+C:" The output list is the decremented list from the end of the loop. ";
+C:" In the example, the output list will be: b=2, c=4 ";
+
+MW_PROC @CP_Floop(VAR L) ==
+  @CP_First_Time_Flag(VAR L);
+  @Down; C:" to loop body ";
+  L := @CP_Increment_L(L);
+  C:" If the body is improper, then it can only be executed once ";
+  IF @Gen_Improper?(@I, "Reg")
+    THEN @CP_Statements(VAR L)
+    ELSE @CP_Gen_Loop(1 VAR L) FI;
+  @Up; C:" Back to loop ";
+  C:" If we ran out of budget, then don't decrement: ";
+  IF NOT EMPTY?(L)
+    THEN L := @CP_Decrement_L(L) FI .;
+
+C:" Check for a `first time through' flag test where the flag value is known ";
+C:" on entering the loop, and is set to a different value in the loop body. ";
+C:" Eg: {m=1}; DO IF m=1 THEN ... FI; ... m:=0; ... OD ";
+
+MW_PROC @CP_First_Time_Flag(VAR L) ==
+  VAR < n3 := < > >:
+  IFMATCH Statement
+           DO ~*S1;
+              IF ~?v = ~?n1 THEN ~*S2 FI;
+              ~*S3;
+              ~?=v := ~?n2;
+              ~*S4 OD
+    THEN S5 := @CP_Trim_Exit_Code(S4);
+         IF (@ST(v) = T_Variable OR @ST(v) = T_Struct)
+              AND @ST(n1) = T_Number AND @ST(n2) = T_Number
+	      AND @Gen_Proper?(@Make(T_Statements, < >, S1 ++ S2), @AS_Type)
+	      AND @Struct_Elts(v) NOTIN @Elements(@Make(T_Statements, < >,
+	                                                S1 ++ S2 ++ S3 ++ S5))
+           THEN n3 := @CP_Get(L[1][2], @Struct_Elts(v));
+	        IF NOT EMPTY?(n3) AND @ST(n3) = T_Number AND @V(n3) = @V(n1)
+		  THEN @Splice_Over(@Cs(FILL Statements
+		                              ~*S1;
+                                              IF ~?v = ~?n1 THEN ~*S2 FI;
+                                              DO ~*S3;
+                                                 ~?v := ~?n2;
+                                                 ~*S4;
+                                                 ~*S1;
+                                                 IF ~?v = ~?n1 THEN ~*S2 FI OD ENDFILL));
+                       WHILE @ST(@I) <> T_Floop DO
+		         @CP_Statement(VAR L);
+			 @Right OD;
+		       C:" Ready for the main CP_Floop " FI FI ENDMATCH ENDVAR .;
+
+C:" Trim code before an EXIT statement in given list of statements: ";
+
+MW_FUNCT @CP_Trim_Exit_Code(L) ==
+  VAR < R := < > >:
+  IF NOT EMPTY?(L)
+    THEN @Edit;
+         @New_Program(@Make(T_Statements, < >, L));
+         FOREACH Statements DO
+           IF @ST(@I^(@Size(@I))) = T_Exit
+             THEN @Paste_Over(@Skips) FI OD;
+         R := @Cs(@Program);
+         @Undo_Edit FI;
+  (R) .;
+
+
+C:" Generic loop processing, iterate the propagation until it converges ";
+C:" This proc is called with the loop body selected. ";
+C:" min is the minimum number of iterations to process before merging starts. ";
+
+MW_PROC @CP_Gen_Loop(min VAR L) ==
+  VAR < runs := 0, entryL := < >, endL := < >, initL := < >, orig := < >,
+        savedL2 := < >, posn := @Posn >:
+  IF NOT EMPTY?(L) 
+    THEN @Edit;
+         C:" The higher levels of L are computed from a merged L[1] ";
+	 C:" plus the *original* values of L[2..] ";
+         C:" At the end of the loop, we are only interested in L[1][2] ";
+	 C:" (and only then if L[1][1] = 0). ";
+	 entryL := L[1][2];
+	 savedL2 := L[2..];
+	 initL := L[1][2];
+	 orig := @I; C:" may need to restore the item and re-run the propagation ";
+	 DO @CP_Save_State;
+	    @CP_Statements(VAR L);
+	    @CP_Restore_State;
+	    IF EMPTY?(L) OR L[1][1] > 0 THEN EXIT(1) FI;
+	    C:" Check the new entry list against the previous one: ";
+	    endL := @CP_Merge(entryL, L[1][2]);
+	    IF endL = entryL THEN EXIT(1) FI;
+	    C:" Some info has been lost/gained by the loop body, ";
+	    C:" so restore the body and repeat the propagation ";
+	    runs := runs + 1;
+	    IF runs > 20
+	      THEN PRINT("Too many loop scans demanded!!!");
+		   @Paste_Over(orig);
+		   @CP_Clobber_Broke(VAR L);
+		   FOREACH Statement DO
+		     IF FALSE AND @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND @V(@I) < 0
+		       THEN Entries[-@V(@I)] := <0, < >> FI OD;
+		   EXIT(1) FI;
+	    IF State_Saves > initial_call_budget DIV 10 AND initial_call_budget > 200
+	      THEN PRINFLUSH("#");
+		   @Paste_Over(orig);
+		   @CP_Clobber_Broke(VAR L);
+		   FOREACH Statement DO
+		     IF FALSE AND @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND @V(@I) < 0
+		       THEN Entries[-@V(@I)] := <0, < >> FI OD;
+		   EXIT(1) FI;
+	    L := <<0, endL>> ++ savedL2;
+	    entryL := endL;
+	    @Paste_Over(orig) OD;
+         IF min = 0 THEN L[1][2] := @CP_Merge(initL, L[1][2]) FI;
+	 @End_Edit FI ENDVAR .;
+
+C:" Decrement a list of value lists, throwing away the 0th level list ";
+
+MW_FUNCT @CP_Decrement_L(L) == :
+  SKIP;
+  (IF EMPTY?(L)
+    THEN < >
+    ELSE IF L[1][1] = 0 
+           THEN @CP_Decrement_L(TAIL(L))
+           ELSE <<L[1][1] - 1, L[1][2]>> ++ @CP_Decrement_L(TAIL(L)) FI FI).;
+
+C:" Increment all but the zero element in a list of value lists ";
+
+MW_FUNCT @CP_Increment_L(L) == :
+  SKIP;
+  (IF EMPTY?(L)
+    THEN < >
+    ELSE IF L[1][1] = 0 
+           THEN <L[1]> ++ @CP_Increment_L(TAIL(L))
+           ELSE <<L[1][1] + 1, L[1][2]>> ++ @CP_Increment_L(TAIL(L)) FI FI).;
+
+C:" For the FOR loop we also have to repeat to convergance. ";
+C:" Within the body of the loop, the loop variable should be constant. ";
+
+MW_PROC @CP_For(VAR L) ==
+  VAR < i := @V(@I^1) >:
+  VAR < Constants := Constants \ <<i>> >:
+  C:" If i is really constant in the body, it can be added to the list ";
+  IF NOT (i IN @Assigned(@I^5))
+    THEN Constants := Constants \/ <<i>> FI;
+  @Down_To(2); C:" to the `start' expression ";
+  @CP_Update(VAR L);
+  @Right; C:" to the `finish' expression ";
+  @CP_Update(VAR L);
+  @Right; C:" to the `step' expression ";
+  @CP_Update(VAR L);
+  @Right; C:" to loop body ";
+  C:" Delete any known value for the loop variable ";
+  L[1][2] := @CP_Remove(L[1][2], <i>);
+  @CP_Gen_Loop(0 VAR L);
+  @Up; C:" Back to loop " ENDVAR ENDVAR .;
+
+MW_PROC @CP_For_In(VAR L) ==
+  VAR < i := @V(@I^1) >:
+  VAR < Constants := Constants \ <<i>> >:
+  C:" If i is really constant in the body, it can be added to the list ";
+  IF NOT (i IN @Assigned(@I^3))
+    THEN Constants := Constants \/ <<i>> FI;
+  @Down_To(2); C:" to the expression ";
+  @CP_Update(VAR L);
+  @Right; C:" to loop body ";
+  C:" Delete any known value for the loop variable ";
+  L[1][2] := @CP_Remove(L[1][2], <i>);
+  @CP_Gen_Loop(0 VAR L);
+  @Up; C:" Back to loop " ENDVAR ENDVAR .;
+
+
+C:" Technically, we can assume anything we like after an ABORT. ";
+C:" There might be a small gain (fewer edits) if we treat is as  ";
+C:" a guard which is not entered. If we merge the result of an ABORT with ";
+C:" any known result, then we will not lose any information. ";
+C:" Also NB: we use ABORT in Fix_Dispatch to replace CALL Z in potential ";
+C:" procedure bodies (to determine if the return register is sent to dispatch) ";
+C:" So we MUST clear L after each ABORT, since we don't need to preserve ";
+C:" the destination if the potential procedure body calls Z ";
+
+MW_PROC @CP_Abort(VAR L) ==
+   IF NOT EMPTY?(L) AND L[1][1] = 0 THEN L := TAIL(L) FI .;
+
+
+C:" Proc_Call: ";
+C:" If the call is not already in Call_Path (ie not a recursive call) ";
+C:" then update L by processing the summary (if it is in Proc_Summaries) ";
+C:" Otherwise, clobber everything. ";
+
+C:" Summary is: <body, val_pars, var_pars, e, v, i, assigns...> ";
+C:" If reg_stack or call_stack are pushed or popped in the proc, then it appears ";
+C:" in the v list of modified elements ";
+
+MW_PROC @CP_Proc_Call(VAR L) ==
+  IF EMPTY?(L) OR L[1][1] <> 0
+    THEN SKIP
+  ELSIF @V(@I^1) IN Call_Path
+    THEN PRINT("RECURSIVE CALL!")
+    ELSE IF LENGTH(Call_Path) = 0
+           THEN State_Saves := 0;
+	        call_budget := initial_call_budget DIV 2 FI;
+         Call_Path := <@V(@I^1)> ++ Call_Path;
+         C:" A proc call can only affect the zero level of L ";
+         VAR < summ := @S_Get_Proc_Summary(@V(@I^1), Proc_Summaries),
+	       oldL := L[1][2], rest := TAIL(L) >:
+	 L := <HEAD(L)>;
+	 IF EMPTY?(summ)
+	   THEN PRINT("BODY NOT FOUND for proc: ", @N_String(@V(@I^1)));
+		@CP_Clobber(VAR L)
+	 ELSIF NOT @Cs?(@I^2) AND NOT @Cs?(@I^3)
+	         AND (<reg_stack> IN summ[5]
+		       OR <call_stack> IN summ[5])
+                 AND (State_Saves < initial_call_budget DIV 2)
+		 AND (call_budget > initial_call_budget DIV 5)
+	   THEN C:" Process the body, not the summary, so that register ";
+		C:" save and restore calls can be handled ";
+		@CP_Parameterless_Proc_Body(summ[1] VAR L)
+         ELSIF os_name IN @Assigned(@I^3)
+	   THEN @CP_Parameterless_Proc_Body(summ[1] VAR L)
+	   ELSE C:" Summarise the call (to deal with any parameters): ";
+		@CP_Summary(@Summarise(@I) VAR L);
+		IF T_A_Proc_Call IN @Stat_Types(summ[1])
+		  THEN IF NOT EMPTY?(A_Proc_Call_Filter)
+		            AND os_name IN @Variables(summ[1])
+                         THEN L[1][2] := @CP_All_But(L[1][2], A_Proc_Call_Filter)
+                         ELSE L[1][2] := @CP_Clobber_Zeros(L[1][2]) FI FI FI;
+         C:" L might be clobbered by an exit_flag := 1 in the body. ";
+         C:" So resore it here, but also set destination so that ";
+	 C:" a subsequent CALL dispatch will become CALL Z: ";
+         IF (EMPTY?(L) OR L[1][1] > 0)
+           THEN L := <<0, oldL>> FI;
+	 L := <HEAD(L)> ++ rest ENDVAR;
+         Call_Path := TAIL(Call_Path) FI .;
+
+
+C:" Do Constant Propagation over a summary: ";
+C:" If we are not in a @Preserves_Destination call and the vars include ";
+C:" S_Tail_Recursive_Call, then don't use the assigns. ";
+C:" TAIL(summ[1]) is <<e1, e2,...>, <v1, v2, ...>, <i1, i2, ...>, <x1, y1>, ...> ";
+
+C:" If os_name is clobbered in the summary, then there must be a !P call ";
+C:" so call @CP_Clobber_Zeros on the resulting list ";
+
+MW_PROC @CP_Summary(summ VAR L) ==
+  VAR < clobber := < >, 
+	pair := < >, oldL := < >, newL := < >, val := < > >:
+  IF NOT EMPTY?(L) AND L[1][1] = 0 AND NOT EMPTY?(summ) AND summ[1][1] = 0
+    THEN summ := TAIL(summ[1]);
+	 clobber := @Elt_Subtract(summ[2] \ summ[3], @Make_Set(MAP("HEAD", summ[4..])));
+         C:" If summ[3] is not empty then *something* is incremented ";
+	 C:" but we cannot guarantee that it is a dispatch code! ";
+	 C:" In particular, r15 is probably a return value. ";
+         summ[3] := @Elt_Subtract(summ[3], <<@Make_Name("r15")>>);
+	 IF NOT EMPTY?(summ[3])
+	   THEN PRINT("(some kind of inc)");
+	        CP_Return_Code_Inc := CP_Return_Code_Inc \/ <1> FI;
+	 oldL := L[1][2];
+	 newL := @CP_Clobber_List(L[1][2], clobber);
+	 IF CP_In_Preserves_Dest = 0 AND <S_Tail_Recursive_Call> IN summ[2]
+	   THEN C:" The assigns are only valid when exit_flag = 0 ";
+	        C:" so only record copies of dest codes (clobber other vars): ";
+                FOR pair IN summ[4..] DO
+		  IF SEQUENCE?(pair[2])
+		    THEN val := @CP_Get(oldL, pair[2]);
+			 IF EMPTY?(val)
+			   THEN val := @Name_To_WSL(pair[2]) FI
+		    ELSE val := @Name_To_WSL(pair[2]) FI;
+                  IF @ST(val) = T_Number AND @V(val) > 0 AND @V(val) IN dispatch_codes
+		    THEN newL := @CP_Put(newL, pair[1], val)
+                  ELSIF @ST(val) = T_Variable AND @V(val) IN reg_inits
+		    THEN newL := @CP_Put(newL, pair[1], val)
+		    ELSE newL := @CP_Remove(newL, pair[1]) FI OD;
+                IF FALSE
+		  THEN C:" clobber the assigned variables: ";
+		       newL := @CP_Clobber_List(newL, MAP("HEAD", summ[4..])) FI
+	   ELSE FOR pair IN summ[4..] DO
+		  C:" If a var is copied from another var, check if the source var ";
+		  C:" originally had a value. If so, then copy that value: ";
+		  IF SEQUENCE?(pair[2])
+		    THEN val := @CP_Get(oldL, pair[2]);
+			 IF EMPTY?(val)
+			   THEN val := @Name_To_WSL(pair[2]) FI;
+		    ELSE val := @Name_To_WSL(pair[2]) FI;
+                  C:" If the value is a variable which is clobbered, ";
+		  C:" then don't record it! ";
+		  VAR < keep := 1 >:
+		  IF SEQUENCE?(pair[2])
+                    THEN FOR elt IN clobber ++ summ[3] DO
+		           IF elt = <a_name>
+			     THEN SKIP
+		           ELSIF @Either_Prefix?(pair[2], elt)
+			     THEN keep := 0 FI OD FI;
+                  IF keep = 0
+		    THEN newL := @CP_Remove(newL, pair[1])
+		    ELSE newL := @CP_Put(newL, pair[1], val) FI ENDVAR OD FI;
+         IF <os_name> IN summ[2] THEN newL := @CP_Clobber_Zeros(newL) FI;
+	 L[1][2] := newL FI ENDVAR .;
+
+
+
+C:" Process a parameterless procedure body: ";
+C:" If all the terminal statements are also parameterless proc bodies, ";
+C:" then replace them by SKIPs, process the body, then process each call ";
+C:" and merge the results. ";
+C:" (This saves processing a body multiple times when there are several calls to it). ";
+
+MW_PROC @CP_Parameterless_Proc_Body(body VAR L) ==
+  calls_processed := calls_processed + 1;
+  IF calls_processed < call_budget
+    THEN VAR < cb_save := call_budget >:
+	 call_depth := call_depth + 1;
+	 IF call_depth > 2 AND EVEN?(call_depth)
+	   THEN call_budget := call_budget DIV 2 FI;
+	 @Edit;
+	 @New_Program(body^4);
+	 VAR < OK := 1, calls := < >, move := 0 >:
+	 ATEACH STS DO
+	   IF @ST(@I) = T_Exit AND @Left? THEN move := 1; @Left ELSE move := 0 FI;
+	   IF @ST(@I) = T_Proc_Call AND NOT @Cs?(@I^2) AND NOT @Cs?(@I^3)
+	     THEN calls := <@V(@I^1)> \/ calls; @Paste_Over(@Skip)
+	     ELSE OK := 0 FI;
+	   IF move = 1 THEN @Right FI OD;
+	 IF FALSE AND OK = 1
+	   THEN @CP_Statements(VAR L);
+		PRINFLUSH(LENGTH(calls));
+		C:" Process the calls and merge the results ";
+		IF EMPTY?(calls)
+		  THEN SKIP
+		ELSIF NOT EMPTY?(calls /\ @Make_Set(Call_Path))
+		  THEN C:" There is a recursive call, so clobber ";
+		       @CP_Clobber_Broke(VAR L)
+		  ELSE VAR < R := < >, origL := L, name := < >, body := < >,
+			     comps := <@Make(T_Expressions, < >, < >),
+				       @Make(T_Lvalues, < >, < >)> >:
+		       FOR name IN calls DO
+			 @New_Program(@Make(T_Proc_Call, < >, <@Name(name)> ++ comps));
+			 @CP_Proc_Call(VAR L);
+			 R := @CP_MergeL(R, L);
+			 L := origL OD;
+		       L := R ENDVAR FI
+	   ELSE C:" Process the original body as normal ";
+	        PRINFLUSH("N");
+		@New_Program(body^4);
+		@CP_Statements(VAR L) FI ENDVAR;
+	 @Undo_Edit;
+	 call_budget := cb_save;
+	 call_depth := call_depth - 1 ENDVAR
+    ELSE PRINFLUSH("-");
+         @CP_Clobber_Broke(VAR L) FI .;
+
+
+C:" To process the procedure body we need to: ";
+C:" (1) Save values of shadowed globals (formal value parameters) ";
+C:" (2) Update L with the effect of assigning actual values to all formal parameters ";
+C:" (3) Propagate over the body (can do updates since this is a temp copy) ";
+C:" (4) Restore values of shadowed globals (formal value parameters) ";
+C:" (5) Update L with the effect of assigning formal var parameters ";
+C:"     to actual var parameters. ";
+
+MW_PROC @CP_Proc_Body(body VAR L) ==
+  VAR < v := < >, c := < >, l := L[1][2], save := < >, vars := < >,
+      A_vals := @Cs(@I^1),
+      A_vars := @Cs(@I^2),
+      F_vals := @Cs(body^1),
+      F_vars := @Cs(body^2) >:
+  C:" We need to (temporarily) update the Constants list ";
+  C:" by removing the (shadowed) globals ";
+  VAR < Constants := Constants \ @Make_Set(MAP("@Struct_Elts", F_vals ++ F_vars)) >:
+    C:" Save the values of shadowed globals (formal value parameters) ";
+    vars := MAP("@V", F_vals);
+    WHILE NOT EMPTY?(vars) DO
+      v := HEAD(vars);
+      save := <<v, @CP_Get(l, v)>> ++ save;
+      vars := TAIL(vars) OD;
+    C:" Update L with the effect of F_vals := A_vals and F_vars := A_vars ";
+    @CP_Do_Assigns(F_vals ++ F_vars, A_vals ++ A_vars VAR L);
+    C:" Process the body ";
+    @Edit;
+    @New_Program(body^3);
+    @CP_Statements(VAR L);
+    @Undo_Edit;
+    C:" delete formal var parameters from l and restore values of any shadowed globals: ";
+    IF NOT EMPTY?(L) AND L[1][1] = 0
+      THEN l := L[1][2];
+	   WHILE NOT EMPTY?(save) DO
+	     v := save[1][1]; c := save[1][2];
+	     IF EMPTY?(c) THEN l := @CP_Remove(l, v)
+			  ELSE l := @CP_Put(l, v, c) FI;
+	     save := TAIL(save) OD;
+	   L[1][2] := l;
+	   C:" Update L with the effect of assigning formal vars to actual vars ";
+	   @CP_Do_Assigns(F_vars, A_vars VAR L) FI ENDVAR ENDVAR .;
+
+
+C:" This proc updates L with the effect of the (multiple) assignment vars := vals ";
+MW_PROC @CP_Do_Assigns(vars, vals VAR L) ==
+  IF NOT EMPTY?(vars)
+    THEN VAR < A := < > >:
+	 WHILE NOT EMPTY?(vars) DO
+	   A := <@Make(T_Assign, < >, <HEAD(vars), HEAD(vals)>)> ++ A;
+	   vars := TAIL(vars); vals := TAIL(vals) OD;
+	 @Edit;
+	 @New_Program(@Make(T_Assigns, < >, A));
+	 @CP_Assigns(VAR L);
+	 @Undo_Edit ENDVAR FI .;
+
+
+C:" For local variables, we need to save all globals with the same name as a local. ";
+C:" Then apply the assigns, then apply the body, then restore the shadowed globals. ";
+C:" With VAR <x := x>: ... ENDVAR, a known initial value of x ";
+C:" will be propagated inside and restored again at the end. ";
+MW_PROC @CP_Var(VAR L) ==
+  VAR < v := < >, c := < >, l := L[1][2], save := < >,
+	vars := @Make_Set(MAP("@Struct_Elts", @Cs(@I^1))) >:
+  C:" We need to (temporarily) update the Constants list with the new variables: ";
+  C:" First remove the (shadowed) globals, then add any constant locals. ";
+  VAR < Constants := (Constants \ vars) \/ (vars \ @Elts_Assigned(@I^2)) >:
+  C:" Save the values of the `shadowed' globals with known values ";
+  WHILE NOT EMPTY?(vars) DO
+    v := HEAD(vars);
+    save := <<v, @CP_Get(l, v)>> ++ save;
+    vars := TAIL(vars) OD;
+  @Down; C:" to the assigns ";
+  C:" NB Don't delete any of the assigns, just update L ";
+  @Edit;
+  @CP_Assigns(VAR L);
+  @Undo_Edit;
+  @Right; C:" to the body ";
+  @CP_Statements(VAR L);
+  @Up; C:" back to var structure ";
+  C:" delete locals from l and restore values of any shadowed globals: ";
+  IF NOT EMPTY?(L) AND L[1][1] = 0
+    THEN l := L[1][2];
+	 WHILE NOT EMPTY?(save) DO
+	   v := save[1][1]; c := save[1][2];
+	   IF EMPTY?(c) THEN l := @CP_Remove(l, v)
+			ELSE l := @CP_Put(l, v, c) FI;
+	   save := TAIL(save) OD;
+         C:" Remove entries where the value uses a local variable ";
+         vars := @Make_Set(MAP("@Struct_Elts", @Cs(@I^1)));
+	 FOR pair IN l DO
+	   IF NOT @Elt_Clash_List?(@Elements(pair[2]), vars)
+	     THEN save := <pair> ++ save FI OD;
+	 L[1][2] := REVERSE(save) FI ENDVAR ENDVAR .;
+
+
+MW_FUNCT @Get_Lvar_Name (I) ==:
+  SKIP;
+  (@CP_Var_Name(I^1)) .;
+
+
+C:" Update Proc_Summaries with a new list of bodies while processing the WHERE body ";
+MW_PROC @CP_Where(VAR L) ==
+  Proc_Summaries := <HASH_TABLE> ++ Proc_Summaries;
+  PRINFLUSH("Summarising proc definitions... ");
+  @Summarise_Where_Defns(@Cs(@I^2));
+  PRINT("Done.");
+  C:" Process each procedure body with an empty L and a small budget: ";
+  @Down_To(2); C:" to defns ";
+  @Down; C:" to first defn ";
+  DO IF @ST(@I) = T_Proc
+       THEN @Down_To(4); C:" to body ";
+	    VAR < L := <<0, < >>>, call_budget := 800, initial_call_budget := 800 >:
+	      PRINFLUSH("p");
+	      @CP_Statements(VAR L) ENDVAR;
+	    @Up FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up; @Up; C:" back to WHERE clause ";
+  PRINT("");
+  C:" We want to have a full budget available for the WHERE body: ";
+  State_Saves := 0;
+  @Down; @CP_Statements(VAR L); @Up;
+  PRINT("");
+  Proc_Summaries := TAIL(Proc_Summaries) .;
+
+
+C:" WHILE is similar to FOR (check for null loops and infinite loops) ";
+MW_PROC @CP_While(VAR L) ==
+  VAR < min := 0 >:
+  @Down; C:" to condition ";
+  C:" Don't actually edit the condition until the loop body has been processed ";
+  C:" (unless the result is FALSE) ";
+  @Edit;
+  @CP_Update(VAR L);
+  @Trans(TR_Simplify, "");
+  IF @ST(@I) = T_False
+    THEN @End_Edit; C:" Loop body will not be entered, treat as a SKIP "
+    ELSE C:" If the updated loop test is TRUE, the the minumum number ";
+	 C:" of iterations for Gen_Loop is at least one: ";
+	 IF @ST(@I) = T_True THEN min := 1 FI;
+	 @Undo_Edit; C:" Restore loop test, since the body might affect it! ";
+	 C:" If the non-updated loop test is TRUE then the loop never terminates ";
+	 IF @ST(@I) = T_True
+	   THEN @CP_Abort(VAR L); C:" loop never terminates "
+	   ELSE C:" Within the loop we can assert the terminating condition ";
+		@CP_Assert_Condition(VAR L);
+		@Right; C:" to loop body ";
+		@CP_Gen_Loop(min VAR L) FI FI;
+  @Up; C:" Back to loop ";
+  C:" After the loop we can deny the terminating condition ";
+  @Down; @CP_Update(VAR L); @CP_Deny_Condition(VAR L); @Up ENDVAR .;
+
+
+CP_Special_Value := 426294;
+CP_Return_Code_Inc := < >;
+CP_Return_Code_Normal := 0;
+CP_In_Preserves_Dest := 0;
+
+CP_Reg_To_Num := HASH_TABLE;
+VAR < n := 0 >:
+  FOR reg IN MAP("@Make_Name", < "r0", "r1", "r2", "r3", "r4", "r5",
+				 "r6", "r7", "r8", "r9", "r10", "r11",
+				 "r12", "r13", "r14", "r15" >) DO
+    CP_Reg_To_Num.(reg) := n;
+    n := n + 1 OD ENDVAR;
+
+
+C:" Check that the given item sends the value of the given reg to destination: ";
+
+MW_FUNCT @Preserves_Destination(name, I, reg, effort, call_budget, flag_n) ==
+  VAR < L := <<0, < >>>, Entries := < >, Call_Path := < >,
+	Unfold_Dispatch := 0,
+	calls_processed := 0, call_depth := 0,
+	Constants := < >, DSECTs := HASH_TABLE, CP_State := < >,
+	destination := @Make_Name("destination"),
+	val := < >, body := < >, R := 0,
+	initial_call_budget := call_budget, State_Saves := 0,
+	registers := @Make_Set(MAP("@Make_Name", < "r0", "r1", "r2", "r3", "r4", "r5",
+					           "r6", "r7", "r8", "r9", "r10", "r11",
+                                                   "r12", "r13", "r14", "r15" >)),
+        x86_regs := MAP("@Make_Name", < "ax", "bx", "cx", "dx" >),
+	cc_name := @Make_Name("cc"),
+	zf_name := @Make_Name("zf"),
+	cf_name := @Make_Name("cf"),
+	r1_name := @Make_Name("r1"),
+	push_regs := @Make_Name("push_regs"),
+	pop_regs := @Make_Name("pop_regs"),
+	chain_reg := @Make_Name("chain_reg"),
+	reg_stack := @Make_Name("reg_stack"),
+	call_stack := @Make_Name("call_stack"),
+	call_via_ptr := @Make_Name("call_via_ptr"),
+	call_via_ptr_pars := @Make_Name("call_via_ptr_pars"),
+	pack := @Make_Name("pack"),
+	EXEC_CICS := @Make_Name("EXEC_CICS"),
+	true := @Make(T_True, < >, < >),
+	false := @Make(T_False, < >, < >),
+	dispatch := 0,
+	AS_Type := @AS_Type,
+	exit_flag := @Make_Name("exit_flag"),
+	Notused_Value := HASH_TABLE,
+	Migration := 1 >:
+  PRINT("--> Checking if action ", @N_String(name),
+	" sends ", @N_String(reg), " to destination...");
+  C:" First we construct a var/value list from reg, ";
+  C:" giving it a special numeric value ";
+  L := <<0, @CP_Put(< >, <reg>, @Make(T_Number, CP_Special_Value, < >))>>;
+  @Edit;
+  @New_Program(I);
+  @CP_Find_DSECTs(VAR DSECTs);
+  @CP_Init_DSECT_Pointers(DSECTs VAR L);
+  @CP_Memory_Address_Fix;
+  CP_Return_Code_Inc := < >;
+  CP_Return_Code_Normal := 0;
+  CP_In_Preserves_Dest := flag_n;
+  @CP_Generic(VAR L);
+  CP_In_Preserves_Dest := 0;
+  @Undo_Edit;
+  PRINT("");
+  C:" Check that the special numeric value is now in destination ";
+  IF EMPTY?(L) OR L[1][1] > 0
+    THEN val := < >
+    ELSE val := @CP_Get(L[1][2], <destination>) FI;
+  IF EMPTY?(val) OR @ST(val) <> T_Number OR @V(val) <> CP_Special_Value
+    THEN PRINT("<-- Failed for action ", @N_String(name),
+               " register ", @N_String(reg));
+	 R := 0
+    ELSE PRINT("<-- Succeeded for action ", @N_String(name),
+               " register ", @N_String(reg));
+	 R := 1;
+	 IF NOT EMPTY?(CP_Return_Code_Inc) THEN R := 2 FI FI;
+  (R) .;
+
+
+C:" Find assignments of the form dsect := reg ";
+C:" If there is only one register associated with a dsect, ";
+C:" then assume that the dsect is already initialised (by adding ";
+C:" an entry to L) ";
+
+MW_PROC @CP_Init_DSECT_Pointers(DSECTs VAR L) ==
+  VAR < DSECT_reg := HASH_TABLE, DSECT_bad := HASH_TABLE, DSECT_list := < >,
+        name := < > >:
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment AND @Size(@I) = 1
+      THEN IF @ST(@I^1^1) = T_Var_Lvalue AND NOT EMPTY?(DSECTs.(@V(@I^1^1)))
+		AND @ST(@I^1^2) = T_Variable AND @V(@I^1^2) IN registers
+	     THEN IF EMPTY?(DSECT_reg.(@V(@I^1^1)))
+		    THEN DSECT_reg.(@V(@I^1^1)) := @V(@I^1^2);
+			 DSECT_list := <@V(@I^1^1)> ++ DSECT_list
+		  ELSIF DSECT_reg.(@V(@I^1^1)) <> @V(@I^1^2)
+		    THEN DSECT_bad.(@V(@I^1^1)) := 1 FI FI FI OD;
+  FOR name IN DSECT_list DO
+    IF EMPTY?(DSECT_bad.(name))
+      THEN L := @CP_Put0(L, <name>,
+                         @Make(T_Variable, DSECT_reg.(name), < >)) FI OD ENDVAR .;
+
+
+C:" Within Preserves_Destination, convert a[rX + n, 4] to a simple variable ";
+C:" cf: a[r1 + 72, 4] := r4; ...; r4 := a[r1 + 72, 4]; ";
+
+MW_PROC @CP_Memory_Address_Fix() ==
+  VAR < new := < > >:
+  FOREACH Expression DO
+    IFMATCH Expression a[~?v + ~?n, 4]
+      THEN IF @ST(v) = T_Variable AND @ST(n) = T_Number
+                AND (@V(v) IN registers OR @V(v) IN reg_inits)
+             THEN new := @Make_Name(@N_String(@V(v)) ++ "__" ++ @String(@V(n)));
+	          @Paste_Over(@Make(T_Variable, new, < >)) FI ENDMATCH OD;
+  FOREACH Lvalue DO
+    IFMATCH Lvalue a[~?v + ~?n, 4]
+      THEN IF @ST(v) = T_Variable  AND @ST(n) = T_Number
+                AND (@V(v) IN registers OR @V(v) IN reg_inits)
+             THEN new := @Make_Name(@N_String(@V(v)) ++ "__" ++ @String(@V(n)));
+	          @Paste_Over(@Make(T_Var_Lvalue, new, < >)) FI ENDMATCH OD;
+  SKIP ENDVAR .;
+
+
+
+
+
+C:" Look for DSECT pointers which are assigned from a register ";
+C:" which is initialised at most once. If this is the case, we can delete ";
+C:" most assignments to the DSECT pointer. BUT: add an assignment ";
+C:" at each entry point, as well as keeping one after the assignment to the register. ";
+C:" This is in case the initial value of the register is used also. ";
+
+MW_PROC @CP_Constant_DSECT_Pointers(DSECTs) ==
+  VAR < reg := < >, var := < >, reg_init_count := HASH_TABLE, reg_DSECTs := HASH_TABLE,
+	DSECT_init := HASH_TABLE, DSECT_init_count := HASH_TABLE,
+	DSECT_reg := HASH_TABLE, DSECT_bad := HASH_TABLE, done := HASH_TABLE,
+	OK := 0, name := < >, v := < >, e := < >, pointers := < >,
+	all_inits := reg_inits \/ <@Make_Name("___r1_init___")> >:
+
+  FOR reg IN registers ++ reg_inits DO
+    reg_init_count.(reg) := 0 OD;
+  C:" Check that the DSECT pointer is initialised to the same expression: ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+      THEN @Down;
+	   DO IF @ST(@I^1) = T_Var_Lvalue AND NOT EMPTY?(DSECTs.(@V(@I^1)))
+	           AND EMPTY?(DSECT_bad.(@V(@I^1)))
+		THEN name := @V(@I^1);
+		     IF EMPTY?(DSECT_init.(name))
+		       THEN DSECT_init.(name) := @I^2;
+		            DSECT_init_count.(name) := 1
+	             ELSIF @Equal?(DSECT_init.(name), @I^2)
+		       THEN DSECT_init_count.(name) := DSECT_init_count.(name) + 1
+		     ELSIF @ST(DSECT_init.(name)) = T_Variable
+	                  AND @Variables(@I^2) = <@V(DSECT_init.(name))>
+                       THEN DSECT_init.(name) := @I^2;
+		            DSECT_init_count.(name) := 1
+                     ELSIF @ST(@I^2) = T_Variable
+                          AND @Variables(DSECT_init.(name)) = <@V(@I^2)>
+                       THEN SKIP
+                       ELSE DSECT_bad.(name) := 1 FI FI;
+              IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+
+  FOR name IN @Hash_Keys(DSECTs) DO
+    IF EMPTY?(DSECT_bad.(name)) AND NOT EMPTY?(DSECT_init.(name))
+      THEN e := DSECT_init.(name);
+           PRINFLUSH("DSECT_init(", @N_String(name), ") = ");
+           @PP_Item(e, 80, "");
+	   C:" Hack for ptr := (reg + ptr) - ADDRESS_OF(a[ptr].foo.bar) ";
+	   IF @ST(e) = T_Minus AND @CP_Constant?(e) AND @ST(e^1) = T_Plus
+	     THEN e := e^1^1 FI;
+           IF LENGTH(@Variables(e) \ <a_name>) <> 1
+	     THEN DSECT_bad.(name) := 1
+	     ELSE v := HEAD(@Variables(e) \ <a_name>);
+	          IF v NOTIN registers AND v NOTIN reg_inits
+		    THEN DSECT_bad.(name) := 1
+		    ELSE DSECT_reg.(name) := v FI FI FI OD;
+
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+      THEN @Down;
+	   DO IF @ST(@I^1) = T_Var_Lvalue AND @V(@I^1) IN registers
+		   AND NOT(@ST(@I^2) = T_Variable AND @V(@I^2) IN reg_inits)
+		THEN reg_init_count.(@V(@I^1)) := reg_init_count.(@V(@I^1)) + 1 FI;
+	      IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+  C:" Check for registers initialised in a !P (other than pop_regs and chain_reg) ";
+  C:" NB: which !P calls actually initialise registers? ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_A_Proc_Call AND @V(@I^1) <> pop_regs AND @V(@I^1) <> chain_reg
+      THEN FOR var IN @Assigned(@I) DO
+	     IF var IN registers
+	       THEN reg_init_count.(var) := reg_init_count.(var) + 1 FI OD FI OD;
+
+  C:" Check if a suitable DSECT/reg pair has been found: ";
+  OK := 0;
+  FOR var IN @Hash_Keys(DSECTs) DO
+    IF EMPTY?(DSECT_bad.(var)) AND NOT EMPTY?(DSECT_reg.(var))
+	 AND reg_init_count.(DSECT_reg.(var)) <= 1
+      THEN reg_DSECTs.(DSECT_reg.(var)) := reg_DSECTs.(DSECT_reg.(var)) \/ <var>;
+	   PRINT("Found (fairly) constant DSECT: ", @N_String(var),
+	         " reg = ", @N_String(DSECT_reg.(var)),
+		 " init count = ", reg_init_count.(DSECT_reg.(var)));
+	   OK := 1
+      ELSE DSECT_bad.(var) := 1 FI OD;
+
+  IF OK = 0
+    THEN PRINT("No constant DSECTs found")
+    ELSE C:" Delete all assignments to the constant DSECTs, ";
+	 C:" (these are assigned to a register value) ";
+	 C:" Insert an assignment after the (single) register initialisation: ";
+	 pointers := @Make_Set(@Hash_Keys(DSECTs));
+	 FOREACH Statement DO
+	   IF @ST(@I) = T_Assignment
+	     THEN @Down;
+		  DO IF @ST(@I^1) = T_Var_Lvalue AND NOT EMPTY?(DSECT_reg.(@V(@I^1)))
+			  AND EMPTY?(DSECT_bad.(@V(@I^1)))
+		       THEN PRINFLUSH("X"); @Delete;
+			    IF @Posn_n > @Size(@Parent) THEN EXIT(1) FI
+		     ELSIF @Right? THEN @Right ELSE EXIT(1) FI OD;
+		  @Up;
+		  IF @Size(@I) = 0 THEN @Delete FI FI OD;
+         C:" Set the DSECT pointer after the *last* reg assignment in the sequence. ";
+	 C:" But also check for references to the DSECT pointer before this! ";
+         VAR < dsects_done := < > >:
+	 FOREACH Statements DO
+	   dsects_done := < >;
+	   @Down_Last;
+	   DO IF @ST(@I) = T_Assignment
+                THEN @Down;
+                     DO IF @ST(@I^1) = T_Var_Lvalue AND @V(@I^1) IN registers
+                             AND NOT EMPTY?(reg_DSECTs.(@V(@I^1)))
+                             AND NOT(@ST(@I^2) = T_Variable AND @V(@I^2) IN reg_inits)
+			     AND EMPTY?(done.(reg_DSECTs.(@V(@I^1))))
+                          THEN FOR name IN @Sort_List(reg_DSECTs.(@V(@I^1))) DO
+			         var := @Make(T_Var_Lvalue, name, < >);
+                                 e := DSECT_init.(@V(var));
+                                 PRINFLUSH(" ", @N_String(name), " ");
+                                 @Up;
+                                 @Paste_After(FILL Statement ~?var := ~?e ENDFILL);
+                                 @Down OD;
+                               C:" Record that we have done this one: ";
+			       dsects_done := reg_DSECTs.(@V(@I^1)) \/ dsects_done;
+                               done.(reg_DSECTs.(@V(@I^1))) := 1
+                          ELSE FOR name IN @Sort_List(dsects_done
+			                               /\ (@Used(@I) \ @Assigned(@I))) DO
+			         var := @Make(T_Var_Lvalue, name, < >);
+				 e := DSECT_init.(@V(var));
+			         @Up;
+				 @Paste_Before(FILL Statement ~?var := ~?e ENDFILL);
+				 @Right;
+				 @Down OD;
+                               EXIT(1) FI;
+                        IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+		     @Up
+                ELSIF @ST(@I) = T_A_Proc_Call AND @V(@I^1) <> pop_regs
+		  THEN FOR v IN @Sort_List(@Assigned(@I) /\ registers) DO
+		         IF NOT EMPTY?(reg_DSECTs.(v))
+			      AND EMPTY?(done.(reg_DSECTs.(v)))
+                           THEN FOR name IN reg_DSECTs.(v) DO
+			          var := @Make(T_Var_Lvalue, name, < >);
+                                  e := DSECT_init.(@V(var));
+                                  PRINFLUSH(" ", @N_String(name), " ");
+				  @Paste_After(FILL Statement ~?var := ~?e
+				               ENDFILL) OD FI OD FI;
+              IF EMPTY?(pointers /\ @Assigned(@I)) AND NOT EMPTY?(pointers /\ @Used(@I))
+	        THEN FOR v IN pointers /\ @Used(@I) DO
+		       done.(v) := < > OD FI;
+              IF @Left? THEN @Left ELSE EXIT(1) FI OD OD ENDVAR;
+
+         C:" Add a initialisation from the initial value of the register ";
+         C:" to the DSECT pointer, if the register is never initialised ";
+         C:" or if the initialisation is safe (doesn't deref a pointer) ";
+	 C:" Test for EMPTY?(done.(reg_DSECTs.(DSECT_reg.(var)))) was taken out ";
+	 C:" since a called module may use the register(?). Have restored the test. ";
+         FOR var IN @Sort_List(@Hash_Keys(DSECTs)) DO
+           IF NOT EMPTY?(DSECT_reg.(var)) AND EMPTY?(DSECT_bad.(var))
+		AND a_name NOTIN @Used(DSECT_init.(var))
+		AND EMPTY?(done.(reg_DSECTs.(DSECT_reg.(var))))
+             THEN ATEACH Statement DO
+                    IF @ST(@I) = T_Comment AND @V(@I) = " <ENTRY POINT> "
+                      THEN C:" Step past register initialisation code: ";
+		           WHILE @Right? AND @ST(@I) = T_Comment DO
+		             @Right OD;
+		           WHILE @Right? AND NOT EMPTY?(@Used(@I) /\ all_inits) DO
+			     @Right OD;
+			   IF @Left? THEN @Left FI;
+		           v := @Make(T_Var_Lvalue, var, < >);
+                           e := DSECT_init.(var);
+                           @Paste_After(FILL Statement ~?v := ~?e ENDFILL) FI OD FI OD;
+
+	 PRINT("") FI ENDVAR .;
+
+
+C:" Check for a cycle: copies+ occurrences of a subsequence of len+ values ";
+
+MW_BFUNCT @CP_Cycle?(posn, copies, len) ==
+  VAR < OK := 0 >:
+  IF LENGTH(posn) >= copies * len
+    THEN VAR < occs := HASH_TABLE, nos := < >, n := 0, total := 0 >:
+	 C:" Count the occurrences of each number in posn ";
+	 FOR n IN posn DO
+	   IF EMPTY?(occs.(n))
+	     THEN occs.(n) := 1; nos := <n> ++ nos
+	     ELSE occs.(n) := occs.(n) + 1 FI OD;
+	 FOR n IN nos DO
+	   IF occs.(n) >= copies
+	     THEN total := total + occs.(n) FI OD;
+	 IF total >= copies * len
+	   THEN C:" Possible cycle detected ";
+		@CP_Cycle2(TAIL(REVERSE(posn)), copies, len VAR OK) FI ENDVAR FI;
+  (OK = 1) .;
+
+
+C:" Check for a cycle at the _beginning_ of list (list = REVERSE(@Posn)): ";
+
+MW_PROC @CP_Cycle2(list, copies, min_len VAR OK) ==
+  VAR < a := ARRAY(LENGTH(list), 0), n := 0, l := 0,
+	start := 0, c := 0, i := 0 >:
+  C:" Copy the list to an array and set n to the length of the list: ";
+  WHILE NOT EMPTY?(list) DO
+    n := n + 1;
+    a[n] := HEAD(list); list := TAIL(list) OD;
+  start := a[1];
+  C:" l is the length of a candidate cycle : ";
+  l := min_len;
+  DO C:" Scan backwards for another copy of start ";
+     WHILE l * copies < n AND a[l + 1] <> start DO
+       l := l + 1 OD;
+     IF l * copies >= n THEN OK := 0; EXIT(1) FI;
+     C:" Check for copies of the sequence 1..l at positions ";
+     C:" from l+1..2l up to (copies-1)*l+1..copies*l ";
+     c := 1; OK := 1;
+     WHILE c < copies AND OK = 1 DO
+       i := 1;
+       WHILE i <= l AND OK = 1 DO
+	 IF a[i] <> a[c*l+i]
+	   THEN OK := 0
+	   ELSE i := i + 1 FI OD;
+       IF OK = 1 THEN c := c + 1 FI OD;
+     IF OK = 1 THEN EXIT(1) FI;
+     C:" Look for next copy of start and try again: ";
+     l := l + 1 OD ENDVAR .;
+
+
+MW_PROC @CP_Print_L(L) ==
+  VAR < L1 := < > >:
+  WHILE NOT EMPTY?(L) DO
+    PRINT(L[1][1], ":");
+    L1 := L[1][2];
+    WHILE NOT EMPTY?(L1) DO
+      IF LAST(L1[1][1]) <= 0
+        THEN PRINFLUSH("  ", @Join(".", MAP("@N_String", BUTLAST(L1[1][1]))),
+	               ".", -LAST(L1[1][1]), " := ")
+        ELSE PRINFLUSH("  ", @Join(".", MAP("@N_String", L1[1][1])), " := ") FI;
+      @PP_Item(L1[1][2], 80, "");
+      L1 := TAIL(L1) OD;
+    L := TAIL(L);
+    PRINT("") OD ENDVAR .;
+    
+
+C:" Find the destination values ";
+MW_FUNCT @CP_Find_Dispatch_Codes(dispatch) ==
+  VAR < codes := < >, destination := @Make_Name("destination"),
+        largest := 0, regs := < >, tmp := < > >:
+  @Edit;
+  @Down_Last; @Down_Last; C:" to the last action ";
+  WHILE @Left? AND @V(@I^1) <> dispatch DO @Left OD;
+  IF @V(@I^1) = dispatch
+    THEN @Down_Last; C:" to dispatch body ";
+         @Down;
+         WHILE @ST(@I) <> T_Cond AND @Right? DO @Right OD;
+         IF @ST(@I) = T_Cond
+           THEN @Down; C:" to first guard ";
+                DO @Down; C:" to cond ";
+                   IF @ST(@I) = T_Equal
+                     THEN IF @ST(@I^1) = T_Variable
+                               AND @V(@I^1) = destination
+                               AND @ST(@I^2) = T_Number
+                            THEN codes := <@V(@I^2)> ++ codes
+                          ELSIF @ST(@I^1) = T_Variable
+                               AND @V(@I^1) = destination
+                               AND @ST(@I^2) = T_Negate
+                               AND @ST(@I^2^1) = T_Number
+                            THEN codes := <-@V(@I^2^1)> ++ codes
+                          ELSIF @ST(@I^2) = T_Variable
+                               AND @V(@I^2) = destination
+                               AND @ST(@I^1) = T_Number
+                            THEN codes := <@V(@I^1)> ++ codes FI FI;
+                   @Up; C:" back to the guard ";
+                   IF @Right? THEN @Right ELSE EXIT(1) FI OD FI FI;
+  codes := REVERSE(codes);
+  @Undo_Edit;
+  (codes) .;
+
+
+MW_FUNCT @CP_Find_Return_Elts(dispatch_codes) ==
+  VAR < R := < >, posn := @Posn, done := 0 >:
+  @Goto(< >);
+  DO done := 1;
+     FOREACH Statement DO
+       IFMATCH Statement ~?v := ~?e
+         THEN IF @ST(e) = T_Number AND @V(e) <> 0 AND @V(e) IN dispatch_codes
+                THEN elt := @Struct_Elts(v);
+		     IF NOT EMPTY?(elt) AND elt NOTIN R AND elt <> <a_name>
+		       THEN done := 0;
+		            R := R \/ <elt> FI
+              ELSIF @ST(e) = T_Negate AND @ST(e^1) = T_Number
+	              AND -@V(e^1) IN dispatch_codes
+                THEN elt := @Struct_Elts(v);
+		     IF NOT EMPTY?(elt) AND elt NOTIN R AND elt <> <a_name>
+		       THEN done := 0;
+		            R := R \/ <elt> FI
+              ELSIF @ST(e) = T_Sub_Seg AND @ST(e^2) = T_Number
+	        THEN C:" Skip statements like rX := FOO[9..12] "
+              ELSIF @ST(e) IN <T_Variable, T_Struct, T_Rel_Seg, T_Sub_Seg>
+	              AND (@Struct_Elts(e) IN R
+		            OR @ST(e) = T_Variable AND @Starts_With?(@V(e), "NOTUSED_"))
+                THEN elt := @Struct_Elts(v);
+		     IF NOT EMPTY?(elt) AND elt NOTIN R AND elt <> <a_name>
+		       THEN done := 0;
+		            R := R \/ <elt> FI FI ENDMATCH;
+      IF @ST(@I) = T_Var
+        THEN FOR var IN @Assigned(@I^1) DO
+	       IF @Starts_With?(var, "EODAD_")
+	         THEN R := R \/ <<var>> FI OD FI OD;
+    IF done = 1 THEN EXIT(1) FI OD;
+  @Goto(posn);
+  IF FALSE THEN PRINFLUSH("Return elts:"); @Print_Elts(R) FI;
+  (R) .;
+
+
+C:" Look for dispatch codes which are assigned to a variable ";
+C:" where this is the only assignment to the variable. ";
+C:" Replace all references to the variable by the dispatch code. ";
+C:" If this creates an assignment to destination, then we can ";
+C:" delete the assignment of the code to the variable, ";
+C:" and delete any assignment of the code to a register. ";
+C:" This should eventually allow pruning of the dispatch code. ";
+
+C:" NB: Fix_Dispatch already does something very similar when effort > 0 ";
+
+MW_PROC @CP_Once_Called_Codes(Code_Hash) ==
+  VAR < var_value := HASH_TABLE, delete := HASH_TABLE, elt := < >, codes := < >,
+        destination := @Make_Name("destination") >:
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+      THEN IF @ST(@I^1^2) = T_Number AND NOT EMPTY?(Code_Hash.(@V(@I^1^2)))
+                AND @ST(@I^1^1) IN <T_Var_Lvalue, T_Struct_Lvalue>
+	     THEN var_value.(@Struct_Elts(@I^1^1)) := @V(@I^1^2) FI FI OD;
+  C:" Check that there are no other assignments ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+      THEN IF @ST(@I^1^1) IN <T_Var_Lvalue, T_Struct_Lvalue>
+             THEN elt := @Struct_Elts(@I^1^1);
+	          IF NOT EMPTY?(var_value.(elt))
+	               AND (@ST(@I^1^2) <> T_Number OR @V(@I^1^2) <> var_value.(elt))
+                    THEN var_value.(elt) := < > FI FI
+    ELSIF @ST(@I) = T_A_Proc_Call
+      THEN FOR elt IN @Elts_Assigned(@I) DO
+             IF NOT EMPTY?(var_value.(elt))
+	       THEN var_value.(elt) := < > FI OD FI OD;
+
+  FOR elt IN @Hash_Keys(var_value) DO
+    IF NOT EMPTY?(var_value.(elt))
+      THEN PRINT("Replacing:  ", MAP("@N_String", elt), " = ", var_value.(elt)) FI OD;
+
+  ATEACH Expression DO
+    IF @ST(@I) = T_Variable OR @ST(@I) = T_Struct
+      THEN elt := @Struct_Elts(@I);
+           IF NOT EMPTY?(var_value.(elt))
+             THEN @Paste_Over(@Make(T_Number, var_value.(elt), < >));
+                  IF @ST(@Parent) = T_Assign AND @ST(@Parent^1) = T_Var_Lvalue
+                       AND @V(@Parent^1) = destination
+		    THEN delete.(elt) := var_value.(elt);
+		         codes := <var_value.(elt)> \/ codes FI FI FI OD;
+
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+      THEN IF @ST(@I^1^1) IN <T_Var_Lvalue, T_Struct_Lvalue>
+             THEN elt := @Struct_Elts(@I^1^1);
+	          IF NOT EMPTY?(delete.(elt))
+		    THEN @Delete
+                  ELSIF @V(@I^1^1) IN registers AND @ST(@I^1^2) = T_Number
+		           AND @V(@I^1^2) IN codes
+                    THEN @Delete FI FI FI OD;
+
+ ENDVAR .;
+
+
+
+
+C:" Check for rX := code before the Cond ";
+C:" where each branch of the Cond is either a CALL ";
+C:" or proc call plus CALL. Can use Code_Hash. ";
+
+MW_PROC @CP_Maybe_Absorb_Left(VAR L) ==
+  VAR < count := 0, OK := 1, AS := @AS_Type, used := < > >:
+
+  C:" Expand over any immediately following simple Cond(s): ";
+  count := 0;
+  WHILE @Trans?(TR_Else_If_To_Elsif) DO
+    @Trans(TR_Else_If_To_Elsif, "") OD;
+  FOR guard IN @Cs(@I) DO
+    IF NOT @Gen_Improper?(guard^2, AS)
+      THEN count := count + 1 FI OD;
+
+  IF count = 1
+    THEN DO IF NOT @Right? THEN EXIT(1) FI;
+            @Right;
+	    IF @ST(@I) = T_Cond AND @Size(@I) = 2
+	         AND T_Call IN @Stat_Types(@I^1^2)
+	         AND @ST(@I^2^2^1) = T_Skip
+              THEN @Left;
+	           IF @Trans?(TR_Expand_Forward)
+		     THEN @Trans(TR_Expand_Forward, "");
+                          WHILE @Trans?(TR_Else_If_To_Elsif) DO
+	                     @Trans(TR_Else_If_To_Elsif, "") OD
+		     ELSE ERROR("@CP_Maybe_Absorb_Left: cannot Expand_Forward!") FI
+              ELSE @Left; EXIT(1) FI OD FI;
+
+  C:" Count how many guards start with a CALL ";
+  count := 0;
+  FOR guard IN @Cs(@I) DO
+    IF @ST(guard^2^1) = T_Call THEN count := count + 1 FI OD;
+  IF count > 1
+    THEN C:" Scan back looking for an assignment of a dispatch code to a register ";
+         @Left;
+	 WHILE @ST(@I) = T_Comment AND @Left? DO @Left OD;
+	 IF @ST(@I) = T_Assignment
+	      AND @ST(@I^1^1) = T_Var_Lvalue AND @V(@I^1^1) IN registers
+	      AND @ST(@I^1^2) = T_Number AND @V(@I^1^2) > 1
+	      AND NOT EMPTY?(Code_Hash.(@V(@I^1^2)))
+           THEN L[1][2] := @CP_Remove(L[1][2], <@V(@I^1^1)>);
+                @Cut;
+	        WHILE @ST(@I) = T_Comment DO @Right OD;
+		@Paste_Before(@Buffer);
+		@Right;
+		IF @Trans?(TR_Absorb_Left)
+		  THEN @Trans(TR_Absorb_Left, "") FI
+           ELSE @Right;
+	        WHILE @ST(@I) = T_Comment DO @Right OD FI FI ENDVAR .;
+
+
+
+SKIP
+

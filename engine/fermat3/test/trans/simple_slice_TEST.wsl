@@ -1,0 +1,363 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Simple_Slice'",
+	    (FILL Statements
+
+i := 1;
+posprod := 1;
+negprod := 1;
+possum := 0;
+negsum := 0;
+WHILE i <= n DO
+  a := input[i];
+  {a > 0};
+  IF a > 0
+    THEN possum := possum + a;
+	 posprod := posprod * a
+  ELSIF a < 0
+    THEN negsum := negsum - a;
+	 negprod := negprod * (-a)
+  ELSIF test0 = 1
+    THEN IF possum >= negsum
+	   THEN possum := 0;
+	   ELSE negsum := 0 FI;
+	 IF posprod >= negprod
+	   THEN posprod := 1
+	   ELSE negprod := 1 FI FI;
+  i := i + 1 OD;
+IF possum >= negsum
+  THEN sum := possum
+  ELSE sum := negsum FI;
+IF posprod >= negprod
+  THEN prod := posprod
+  ELSE prod := negprod FI
+
+ENDFILL),
+	    < >,
+	    TR_Simple_Slice,
+	    "i",
+	    (FILL Statements
+
+i := 1;
+SKIP;
+SKIP;
+SKIP;
+SKIP;
+WHILE i <= n DO SKIP; SKIP; SKIP; i := i + 1 OD;
+SKIP;
+SKIP
+
+ENDFILL));
+
+
+
+@Test_Trans(" 2nd test of `Simple_Slice'",
+	    (FILL Statements
+
+
+i := 1;
+posprod := 1;
+negprod := 1;
+possum := 0;
+negsum := 0;
+WHILE i <= n DO
+  a := input[i];
+  {a > 0};
+  IF a > 0
+    THEN possum := possum + a;
+	 posprod := posprod * a
+  ELSIF a < 0
+    THEN negsum := negsum - a;
+	 negprod := negprod * (-a)
+  ELSIF test0 = 1
+    THEN IF possum >= negsum
+	   THEN possum := 0;
+	   ELSE negsum := 0 FI;
+	 IF posprod >= negprod
+	   THEN posprod := 1
+	   ELSE negprod := 1 FI FI;
+  i := i + 1 OD;
+IF possum >= negsum
+  THEN sum := possum
+  ELSE sum := negsum FI;
+IF posprod >= negprod
+  THEN prod := posprod
+  ELSE prod := negprod FI
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "possum",
+	     (FILL Statements
+
+i := 1;
+SKIP;
+SKIP;
+possum := 0;
+negsum := 0;
+WHILE i <= n DO
+  a := input[i];
+  SKIP;
+  IF a > 0
+    THEN possum := possum + a; SKIP
+  ELSIF a < 0
+    THEN negsum := negsum - a; SKIP
+  ELSIF test0 = 1
+    THEN IF possum >= negsum
+	   THEN possum := 0
+	   ELSE negsum := 0 FI;
+	 SKIP FI;
+  i := i + 1 OD;
+SKIP;
+SKIP
+
+ENDFILL));
+
+
+
+@Test_Trans(" 3rd test of `Simple_Slice'",
+	    (FILL Statements
+
+y := z;
+IF y = 1 THEN x := 1
+ELSIF y = 2 THEN x1 := 2
+ELSIF y = 3 THEN x2 := 3
+  ELSE z := 99 FI
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "z",
+	     (FILL Statements
+
+y := z;
+IF y = 1
+  THEN SKIP
+ELSIF y = 2
+  THEN SKIP
+ELSIF y = 3
+  THEN SKIP
+  ELSE z := 99 FI
+
+ENDFILL));
+
+
+
+@Test_Trans(" 4th test of `Simple_Slice'",
+	    (FILL Statements
+
+y := z;
+IF y = 1 THEN x := 1
+ELSIF y = 2 THEN x1 := 2
+ELSIF y = 3 THEN x2 := 3
+  ELSE z := 99 FI
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "x",
+	     (FILL Statements
+
+y := z;
+IF y = 1
+  THEN x := 1
+ELSIF y = 2
+  THEN SKIP
+ELSIF y = 3
+  THEN SKIP FI
+
+ENDFILL));
+
+
+
+@Test_Trans(" 5th test of `Simple_Slice'",
+	    (FILL Statements
+
+y := z;
+IF y = 1 THEN x := 1
+ELSIF y = 2 THEN x1 := 2
+ELSIF y = 3 THEN x2 := 3
+  ELSE z := 99 FI
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "x2",
+	     (FILL Statements
+
+y := z;
+IF y = 1
+  THEN SKIP
+ELSIF y = 2
+  THEN SKIP
+ELSIF y = 3
+  THEN x2 := 3 FI
+
+ENDFILL));
+
+
+@Test_Trans(" 6th test of `Simple_Slice'",
+	    (FILL Statements
+
+y := x0;
+WHILE i <> 0 DO
+  y := x1;
+  x1 := x2;
+  x2 := x3;
+  i := i-1 OD
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "y",
+	     (FILL Statements
+
+y := x0;
+WHILE i <> 0 DO
+  y := x1; x1 := x2; x2 := x3; i := i - 1 OD
+
+ENDFILL));
+
+
+@Test_Trans(" 7th test of `Simple_Slice'",
+	    (FILL Statements
+
+y := x0;
+WHILE i <> 0 DO
+  y := x1;
+  x1 := x2;
+  x2 := x3;
+  i := i-1 OD
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "x1",
+	     (FILL Statements
+
+SKIP;
+WHILE i <> 0 DO
+  SKIP; x1 := x2; x2 := x3; i := i - 1 OD
+
+ENDFILL));
+
+
+@Test_Trans(" 8th test of `Simple_Slice'",
+	    (FILL Statements
+
+y := x0;
+WHILE i <> 0 DO
+  y := x1;
+  x1 := x2;
+  x2 := x3;
+  i := i-1 OD
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "x2",
+	     (FILL Statements
+
+SKIP;
+WHILE i <> 0 DO SKIP; SKIP; x2 := x3; i := i - 1 OD
+
+
+ENDFILL));
+
+
+@Test_Trans(" 9th test of `Simple_Slice'",
+	    (FILL Statements
+
+y := x0;
+WHILE i <> 0 DO
+  y := x1;
+  x1 := x2;
+  x2 := x3;
+  i := i-1 OD
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "x3",
+	     (FILL Statements
+
+SKIP; SKIP
+
+ENDFILL));
+
+
+@Test_Trans("10th test of `Simple_Slice'",
+	    (FILL Statements
+
+z := y;
+ABORT
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "z",
+	     (FILL Statements
+
+SKIP;
+ABORT
+
+ENDFILL));
+
+
+
+@Test_Trans("11th test of `Simple_Slice'",
+	    (FILL Statements
+
+ABORT;
+z := y
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "z",
+	     (FILL Statements
+
+ABORT;
+z := y
+
+ENDFILL));
+
+
+@Test_Trans("12th test of `Simple_Slice'",
+	    (FILL Statements
+
+y := z; SPEC <x>: x' = z + 1 ENDSPEC
+
+ENDFILL),
+	     < >,
+	     TR_Simple_Slice,
+	     "x",
+	     (FILL Statements
+
+SKIP; SPEC <x>: x' = z + 1 ENDSPEC
+
+ENDFILL));
+
+
+SKIP
+
+
+

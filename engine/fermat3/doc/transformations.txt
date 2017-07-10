@@ -1,0 +1,317 @@
+Absorb_Left:  This transformation will absorb into the selected
+statement the one that precedes it.
+
+Absorb_Right:  This transformation will absorb into the selected
+statement the one that follows it.
+
+Actions_To_Procs:  Search for actions which call one other action
+and make them into procs.
+
+Add_Assertion:  This transformation will add an assertion after
+the current item, if some suitable information can be ascertained.
+
+Add_Left:  This transformation will add the selected statement
+(or sequence of statements) into the statement that precedes it
+without doing further simplification.
+
+Align_Nested_Statements:  This transformation takes a guarded
+clause whose first statement is a `If' and integrates it with
+the outer condition by absorbing the other guarded statements into
+the inner `If', and then modifying its conditions appropriately.
+This is the converse of `Partially Join Cases'.
+
+Collapse_Action_System:  Collapse action system will use simplifications
+and substitution to transform an action system into a sequence
+of statements, possibly inside a DO loop.
+
+Collapse_All_Systems:  Collapse All Action Systems will attempt to collapse
+the action systems within a program which is a WHERE structure.
+
+Combine_Wheres:  `Combine Where Structures' will combine two
+nested WHERE structures into one structure which will contain
+the definitions from each of the original WHERE structures.
+The selected WHERE structure will be merged into an enclosing one
+if there is one or, failing that, into an enclosed WHERE structure.
+
+Constant_Propagation:  Constant Propagation finds assignments of
+constants to variables in the selected item and propagates the values
+through the selected item (replacing variables in expressions
+by the appropriate values)
+
+Data_Translation_A:  Data Translation translates array references
+to structured variables and field references.  Provided the structured
+variables contain the same data as the original array, and provided
+the array structures do not overlap, then the resulting program
+will have the same semantics as the original.
+
+Date_Find:  Find direct and indirect references to dates
+for Y2000 analysis.
+
+Delete_All_Redundant:  Delete All Redundant searches for redundant
+statements and deletes all the ones it finds.  A statement is
+`Redundant' if it calls nothing external and the variables it modifies
+will all be assigned again before their values are accessed.
+
+Delete_All_Assertions:  This transformation will delete all the `ASSERT'
+statements within the selected code.  If the resulting code is not
+syntactically correct, the program will be `tidied up' which may
+well result in the re-instatement of `ASSERT' or `SKIP' statements.
+
+Delete_All_Comments:  This transformation will delete all the `COMMENT'
+statements within the selected code.  If the resulting code
+is not syntactically correct, the program will be `tidied up'
+which may well result in the insertion of `SKIP' statements.
+
+Delete_Item:  This transformation will delete a program item that is
+redundant or unreachable
+
+Delete_Redundant_Statement:  Delete Redundant Statement checks whether
+the current statement is `Redundant' (because it calls nothing
+external and the variables it modifies will all be assigned again
+before their values are accessed). If so, it deletes the Statement.
+
+Delete_All_Skips:  This transformation will delete all the `SKIP'
+statements within the selected code.  If the resulting code
+is not syntactically correct, the program will be `tidied up'
+which may well result in the re-instatement of `SKIP' statements.
+
+Delete_Unreachable_Code:  Delete Unreachable Code will remove unreachable
+statements in the selected object.  It will also remove unreachable
+cases in an IF statement, e.g those which follow a TRUE guard
+
+Delete_What_Follows:  Delete What Follows will delete the code
+which follows the selected item if it can never be executed
+
+Double_To_Single_Loop:  Double to Single Loop will convert a double
+nested loop to a single loop, if this can be done without significantly
+increasing the size of the program.
+
+Else_If_To_Elsif:  This transformation will replace an `Else'
+clause which contains an `If' statement with an `Elsif' clause.
+The transformation can be selected with either the outer `If' statement,
+or the `Else' clause selected.
+
+Elsif_To_Else_If:  This transformation will replace an `Elsif' clause
+in an `If' statement with an `Else' clause which itself contains
+an `If' statement.  The transformation can be selected with either
+the `If' statement, or the `Elsif' clause selected.
+
+Expand_And_Separate_All:  Expand And Separate All will attempt to
+apply the transformation Expand and Separate to the first statement
+in each action in an action system.  This will be useful for dealing
+with the skip_flag in WSL derived from Herma
+
+Expand_And_Separate:  Expand And Separate will expand the selected
+IF statement to include all the following statements, then separate
+all possible statements from the resulting IF.  This is
+probably only useful if the IF includes a CALL, EXIT etc.
+which is duplicated in the following statements, otherwise it
+will probably achieve nothing.
+
+Expand_Call:  Expand_Call will replace a call to an action,
+procedure or function with the corresponding definition.
+
+Expand_Forward:  Expand_Forward will copy the following statement
+into the end of each branch of the selected IF or D_IF statement.
+It differs from Absorb Right in that the statement is only absorbed
+into the `top level' of the selected IF
+
+F2K_1:  Apply the initial sequence of F2K transformations
+
+F2K_2:  Apply the final sequence of F2K transformations
+
+Find_Entry_Points:  Find possible entry points in the action system
+by looking for actions which are not reachabel from the starting action.
+Create a new starting action with a Dijkstra IF statement.
+
+Find_Terminals:  Find and mark the terminal statements in the
+selected statement.  If a terminal statement is a local proc call,
+apply recursively to the proc body.
+
+Fix_Assembler:  This transformation will apply some basic
+restructuring to WSL code that has been produced from assembler.
+This should remove features that have been introduced to the WSL
+as a result of needing to make the assembler to WSL translator
+as simple as possible.
+
+Fix_Assembler_Fast:  Faster version of Fix_Assembler--for Y2000
+
+Fix_CLProcs:  Fix CLProcs will turn any sequences of action
+representing JOVIAL closed compound procedures into WSL procedures,
+rewriting calls to the actions accordingly.  This has the effect of a)
+separating out the closed procs from the body of the code b)
+removing the un-regularity they cause in the enclosing action system.
+
+Fix_Dispatch:  This transformation will search for simple procedures
+in Assembler code and convert them to WSL PROCs.  A simple procedure
+is a collection of actions with a single entry point and possibly
+multiple exit points.  All the exits are calls to dispatch
+(ie normal returns), or calls to an action which must lead to an ABEND
+(ie error returns).
+
+Floop_To_While:  Convert a suitable DO...OD loop to a While loop
+
+Force_Double_To_Single_Loop:  Force Double - Single Loop will convert
+a double nested loop to a single loop, regardless of any increase
+in program size which this causes
+
+Fully_Absorb_Right:  This transformation will absorb into the selected
+statement all the statements that follow it.
+
+Fully_Expand_Forward:  Apply Expand Forward as often as possible
+
+Insert_Assertion:  This transformation will add an assertion inside
+the current item, if some suitable information can be ascertained.
+
+Join_All_Cases:  This transformation will join any guards in an
+`If' statement which contain the same sequence of statements
+(thus reducing their number) by changing the conditions of all
+the guards as appropriate.
+
+Make_Basic_Block_Form:  This transformation will put a newly-translated
+action system into Basic Block Form.
+
+Make_Proc:  `Make Procedure' will make a procedure from the body
+of an action or from a list of statements.
+
+Merge_Calls_In_System:  Use absorption to reduce the number of calls
+in an action system.
+
+Merge_Calls_In_Action:  Merge Calls in Action will attempt to merge
+calls which call the same action, in the selected action
+
+Merge_Left:  This transformation will merge the selected statement
+(or sequence of statements) into the statement that precedes it.
+
+Merge_Right:  This transformation will merge the selected statement
+into the statement that precedes it.
+
+Meta_Trans:  Convert a FOREACH with a long sequence of IFMATCH
+commands to a more efficient form
+
+Move_Comment_Left:  Moves the selected Comment Left.
+
+Move_Comment_Right:  Moves the selected Comment Right.
+
+Move_Comments:  Move Comments will move any comments which appear at
+the end of actions within an action system and which follow a call.
+The comments will be moved in front of the call.  This will help
+tidy up the output of the Herma translator.
+
+Move_To_Left:  This transformation will move the selected item
+to the left so that it is exchanged with the item that precedes it.
+
+Move_To_Right:  This transformation will move the selected item
+to the right so that it is exchanged with the item that follows it.
+
+Partially_Join_Cases:  This transformation will join any guards in an
+`If' statement which contain almost the same sequence of statements
+(thus reducing their number) by introducing a nested `If' and changing
+the conditions of all the guards as appropriate.
+
+Prune_Dispatch:  Simplify the dispatch action by removing references
+to dest values which do not appear in the rest of the program.
+
+Recursion_To_Loop:  Remove Recursion in Action will replace the body
+of a recursive action if possible by an equivalent loop structure.
+
+Reduce_Loop:  Automatically make the body of a DO...OD reducible
+(by introducing new procedures as necessary) and either remove the loop
+(if it is a dummy loop) or convert the loop to a WHILE loop
+(if the loop is a proper sequence).
+
+Reduce_Multiple_Loops:  This transformation will reduce the number
+of multiply nested loops to a minimum.
+
+Remove_All_Redundant_Vars:  Remove All Redundant Vars applys
+Remove Redundant Vars to every VAR structure in the statement or sequence
+
+Remove_Comment:  Removes Galileo comments without a sequence number
+(SSL or SSE).
+
+Remove_Dummy_Loop:  Remove Dummy Loop will remove a DO loop
+which is redundant
+
+Remove_Redundant_Vars:  Remove Redundant Vars takes out as many
+local variables as possible from the selected VAR structure.
+If they can all be taken out, the VAR is replaced by its
+(possibly modified) body.
+
+Remove_Elem_Actions:  Remove Unnecessary Actions will remove any
+actions in the selected action system which merely call another
+action or are not called at all.  Calls to the deleted action
+will be replaced by calls to the other action.
+
+Rename:
+
+Replace_Accs_With_Value:  This transformation will apply
+Replace With Value to all variables with the names a0, a1, a2 and a3
+in the selected item.
+
+Replace_With_Value:  This transformation will replace a variable
+(in an expression) by its value--provided that that value can
+be uniquely determined at that point in the program.
+
+Reverse_Order:  This transformation will reverse the order of most
+two-component items; in particular expressions, conditions and `If's
+which have two branches.
+
+Separate_Both:  <--Separate--> will take code out to the right and
+the left of the selected structure.
+
+Separate_Left:  <--Separate will take code out to the left of the
+selected structure.  As much code as possible will be taken out;
+if all the statements are taken out then the original containing
+structure will be removed
+
+Separate_Right:  Separate--> will take code out to the right of
+the selected structure.
+
+Simplify_Action_System:  Simplify action system will attempt to remove
+actions and calls from an action system by successively applying
+simplifying transformations.  As many of the actions as possible
+will be eliminated without making the program significantly larger.
+
+Simplify:  This transformation will simplify any component as
+fully as possible.
+
+Simplify_If:  Simplify If will remove false cases from an IF statement,
+and any cases whose conditions imply earlier conditions.
+Any repeated statements which can be taken outside the if will be,
+and the conditions will be simplified if possible.
+
+Simplify_Item:  This transformation will simplify an item, but not
+recursively simplify the components inside it.  In particular,
+the transformation will simplify expressions, conditions and
+degenerate conditional, local variable and loop statements.
+
+Substitute_And_Delete:  Substitute and Delete will replace all calls
+to an action, procedure or function with the corresponding definition,
+and delete the definition
+
+Substitute_And_Delete_List:  Substitute and Delete List will replace
+all calls to any action within the selected list of actions
+with the corresponding definition and delete the definition.
+Actions which are called more than once will not be affected.
+
+Substitute_And_Delete_Multi:  Substitute Once-Called Actions will replace
+calls to actions which are called only once with their definitions ,
+and then delete the respective definitions.
+
+Take_Out_Left:  This transformation will take the selected item
+out of the enclosing structure towards the left.
+
+Take_Out_Of_Loop:  This transformation will take the selected item
+out of an appropriate enclosing loop towards the right.
+
+Take_Out_Right:  This transformation will take the selected item
+out of the enclosing structure towards the right.
+
+Unfold_Proc_Call:  Unfold the selected procedure call, replacing it
+with a copy of the procedure body.
+
+Unfold_Proc_Calls:  Unfold Proc Calls searches for procedures which
+are only called once, unfolds the call and removes the procedure.
+
+WSL_To_C_Pre:  Prepare for WSL to C translation.
+

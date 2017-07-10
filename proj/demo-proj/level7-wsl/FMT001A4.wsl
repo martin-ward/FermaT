@@ -1,0 +1,752 @@
+VAR < destination := 0 >:
+BEGIN
+  ACTIONS _enter_1:
+    _enter_1 ==
+      D_IF entry_point = "_enter_"
+               -> C:" <ENTRY POINT> ";
+             C:" <NAME=FMT001A4> ";
+             r1 := __r1_init__;
+             r2 := __r2_init__;
+             r3 := __r3_init__;
+             r4 := __r4_init__;
+             r5 := __r5_init__;
+             r6 := __r6_init__;
+             r7 := __r7_init__;
+             r8 := __r8_init__;
+             r9 := __r9_init__;
+             r10 := __r10_init__;
+             r11 := __r11_init__;
+             r12 := __r12_init__;
+             r13 := __r13_init__;
+             r14 := __r14_init__;
+             C:"*********************************************************************";
+             C:"<FermaT> 00000054 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+             !P push_regs(r0,
+r1,
+r2,
+r3,
+r4,
+r5,
+r6,
+r7,
+r8,
+r9,
+r10,
+r11,
+r12,
+r13,
+r14
+               VAR reg_stack);
+             !P chain_reg( VAR r13, os);
+             C:"<FermaT> 00000055 r3 r15";
+             r3 := r15;
+             C:"<FermaT> 00000056 r12 r3";
+             C:"<FermaT> 00000057 r12";
+             r12 := r15 + 4096;
+             C:"<FermaT> 00000059 A0002 A0002[5] A0002[6] A0002[7] A0002[8] r3 r13";
+             C:"<FermaT> 00000060 A0002 r14 r3";
+             C:"<FermaT> 00000061 r13 r14";
+             C:"<FermaT> 00000062 A0002 r13 r3";
+             r13 := !XF address_of(A0002);
+             C:"<FermaT> 00000063 C0002";
+             C:"*";
+             C:"<FermaT> 00000070 WSTACK r10 r3";
+             C:"<FermaT> 00000072 FILEOPEN r14";
+             C:"<FermaT> 00000091 FILEOPEN r10 r14";
+             WSTACK[5..8] := 132;
+             C:"<FermaT> 00000092 r10";
+             WSTACK[9..12] := !XF address_of(WSTACK);
+             C:"<FermaT> 00000093 r10";
+             r10 := !XF address_of(WSTACK) + 8;
+             C:"<FermaT> 00000095 r1";
+             r1 := 0;
+             C:"<FermaT> 00000096 r15";
+             r15 := v_fmt104;
+             C:"<FermaT> 00000097 r15 r14";
+             destination := v_fmt104;
+             r14 := NOTUSED_180;
+             !P v_fmt104( VAR regs, result_code, os);
+             C:"<FermaT> 00000098 DDIN r15";
+             result_code := NOT_USED;
+             !P OPEN(DDIN, "INPUT" VAR result_code, os);
+             C:"<FermaT> 00000109 RDSOUT r15";
+             result_code := NOT_USED;
+             !P OPEN(RDSOUT, "OUTPUT" VAR result_code, os);
+             C:"<FermaT> 00000121 INITIAL:INITIAL0 r1";
+             r1 := 4;
+             C:"<FermaT> 00000122 r15";
+             C:"<FermaT> 00000123 r15 r14";
+             destination := v_fmt104;
+             r14 := NOTUSED_246;
+             !P v_fmt104( VAR regs, result_code, os);
+             r15 := result_code;
+             C:"<FermaT> 00000125 r10";
+             r10 := WSTACK[9..12];
+             C:"<FermaT> 00000126 r14 r10";
+             r14 := a[WSTACK[9..12] + 4, 4];
+             C:"<FermaT> 00000127 r14";
+             destination := a[WSTACK[9..12] + 4, 4];
+             !P call_via_ptr(a[WSTACK[9..12] + 4, 4]
+               VAR regs, result_code, os);
+             r15 := result_code;
+             destination := 0;
+             CALL Z
+        [] entry_point = "A_000084"
+               -> C:"PROGRAM LINKAGE";
+             C:"<FermaT> 00000074 INITIAL:INITIAL0 r14";
+             r14 := 136;
+             C:"<FermaT> 00000132 INITIAL:INITIAL0 r10 r14";
+             a[r10 + 4, 4] := 136;
+             C:"<FermaT> 00000133 r10";
+             a[r10 + 8, 4] := r10;
+             C:"<FermaT> 00000134 r10";
+             r10 := r10 + 8;
+             C:"*        Initialise totals WTOT1, WTOT2 & WTOT3";
+             C:"<FermaT> 00000137 WTOT1 WTOTAL r3";
+             !P ap(WTOT1 VAR WTOTAL);
+             C:"<FermaT> 00000139 WTOT2 WTOTAL r3";
+             !P ap(WTOT2 VAR WTOTAL);
+             C:"<FermaT> 00000141 WTOT3 WTOTAL r3";
+             !P ap(WTOT3 VAR WTOTAL);
+             C:"STANDARD";
+             C:"<FermaT> 00000142 MODSTORE r15";
+             result_code := NOT_USED;
+             !P FMT001A5(!XF address_of(MODSTORE)
+               VAR call_macro, result_code, os);
+             !P dummy( VAR MODSTORE, regs, os);
+             C:"*        BRANCH AND LINK";
+             C:"V CONSTANT";
+             C:"<FermaT> 00000156 VMOD1 r15 r3";
+             r15 := VMOD1;
+             C:"<FermaT> 00000157 r15 r14";
+             destination := VMOD1;
+             r14 := NOTUSED_324;
+             !P call_via_ptr(VMOD1 VAR regs, result_code, os);
+             C:"V LITERAL";
+             C:"<FermaT> 00000158 r15";
+             r15 := v_fmt102;
+             C:"<FermaT> 00000159 r15 r14";
+             destination := v_fmt102;
+             r14 := NOTUSED_330;
+             !P v_fmt102( VAR regs, result_code, os);
+             C:"A CONSTANT";
+             C:"<FermaT> 00000160 AMOD3 r15 r3";
+             r15 := AMOD3;
+             C:"<FermaT> 00000161 r15 r14";
+             destination := AMOD3;
+             r14 := NOTUSED_336;
+             !P call_via_ptr(AMOD3 VAR regs, result_code, os);
+             C:"A LITERAL";
+             C:"<FermaT> 00000162 r15";
+             r15 := v_fmt104;
+             C:"<FermaT> 00000163 r15 r14";
+             destination := v_fmt104;
+             r14 := NOTUSED_342;
+             !P v_fmt104( VAR regs, result_code, os);
+             r15 := result_code;
+             destination := NOTUSED_342;
+             C:"*        CALL";
+             C:"STANDARD";
+             C:"<FermaT> 00000165 WP1 WP2 r15";
+             result_code := NOT_USED;
+             !P FMT105(!XF address_of(WP1), !XF address_of(WP2)
+               VAR call_macro, result_code, os);
+             !P dummy( VAR WP1, WP2, regs, os);
+             C:"V LITERAL";
+             C:"<FermaT> 00000179 r15";
+             r15 := v_fmt106;
+             C:"FIXME: entry point is a register for CALL";
+             C:"<FermaT> 00000180 WP1 r15";
+             result_code := NOT_USED;
+             !P v_fmt106(!XF address_of(WP1) VAR result_code, os);
+             !P dummy( VAR WP1, regs, os);
+             C:"*        USER MACRO LINKAGE";
+             C:" DATA MACRO: CNOP 0,4 ";
+             C:"<FermaT> 00000197 r15";
+             r15 := 412;
+             A_00019C();
+             CALL dispatch FI END
+    dispatch ==
+      IF destination = 0
+        THEN CALL Z
+      ELSIF destination = 136
+        THEN A_000088();
+             IF exit_flag = 1 THEN CALL Z ELSE CALL dispatch FI
+      ELSIF destination = 136
+        THEN A_000088();
+             IF exit_flag = 1 THEN CALL Z ELSE CALL dispatch FI
+      ELSIF destination = 140
+        THEN A_00008C(); CALL dispatch
+      ELSIF destination = 140
+        THEN A_00008C(); CALL dispatch
+      ELSIF destination = 144
+        THEN A_000090(); CALL Z
+      ELSIF destination = 144
+        THEN A_000090(); CALL Z
+      ELSIF destination = 412
+        THEN A_00019C(); CALL dispatch
+      ELSIF destination = 660
+        THEN A_000294(); CALL dispatch
+      ELSIF destination = 676
+        THEN A_0002A4(); CALL dispatch
+      ELSIF destination = 1364
+        THEN A_000554(); CALL dispatch
+      ELSIF destination = 1400
+        THEN A_000578(); CALL dispatch
+        ELSE C:"FIXME: Unknown destination "; CALL Z FI
+    END ENDACTIONS
+WHERE
+  PROC PROC11() ==
+    C:"<FermaT> 00000355 PROC11 r10 r14";
+    a[r10 + 4, 4] := r14;
+    C:"<FermaT> 00000356 r10";
+    a[r10 + 8, 4] := r10;
+    C:"<FermaT> 00000357 r10";
+    r10 := r10 + 8;
+    C:"<FermaT> 00000358 WTOTAL r3";
+    !P zap(!XF p_dec("hex 0x1C", "1") VAR WTOTAL);
+    C:"<FermaT> 00000359 WTYPE r3";
+    C:"<FermaT> 00000360 LBA";
+    IF WTYPE = "1"
+      THEN C:"<FermaT> 00000361 WTOTAL r3";
+           !P ap(!XF p_dec("hex 0x100C", "100") VAR WTOTAL);
+           C:"<FermaT> 00000362 WDTOT1 WTOTAL r3";
+           !P ap(WTOTAL VAR WDTOT1);
+           C:"<FermaT> 00000363 WETOT1 WDTOT1 r3";
+           !P ap(WDTOT1 VAR WETOT1);
+           C:"<FermaT> 00000364 WFTOT1 WDTOT1 r3";
+           !P sp(WDTOT1 VAR WFTOT1);
+           C:"<FermaT> 00000365 LBZ";
+           C:"<FermaT> 00000366 WTYPE LBA r3";
+           C:"<FermaT> 00000367 LBB"
+    ELSIF WTYPE = "2"
+      THEN C:"<FermaT> 00000368 WTOTAL r3";
+           !P ap(!XF p_dec("hex 0x200C", "200") VAR WTOTAL);
+           C:"<FermaT> 00000369 WDTOT2 WTOTAL r3";
+           !P ap(WTOTAL VAR WDTOT2);
+           C:"<FermaT> 00000370 WETOT2 WDTOT2 r3";
+           !P ap(WDTOT2 VAR WETOT2);
+           C:"<FermaT> 00000371 WFTOT2 WDTOT2 r3";
+           !P sp(WDTOT2 VAR WFTOT2);
+           C:"<FermaT> 00000372 LBZ";
+           C:"<FermaT> 00000373 WTYPE LBB r3";
+           C:"<FermaT> 00000374 LBC"
+    ELSIF WTYPE = "3"
+      THEN C:"<FermaT> 00000375 WTOTAL r3";
+           !P ap(!XF p_dec("hex 0x300C", "300") VAR WTOTAL);
+           C:"<FermaT> 00000376 WDTOT3 WTOTAL r3";
+           !P ap(WTOTAL VAR WDTOT3);
+           C:"<FermaT> 00000377 WETOT3 WDTOT3 r3";
+           !P ap(WDTOT3 VAR WETOT3);
+           C:"<FermaT> 00000378 WFTOT3 WDTOT3 r3";
+           !P sp(WDTOT3 VAR WFTOT3);
+           C:"<FermaT> 00000379 LBZ";
+           C:"<FermaT> 00000380 WTYPE LBC r3";
+           C:"<FermaT> 00000381 LBD"
+    ELSIF WTYPE = "4"
+      THEN C:"<FermaT> 00000382 WTOTAL r3";
+           !P ap(!XF p_dec("hex 0x400C", "400") VAR WTOTAL);
+           C:"<FermaT> 00000383 WDTOT4 WTOTAL r3";
+           !P ap(WTOTAL VAR WDTOT4);
+           C:"<FermaT> 00000384 WETOT4 WDTOT4 r3";
+           !P ap(WDTOT4 VAR WETOT4);
+           C:"<FermaT> 00000385 WFTOT4 WDTOT4 r3";
+           !P sp(WDTOT4 VAR WFTOT4);
+           C:"<FermaT> 00000386 LBZ";
+           C:"<FermaT> 00000387 WTYPE LBD r3";
+           C:"<FermaT> 00000388 LBE"
+    ELSIF WTYPE = "5"
+      THEN C:"<FermaT> 00000389 WTOTAL r3";
+           !P ap(!XF p_dec("hex 0x500C", "500") VAR WTOTAL);
+           C:"<FermaT> 00000390 LBZ";
+           C:"<FermaT> 00000391 WTYPE LBE r3";
+           C:"<FermaT> 00000392 LBF"
+    ELSIF WTYPE = "6"
+      THEN C:"<FermaT> 00000393 WTOTAL r3";
+           !P ap(!XF p_dec("hex 0x600C", "600") VAR WTOTAL);
+           C:"<FermaT> 00000394 LBZ";
+           C:"<FermaT> 00000395 WTYPE LBF r3";
+           C:"<FermaT> 00000396 LBG"
+    ELSIF WTYPE = "7"
+      THEN C:"<FermaT> 00000397 WTOTAL r3";
+           !P ap(!XF p_dec("hex 0x700C", "700") VAR WTOTAL);
+           C:"<FermaT> 00000398 LBZ";
+           C:"<FermaT> 00000399 WTYPE LBG r3";
+           C:"<FermaT> 00000400 LBZ"
+    ELSIF WTYPE = "8"
+      THEN C:"<FermaT> 00000401 WTOTAL r3";
+           !P ap(!XF p_dec("hex 0x800C", "800") VAR WTOTAL) FI;
+    C:"<FermaT> 00000403 WTOTAL r3";
+    !P ap(!XF p_dec("hex 0x1C", "1") VAR WTOTAL);
+    C:"<FermaT> 00000404 WHEAD1 r3";
+    WHEAD1
+      := "REPORT HEADING 1                                                                                                                     ";
+    C:"<FermaT> 00000405 RDSOUT WHEAD1 r15";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File min for RDSOUT ";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File min for RDSOUT ";
+    result_code := NOT_USED;
+    !P PUT_FIXED(RDSOUT, WHEAD1[1] VAR result_code, os);
+    C:"<FermaT> 00000414 WHEAD2 r3";
+    WHEAD2
+      := "REPORT HEADING 2                                                                                                                     ";
+    C:"<FermaT> 00000415 RDSOUT WHEAD2 r15";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File min for RDSOUT ";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File min for RDSOUT ";
+    result_code := NOT_USED;
+    !P PUT_FIXED(RDSOUT, WHEAD2[1] VAR result_code, os);
+    C:"<FermaT> 00000421 WPCC r3";
+    WPRT.WPCC := a[" "];
+    C:"<FermaT> 00000422 WPF1 r3";
+    WPRT.WPF1 := "FIELD1      ";
+    C:"<FermaT> 00000423 WPFTOT1";
+    C:"*        EDIT WTOT1 TOTAL FIELD";
+    C:"<FermaT> 00000425 WPFTOT1 WTOT1 r3";
+    cc1 := NOT_USED;
+    wedit_addr := NOT_USED;
+    !P ed(WTOT1, "hex 0x40206B2020206B202120"
+      VAR WPRT.WPFTOT1, cc1, wedit_addr);
+    C:"<FermaT> 00000426 WPFTOT2";
+    C:"<FermaT> 00000427 WPFTOT2 WTOT2 r3";
+    cc1 := NOT_USED;
+    wedit_addr := NOT_USED;
+    !P ed(WTOT2, "hex 0x40206B2020206B202120"
+      VAR WPRT.WPFTOT2, cc1, wedit_addr);
+    C:"<FermaT> 00000428 WPFTOT3";
+    C:"<FermaT> 00000429 WPFTOT3 WTOT3 r3";
+    cc1 := NOT_USED;
+    wedit_addr := NOT_USED;
+    !P ed(WTOT3, "hex 0x40206B2020206B202120"
+      VAR WPRT.WPFTOT3, cc1, wedit_addr);
+    C:"<FermaT> 00000430 RDSOUT WPRT r15";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File min for RDSOUT ";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File max for RDSOUT ";
+    C:"FIXME: Unknown File min for RDSOUT ";
+    result_code := NOT_USED;
+    !P PUT_FIXED(RDSOUT, WPRT[1] VAR result_code, os);
+    r15 := RDSOUT_STATUS;
+    C:"<FermaT> 00000437 r10";
+    r10 := a[r10, 4];
+    C:"<FermaT> 00000438 r14 r10";
+    r14 := a[r10 + 4, 4];
+    C:"<FermaT> 00000439 r14";
+    exit_flag := 0 END
+  PROC A_000090() ==
+    C:"<FermaT> 00000080 r13";
+    r13 := a[r13 + 4, 4];
+    C:"<FermaT> 00000081 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+    !P pop_regs(
+      VAR r0, r1,
+        r2,
+        r3,
+        r4,
+        r5,
+        r6,
+        r7,
+        r8,
+        r9,
+        r10,
+        r11,
+        r12,
+        r13,
+        r14,
+        reg_stack);
+    r14 := __r14_init__;
+    C:"<FermaT> 00000082 r15";
+    r15 := 0;
+    C:"<FermaT> 00000086 r14";
+    destination := r14 END
+  PROC p_1() ==
+    C:"<FermaT> 00000343 WCALC r3";
+    WCALC := "END     ";
+    C:"<FermaT> 00000344 WTYPE r3";
+    WTYPE := !XF mvi("9");
+    C:"<FermaT> 00000346 PROC11 r14";
+    r14 := NOTUSED_792;
+    PROC11();
+    C:"<FermaT> 00000348 r10";
+    r10 := a[r10, 4];
+    C:"<FermaT> 00000349 r14 r10";
+    r14 := a[r10 + 4, 4];
+    C:"<FermaT> 00000350 r14";
+    exit_flag := 0 END
+  PROC A_0002A4() ==
+    C:"<FermaT> 00000308 r15";
+    r15 := a[r15, 4];
+    C:"<FermaT> 00000309 r15 r14";
+    destination := r15;
+    r14 := NOTUSED_682;
+    !P call_via_ptr(r15 VAR regs, result_code, os);
+    r15 := result_code;
+    C:"<FermaT> 00000311 r10";
+    r10 := a[r10, 4];
+    C:"<FermaT> 00000312 r14 r10";
+    r14 := a[r10 + 4, 4];
+    C:"<FermaT> 00000313 r14";
+    destination := r14 END
+  PROC A_000578() ==
+    C:"<FermaT> 00000522 r15";
+    r15 := a[r15, 4];
+    C:"<FermaT> 00000523 r15 r14";
+    destination := r15;
+    r14 := NOTUSED_1406;
+    !P call_via_ptr(r15 VAR regs, result_code, os);
+    r15 := result_code;
+    C:"<FermaT> 00000524 WRTOT r3";
+    WREC.WRTOT[1..4] := "WKTOT";
+    C:"<FermaT> 00000526 WRTOT WTOTAL r3";
+    !P ap(WREC.WRTOT[1..4] VAR WTOTAL);
+    C:"<FermaT> 00000527 WRTOT r3";
+    !P ap(!XF p_dec("hex 0x1C", "1")
+      VAR WREC.WRTOT[1..4]);
+    C:"<FermaT> 00000528 WKTOT WRTOT r3";
+    !P zap(WREC.WRTOT[1..4] VAR WKTOT);
+    C:"<FermaT> 00000530 r10";
+    r10 := a[r10, 4];
+    C:"<FermaT> 00000531 r14 r10";
+    r14 := a[r10 + 4, 4];
+    C:"<FermaT> 00000532 r14";
+    destination := r14 END
+  PROC A_000294() ==
+    C:"<FermaT> 00000298 r15";
+    r15 := a[r15, 4];
+    C:"<FermaT> 00000299 r15 r14";
+    destination := r15;
+    r14 := NOTUSED_666;
+    !P call_via_ptr(r15 VAR regs, result_code, os);
+    C:"MULTIPLE ENTRY FUNCTION";
+    C:" DATA MACRO: CNOP 0,4 ";
+    C:"<FermaT> 00000306 r15";
+    r15 := 676;
+    A_0002A4() END
+  PROC A_000554() ==
+    C:"<FermaT> 00000508 r15";
+    r15 := a[r15, 4];
+    C:"<FermaT> 00000509 r15 r14";
+    destination := r15;
+    r14 := NOTUSED_1370;
+    !P call_via_ptr(r15 VAR regs, result_code, os);
+    C:"<FermaT> 00000512 MFI0073 r1 r3";
+    r1 := !XF address_of(MFI0073);
+    C:" DATA MACRO: CNOP 0,4 ";
+    C:"<FermaT> 00000514 ";
+    C:"<FermaT> 00000518 r0";
+    r0 := 2;
+    C:" DATA MACRO: CNOP 0,4 ";
+    C:"<FermaT> 00000520 r15";
+    r15 := 1400;
+    A_000578() END
+  PROC A_00008C() ==
+    C:"SAMPLE ONLINE DATA TRACKER";
+    C:"<FermaT> 00000078 PROC2 r14";
+    C:"<FermaT> 00000444 PROC2 r10 r14";
+    a[r10 + 4, 4] := 144;
+    C:"<FermaT> 00000445 r10";
+    a[r10 + 8, 4] := r10;
+    C:"<FermaT> 00000446 r10";
+    r10 := r10 + 8;
+    C:"*        TEST COMMENT FOR WKTOT";
+    C:"<FermaT> 00000448 WKTOT WRDATA r3";
+    !P zap(WREC.WRDATA VAR WKTOT);
+    C:"*        ANOTHER COMMENT FOR WKTOT TO BE IGNORED";
+    C:"<FermaT> 00000450 WKTOT r3";
+    !P mp(!XF p_dec("hex 0x2C", "2") VAR WKTOT);
+    C:"<FermaT> 00000451 WKTOT r3";
+    !P sp(!XF p_dec("hex 0x5C", "5") VAR WKTOT);
+    C:"<FermaT> 00000452 WRTOT WKTOT r3";
+    !P zap(WKTOT VAR WREC.WRTOT[1..4]);
+    C:"<FermaT> 00000453 WRIND r3";
+    C:"<FermaT> 00000454 L2A";
+    IF WREC.WRIND = "1"
+      THEN C:"<FermaT> 00000455 WHEAD1 r3";
+           WHEAD1
+             := "DATA HEADING 1                                                                                                                       ";
+           C:"<FermaT> 00000456 RDSOUT WHEAD1 r15";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File min for RDSOUT ";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File min for RDSOUT ";
+           result_code := NOT_USED;
+           !P PUT_FIXED(RDSOUT, WHEAD1[1] VAR result_code, os);
+           C:"<FermaT> 00000462 WPF1 r3";
+           WPRT.WPF1 := "FIELD1      ";
+           C:"<FermaT> 00000463 WPFTOT1";
+           C:"<FermaT> 00000464 WPFTOT1 WRTOT r3";
+           cc1 := NOT_USED;
+           wedit_addr := NOT_USED;
+           !P ed(WREC.WRTOT[1..4], "hex 0x40206B2020206B202120"
+             VAR WPRT.WPFTOT1, cc1, wedit_addr);
+           C:"<FermaT> 00000465 L2Z"
+      ELSE C:"<FermaT> 00000466 WKTOT L2A r3";
+           !P ap(!XF p_dec("hex 0x100C", "100") VAR WKTOT);
+           C:"<FermaT> 00000467 WHEAD1 r3";
+           WHEAD1
+             := "DATA HEADING 2                                                                                                                       ";
+           C:"<FermaT> 00000468 RDSOUT WHEAD1 r15";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File min for RDSOUT ";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File max for RDSOUT ";
+           C:"FIXME: Unknown File min for RDSOUT ";
+           result_code := NOT_USED;
+           !P PUT_FIXED(RDSOUT, WHEAD1[1] VAR result_code, os);
+           C:"<FermaT> 00000474 WPF1 r3";
+           WPRT.WPF1 := "FIELD2      ";
+           C:"<FermaT> 00000475 WPFTOT1";
+           C:"<FermaT> 00000476 WPFTOT1 WKTOT r3";
+           cc1 := NOT_USED;
+           wedit_addr := NOT_USED;
+           !P ed(WKTOT, "hex 0x40206B2020206B202120"
+             VAR WPRT.WPFTOT1, cc1, wedit_addr) FI;
+    C:"<FermaT> 00000479 WKTOT r15";
+    r15 := v_fmt300;
+    C:"<FermaT> 00000480 A0068";
+    C:"<FermaT> 00000484 B0068 A0068 r1 r3";
+    r1 := !XF address_of(B0068);
+    C:"<FermaT> 00000485 r15 r14";
+    destination := v_fmt300;
+    r14 := NOTUSED_1314;
+    !P v_fmt300( VAR regs, result_code, os);
+    C:"<FermaT> 00000487 WKTOT WRTOT r15";
+    r15 := v_fmt301;
+    C:"<FermaT> 00000488 A0069";
+    C:"<FermaT> 00000492 B0069 A0069 r1 r3";
+    r1 := !XF address_of(B0069);
+    C:"<FermaT> 00000493 r15 r14";
+    destination := v_fmt301;
+    r14 := NOTUSED_1338;
+    !P v_fmt301( VAR regs, result_code, os);
+    C:"<FermaT> 00000496 MFI0071 r1 r3";
+    r1 := !XF address_of(MFI0071);
+    C:" DATA MACRO: CNOP 0,4 ";
+    C:"<FermaT> 00000501 ";
+    C:"<FermaT> 00000504 r0";
+    r0 := 1;
+    C:" DATA MACRO: CNOP 0,4 ";
+    C:"<FermaT> 00000506 r15";
+    r15 := 1364;
+    A_000554() END
+  PROC A_00019C() ==
+    C:"<FermaT> 00000199 r15";
+    r15 := a[r15, 4];
+    C:"<FermaT> 00000200 r15 r14";
+    destination := r15;
+    r14 := NOTUSED_418;
+    !P call_via_ptr(r15 VAR regs, result_code, os);
+    C:"<FermaT> 00000202 r15";
+    r15 := v_fmt108;
+    C:"<FermaT> 00000203 A0024";
+    C:"<FermaT> 00000207 B0024 A0024 r1 r3";
+    r1 := !XF address_of(B0024);
+    C:"<FermaT> 00000208 r15 r14";
+    destination := v_fmt108;
+    r14 := NOTUSED_442;
+    !P v_fmt108( VAR regs, result_code, os);
+    C:"<FermaT> 00000209 r15";
+    r15 := v_fmt109;
+    C:"<FermaT> 00000211 r15";
+    C:"<FermaT> 00000212 A0025";
+    C:"<FermaT> 00000216 B0025 A0025 r1 r3";
+    r1 := !XF address_of(B0025);
+    C:"<FermaT> 00000217 r15 r14";
+    destination := v_fmt109;
+    r14 := NOTUSED_470;
+    !P v_fmt109( VAR regs, result_code, os);
+    destination := NOTUSED_470;
+    C:"<FermaT> 00000218 DDIN WREC r0 r1 r15 r14";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File min for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File min for DDIN ";
+    C:"FIXME: Unknown File max for DDIN ";
+    C:"FIXME: Unknown File min for DDIN ";
+    r0 := NOT_USED;
+    r1 := NOT_USED;
+    result_code := NOT_USED;
+    !P GET_FIXED(DDIN
+      VAR WREC[1], r0, r1, result_code, os);
+    IF !XC end_of_file(DDIN)
+      THEN r14 := NOTUSED_484;
+           C:"*";
+           C:"<FermaT> 00000534 EOF1 r14";
+           destination := NOTUSED_484;
+           exit_flag := 0 FI;
+    C:"*        UNKNOWN CALL";
+    C:"<FermaT> 00000225 WPROG r15 r3";
+    r15 := WPROG;
+    C:"FIXME: entry point is a register for CALL";
+    C:"<FermaT> 00000226 r15";
+    result_code := NOT_USED;
+    !P call_via_ptr_pars(WPROG VAR result_code, os);
+    !P dummy( VAR regs, os);
+    r15 := result_code;
+    C:"*        LOAD PROCESSING";
+    C:"STANDARD";
+    C:"<FermaT> 00000231 r0 r1 r15";
+    r0 := NOT_USED;
+    r1 := NOT_USED;
+    result_code := NOT_USED;
+    !P LOAD("FMT110 EP=FMT110"
+      VAR r0, r1, result_code, os);
+    r0 := v_fmt110;
+    C:"<FermaT> 00000235 r15 r0";
+    r15 := v_fmt110;
+    C:"<FermaT> 00000236 r15 r14";
+    destination := v_fmt110;
+    r14 := NOTUSED_510;
+    !P v_fmt110( VAR regs, result_code, os);
+    r15 := result_code;
+    destination := NOTUSED_510;
+    C:"<FermaT> 00000237 r0 r1 r15";
+    r0 := NOT_USED;
+    r1 := NOT_USED;
+    result_code := NOT_USED;
+    !P LOAD("FMT111 EP=FMT111"
+      VAR r0, r1, result_code, os);
+    r0 := v_fmt111;
+    C:"<FermaT> 00000241 r4 r0";
+    r4 := v_fmt111;
+    C:"<FermaT> 00000242 WTYPE r3";
+    WTYPE := a["1"];
+    C:"<FermaT> 00000243 r15 r4";
+    r15 := v_fmt111;
+    C:"SAVED ADDRESS IN REG";
+    C:"<FermaT> 00000247 r15 r14";
+    destination := v_fmt111;
+    r14 := NOTUSED_536;
+    !P v_fmt111( VAR regs, result_code, os);
+    r15 := result_code;
+    destination := NOTUSED_536;
+    C:"<FermaT> 00000248 r0 r1 r15";
+    r0 := NOT_USED;
+    r1 := NOT_USED;
+    result_code := NOT_USED;
+    !P LOAD("FMT112 EP=FMT112"
+      VAR r0, r1, result_code, os);
+    r0 := v_fmt112;
+    C:"<FermaT> 00000252 WMOD112 r3 r0";
+    WMOD112 := v_fmt112;
+    C:"<FermaT> 00000253 WTYPE r3";
+    WTYPE := a["2"];
+    C:"<FermaT> 00000254 WMOD112 r15 r3";
+    r15 := WMOD112;
+    C:"SAVED ADDRESS IN STORAGE";
+    C:"<FermaT> 00000255 r15 r14";
+    destination := v_fmt112;
+    r14 := NOTUSED_566;
+    !P v_fmt112( VAR regs, result_code, os);
+    destination := NOTUSED_566;
+    C:"<FermaT> 00000256 AMOD113 r15 r3";
+    r15 := AMOD113;
+    C:"EXTERNAL SAVED AREA";
+    C:"FIXME: entry point is a register for CALL";
+    C:"<FermaT> 00000257 TYPECONT r15";
+    result_code := NOT_USED;
+    !P call_via_ptr_pars(
+      AMOD113, !XF address_of(TYPECONT)
+      VAR result_code, os);
+    !P dummy( VAR TYPECONT, regs, os);
+    r15 := result_code;
+    C:"<FermaT> 00000267 AMOD114 r4 r3";
+    r4 := AMOD114;
+    C:"FIXME: entry point is a register for CALL";
+    C:"<FermaT> 00000268 TYPECONT r4 r15";
+    result_code := NOT_USED;
+    !P call_via_ptr_pars(
+      AMOD114, !XF address_of(TYPECONT)
+      VAR result_code, os);
+    !P dummy( VAR TYPECONT, regs, os);
+    r15 := result_code;
+    C:"<FermaT> 00000278 AMOD115 r5 r3";
+    r5 := AMOD115;
+    C:"FIXME: entry point is a register for CALL";
+    C:"<FermaT> 00000279 TYPECONT r5 r15";
+    result_code := NOT_USED;
+    !P call_via_ptr_pars(
+      AMOD115, !XF address_of(TYPECONT)
+      VAR result_code, os);
+    !P dummy( VAR TYPECONT, regs, os);
+    C:"MULTI ENTRY MODULE";
+    C:"<FermaT> 00000289 r15";
+    r15 := v_fmtaaa1;
+    C:"<FermaT> 00000290 r15 r14";
+    destination := v_fmtaaa1;
+    r14 := NOTUSED_646;
+    !P v_fmtaaa1( VAR regs, result_code, os);
+    C:"<FermaT> 00000291 r15";
+    r15 := v_fmtbbb2;
+    C:"<FermaT> 00000292 r15 r14";
+    destination := v_fmtbbb2;
+    r14 := NOTUSED_652;
+    !P v_fmtbbb2( VAR regs, result_code, os);
+    C:"MULTIPLE ENTRY FUNCTION";
+    C:" DATA MACRO: CNOP 0,4 ";
+    C:"<FermaT> 00000296 r15";
+    r15 := 660;
+    A_000294() END
+  PROC A_000088() ==
+    C:"JUMP TABLE";
+    C:"<FermaT> 00000076 PROC1 r14";
+    C:"<FermaT> 00000318 PROC1 r10 r14";
+    a[r10 + 4, 4] := NOTUSED_140;
+    C:"<FermaT> 00000319 r10";
+    a[r10 + 8, 4] := r10;
+    C:"<FermaT> 00000320 r10";
+    r10 := r10 + 8;
+    C:"*        JUMP TABLE 1";
+    C:"<FermaT> 00000322 WHW r4 r3";
+    C:"<FermaT> 00000323 r4";
+    r4 := 4 * WHW;
+    C:"<FermaT> 00000325 ";
+    C:"<FermaT> 00000326 ";
+    C:"<FermaT> 00000327 ";
+    C:"<FermaT> 00000328 ";
+    C:"Jump table successfully processed.";
+    C:"<FermaT> 00000324 LAA LAB LAC r4";
+    IF WHW = 2 OR WHW = 3
+      THEN IF WHW = 2
+             THEN C:"<FermaT> 00000333 WCALC LAB r3";
+                  WCALC := "READ    ";
+                  C:"<FermaT> 00000334 WTYPE r3";
+                  WTYPE := !XF mvi("2");
+                  C:"<FermaT> 00000336 PROC11 r14";
+                  r14 := NOTUSED_760;
+                  C:"<FermaT> 00000337 LAZ"
+             ELSE C:"<FermaT> 00000338 WCALC LAC r3";
+                  WCALC := "CLOSE   ";
+                  C:"<FermaT> 00000339 WTYPE r3";
+                  WTYPE := !XF mvi("3");
+                  C:"<FermaT> 00000341 PROC11 r14";
+                  r14 := NOTUSED_778 FI;
+           PROC11();
+           p_1()
+    ELSIF 4 * WHW <> 4 AND 4 * WHW <> 16
+      THEN exit_flag := 1
+      ELSE C:"<FermaT> 00000328 WCALC LAA r3";
+           WCALC := "OPEN    ";
+           C:"<FermaT> 00000329 WTYPE r3";
+           WTYPE := !XF mvi("1");
+           C:"<FermaT> 00000331 PROC11 r14";
+           r14 := NOTUSED_742;
+           PROC11();
+           C:"<FermaT> 00000332 LAZ";
+           p_1() FI;
+    IF exit_flag <> 1 THEN A_00008C() FI END
+END ENDVAR

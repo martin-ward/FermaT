@@ -1,0 +1,10 @@
+;;; Scheme translation of WSL code
+(set! //T/R_/Align_/Nested_/Vars (@New_TR_Number))
+(vector-set! //T/Rs_/Name (- //T/R_/Align_/Nested_/Vars 1) "Align_Nested_Vars")
+(vector-set! //T/Rs_/Proc_/Name (- //T/R_/Align_/Nested_/Vars 1) "Align_Nested_Vars")
+(vector-set! //T/Rs_/Test (- //T/R_/Align_/Nested_/Vars 1) (funct (@Align_Nested_Vars_Test)))
+(vector-set! //T/Rs_/Code (- //T/R_/Align_/Nested_/Vars 1) (funct (@Align_Nested_Vars_Code)))
+(vector-set! //T/Rs_/Keywords (- //T/R_/Align_/Nested_/Vars 1) (list "Simplify"))
+(vector-set! //T/Rs_/Help (- //T/R_/Align_/Nested_/Vars 1) "Aligns nested VAR blocks into a single block if the variables are all different")
+(vector-set! //T/Rs_/Prompt (- //T/R_/Align_/Nested_/Vars 1) "")
+(vector-set! //T/Rs_/Data_/Gen_/Type (- //T/R_/Align_/Nested_/Vars 1) "")

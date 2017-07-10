@@ -1,0 +1,59 @@
+#!/usr/local/bin/perl
+# Compile everything using gambit
+
+$| = 1;
+
+  { local $^W = 0;
+    require "Comm.pl";
+    require "waitfor.pl";
+    &Comm'init();
+  }
+
+&start_command("gsi");
+&stty_sane($Proc_tty_handle);
+&stty_sane(STDIN);
+&wait_for(">");
+
+$timeout = 999999;
+
+send_ln(qq[(include "/home/user1/martin/fermat2/src/gambit.scm")]);
+&wait_for(">");
+
+
+# Get the subdirectories:
+
+#@dirs = grep(-d $_, read_dir("."));
+
+@dirs = ("adt", "scheme", "trans", "wslib");
+
+die "Can't find `scheme' subdirectory!\n" unless (grep($_ eq "scheme", @dirs));
+@dirs = grep($_ ne "scheme", @dirs);
+
+foreach $dir (@dirs) {
+  foreach $file (grep(s/\.wsl$//, read_dir($dir))) {
+    print "Compiling $dir/$file...\n";
+    send_ln(qq[(\@New_Program (\@Parse_File "$dir/$file.wsl" //T_/Statements))]);
+    &wait_for(">");
+    send_ln(qq[(\@WSL_To_Scheme (\@Item) "$dir/$file.scm" "$file")]);
+    &wait_for(">");
+  }
+}
+
+end:
+
+&Interact("\001");
+&send_ln("(exit)");
+
+
+
+sub read_dir($) {
+  my ($dir) = @_;
+  my @files = ();
+  local(*DIR);
+  opendir(DIR, $dir) or die "Can't read directory `$dir': $!\n";
+  @files = sort grep { ($_ ne ".") && ($_ ne "..") && ($_ !~ /^,/) } readdir(DIR);
+  closedir(DIR);
+  return(@files);
+}
+
+

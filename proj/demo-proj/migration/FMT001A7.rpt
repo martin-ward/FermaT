@@ -1,0 +1,34 @@
+WSL to C Migration Report: FMT001A7
+===================================
+
+
+Dead Code Candidates:
+
+Memory Overflows:
+
+CSECT:
+
+Function Size, IF nesting depth and largest expression and condition size:
+FMT001A7 = 4, 0, 0, 0
+FMT501 = 2, 0, 0, 0
+FMT502 = 12, 0, 7, 0
+FMT501_fmt001a7_P = 11, 0, 7, 0
+
+DSECTs Referenced:
+
+DSECTs Updated:
+
+Variables Referenced:
+
+CSECT:
+NOT_USED, __r1_init__, a, call_macro, entry_point, os, r1, r4, regs,
+result_code
+
+Variables Updated:
+
+CSECT:
+a, call_macro, os, r1, r15, r4, regs, result_code
+
+EXecute statements and their targets:
+
+Dead Code Candidate Line Numbers:

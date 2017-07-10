@@ -1,0 +1,9 @@
+ACTIONS A1:
+                                A1 == IF B=10 THEN CALL Z
+                                      ELSIF B=20 THEN CALL B1
+                                        ELSE B:=B+X; CALL A1 FI.
+                                B1 == X:=B;
+                                      DO X:=X-1;
+                                         IF X < 20 THEN CALL A1 
+                                          ELSE B := B-4 FI OD.
+                              ENDACTIONS

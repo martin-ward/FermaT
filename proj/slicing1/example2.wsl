@@ -1,0 +1,10 @@
+sum := 0;
+prod := 1;
+i := 1;
+WHILE i <= n DO
+ sum := (sum + A[i]);
+ prod := (prod * A[i]);
+ i := (i + 1)
+OD;
+PRINT("sum = ",sum);
+PRINT("prod = ",prod)

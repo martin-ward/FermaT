@@ -1,0 +1,45 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+ 
+MW_PROC @D_Do_To_Floop_Test() ==
+  IF @ST(@I) <> T_D_Do
+    THEN @Fail("Selected item is not a D_Do loop.")
+    ELSE @Pass FI .;
+
+
+MW_PROC @D_Do_To_Floop_Code(Data) ==
+  VAR < B := @Make(T_False, < >, < >), S := < >, guard := < > >:
+  FOR guard IN @Cs(@I) DO
+    B := @Or(B, guard^1) OD;
+  B := @Not(B);
+  guard := FILL Guarded ~?B THEN EXIT(1) ENDFILL;
+  @Down_Last;
+  @Paste_After(guard);
+  @Up;
+  @Paste_Over(@Make(T_D_If, < >, @Cs(@I)));
+  S := @I;
+  @Paste_Over(FILL Statement DO ~?S OD ENDFILL) ENDVAR .;
+
+
+
+SKIP
+
+

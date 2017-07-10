@@ -1,0 +1,206 @@
+
+Adding Patterns to the Maths Simplifier
+=======================================
+
+
+The FermaT expression and condition simplifier's design is aimed
+at providing a fast and efficient simplified result for the most
+common expressions and conditions which occur during transformation,
+while providing a fast response on expressions and conditions
+which cannot be easily simplified.
+
+Expression/Condition Simplifier
+
+The ability to simplify expressions and conditions is important
+for any program transformation system.  An obvious solution is
+to use an existing theorem prover, and in fact some versions of
+the Maintainer's Assistant used the Boyer-Moore theorem prover nqthm.
+But that was something of an "overkill" for the purpose
+and imposed a large overhead in both memory and CPU time.
+The simplifier is invoked very frequently, mostly on fairly simple
+expressions such as x=0 or NOT (x <> 0), and in most cases there
+is little work that needs to be done.
+
+For the industrial strength FermaT transformation system the requirements
+for an expression and condition simplifier were:
+
+(1) Efficient execution:  especially on small expressions.
+This implies a short "start up time";
+
+(2) Easily extendible.  It would be impossible to attempt to simplify *all*
+possible expressions which are capable of simplification.  For example,
+we now know that the integer formula $n>2 AND x**n+y**n=z**n$ can be
+simplified to FALSE:  but it took a lot of work to get this result.
+Since we must be content with a less-than-complete implementation,
+it is important to be able to add new simplification rules as
+and when necessary;
+
+(3) Easy to prove correct.  Clearly a faulty simplifier will generate
+faulty transformations and incorrect code.  If the simplifier
+is to be easily extended, then it is important that we can prove
+the correctness of the extended simplifier equally easily.
+
+In order to meet requirement (2) the heart of the simplifier
+is table-driven, consisting of a set of pattern match and
+replacement operations.  For example, the condition (x + y <= z + y)
+can be simplified to (x <= z) whatever expressions are represented
+by x, y and z.  This pattern match and replacement can be coded
+as a simple IFMATCH and FILL in MetaWSL:
+
+IFMATCH  Condition ~?x + ~?y <= ~?z + ~?y
+THEN @Paste_Over(FILL Condition ~?x <= ~?z ENDFILL)
+ENDMATCH 
+
+To reduce the number of patterns required, the simplifier first
+normalises the expression as follows:
+
+(1) Push down all "negate" operators to the lowest level,
+using De Morgan's laws, so that NOT (x=1 OR x=2) becomes x <> 1
+AND x <> 2 for example;
+
+(2) Flatten nested associative operators, such as (x+y)+z;
+
+(3) Evaluate any operators with constant operands;
+
+(4) Sort the operands of all commutative operators and
+merge duplicated operands;
+
+(5) Expand factors;
+
+(6) Check each pattern in the list and apply each one which matches;
+
+(7) If any patterns were applied, then repeat from step (2) until the
+result converges, or we run out of budget;
+
+(8) Factorise where possible;
+
+(9) Apply some final cleaning up rules.
+
+The next step is to check each pattern in the list.  To make it easy
+to add new patterns and to prove that the simplifier is correct,
+the database of patterns and replacements is implemented as a
+FOREACH Expression followed by a FOREACH Condition, each of which
+contains a list of IFMATCH constructs:
+
+FOREACH Expression DO 
+  IFMATCH Expression (-(- ~?x))
+    THEN @Paste_Over(x) ENDMATCH ;
+  IFMATCH Expression 1/(1/~?x)
+    THEN @Paste_Over(x) ENDMATCH ;
+... OD
+
+The problem here is efficiency:  if we discover (for example) that the
+operator at the root of the expression is a "+" with two components,
+then there is no need to test most of the IFMATCH patterns.
+In one version of the Maintainers Assistant the patterns were implemented
+as a huge nested IF structure which tested the type of the root and
+number of components, and then tested the types of each component.
+This was very hard to read, understand and maintain:  for example,
+if a new pattern was added to the wrong place in the structure,
+then it would simply never get triggered!
+
+The solution we developed for FermaT is to implement a meta-transformation
+which took as input a sequence of IFMATCH constructs and transformed
+them into the equivalent nested IF clause.  As a result, new patterns
+can be added anywhere in the list and the correctness of the list can
+be proved simply by proving the correctness of each individual pattern.
+This meta-transformation transforms the source code of the |Simplify|
+transformation from a simple but inefficient form to an equivalent
+convoluted but more efficient implementation.
+
+
+
+Implementation
+==============
+
+
+The simplification patterns are stored in FermaT/adt/maths2-1.src
+This is a WSL file: the src extension is to stop it from being
+included automatically in the FermaT build.
+
+The file maths2-2.wsl is generated from maths2-1.src by the command:
+
+dotrans maths2-1.src maths2-2.wsl TR_Meta_Trans
+
+maths2-2.wsl is the efficient version of the pattern matcher
+which is included in the FermaT build.
+
+So the first step in extending the simplifier is to add your pattern
+to maths2-1.src.  Note that expressions and conditions will already
+be in "canonical" form before the patterns are matched (see above).
+So a pattern that matches against "~?x > ~?y" will *never* be triggered!
+
+Then, simply run "dotrans maths2-1.src maths2-2.wsl TR_Meta_Trans"
+in the FermaT/src/adt directory, cd to FermaT/src and run
+"make-fermat" to build and install a new FermaT executable.
+
+
+Suppose we want to simplify conditions such as (x>65) AND (x<32).
+The canonical form is (x < 32 AND 65 < x) which should simplify
+to FALSE because 32 <= 65. So our general pattern might be something like this:
+
+IFMATCH Condition ~?x < ~?y1 AND ~?y2 < ~?x
+THEN IF @ST(@Simplify(FILL Condition ~?y1 <= ~?y2 ENDFILL, Budget - 1)) = T_True
+       THEN @Paste_Over(Mth_False) FI ENDMATCH;
+
+Note the recursive call to @Simplify (with a smaller Budget).
+
+
+
+Here's some code to print the canonical form of an expression
+or condition and then print the simplifier output:
+
+I := FILL Condition (x>65) AND (x<32) ENDFILL;
+
+VAR < new := I, old := < >, Orig_Budget := Mth_Default_Budget,
+	Orig_Size := @Total_Size(I), Orig := I >:
+
+@New_Program(I);
+
+IF @GT(@I) = T_Condition AND @Cs?(@I)
+  THEN @Paste_Over(@Mth_De_Morgan(@I)) FI;
+DO @Mth_Flatten;
+   @Mth_Evaluate;
+   @Mth_Sort_Merge;
+   old := @Program;
+   IF @ST(@I) = T_And OR @ST(@I) = T_Or
+     THEN @Mth_Duplicate_Relations FI;
+   IF @ST(@I) = T_And
+     THEN @Mth_Known_Value1(Budget);
+	  @Mth_Known_Value3(Budget) FI;
+   IF @ST(@I) = T_Or
+     THEN @Mth_Known_Value2(Budget);
+	  @Mth_Known_Value4(Budget) FI;
+   @Mth_Expand(Budget);
+   IF @ST(@I) = T_And AND @Size(@I) > 1
+	  AND @ST(@I^1) = T_Or AND @ST(@I^2) = T_Or
+	OR @ST(@I) = T_Or AND @Size(@I) > 1
+	  AND @ST(@I^1) = T_And AND @ST(@I^2) = T_And
+     THEN @Mth_Common_Components(Budget) FI;
+   IF @Total_Size(@Program) > 5 * Orig_Size
+     THEN @Paste_Over(Orig); EXIT(1)
+   ELSIF @Equal?(old, @Program)
+     THEN EXIT(1) FI OD;
+
+@Print_WSL(@I, "");
+@PP_Item(@I, 80, "");
+
+@Trans(TR_Simplify, "");
+
+PRINT("");
+PRINT("Simplified version:");
+
+@Print_WSL(@I, "");
+@PP_Item(@I, 80, "");
+
+
+SKIP ENDVAR
+
+
+If you come up with some useful patterns, please email them to me
+(martin@gkc.org.uk) for inclusion in the next FermaT release.
+
+			Martin
+
+martin@gkc.org.uk  http://www.cse.dmu.ac.uk/~mward/  Erdos number: 4
+G.K.Chesterton web site:  http://www.cse.dmu.ac.uk/~mward/gkc/

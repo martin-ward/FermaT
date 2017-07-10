@@ -1,0 +1,5556 @@
+Fix Assembler, Max_Passes = 35 call_budget = 4000
+Trial = 1
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 101 posn = ()
+Preserving actions: (FILEOPEN INITIAL0 PROC1 PROC2 dispatch PROC11)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 102 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+244 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 244 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 103 posn = (1)
+244 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = PROC11, dispatch, PROC2, PROC1, INITIAL0, FILEOPEN
+244 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: .................................................................................................................................................................................................
+Finding elementary actions
+Removing elementary actions: _start_=245 
+
+Action system type is Reg
+50 actions
+
+Simplifying action bodies: ....
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 50 actions in the main system.
+Syntax is OK.
+
+REITERATING...
+Action system type is Reg
+Leave_Alone_Names = PROC11, dispatch, PROC2, PROC1, INITIAL0, FILEOPEN
+50 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+50 actions
+
+Simplifying action bodies: ....
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 50 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 104 posn = (1)
+ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppReading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 105 posn = ()
+Top_Level_Remove: (EODAD_UNKNOWN EODAD_DDIN len_2 len_1)
+Constant_Propagation effort = 0 budget = 200
+Migration = 1
+Call Budget = 200
+No constant DSECTs found
+50 actions
+Calculating Succs and Preds... Done.
+..x..........x..............x.xxxx.xx.xxx.xxx.D-1440-N 
+Unfolding a dispatch: destination=1440 posn=(17 1 2 3)
+.x.x..x.x.x.x..x.R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(10)
+....C0/B/B/BC0/B/B/BC0/B/B/BC0/B/B/BC0/B/B/BC0/B/B/BC0/B/B/BC0.C0.x.x..x
+
+Re-Scanning Action System, scan: 2
+..x..........x..............x.xxxx.xx.xxx.xxx.D-1440-N 
+Unfolding a dispatch: destination=1440 posn=(17 1 2 3)
+.x.x..x.x.x.x..x.R
+Unfolding a dispatch: destination = __r14_init__
+ posn=(10)
+....C0/B/B/BC0/B/B/BC0/B/B/BC0/B/B/BC0/B/B/BC0/B/B/BC0/B/B/BC0.C0.x.x..x
+Rebuilding the action system.
+There are 50 actions in the main system.
+ 
+Simplifying the result
+
+PASS 1
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 106 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+50 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 50 actions in the main system.
+Finding actions which only call Z...
+Creating procedure `A_000090', size = 9, tv = 0
+  position = (1 2 1 2 4 2 1)
+Searching for other copies of body:  
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 107 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 0 budget = 4000
+49 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 PROC1 PROC2 A_00019C EOF1 A_000294 A_0002A4 PROC11 A_000554 A_000578 FILEOPEN 
+Checking which entry actions are simple procedures...
+Checking entry: EOF1:
+--> Checking if action EOF1 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Succeeded for action EOF1 register r14
+Found a simple procedure: EOF1
+Body consists of 1 actions: EOF1 
+Unfolding EOF1
+...return code = 484 at (17 1 2 3)
+...can't find return code at (1 48 2 1)
+
+1 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = 
+1 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+1 actions
+
+Simplifying action bodies: 
+Rebuilding the action system.
+There are 1 actions in the main system.
+Syntax is OK.
+Done
+Removing action system: EOF1
+Calculating Succs and Preds... Done.
+Checking entry: PROC2: L2Z
+--> Checking if action PROC2 sends r14 to destination...
+2 actions
+Calculating Succs and Preds... Done.
+.x.
+
+Re-Scanning Action System, scan: 2
+.x.
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+<-- Failed for action PROC2 register r14
+Checking entry: PROC11: LBZ
+--> Checking if action PROC11 sends r14 to destination...
+2 actions
+Calculating Succs and Preds... Done.
+.x.xXx
+
+Re-Scanning Action System, scan: 2
+.x.xXx
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+<-- Succeeded for action PROC11 register r14
+Found a simple procedure: PROC11
+Body consists of 2 actions: PROC11 LBZ 
+Unfolding PROC11
+...return code = 742 at (7)
+...return code = 760 at (7)
+...return code = 778 at (7)
+...return code = 792 at (7)
+
+Using Expansion to reduce calls... eeeeeeee
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+LBZ LBZ LBZ LBZ LBZ LBZ LBZ LBZ LBZ 
+
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = 
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: .
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+1 actions
+
+Simplifying action bodies: 
+Rebuilding the action system.
+There are 1 actions in the main system.
+Syntax is OK.
+Done
+Removing action system: PROC11
+Calculating Succs and Preds... Done.
+Checking entry: PROC1: A_0002C8 LAA A_0002E6 LAB A_0002F8 LAC LAZ A_000318
+--> Checking if action PROC1 sends r14 to destination...
+9 actions
+Calculating Succs and Preds... Done.
+.x........xx
+
+Re-Scanning Action System, scan: 2
+.x........xx
+
+Re-Scanning Action System, scan: 3
+.x........xx
+Rebuilding the action system.
+There are 9 actions in the main system.
+
+<-- Succeeded for action PROC1 register r14
+Found a simple procedure: PROC1
+Body consists of 9 actions: PROC1 A_0002C8 LAA A_0002E6 LAB A_0002F8 LAC LAZ A_000318 
+Unfolding PROC1
+...return code = 140 at (4)
+
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+9 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = 
+9 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: .......
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: .
+
+Action system type is Reg
+1 actions
+
+Simplifying action bodies: 
+Rebuilding the action system.
+There are 1 actions in the main system.
+Syntax is OK.
+Done
+Removing action system: PROC1
+Calculating Succs and Preds... Done.
+Checking entry: INITIAL0:
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Checking entry: FILEOPEN:
+--> Checking if action FILEOPEN sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action FILEOPEN register r14
+Looking for entry actions...
+A_00019C A_000294 A_0002A4 A_000554 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: PROC2: L2Z
+--> Checking if action PROC2 sends r14 to destination...
+2 actions
+Calculating Succs and Preds... Done.
+.x.
+
+Re-Scanning Action System, scan: 2
+.x.
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+<-- Failed for action PROC2 register r14
+Checking entry: INITIAL0:
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Checking entry: FILEOPEN:
+--> Checking if action FILEOPEN sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action FILEOPEN register r14
+Rebuilding the action system.
+There are 37 actions in the main system and 3 procedure(s).
+Syntax is OK
+Looking for action systems in proc bodies...
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 108 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 0 budget = 4000
+37 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 PROC2 A_00019C A_000294 A_0002A4 A_000554 A_000578 FILEOPEN 
+Checking which entry actions are simple procedures...
+Checking entry: PROC2: L2Z
+--> Checking if action PROC2 sends r14 to destination...
+2 actions
+Calculating Succs and Preds... Done.
+.x.
+
+Re-Scanning Action System, scan: 2
+.x.
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+<-- Failed for action PROC2 register r14
+Checking entry: INITIAL0:
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Checking entry: FILEOPEN:
+--> Checking if action FILEOPEN sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action FILEOPEN register r14
+Rebuilding the action system.
+There are 37 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 109 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 110 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+.......r..........r.........r................xx.....xxxx............ 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 111 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+pppp
+37 actions
+Calculating Succs and Preds... Done.
+..xC 
+Making a call to procedure: v_fmt104
+ returning via r14
+d9xD-180-NN 
+Unfolding a dispatch: destination=180 posn=(17)
+. 
+Making a call to procedure: v_fmt104
+ returning via r14
+d9xD-246-NN 
+Unfolding a dispatch: destination=246 posn=(19)
+..NXNX..x 
+Making a call to procedure: r15
+ returning via r14
+d9xD-1406-NN 
+Unfolding a dispatch: destination=1406 posn=(9)
+...x 
+Making a call to procedure: r15
+ returning via r14
+d9xD-1370-NN 
+Unfolding a dispatch: destination=1370 posn=(9)
+... 
+Making a call to procedure: v_fmt301
+ returning via r14
+d9xD-1338-NN 
+Unfolding a dispatch: destination=1338 posn=(12)
+..x 
+Making a call to procedure: r15
+ returning via r14
+d9xD-682-NN 
+Unfolding a dispatch: destination=682 posn=(9)
+..x 
+Making a call to procedure: r15
+ returning via r14
+d9xD-666-NN 
+Unfolding a dispatch: destination=666 posn=(9)
+.. 
+Making a call to procedure: v_fmtbbb2
+ returning via r14
+d9xD-652-NN 
+Unfolding a dispatch: destination=652 posn=(9)
+. 
+Making a call to procedure: v_fmtaaa1
+ returning via r14
+d9xD-646-NN 
+Unfolding a dispatch: destination=646 posn=(35)
+. 
+Making a call to procedure: v_fmt112
+ returning via r14
+d9xD-566-NN 
+Unfolding a dispatch: destination=566 posn=(21)
+. 
+Making a call to procedure: v_fmt111
+ returning via r14
+d9xD-536-NN 
+Unfolding a dispatch: destination=536 posn=(21)
+. 
+Making a call to procedure: v_fmt110
+ returning via r14
+d9xD-510-NN 
+Unfolding a dispatch: destination=510 posn=(27)
+.. 
+Making a call to procedure: v_fmt109
+ returning via r14
+d9xD-470-NN 
+Unfolding a dispatch: destination=470 posn=(13)
+. 
+Making a call to procedure: v_fmt108
+ returning via r14
+d9xD-442-NN 
+Unfolding a dispatch: destination=442 posn=(12)
+.x 
+Making a call to procedure: r15
+ returning via r14
+d9xD-418-NN 
+Unfolding a dispatch: destination=418 posn=(9)
+.. 
+Making a call to procedure: v_fmt104
+ returning via r14
+d9xD-342-NN 
+Unfolding a dispatch: destination=342 posn=(10)
+. 
+Making a call to procedure: AMOD3
+ returning via r14
+d9xD-336-NN 
+Unfolding a dispatch: destination=336 posn=(10)
+. 
+Making a call to procedure: v_fmt102
+ returning via r14
+d9xD-330-NN 
+Unfolding a dispatch: destination=330 posn=(10)
+....xC.xC 
+Making a call to procedure: VMOD1
+ returning via r14
+d9xD-324-NN 
+Unfolding a dispatch: destination=324 posn=(33)
+. 
+Making a call to procedure: v_fmt300
+ returning via r14
+d9xD-1314-NN 
+Unfolding a dispatch: destination=1314 posn=(12)
+
+
+Re-Scanning Action System, scan: 2
+..xC 
+Making a call to procedure: v_fmt104
+ returning via r14
+d9xD-180-NN 
+Unfolding a dispatch: destination=180 posn=(17)
+. 
+Making a call to procedure: v_fmt104
+ returning via r14
+d9xD-246-NN 
+Unfolding a dispatch: destination=246 posn=(19)
+..NXNX.. 
+Making a call to procedure: r15
+ returning via r14
+d9xD-1406-NN 
+Unfolding a dispatch: destination=1406 posn=(9)
+... 
+Making a call to procedure: r15
+ returning via r14
+d9xD-1370-NN 
+Unfolding a dispatch: destination=1370 posn=(9)
+... 
+Making a call to procedure: v_fmt301
+ returning via r14
+d9xD-1338-NN 
+Unfolding a dispatch: destination=1338 posn=(12)
+.. 
+Making a call to procedure: r15
+ returning via r14
+d9xD-682-NN 
+Unfolding a dispatch: destination=682 posn=(9)
+.. 
+Making a call to procedure: r15
+ returning via r14
+d9xD-666-NN 
+Unfolding a dispatch: destination=666 posn=(9)
+.. 
+Making a call to procedure: v_fmtbbb2
+ returning via r14
+d9xD-652-NN 
+Unfolding a dispatch: destination=652 posn=(9)
+. 
+Making a call to procedure: v_fmtaaa1
+ returning via r14
+d9xD-646-NN 
+Unfolding a dispatch: destination=646 posn=(35)
+. 
+Making a call to procedure: v_fmt112
+ returning via r14
+d9xD-566-NN 
+Unfolding a dispatch: destination=566 posn=(21)
+. 
+Making a call to procedure: v_fmt111
+ returning via r14
+d9xD-536-NN 
+Unfolding a dispatch: destination=536 posn=(21)
+. 
+Making a call to procedure: v_fmt110
+ returning via r14
+d9xD-510-NN 
+Unfolding a dispatch: destination=510 posn=(27)
+.. 
+Making a call to procedure: v_fmt109
+ returning via r14
+d9xD-470-NN 
+Unfolding a dispatch: destination=470 posn=(13)
+. 
+Making a call to procedure: v_fmt108
+ returning via r14
+d9xD-442-NN 
+Unfolding a dispatch: destination=442 posn=(12)
+. 
+Making a call to procedure: r15
+ returning via r14
+d9xD-418-NN 
+Unfolding a dispatch: destination=418 posn=(9)
+.. 
+Making a call to procedure: v_fmt104
+ returning via r14
+d9xD-342-NN 
+Unfolding a dispatch: destination=342 posn=(10)
+. 
+Making a call to procedure: AMOD3
+ returning via r14
+d9xD-336-NN 
+Unfolding a dispatch: destination=336 posn=(10)
+. 
+Making a call to procedure: v_fmt102
+ returning via r14
+d9xD-330-NN 
+Unfolding a dispatch: destination=330 posn=(10)
+....xC.xC 
+Making a call to procedure: VMOD1
+ returning via r14
+d9xD-324-NN 
+Unfolding a dispatch: destination=324 posn=(33)
+. 
+Making a call to procedure: v_fmt300
+ returning via r14
+d9xD-1314-NN 
+Unfolding a dispatch: destination=1314 posn=(12)
+
+
+Re-Scanning Action System, scan: 3
+..xC 
+Making a call to procedure: v_fmt104
+ returning via r14
+d9xD-180-NN 
+Unfolding a dispatch: destination=180 posn=(17)
+. 
+Making a call to procedure: v_fmt104
+ returning via r14
+d9xD-246-NN 
+Unfolding a dispatch: destination=246 posn=(19)
+..NXNX.. 
+Making a call to procedure: r15
+ returning via r14
+d9xD-1406-NN 
+Unfolding a dispatch: destination=1406 posn=(9)
+... 
+Making a call to procedure: r15
+ returning via r14
+d9xD-1370-NN 
+Unfolding a dispatch: destination=1370 posn=(9)
+... 
+Making a call to procedure: v_fmt301
+ returning via r14
+d9xD-1338-NN 
+Unfolding a dispatch: destination=1338 posn=(12)
+.. 
+Making a call to procedure: r15
+ returning via r14
+d9xD-682-NN 
+Unfolding a dispatch: destination=682 posn=(9)
+.. 
+Making a call to procedure: r15
+ returning via r14
+d9xD-666-NN 
+Unfolding a dispatch: destination=666 posn=(9)
+.. 
+Making a call to procedure: v_fmtbbb2
+ returning via r14
+d9xD-652-NN 
+Unfolding a dispatch: destination=652 posn=(9)
+. 
+Making a call to procedure: v_fmtaaa1
+ returning via r14
+d9xD-646-NN 
+Unfolding a dispatch: destination=646 posn=(35)
+. 
+Making a call to procedure: v_fmt112
+ returning via r14
+d9xD-566-NN 
+Unfolding a dispatch: destination=566 posn=(21)
+. 
+Making a call to procedure: v_fmt111
+ returning via r14
+d9xD-536-NN 
+Unfolding a dispatch: destination=536 posn=(21)
+. 
+Making a call to procedure: v_fmt110
+ returning via r14
+d9xD-510-NN 
+Unfolding a dispatch: destination=510 posn=(27)
+.. 
+Making a call to procedure: v_fmt109
+ returning via r14
+d9xD-470-NN 
+Unfolding a dispatch: destination=470 posn=(13)
+. 
+Making a call to procedure: v_fmt108
+ returning via r14
+d9xD-442-NN 
+Unfolding a dispatch: destination=442 posn=(12)
+. 
+Making a call to procedure: r15
+ returning via r14
+d9xD-418-NN 
+Unfolding a dispatch: destination=418 posn=(9)
+.. 
+Making a call to procedure: v_fmt104
+ returning via r14
+d9xD-342-NN 
+Unfolding a dispatch: destination=342 posn=(10)
+. 
+Making a call to procedure: AMOD3
+ returning via r14
+d9xD-336-NN 
+Unfolding a dispatch: destination=336 posn=(10)
+. 
+Making a call to procedure: v_fmt102
+ returning via r14
+d9xD-330-NN 
+Unfolding a dispatch: destination=330 posn=(10)
+....xC.xC 
+Making a call to procedure: VMOD1
+ returning via r14
+d9xD-324-NN 
+Unfolding a dispatch: destination=324 posn=(33)
+. 
+Making a call to procedure: v_fmt300
+ returning via r14
+d9xD-1314-NN 
+Unfolding a dispatch: destination=1314 posn=(12)
+
+Rebuilding the action system.
+There are 37 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 112 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 113 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+......r............r..........r................................... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 114 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+pppp
+37 actions
+Calculating Succs and Preds... Done.
+..C...NXNX..x...x.....x..x..........x........C.C.
+
+Re-Scanning Action System, scan: 2
+..C...NXNX..............................C.C.
+
+Re-Scanning Action System, scan: 3
+..C...NXNX..............................C.C.
+Rebuilding the action system.
+There are 37 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 115 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... e
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (INITIAL0 PROC2 dispatch)
+A_0001E4 L2Z L2Z 
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 116 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+37 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 37 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 117 posn = (1 2 1 1 1)
+37 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = PROC11, dispatch, PROC2, PROC1, INITIAL0, FILEOPEN
+37 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: .
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+36 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 36 actions in the main system.
+Syntax is OK.
+
+REITERATING...
+Action system type is Reg
+Leave_Alone_Names = PROC11, dispatch, PROC2, PROC1, INITIAL0, FILEOPEN
+36 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+36 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 36 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 118 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+......r............r..........r................................... 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 119 posn = ()
+Redundant variables are: (cc)
+Redundant variables are: ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 120 posn = ()
+..........X.........XX...X..X......X..............X....XX.....XX.....XX...........X....X......XX......XX......X......X...............X............X..............X......X................X....XX.....XX.......XX........X.................X.......X.........XX......XX..........XX...........X..........................X.X..X..........................................................X............................................................X...X........................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 121 posn = (1 2 1 1 1 2 36)
+Finding accessed variables...
+Pruning dispatch...
+180 246 324 330 336 342 418 442 470 484 510 536 566 646 652 666 682 712 716 720 724 728 742 746 760 764 778 792 1314 1338 1352 1370 1388 1406 1440 
+Aligning nested IF statements A>A>A>A>A>A>A>
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 122 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 123 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+36 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 36 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 124 posn = (1)
+36 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = PROC11, dispatch, PROC2, PROC1, INITIAL0, FILEOPEN
+36 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: .......................
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+13 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK.
+
+REITERATING...
+Action system type is Reg
+Leave_Alone_Names = PROC11, dispatch, PROC2, PROC1, INITIAL0, FILEOPEN
+13 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+13 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+.RP = (1 2 1 2 1 4 1 1 17) has n = 3
+Creating procedure `p_1', size = 14, tv = 1
+  position = (1 2 1 2 1 4 1 1 18)
+Searching for other copies of body:  
+Absorbing right...
+P = (1 2 1 2 1 4 1 1 17) has n = 3
+
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 125 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 0 budget = 4000
+13 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_00019C A_000294 A_0002A4 A_000554 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+Applying transformation: Unfold Proc Calls
+FA_nn = 126 posn = (1)
+Unfolding Proc_Call PROC1 at (1)
+Unfolding Proc_Call EOF1 at (1)
+new_defns = 3
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 127 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 128 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+
+PASS 2
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 129 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+13 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 13 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 130 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+13 actions
+Calculating Succs and Preds... Done.
+..CX.NXNX.x.x.x.x.xx..x..C.C
+
+Re-Scanning Action System, scan: 2
+..CX.NXNX.....x..x..C.C
+
+Re-Scanning Action System, scan: 3
+..CX.NXNX.....x..x..C.C
+Rebuilding the action system.
+There are 13 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 131 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 0 budget = 4000
+13 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_00019C A_000294 A_0002A4 A_000554 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 132 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 133 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+..........r............r..........r............................ 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 134 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+13 actions
+Calculating Succs and Preds... Done.
+..C.NXNX.x.x.x.x.x....C.C
+
+Re-Scanning Action System, scan: 2
+..C.NXNX.........C.C
+
+Re-Scanning Action System, scan: 3
+..C.NXNX.........C.C
+Rebuilding the action system.
+There are 13 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 135 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 136 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+13 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 13 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 137 posn = (1 2 1 1 1)
+13 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = PROC11, dispatch, PROC2, PROC1, INITIAL0, FILEOPEN
+13 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+13 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 138 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 139 posn = ()
+.....X......................................................................................................X................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 140 posn = (1 2 1 1 1 2 13)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 141 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 142 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+13 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 13 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 143 posn = (1)
+13 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = PROC11, dispatch, PROC2, PROC1, INITIAL0, FILEOPEN
+13 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+13 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 144 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+13 actions
+Calculating Succs and Preds... Done.
+..C.NXNX.x.x.x.x.x....C.C
+
+Re-Scanning Action System, scan: 2
+..C.NXNX.........C.C
+
+Re-Scanning Action System, scan: 3
+..C.NXNX.........C.C
+Rebuilding the action system.
+There are 13 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 145 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 0 budget = 4000
+13 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_00019C A_000294 A_0002A4 A_000554 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 146 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 147 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+
+PASS 3
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 148 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+13 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 13 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 149 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+13 actions
+Calculating Succs and Preds... Done.
+..C.NXNX.x.x.x.x.x....C.C
+
+Re-Scanning Action System, scan: 2
+..C.NXNX.........C.C
+
+Re-Scanning Action System, scan: 3
+..C.NXNX.........C.C
+Rebuilding the action system.
+There are 13 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 150 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 0 budget = 4000
+13 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_00019C A_000294 A_0002A4 A_000554 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 151 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 152 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+..........r............r..........r............................ 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 153 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+13 actions
+Calculating Succs and Preds... Done.
+..C.NXNX.x.x.x.x.x....C.C
+
+Re-Scanning Action System, scan: 2
+..C.NXNX.........C.C
+
+Re-Scanning Action System, scan: 3
+..C.NXNX.........C.C
+Rebuilding the action system.
+There are 13 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 154 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 155 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+13 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 13 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 156 posn = (1 2 1 1 1)
+13 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = PROC11, dispatch, PROC2, PROC1, INITIAL0, FILEOPEN
+13 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+13 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 157 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 158 posn = ()
+...........................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 159 posn = (1 2 1 1 1 2 13)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 160 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 161 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+13 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 13 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 162 posn = (1)
+13 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = PROC11, dispatch, PROC2, PROC1, INITIAL0, FILEOPEN
+13 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+13 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 163 posn = ()
+Constant_Propagation effort = 0 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+13 actions
+Calculating Succs and Preds... Done.
+..C.NXNX.x.x.x.x.x....C.C
+
+Re-Scanning Action System, scan: 2
+..C.NXNX.........C.C
+
+Re-Scanning Action System, scan: 3
+..C.NXNX.........C.C
+Rebuilding the action system.
+There are 13 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 164 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 0 budget = 4000
+13 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_00019C A_000294 A_0002A4 A_000554 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 13 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 165 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 166 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+--- current equals old ---
+Trial = 2
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 167 posn = ()
+Preserving actions: (INITIAL0 dispatch)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 168 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+13 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 13 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 169 posn = (1)
+13 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+13 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: ..
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+11 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 11 actions in the main system.
+Syntax is OK.
+
+REITERATING...
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+11 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+11 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 11 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 170 posn = (1)
+Reading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 171 posn = ()
+
+PASS 4
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 172 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+11 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 11 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 173 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+11 actions
+Calculating Succs and Preds... Done.
+.C.NXNX.x.x.x.x.x.C...C
+
+Re-Scanning Action System, scan: 2
+.C.NXNX......C...C
+Rebuilding the action system.
+There are 11 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 174 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+11 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 A_0002A4 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 11 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+11 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 A_0002A4 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: A_000578:
+@FD_Remove_Ext_Calls on A_000578 ok = 1
+tmpl = 
+  ... ok = 1 new body = (9)
+--> Checking if action A_000578 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.xx
+
+Re-Scanning Action System, scan: 2
+.xx
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000578 register r15
+Checking entry: A_000554:
+@FD_Remove_Ext_Calls on A_000554 ok = 1
+tmpl = 
+  ... ok = 1 new body = (8)
+--> Checking if action A_000554 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000554 register r15
+Checking entry: A_0002A4:
+@FD_Remove_Ext_Calls on A_0002A4 ok = 1
+tmpl = 
+  ... ok = 1 new body = (7)
+--> Checking if action A_0002A4 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.xx
+
+Re-Scanning Action System, scan: 2
+.xx
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_0002A4 register r15
+Checking entry: A_000294:
+@FD_Remove_Ext_Calls on A_000294 ok = 1
+tmpl = 
+  ... ok = 1 new body = (6)
+--> Checking if action A_000294 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000294 register r15
+Checking entry: A_00019C:
+@FD_Remove_Ext_Calls on A_00019C ok = 1
+tmpl = 
+  ... ok = 1 new body = (5)
+--> Checking if action A_00019C sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_00019C register r15
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = A_00019C A_000294 A_0002A4 
+...checking body action A_00019C
+  Found external call A_00019C in action INITIAL0
+Not taking out entry action A_00019C
+  ...removing A_00019C
+  ...removing A_000294
+  ...removing A_0002A4
+  ... ok = 0 new body = (4)
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 11 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 175 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 176 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................r......r.................xxxxxxx........... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 177 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+11 actions
+Calculating Succs and Preds... Done.
+. 
+Making a call to procedure: a[a[!XF address_of(WSTACK) + 8, 4] + 4, 4]
+ returning via 0
+d7
+
+Re-Scanning Action System, scan: 2
+. 
+Making a call to procedure: a[a[!XF address_of(WSTACK) + 8, 4] + 4, 4]
+ returning via 0
+d7
+Rebuilding the action system.
+There are 11 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 178 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 179 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+11 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+A_000084 
+Rebuilding the action system.
+There are 11 actions in the main system.
+Rebuilding the action system.
+There are 11 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 180 posn = (1 2 1 1 1)
+12 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+12 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: .
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+11 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 11 actions in the main system.
+Syntax is OK.
+
+REITERATING...
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+11 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+11 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 11 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 181 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+.....................................r......r........... 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 182 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 183 posn = ()
+.......................X......................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 184 posn = (1 2 1 1 1 2 11)
+Finding accessed variables...
+Pruning dispatch...
+132 
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 185 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 186 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+11 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 11 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 187 posn = (1)
+11 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+11 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: .
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+10 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK.
+
+REITERATING...
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+10 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+10 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 188 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+10 actions
+Calculating Succs and Preds... Done.
+..C.x.x.x.NN.x.x.C.
+
+Re-Scanning Action System, scan: 2
+..C....NN...C.
+
+Re-Scanning Action System, scan: 3
+..C....NN...C.
+
+Re-Scanning Action System, scan: 4
+..C....NN...C.
+Rebuilding the action system.
+There are 10 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 189 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+10 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 A_0002A4 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+10 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 A_0002A4 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: A_000578:
+@FD_Remove_Ext_Calls on A_000578 ok = 1
+tmpl = 
+  ... ok = 1 new body = (9)
+--> Checking if action A_000578 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.xx
+
+Re-Scanning Action System, scan: 2
+.xx
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000578 register r15
+Checking entry: A_000554:
+@FD_Remove_Ext_Calls on A_000554 ok = 1
+tmpl = 
+  ... ok = 1 new body = (8)
+--> Checking if action A_000554 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000554 register r15
+Checking entry: A_0002A4:
+@FD_Remove_Ext_Calls on A_0002A4 ok = 1
+tmpl = 
+  ... ok = 1 new body = (7)
+--> Checking if action A_0002A4 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.xx
+
+Re-Scanning Action System, scan: 2
+.xx
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_0002A4 register r15
+Checking entry: A_000294:
+@FD_Remove_Ext_Calls on A_000294 ok = 1
+tmpl = 
+  ... ok = 1 new body = (6)
+--> Checking if action A_000294 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000294 register r15
+Checking entry: A_00019C:
+@FD_Remove_Ext_Calls on A_00019C ok = 1
+tmpl = 
+  ... ok = 1 new body = (5)
+--> Checking if action A_00019C sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_00019C register r15
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = A_00019C A_000294 A_0002A4 
+...checking body action A_00019C
+  Found external call A_00019C in action INITIAL0
+Not taking out entry action A_00019C
+  ...removing A_00019C
+  ...removing A_000294
+  ...removing A_0002A4
+  ... ok = 0 new body = (4)
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 190 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 191 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+
+PASS 5
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 192 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+10 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 10 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 193 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+10 actions
+Calculating Succs and Preds... Done.
+..C.x.x.x.NN.x.x.C.
+
+Re-Scanning Action System, scan: 2
+..C....NN...C.
+
+Re-Scanning Action System, scan: 3
+..C....NN...C.
+
+Re-Scanning Action System, scan: 4
+..C....NN...C.
+Rebuilding the action system.
+There are 10 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 194 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+10 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 A_0002A4 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+10 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 A_0002A4 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: A_000578:
+@FD_Remove_Ext_Calls on A_000578 ok = 1
+tmpl = 
+  ... ok = 1 new body = (9)
+--> Checking if action A_000578 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.xx
+
+Re-Scanning Action System, scan: 2
+.xx
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000578 register r15
+Checking entry: A_000554:
+@FD_Remove_Ext_Calls on A_000554 ok = 1
+tmpl = 
+  ... ok = 1 new body = (8)
+--> Checking if action A_000554 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000554 register r15
+Checking entry: A_0002A4:
+@FD_Remove_Ext_Calls on A_0002A4 ok = 1
+tmpl = 
+  ... ok = 1 new body = (7)
+--> Checking if action A_0002A4 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.xx
+
+Re-Scanning Action System, scan: 2
+.xx
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_0002A4 register r15
+Checking entry: A_000294:
+@FD_Remove_Ext_Calls on A_000294 ok = 1
+tmpl = 
+  ... ok = 1 new body = (6)
+--> Checking if action A_000294 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000294 register r15
+Checking entry: A_00019C:
+@FD_Remove_Ext_Calls on A_00019C ok = 1
+tmpl = 
+  ... ok = 1 new body = (5)
+--> Checking if action A_00019C sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_00019C register r15
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = A_00019C A_000294 A_0002A4 
+...checking body action A_00019C
+  Found external call A_00019C in action INITIAL0
+Not taking out entry action A_00019C
+  ...removing A_00019C
+  ...removing A_000294
+  ...removing A_0002A4
+  ... ok = 0 new body = (4)
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 195 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 196 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+.....................................r......r........... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 197 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+10 actions
+Calculating Succs and Preds... Done.
+..C.x.x.x.NN.x.x.C.
+
+Re-Scanning Action System, scan: 2
+..C....NN...C.
+
+Re-Scanning Action System, scan: 3
+..C....NN...C.
+
+Re-Scanning Action System, scan: 4
+..C....NN...C.
+Rebuilding the action system.
+There are 10 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 198 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 199 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+10 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 10 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 200 posn = (1 2 1 1 1)
+10 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+10 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+10 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 201 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 202 posn = ()
+...........................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 203 posn = (1 2 1 1 1 2 10)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 204 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 205 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+10 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 10 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 206 posn = (1)
+10 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+10 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+10 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 207 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+10 actions
+Calculating Succs and Preds... Done.
+..C.x.x.x.NN.x.x.C.
+
+Re-Scanning Action System, scan: 2
+..C....NN...C.
+
+Re-Scanning Action System, scan: 3
+..C....NN...C.
+
+Re-Scanning Action System, scan: 4
+..C....NN...C.
+Rebuilding the action system.
+There are 10 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 208 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+10 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 A_0002A4 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+10 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 A_0002A4 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: A_000578:
+@FD_Remove_Ext_Calls on A_000578 ok = 1
+tmpl = 
+  ... ok = 1 new body = (9)
+--> Checking if action A_000578 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.xx
+
+Re-Scanning Action System, scan: 2
+.xx
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000578 register r15
+Checking entry: A_000554:
+@FD_Remove_Ext_Calls on A_000554 ok = 1
+tmpl = 
+  ... ok = 1 new body = (8)
+--> Checking if action A_000554 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000554 register r15
+Checking entry: A_0002A4:
+@FD_Remove_Ext_Calls on A_0002A4 ok = 1
+tmpl = 
+  ... ok = 1 new body = (7)
+--> Checking if action A_0002A4 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.xx
+
+Re-Scanning Action System, scan: 2
+.xx
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_0002A4 register r15
+Checking entry: A_000294:
+@FD_Remove_Ext_Calls on A_000294 ok = 1
+tmpl = 
+  ... ok = 1 new body = (6)
+--> Checking if action A_000294 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000294 register r15
+Checking entry: A_00019C:
+@FD_Remove_Ext_Calls on A_00019C ok = 1
+tmpl = 
+  ... ok = 1 new body = (5)
+--> Checking if action A_00019C sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_00019C register r15
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = A_00019C A_000294 A_0002A4 
+...checking body action A_00019C
+  Found external call A_00019C in action INITIAL0
+Not taking out entry action A_00019C
+  ...removing A_00019C
+  ...removing A_000294
+  ...removing A_0002A4
+  ... ok = 0 new body = (4)
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 209 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 210 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+--- current equals old ---
+Trial = 3
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 211 posn = ()
+Preserving actions: (INITIAL0 dispatch)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 212 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+10 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 10 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 213 posn = (1)
+10 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+10 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+10 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 214 posn = (1)
+Reading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 215 posn = ()
+
+PASS 6
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 216 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+10 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 10 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 217 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+10 actions
+Calculating Succs and Preds... Done.
+..C.x.x.x.NN.x.x.C.
+
+Re-Scanning Action System, scan: 2
+..C....NN...C.
+
+Re-Scanning Action System, scan: 3
+..C....NN...C.
+
+Re-Scanning Action System, scan: 4
+..C....NN...C.
+Rebuilding the action system.
+There are 10 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 218 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+10 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 A_0002A4 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+10 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 A_0002A4 A_000578 
+Checking which entry actions are simple procedures...
+Checking entry: A_000578:
+@FD_Remove_Ext_Calls on A_000578 ok = 1
+tmpl = 
+  ... ok = 1 new body = (9)
+--> Checking if action A_000578 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.xx
+
+Re-Scanning Action System, scan: 2
+.xx
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000578 register r15
+Checking entry: A_000554:
+@FD_Remove_Ext_Calls on A_000554 ok = 1
+tmpl = 
+  ... ok = 1 new body = (8)
+--> Checking if action A_000554 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000554 register r15
+Checking entry: A_0002A4:
+@FD_Remove_Ext_Calls on A_0002A4 ok = 1
+tmpl = 
+  ... ok = 1 new body = (7)
+--> Checking if action A_0002A4 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.xx
+
+Re-Scanning Action System, scan: 2
+.xx
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_0002A4 register r15
+Checking entry: A_000294:
+@FD_Remove_Ext_Calls on A_000294 ok = 1
+tmpl = 
+  ... ok = 1 new body = (6)
+--> Checking if action A_000294 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000294 register r15
+Checking entry: A_00019C:
+@FD_Remove_Ext_Calls on A_00019C ok = 1
+tmpl = 
+  ... ok = 1 new body = (5)
+--> Checking if action A_00019C sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_00019C register r15
+Checking entry: INITIAL0: A_00019C A_000294 A_0002A4
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = A_00019C A_000294 A_0002A4 
+...checking body action A_00019C
+  Found external call A_00019C in action INITIAL0
+Not taking out entry action A_00019C
+  ...removing A_00019C
+  ...removing A_000294
+  ...removing A_0002A4
+  ... ok = 0 new body = (4)
+--> Checking if action INITIAL0 sends r14 to destination...
+4 actions
+Calculating Succs and Preds... Done.
+..x.x.xxx
+
+Re-Scanning Action System, scan: 2
+..x.x.xxx
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 219 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 220 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+.....................................r......r........... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 221 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppp
+10 actions
+Calculating Succs and Preds... Done.
+..C.x.x.x.NN.x.x.C.
+
+Re-Scanning Action System, scan: 2
+..C....NN...C.
+
+Re-Scanning Action System, scan: 3
+..C....NN...C.
+
+Re-Scanning Action System, scan: 4
+..C....NN...C.
+Rebuilding the action system.
+There are 10 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 222 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 223 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+10 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 10 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 224 posn = (1 2 1 1 1)
+10 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+10 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+10 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 225 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+.....................................r......r........... 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 226 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 227 posn = ()
+...........................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 228 posn = (1 2 1 1 1 2 10)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 229 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 230 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+10 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 10 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 231 posn = (1)
+10 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+10 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+10 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 10 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call dispatch...
+Creating procedure `A_0002A4', size = 13, tv = 0
+  position = (1 2 1 1 1 2 7 2 1)
+Searching for other copies of body:  
+Creating procedure `A_000578', size = 21, tv = 0
+  position = (1 2 1 1 1 2 8 2 1)
+Searching for other copies of body:  
+ 
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 232 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppp
+8 actions
+Calculating Succs and Preds... Done.
+..C.x.xd1.NN.d1.C.
+
+Re-Scanning Action System, scan: 2
+..C..d1.NN.d1.C.
+
+Re-Scanning Action System, scan: 3
+..C..d1.NN.d1.C.
+Rebuilding the action system.
+There are 8 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 233 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+8 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294
+--> Checking if action INITIAL0 sends r14 to destination...
+3 actions
+Calculating Succs and Preds... Done.
+..x.x
+
+Re-Scanning Action System, scan: 2
+..x.x
+Rebuilding the action system.
+There are 3 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 8 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+8 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 
+Checking which entry actions are simple procedures...
+Checking entry: A_000554:
+@FD_Remove_Ext_Calls on A_000554 ok = 1
+tmpl = 
+  ... ok = 1 new body = (7)
+--> Checking if action A_000554 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000554 register r15
+Checking entry: A_000294:
+@FD_Remove_Ext_Calls on A_000294 ok = 1
+tmpl = 
+  ... ok = 1 new body = (6)
+--> Checking if action A_000294 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000294 register r15
+Checking entry: A_00019C:
+@FD_Remove_Ext_Calls on A_00019C ok = 1
+tmpl = 
+  ... ok = 1 new body = (5)
+--> Checking if action A_00019C sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_00019C register r15
+Checking entry: INITIAL0: A_00019C A_000294
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = A_00019C A_000294 
+...checking body action A_00019C
+  Found external call A_00019C in action INITIAL0
+Not taking out entry action A_00019C
+  ...removing A_00019C
+  ...removing A_000294
+  ... ok = 0 new body = (4)
+--> Checking if action INITIAL0 sends r14 to destination...
+3 actions
+Calculating Succs and Preds... Done.
+..x.x
+
+Re-Scanning Action System, scan: 2
+..x.x
+Rebuilding the action system.
+There are 3 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 8 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 234 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 235 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+
+PASS 7
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 236 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+8 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 8 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 237 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppp
+8 actions
+Calculating Succs and Preds... Done.
+..C.x.xd1.NN.d1.C.
+
+Re-Scanning Action System, scan: 2
+..C..d1.NN.d1.C.
+
+Re-Scanning Action System, scan: 3
+..C..d1.NN.d1.C.
+Rebuilding the action system.
+There are 8 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 238 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+8 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C A_000294
+--> Checking if action INITIAL0 sends r14 to destination...
+3 actions
+Calculating Succs and Preds... Done.
+..x.x
+
+Re-Scanning Action System, scan: 2
+..x.x
+Rebuilding the action system.
+There are 3 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 8 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+8 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_000554 A_00019C A_000294 
+Checking which entry actions are simple procedures...
+Checking entry: A_000554:
+@FD_Remove_Ext_Calls on A_000554 ok = 1
+tmpl = 
+  ... ok = 1 new body = (7)
+--> Checking if action A_000554 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000554 register r15
+Checking entry: A_000294:
+@FD_Remove_Ext_Calls on A_000294 ok = 1
+tmpl = 
+  ... ok = 1 new body = (6)
+--> Checking if action A_000294 sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_000294 register r15
+Checking entry: A_00019C:
+@FD_Remove_Ext_Calls on A_00019C ok = 1
+tmpl = 
+  ... ok = 1 new body = (5)
+--> Checking if action A_00019C sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_00019C register r15
+Checking entry: INITIAL0: A_00019C A_000294
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = A_00019C A_000294 
+...checking body action A_00019C
+  Found external call A_00019C in action INITIAL0
+Not taking out entry action A_00019C
+  ...removing A_00019C
+  ...removing A_000294
+  ... ok = 0 new body = (4)
+--> Checking if action INITIAL0 sends r14 to destination...
+3 actions
+Calculating Succs and Preds... Done.
+..x.x
+
+Re-Scanning Action System, scan: 2
+..x.x
+Rebuilding the action system.
+There are 3 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 8 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 239 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 240 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+..................................................r....r 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 241 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppp
+8 actions
+Calculating Succs and Preds... Done.
+..C.x.xd1.NN.d1.C.
+
+Re-Scanning Action System, scan: 2
+..C..d1.NN.d1.C.
+
+Re-Scanning Action System, scan: 3
+..C..d1.NN.d1.C.
+Rebuilding the action system.
+There are 8 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 242 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 243 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+8 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 8 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 244 posn = (1 2 1 1 1)
+8 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+8 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+8 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 8 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 245 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 246 posn = ()
+.............................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 247 posn = (1 2 1 1 1 2 8)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 248 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 249 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+8 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 8 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 250 posn = (1)
+8 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+8 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+8 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 8 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call dispatch...
+Creating procedure `A_000294', size = 11, tv = 0
+  position = (1 2 1 1 1 2 6 2 1)
+Searching for other copies of body:  
+Creating procedure `A_000554', size = 16, tv = 0
+  position = (1 2 1 1 1 2 6 2 1)
+Searching for other copies of body:  
+ 
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 251 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppp
+6 actions
+Calculating Succs and Preds... Done.
+..C.xd1.NN.Cd1.
+
+Re-Scanning Action System, scan: 2
+..C.d1.NN.Cd1.
+
+Re-Scanning Action System, scan: 3
+..C.d1.NN.Cd1.
+Rebuilding the action system.
+There are 6 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 252 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+6 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_00019C 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C
+--> Checking if action INITIAL0 sends r14 to destination...
+2 actions
+Calculating Succs and Preds... Done.
+..x
+
+Re-Scanning Action System, scan: 2
+..x
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 6 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+6 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_00019C 
+Checking which entry actions are simple procedures...
+Checking entry: A_00019C:
+@FD_Remove_Ext_Calls on A_00019C ok = 1
+tmpl = 
+  ... ok = 1 new body = (5)
+--> Checking if action A_00019C sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_00019C register r15
+Checking entry: INITIAL0: A_00019C
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = A_00019C 
+...checking body action A_00019C
+  Found external call A_00019C in action INITIAL0
+Not taking out entry action A_00019C
+  ...removing A_00019C
+  ... ok = 0 new body = (4)
+--> Checking if action INITIAL0 sends r14 to destination...
+2 actions
+Calculating Succs and Preds... Done.
+..x
+
+Re-Scanning Action System, scan: 2
+..x
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 6 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 253 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 254 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+
+PASS 8
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 255 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+6 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 6 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 256 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppp
+6 actions
+Calculating Succs and Preds... Done.
+..C.xd1.NN.Cd1.
+
+Re-Scanning Action System, scan: 2
+..C.d1.NN.Cd1.
+
+Re-Scanning Action System, scan: 3
+..C.d1.NN.Cd1.
+Rebuilding the action system.
+There are 6 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 257 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+6 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_00019C 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0: A_00019C
+--> Checking if action INITIAL0 sends r14 to destination...
+2 actions
+Calculating Succs and Preds... Done.
+..x
+
+Re-Scanning Action System, scan: 2
+..x
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 6 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+6 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 A_00019C 
+Checking which entry actions are simple procedures...
+Checking entry: A_00019C:
+@FD_Remove_Ext_Calls on A_00019C ok = 1
+tmpl = 
+  ... ok = 1 new body = (5)
+--> Checking if action A_00019C sends r15 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.x
+
+Re-Scanning Action System, scan: 2
+.x
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action A_00019C register r15
+Checking entry: INITIAL0: A_00019C
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = A_00019C 
+...checking body action A_00019C
+  Found external call A_00019C in action INITIAL0
+Not taking out entry action A_00019C
+  ...removing A_00019C
+  ... ok = 0 new body = (4)
+--> Checking if action INITIAL0 sends r14 to destination...
+2 actions
+Calculating Succs and Preds... Done.
+..x
+
+Re-Scanning Action System, scan: 2
+..x
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 6 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 258 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 259 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+..............................................r....r.... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 260 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppp
+6 actions
+Calculating Succs and Preds... Done.
+..C.xd1.NN.Cd1.
+
+Re-Scanning Action System, scan: 2
+..C.d1.NN.Cd1.
+
+Re-Scanning Action System, scan: 3
+..C.d1.NN.Cd1.
+Rebuilding the action system.
+There are 6 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 261 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 262 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+6 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 6 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 263 posn = (1 2 1 1 1)
+6 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+6 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+6 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 6 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 264 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 265 posn = ()
+...............................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 266 posn = (1 2 1 1 1 2 6)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 267 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 268 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+6 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 6 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 269 posn = (1)
+6 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+6 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+6 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 6 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call dispatch...
+Creating procedure `A_00008C', size = 49, tv = 0
+  position = (1 2 1 1 1 2 3 2 1)
+Searching for other copies of body:  
+Creating procedure `A_00019C', size = 146, tv = 0
+  position = (1 2 1 1 1 2 4 2 1)
+Searching for other copies of body:  
+ 
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 270 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCp
+4 actions
+Calculating Succs and Preds... Done.
+..Cd1.NN.d1
+
+Re-Scanning Action System, scan: 2
+..Cd1.NN.d1
+
+Re-Scanning Action System, scan: 3
+..Cd1.NN.d1
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 271 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0:
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.
+
+Re-Scanning Action System, scan: 2
+.
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0:
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = 
+  ... ok = 1 new body = (3)
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.
+
+Re-Scanning Action System, scan: 2
+.
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 272 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 273 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+
+PASS 9
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 274 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 275 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCp
+4 actions
+Calculating Succs and Preds... Done.
+..Cd1.NN.d1
+
+Re-Scanning Action System, scan: 2
+..Cd1.NN.d1
+
+Re-Scanning Action System, scan: 3
+..Cd1.NN.d1
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 276 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0:
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.
+
+Re-Scanning Action System, scan: 2
+.
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0:
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = 
+  ... ok = 1 new body = (3)
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.
+
+Re-Scanning Action System, scan: 2
+.
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 277 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 278 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+........................................r....r.......... 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 279 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCp
+4 actions
+Calculating Succs and Preds... Done.
+..Cd1.NN.d1
+
+Re-Scanning Action System, scan: 2
+..Cd1.NN.d1
+
+Re-Scanning Action System, scan: 3
+..Cd1.NN.d1
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 280 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 281 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 282 posn = (1 2 1 1 1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 283 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 284 posn = ()
+..................................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 285 posn = (1 2 1 1 1 2 4)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 286 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 287 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 288 posn = (1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call dispatch...
+ 
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 289 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCp
+4 actions
+Calculating Succs and Preds... Done.
+..Cd1.NN.d1
+
+Re-Scanning Action System, scan: 2
+..Cd1.NN.d1
+
+Re-Scanning Action System, scan: 3
+..Cd1.NN.d1
+Rebuilding the action system.
+There are 4 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 290 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 1 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0:
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.
+
+Re-Scanning Action System, scan: 2
+.
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+4 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0:
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = 
+  ... ok = 1 new body = (3)
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.
+
+Re-Scanning Action System, scan: 2
+.
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 291 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 292 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Actions to Procs...
+Testing transformation: Actions to Procs
+Applying transformation: Actions to Procs
+FA_nn = 293 posn = (1 2 1 1 1)
+Actions_To_Procs Leave_Alone = INITIAL0 dispatch
+Finding actions which only call Z...
+Finding actions which call one other action...
+ 
+--- current equals old ---
+Trial = 4
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 294 posn = ()
+Preserving actions: (INITIAL0 dispatch)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 295 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 296 posn = (1)
+4 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+4 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+4 actions
+
+Simplifying action bodies: ..
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 4 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 297 posn = (1)
+Reading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 298 posn = ()
+
+PASS 10
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 299 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+4 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 4 actions in the main system.
+Finding actions which only call Z...
+Creating procedure `A_000088', size = 20, tv = 0
+  position = (1 2 1 1 1 2 2 2 1)
+Searching for other copies of body:  
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 300 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+3 actions
+Calculating Succs and Preds... Done.
+..Cd1.NN
+
+Re-Scanning Action System, scan: 2
+..Cd1.NN
+Rebuilding the action system.
+There are 3 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 301 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 2 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+3 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0:
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.
+
+Re-Scanning Action System, scan: 2
+.
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 3 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+3 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0:
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = 
+  ... ok = 1 new body = (2)
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.
+
+Re-Scanning Action System, scan: 2
+.
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 3 actions in the main system.
+Syntax is OK
+Looking for action systems in proc bodies...
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 302 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 303 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................................r....r.............. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 304 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+3 actions
+Calculating Succs and Preds... Done.
+..Cd1.NN
+
+Re-Scanning Action System, scan: 2
+..Cd1.NN
+Rebuilding the action system.
+There are 3 actions in the main system.
+
+ 
+Simplifying the result
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 305 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+3 actions
+Calculating Succs and Preds... Done.
+..Cd1.NN
+
+Re-Scanning Action System, scan: 2
+..Cd1.NN
+Rebuilding the action system.
+There are 3 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 306 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 2 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+3 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0:
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.
+
+Re-Scanning Action System, scan: 2
+.
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 3 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+3 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+INITIAL0 
+Checking which entry actions are simple procedures...
+Checking entry: INITIAL0:
+@FD_Remove_Ext_Calls on INITIAL0 ok = 1
+tmpl = 
+  ... ok = 1 new body = (2)
+--> Checking if action INITIAL0 sends r14 to destination...
+1 actions
+Calculating Succs and Preds... Done.
+.
+
+Re-Scanning Action System, scan: 2
+.
+Rebuilding the action system.
+There are 1 actions in the main system.
+
+<-- Failed for action INITIAL0 register r14
+Rebuilding the action system.
+There are 3 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 307 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 308 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................................r....r.............. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 309 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+3 actions
+Calculating Succs and Preds... Done.
+..Cd1.NN
+
+Re-Scanning Action System, scan: 2
+..Cd1.NN
+Rebuilding the action system.
+There are 3 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 310 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 311 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+3 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 3 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 312 posn = (1 2 1 1 1)
+3 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+3 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+3 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 3 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 313 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................................r....r.............. 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 314 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 315 posn = ()
+.......................................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 316 posn = (1 2 1 1 1 2 3)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 317 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = (dispatch)
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 318 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+3 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 3 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 319 posn = (1)
+3 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+3 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+3 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 3 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call dispatch...
+Creating procedure `INITIAL0', size = 68, tv = 0
+  position = (1 2 1 1 1 2 2 2 1)
+Searching for other copies of body:  
+ 
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 320 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpppC
+2 actions
+Calculating Succs and Preds... Done.
+.d1.NN
+
+Re-Scanning Action System, scan: 2
+.d1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 321 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 2 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+Applying transformation: Unfold Proc Calls
+FA_nn = 322 posn = (1)
+Unfolding Proc_Call INITIAL0 at (1)
+new_defns = 10
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 323 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 324 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+
+PASS 11
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 325 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 326 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 327 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 2 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 328 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 329 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................................r....r.............. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 330 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 331 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 332 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 333 posn = (1 2 1 1 1)
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+Removing Action System: _enter_1
+Testing transformation: Simplify Item
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 334 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 335 posn = ()
+......................................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 336 posn = (1 2 1 1 1 2 2)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 337 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 338 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 339 posn = (1)
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch, INITIAL0
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call dispatch...
+ 
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 340 posn = ()
+Constant_Propagation effort = 1 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 341 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 2 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 342 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 343 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Actions to Procs...
+Testing transformation: Actions to Procs
+--- current equals old ---
+Trial = 5
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 344 posn = ()
+Preserving actions: (dispatch)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 345 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 346 posn = (1)
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 347 posn = (1)
+Reading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 348 posn = ()
+
+PASS 12
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 349 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 350 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 351 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 2 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 352 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 353 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................................r....r.............. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 354 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 355 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 356 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 357 posn = (1 2 1 1 1)
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+Removing Action System: _enter_1
+Testing transformation: Simplify Item
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 358 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................................r....r.............. 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 359 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 360 posn = ()
+......................................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 361 posn = (1 2 1 1 1 2 2)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 362 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 363 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 364 posn = (1)
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call dispatch...
+ 
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 365 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 366 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 2 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 367 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 368 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Actions to Procs...
+Testing transformation: Actions to Procs
+--- current equals old ---
+Trial = 6
+Initial simplification
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 369 posn = ()
+Preserving actions: (dispatch)
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 370 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 371 posn = (1)
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Fix Decimal
+Applying transformation: Fix Decimal
+FA_nn = 372 posn = (1)
+Reading options file: /fermat2/config/options
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 373 posn = ()
+
+PASS 13
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 374 posn = ()
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 375 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 376 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 2 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+Testing transformation: Delete_Savearea
+Applying transformation: Delete_Savearea
+FA_nn = 377 posn = ()
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 378 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................................r....r.............. 
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 379 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 380 posn = (1 2 1 1 1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 381 posn = (1 2 1 1 1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 382 posn = (1 2 1 1 1)
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+Removing Action System: _enter_1
+Testing transformation: Simplify Item
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 383 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................................r....r.............. 
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 384 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 385 posn = ()
+......................................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Abort_Processing
+Testing transformation: Push Pop
+Testing transformation: Prune Dispatch
+Applying transformation: Prune Dispatch
+FA_nn = 386 posn = (1 2 1 1 1 2 2)
+Finding accessed variables...
+Pruning dispatch...
+
+Aligning nested IF statements 
+Joining cases in IF statements 
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 387 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Testing transformation: Find Dead Code
+Applying transformation: Find Dead Code
+FA_nn = 388 posn = (1)
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: 
+2 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+
+All actions are reachable from the starting action.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 389 posn = (1)
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+Removing/Reducing superfluous loops
+
+Finding actions which only call dispatch...
+ 
+Finding actions which only call Z...
+ 
+Testing transformation: Unfold Dynamic Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 390 posn = ()
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+No constant DSECTs found
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Fix Dispatch
+Applying transformation: Fix Dispatch
+FA_nn = 391 posn = (1 2 1 1 1)
+Fix_Dispatch effort = 2 budget = 4000
+Fix_Dispatch effort = 0 budget = 25600
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+Jump Table Variables are:
+2 actions
+Calculating Succs and Preds... Done.
+Looking for entry actions...
+
+Checking which entry actions are simple procedures...
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK
+
+
+Testing transformation: Unfold Proc Calls
+
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 392 posn = ()
+Testing transformation: Merge Calls
+Applying transformation: Merge Calls
+FA_nn = 393 posn = (1)
+Using Expansion to reduce calls... 
+Deleting unreachable code... 
+Taking out calls... Entry actions (not taken out) = ()
+
+Actions to Procs...
+Testing transformation: Actions to Procs
+++
+Testing transformation: Unfold Proc Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 394 posn = (1)
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+Testing transformation: Add_Loop_To_Action
+Applying transformation: Add_Loop_To_Action
+FA_nn = 395 posn = (1 2 1 1 1)
+Looking for an action to add a loop to
+Leave_Alone_Names = 
+2 actions
+Calculating Succs and Preds... Done.
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+Testing transformation: Simplify Action System
+Applying transformation: Simplify Action System
+FA_nn = 396 posn = (1 2 1 1 1)
+2 actions, type = Reg
+Deleting unreachable code: 
+Action system type is Reg
+Leave_Alone_Names = dispatch
+2 actions
+Simplifying conditional statements: 
+Calculating Succs and Preds... Done.
+Eliminating actions which are only called once: 
+Finding elementary actions
+Removing elementary actions: 
+
+Action system type is Reg
+2 actions
+
+Simplifying action bodies: .
+Eliminating actions which are only called once: 
+Rebuilding the action system.
+There are 2 actions in the main system.
+Syntax is OK.
+Done
+--- current equals old ---
+
+Final simplification...
+Aligning nested IF statements 
+Joining cases in IF statements ++
+Testing transformation: Unfold Proc Calls
+Testing transformation: Constant Propagation
+Applying transformation: Constant Propagation
+FA_nn = 397 posn = (1)
+Constant_Propagation effort = 2 budget = 4000
+Migration = 1
+Call Budget = 4000
+Summarising proc definitions... Done.
+ppppppppCpp
+2 actions
+Calculating Succs and Preds... Done.
+.Cd1.NN
+
+Re-Scanning Action System, scan: 2
+.Cd1.NN
+Rebuilding the action system.
+There are 2 actions in the main system.
+
+ 
+Simplifying the result
+
+Testing transformation: Replace Accs With Value
+Applying transformation: Replace Accs With Value
+FA_nn = 398 posn = ()
+Reading options file: /fermat2/config/options
+DSECTs = ()
+....................................r....r.............. 
+Removing/Reducing superfluous loops
+
+Testing transformation: Unfold Proc Calls
+Testing transformation: Remove All Redundant Vars
+Applying transformation: Remove All Redundant Vars
+FA_nn = 399 posn = ()
+Testing transformation: Delete All Redundant
+Applying transformation: Delete All Redundant
+FA_nn = 400 posn = ()
+....................................................................................................................................................................................................................................................................................................................................................................
+Testing transformation: Simplify
+Applying transformation: Simplify
+FA_nn = 401 posn = ()
+
+Transformation time: 668
+Transformation Count: 1512
+Result is in: FMT001A4.ws4

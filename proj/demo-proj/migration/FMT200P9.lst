@@ -1,0 +1,87 @@
+  Page    1                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+  ESD NAME     TYPE ADDRESS LENGTH
+ 0002 FMT200    SD   000000 000080
+ Page    2                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+    LOC DATA               ADR1   ADR2   LINE LABEL    OP       OPERANDS
+                                            1 *         XLEVEL VL=P9
+ 000000                       00000003      2 R3       EQU   3
+ 000000                       0000000E      3 R14      EQU   14
+ 000000                                     4 FMT200   CSECT
+ 000000 0530                                5          BALR  R3,0
+ 000002                                     6          USING *,R3
+ 000002 D200300800FF     00000A 0000FF      7          MVC   WFIELD,X'FF'
+ 000008 07FE                                8          BR    R14
+ 00000A 00                                  9 WFIELD   DC    X'00'
+ 00000B                                    10 WREPORT  DS    0CL50
+ 00000B                                    11 WF1      DS    CL10
+ 000015                                    12          DS    CL5
+ 00001A                                    13 WF2      DS    0CL20
+ 00001A                                    14 WF2A     DS    CL5
+ 00001F                                    15 WF2B     DS    CL5
+ 000024                                    16 WF2C     DS    CL5
+ 000029                                    17 WF2D     DS    0CL5
+ 000029                                    18 WF2D1    DS    C
+ 00002A                                    19 WF2D2    DS    C
+ 00002B                                    20 WF2D3    DS    C
+ 00002C                                    21 WF2D4    DS    C
+ 00002D                                    22 WF2D5    DS    C
+ 00002E                                    23 WF3      DS    3PL5'12345'
+ 00003D                                    24 WTABLE   DMAC  WD,WE,WF
+ 00003D                       0000003D     25+WTABLE   EQU   *
+ 00003D 0000000C                           26+WDTOT1   DC    PL4'0'                 AMOUNT
+ 000041 0000000C                           27+WDTOT2   DC    PL4'0'                 RATE
+ 000045 0000000C                           28+WDTOT3   DC    PL4'0'                 CREDIT
+ 000049 0000000C                           29+WDTOT4   DC    PL4'0'                 AMOUNT
+ 00004D 0000000C                           30+WDTOT5   DC    PL4'0'
+ 000051 0000000C                           32+WETOT1   DC    PL4'0'                 AMOUNT
+ 000055 0000000C                           33+WETOT2   DC    PL4'0'                 RATE
+ 000059 0000000C                           34+WETOT3   DC    PL4'0'                 CREDIT
+ 00005D 0000000C                           35+WETOT4   DC    PL4'0'                 AMOUNT
+ 000061 0000000C                           36+WETOT5   DC    PL4'0'
+ 000065 0000000C                           38+WFTOT1   DC    PL4'0'                 AMOUNT
+ 000069 0000000C                           39+WFTOT2   DC    PL4'0'                 RATE
+ 00006D 0000000C                           40+WFTOT3   DC    PL4'0'                 CREDIT
+ 000071 0000000C                           41+WFTOT4   DC    PL4'0'                 AMOUNT
+ 000075 0000000C                           42+WFTOT5   DC    PL4'0'
+ 000000                                    43          END
+ Page    3                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/16/05 09.50
+ SYMBOL       VALUE LENGTH TYPE  EID   DEF  XREF
+ $$CSECT   00000000 000000  CST 0001     2(1/2)
+ FMT200    00000000 000080  CST 0002     4(1/4)
+ R14       0000000E 000001  ABS 0000     3(1/3) 8(1/8)
+ R3        00000003 000001  ABS 0000     2(1/2) 5(1/5) 6(1/6)
+ WDTOT1    0000003D 000004  REL 0002    26(2/4)
+ WDTOT2    00000041 000004  REL 0002    27(2/5)
+ WDTOT3    00000045 000004  REL 0002    28(2/6)
+ WDTOT4    00000049 000004  REL 0002    29(2/7)
+ WDTOT5    0000004D 000004  REL 0002    30(2/8)
+ WETOT1    00000051 000004  REL 0002    32(3/3)
+ WETOT2    00000055 000004  REL 0002    33(3/4)
+ WETOT3    00000059 000004  REL 0002    34(3/5)
+ WETOT4    0000005D 000004  REL 0002    35(3/6)
+ WETOT5    00000061 000004  REL 0002    36(3/7)
+ WF1       0000000B 00000A  REL 0002    11(1/11)
+ WF2       0000001A 000014  REL 0002    13(1/13)
+ WF2A      0000001A 000005  REL 0002    14(1/14)
+ WF2B      0000001F 000005  REL 0002    15(1/15)
+ WF2C      00000024 000005  REL 0002    16(1/16)
+ WF2D      00000029 000005  REL 0002    17(1/17)
+ WF2D1     00000029 000001  REL 0002    18(1/18)
+ WF2D2     0000002A 000001  REL 0002    19(1/19)
+ WF2D3     0000002B 000001  REL 0002    20(1/20)
+ WF2D4     0000002C 000001  REL 0002    21(1/21)
+ WF2D5     0000002D 000001  REL 0002    22(1/22)
+ WF3       0000002E 000005  REL 0002    23(1/23)
+ WFIELD    0000000A 000001  REL 0002     9(1/9) 7(1/7)
+ WFTOT1    00000065 000004  REL 0002    38(4/3)
+ WFTOT2    00000069 000004  REL 0002    39(4/4)
+ WFTOT3    0000006D 000004  REL 0002    40(4/5)
+ WFTOT4    00000071 000004  REL 0002    41(4/6)
+ WFTOT5    00000075 000004  REL 0002    42(4/7)
+ WREPORT   0000000B 000032  REL 0002    10(1/10)
+ WTABLE    0000003D 000001  REL 0002    25(2/3) 24(1/24)
+ 
+MM370ASM      0 errors found - end of processing

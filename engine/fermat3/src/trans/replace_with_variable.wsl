@@ -1,0 +1,134 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Replace_With_Variable_Test () ==
+   IF @GT(@I) <> T_Expression
+     THEN @Fail("The selected item is not an expression.")
+     ELSE VAR < var := @Find_Variable(@I) >:
+          IF EMPTY?(var)
+            THEN @Fail("Cannot find a variable assigned this value.")
+            ELSE @Pass FI ENDVAR FI .;
+
+
+MW_PROC @Replace_With_Variable_Code (Data) ==
+  VAR < var := @Find_Variable(@I) >:
+  IF EMPTY?(var)
+    THEN PRINT("ERROR in Replace_With_Variable!!!")
+    ELSE @Paste_Over(var) FI ENDVAR .;
+
+
+C:" Find a variable which is assigned to the given expression. ";
+C:" Return an item, or < > if a variable cannot be found ";
+
+MW_FUNCT @Find_Variable(exp) ==
+  VAR < Orig_Posn := @Posn, elts := @Elements(exp),
+        R := < >, clobbered := < >, found := 0,
+        Calls := @Make_Set(<T_MW_Proc_Call, T_X_Proc_Call, T_Proc_Call>) >:
+
+  C:" Repeated move left and up until we find a variable assigned to the expression. ";
+  C:" If the variable is clobbered, then give up. ";
+  DO IF @GT(@I) = T_Statement THEN EXIT(1) FI;
+     IF @Posn_n = 5 AND @ST(@Parent) IN <T_MW_Funct, T_MW_BFunct>
+       THEN @Left; @Down_Last;  EXIT(1) FI;
+     IF @Up? THEN @Up ELSE EXIT(1) FI OD;
+
+  DO IF @ST(@I) IN <T_Floop, T_While, T_A_S>
+       THEN C:" If there are no calls and elts is not assigned in the loop or system, ";
+	    C:" then we can safely get its value from outside: ";
+	    IF NOT EMPTY?(@Stat_Types(@I) /\ Calls)
+	         OR @Elt_Clash_List?(@Elts_Assigned(@I), elts)
+	      THEN R := < >; EXIT(1) FI FI;
+     IF @GT(@I) <> T_Statement 
+       THEN R := < >; EXIT(1) FI;
+
+     IF @Left?
+       THEN @Left;
+
+	    IF @ST(@I) = T_Assert
+	      THEN IFMATCH Statement {~?(exp) = ~?X}
+		     THEN IF @ST(X) IN <T_Variable, T_Struct>
+		            THEN R := X FI
+		     ELSE IFMATCH Statement {~?X = ~?(exp)}
+			    THEN IF @ST(X) IN <T_Variable, T_Struct>
+		                   THEN R := X FI ENDMATCH ENDMATCH;
+		   IF NOT EMPTY?(R) THEN EXIT(1) FI
+
+	    ELSIF @ST(@I) = T_Assignment
+	      THEN IF @Elt_Clash_List?(@Elts_Assigned(@I), elts)
+	             THEN R := < >; EXIT(1) FI;
+	           FOR assign IN @Cs(@I) DO
+	             IF @ST(assign^1) IN <T_Var_Lvalue, T_Struct_Lvalue>
+		          AND @Equal?(assign^2, exp)
+			  AND NOT @Elt_Clash_List?(@Elts_Assigned(assign), elts)
+		       THEN R := @Lvalue_To_Expn(assign^1) FI OD;
+		   IF NOT EMPTY?(R) THEN EXIT(1) FI;
+		   IF @Elt_Clash_List?(@Elts_Assigned(@I), elts)
+		     THEN R := < >; EXIT(1) FI
+
+	    ELSIF @Elt_Clash_List?(@Elts_Assigned(@I), elts)
+		    OR NOT EMPTY?(@Stat_Types(@I) /\ Calls)
+		THEN R := < >; EXIT(1) FI;
+
+	    clobbered := clobbered \/ @Elts_Assigned(@I)
+
+       ELSE IF NOT @Up? THEN R := < >; EXIT(1) FI;
+	    @Up;
+	    IF NOT @Up? THEN R := < >; EXIT(1) FI;
+	    @Up; C:" to item containing the statement sequence ";
+	    IF @ST(@I) = T_Var AND @Elt_Clash_List?(@Elt_Lvars(@I^1), elts)
+	      THEN C:" A variable in the expression is local ";
+		   R := < >; EXIT(1)
+	    ELSIF @ST(@I) IN <T_MW_Funct, T_MW_BFunct>
+	             AND @Elt_Clash_List?(@Elt_Lvars(@I^3), elts)
+	      THEN C:" A variable in the expression is local ";
+		   R := < >; EXIT(1)
+	    ELSIF @ST(@I) = T_Var
+	      THEN C:" keep scanning left "
+	    ELSIF (@GT(@I) = T_Guarded) AND @Up?
+	      THEN @Up
+	    ELSIF @ST(@I) IN <T_Floop, T_While, T_A_S> AND @Up?
+	      THEN C:" If no variable is assigned in the loop or system, ";
+		   C:" and there are no proc calls in the loop ";
+		   C:" (which could modify exp) ";
+		   C:" then look outside for an assignment ";
+		   IF NOT EMPTY?(@Stat_Types(@I) /\ Calls)
+		     THEN R := < >; EXIT(1) FI;
+		   IF @Elt_Clash_List?(@Elts_Assigned(@I), elts)
+		     THEN R := < >; EXIT(1) FI;
+		   clobbered := clobbered \/ @Elts_Assigned(@I)
+	    ELSIF @ST(@I) = T_Action AND LENGTH(@Posn) > 2
+	      THEN @Up; @Up; C:" to the action system "
+	    ELSIF @ST(@I) = T_Where AND NOT @Elt_Clash_List?(@Elts_Assigned(@I), elts)
+	      THEN C:" keep scanning left "
+	      ELSE R := < >; EXIT(1) FI FI OD;
+
+  @Goto(Orig_Posn);
+  C:" If the variable we found has been clobbered, then give up: ";
+  IF NOT EMPTY?(R) AND @Elt_Clash?(clobbered, @Struct_Elts(R))
+    THEN R := < > FI;
+
+  (R) .;
+
+
+
+SKIP
+
+

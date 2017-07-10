@@ -1,0 +1,19 @@
+2001-12-19: Added Rename_Defns transformartion to rename PROCs
+		in order to avoid name clashes.
+
+2002-02-14: Allow building for several architectures.
+		Added -mingw option to make-fermat for cross-compiling
+		to create windows executable.
+
+2002-02-20: FermaT now runs under windows (at least after cross-compiling
+		and installing perl on windows).
+
+2002-11-19: New transformation: Merge_Cond_Right. This will merge a binary
+		IF statement with a subsequent IF statement which uses
+		the same (or inverted) condition.
+
+2007-11-02: Switched to GPLv3.
+	        Also stripped out old files ready for git version control.
+
+
+

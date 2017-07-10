@@ -1,0 +1,43 @@
+
+Brief description of the files in this distribution:
+
+DOIT.csh, DOIT.sh 	Source one of these files into your shell to
+			set up your environment variables and path
+			to use FermaT.
+
+LICENSE		A copy of the GNU General Public License
+
+Makefile	Type "make test" to build and test FermaT
+
+bin/*		Perl scripts to build and run FermaT
+
+config/*	Perl modules and other support files
+
+example/*	Example files: how to write a transformation
+
+doc/*		Documentation (such as it is)
+
+scm/*		Source code for the Scheme interpreter
+
+scm/hobbit.scm	Source code for the Hobbit scheme to C compiler
+
+slib/*		The Scheme library distributed with Scheme
+
+src/*		The WSL and Scheme source code for FermaT
+
+src/adt/*	WSL source for the Abstract Data Type (MetaWSL extensions
+		to WSL for manipulating WSL syntax trees)
+
+src/scheme/*	Scheme support files (these are not implemented in WSL)
+
+src/trans/*	WSL source for all the transformations
+
+src/wslib/*	WSL source for the WSL parser, pretty printer, wsl2scheme,
+		and other support functions
+
+test/*		WSL test files (testing features of the WSL language)
+
+test/trans/*	Transformation test files
+
+
+

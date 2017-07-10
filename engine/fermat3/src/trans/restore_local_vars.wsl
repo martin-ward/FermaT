@@ -1,0 +1,106 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+MW_PROC @Restore_Local_Vars_Test() ==
+  @Pass .;
+
+MW_PROC @Restore_Local_Vars_Code(Data) ==
+  VAR < prefix := @String(Data) >:
+  IF prefix = "" THEN prefix := "var" FI;
+  prefix := prefix ++ "_";
+  C:" We need to process from the top down: ";
+  ATEACH Statements DO
+    @Down;
+    DO IF @ST(@I) = T_Assignment AND @Size(@I) = 1 AND @ST(@I^1^1) = T_Var_Lvalue
+	 THEN pair := @RLV_Parse_Var(@N_String(@V(@I^1^1)), prefix);
+	      IF NOT EMPTY?(pair)
+		THEN @RLV_Process(prefix, pair) FI FI;
+       IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+    @Up OD ENDVAR .;
+
+
+C:" Check that the var is of the form prefix ++ N ++ __ ++ x where n > 0 ";
+C:" and x is the original local variable name. ";
+C:" If so, then return <N, x>, otherwise return < > ";
+
+MW_FUNCT @RLV_Parse_Var(var, prefix) ==
+  VAR < p1 := SLENGTH(prefix), p2 := 0, R := < > >:
+  IF @Starts_With?(var, prefix) AND SLENGTH(var) >= p1 + 4
+    THEN p2 := p1;
+	 WHILE @Digit?(SUBSTR(var, p2, 1)) DO p2 := p2 + 1 OD;
+	 IF p2 > p1 AND SLENGTH(var) > p2 + 2 AND SUBSTR(var, p2, 2) = "__"
+	   THEN C:" var is in the right form ";
+		R := <SUBSTR(var, p1, p2 - p1), SUBSTR(var, p2 + 2)> FI FI;
+  (R) .;
+	 
+
+C:" Construct one local VAR structure ";
+
+MW_PROC @RLV_Process(prefix, pair) ==
+  VAR < assigns := < >, N := pair[1], rename := < >, vars := < >,
+	body := < >, p1 := @Posn_n, p2 := 0, p3 := 0 >:
+  DO assigns := <@RLV_Assign(@I^1, pair[2])> ++ assigns;
+     vars := <@V(@I^1^1)> \/ vars;
+     rename := <<@V(@I^1^1), @Make_Name(pair[2])>> ++ rename;
+     IF @Right? THEN @Right ELSE EXIT(1) FI;
+     IF @ST(@I) = T_Assignment AND @Size(@I) = 1 AND @ST(@I^1^1) = T_Var_Lvalue
+	  AND @V(@I^1^1) NOTIN vars
+       THEN pair := @RLV_Parse_Var(@N_String(@V(@I^1^1)), prefix);
+	    IF EMPTY?(pair) OR pair[1] <> N
+	      THEN EXIT(1) FI
+       ELSE EXIT(1) FI OD;
+  C:" Determine the extent of the body (if any) ";
+  p2 := @Posn_n - 1;
+  @To(@Size(@Parent));
+  WHILE @Posn_n >= p2 AND EMPTY?(@Variables(@I) /\ vars) DO
+    @Left OD;
+  IF p2 >= p1 AND @Posn_n > p2
+    THEN p3 := @Posn_n;
+	 C:" assigns are p1..p2, body is p2+1..p3 ";
+	 @To(p1);
+	 @Edit_Parent;
+         C:" If the body is improper, then we can't create a VAR clause ";
+	 body := @Make(T_Statements, < >, @Get_L(@Parent, p2+1, p3));
+         IF @Gen_Proper?(body, @AS_Type)
+	   THEN C:" Delete all but one statement of p1..p3 ";
+                FOR i := 1 TO p3 - p1 STEP 1 DO
+                  @Delete OD;
+                @Paste_Over(@Make(T_Var, < >, <@Make(T_Assigns, < >, REVERSE(assigns)),
+                                               body>));
+                @Down_To(2);
+	        FOR pair IN rename DO
+                  @Rename(pair[1], pair[2]) OD
+           ELSE @Up;
+	        FOR pair IN rename DO
+                  @Rename(pair[1], pair[2]) OD FI;
+	 @End_Edit
+    ELSE @To(p1) FI ENDVAR .;
+
+
+
+C:" Construct an assign from the given assign plus new name for the variable: ";
+
+MW_FUNCT @RLV_Assign(assign, var) == : SKIP;
+  (@Make(T_Assign, < >, <@Make(T_Var_Lvalue, @Make_Name(var), < >), assign^2>)) .;
+  
+
+
+SKIP

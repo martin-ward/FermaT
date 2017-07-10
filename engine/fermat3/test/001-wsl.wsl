@@ -1,0 +1,475 @@
+
+VAR < file := "001-wsl: ", fail := < >, n := "", a := < >, b := < >, v := < > >:
+
+PRINT("Testing basic WSL features...");
+
+n := "001";
+a := 3 + 4;
+IF a = 7
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "002";
+a := 3 * 4;
+IF a = 12
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "003";
+a := 6 / 2;
+IF a = 3
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "004";
+a := 3 - 4;
+IF a = -1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "005";
+a := 3 ** 4;
+IF a = 81
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "006";
+a := 13 MOD 4;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "007";
+a := 13 DIV 4;
+IF a = 3
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "008";
+a := IF 1 = 2 THEN 3 ELSE 4 FI;
+IF a = 4
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "009";
+a := IF 1 <> 2 THEN 3 ELSE 4 FI;
+IF a = 3
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+C:" Scheme compilers have floats disabled ";
+n := "010";
+a := INT(2);
+IF a = 2
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "011";
+a := ABS(-34);
+IF a = 34
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "012";
+a := ABS(34);
+IF a = 34
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "013";
+a := <SGN(-23), SGN(0), SGN(99)>;
+IF a = <-1, 0, 1>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "014";
+a := MAX(2, 49, 6, 8);
+IF a = 49
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "015";
+a := MIN(2, 49, 1, 8);
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "016";
+a := <1, 3, 4, 5> /\ <2, 3, 5, 6>;
+IF a = <3, 5>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "017";
+a := <1, 3, 4, 5> \/ <2, 3, 5, 6>;
+IF a = <1, 2, 3, 4, 5, 6>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "018";
+a := <1, 3, 4, 5> \ <2, 3, 5, 6>;
+IF a = <1, 4>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "019";
+a := POWERSET(<1, 2>);
+IF a = << >, <2>, <1, 2>, <1>>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "020";
+a := ARRAY(10, < >); a[1] := 2; a[10] := 3;
+IF <a[1], a[10]> = <2, 3>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "021";
+a := HEAD(<1, 2, 3>);
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "022";
+a := TAIL(<1, 2, 3>);
+IF a = <2, 3>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "023";
+a := LENGTH(<1, 2, 3, 4, 5>);
+IF a = 5
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "024";
+a := LAST(<1, 2, 3>);
+IF a = 3
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "025";
+a := BUTLAST(<1, 2, 3>);
+IF a = <1, 2>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "026";
+a := REVERSE(<1, 2, 3>);
+IF a = <3, 2, 1>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "027";
+a := <1, 2, 3> ++ <4, 5, 6>;
+IF a = <1, 2, 3, 4, 5, 6>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "028";
+a := "foo" ++ "bar";
+IF a = "foobar"
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "029";
+a := <1, 2, 3, 4, 5, 6, 7>;
+IF a[3..5] = <3, 4, 5>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "040";
+a := <1, 2, 3, 4, 5, 6, 7>;
+IF a[4..] = <4, 5, 6, 7>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "041";
+a := <1, 2, 3, 4, 5, 6, 7>;
+IF a[3, 4] = <3, 4, 5, 6>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "042";
+a := <1, 2, 3, 4, 5, 6, 7>;
+a[2..4] := <12, 13, 14>;
+IF a = <1, 12, 13, 14, 5, 6, 7>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "043";
+a := <1, 2, 3, 4, 5, 6, 7>;
+a[2,4] := <12, 13, 14, 15>;
+IF a = <1, 12, 13, 14, 15, 6, 7>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "044";
+a := <1, 2, 3, 4, 5, 6, 7>;
+a[6..] := <16, 17>;
+IF a = <1, 2, 3, 4, 5, 16, 17>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "045";
+IF NOT(1 = 2 AND 2 = 2)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "046";
+IF 1 = 2 OR 2 = 2
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "047";
+IF  2 < 3 AND 3 < 4 AND 4 < 5
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "048";
+IF 6 > 5 AND 7 > 6 AND 99 > -100
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "049";
+IF 2 <= 2 AND 2 >=2
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "050";
+IF EVEN?(4) AND ODD?(3) AND EVEN?(0)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "051";
+a := < >;
+IF EMPTY?(a) AND NOT EMPTY?(<a>)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "052";
+IF SUBSET?(<1, 2, 3> , <0, 1, 2, 3, 4>) AND NOT SUBSET?(<1>, <2, 3>)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "053";
+IF 1 IN <1, 2> AND 2 IN <1, 2> AND 3 NOTIN <1, 2>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "054";
+IF SEQUENCE?(<< >>) AND SEQUENCE?(<1>) AND NUMBER?(99) AND NUMBER?(99.9) AND STRING?("foo")
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "055";
+IF NOT(SEQUENCE?(1) OR SEQUENCE?("foo") OR NUMBER?(< >) OR NUMBER?("bar")
+	OR STRING?(3) OR STRING?(< >))
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "056";
+a := < >;
+FOR i := 1 TO 10 STEP 1 DO
+  a := <i> ++ a OD;
+IF a = <10, 9, 8, 7, 6, 5, 4, 3, 2, 1>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "057";
+a := < >;
+FOR i := 10 TO 1 STEP -1 DO
+  a := <i> ++ a OD;
+IF a = <1, 2, 3, 4, 5, 6, 7, 8, 9, 10>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "058";
+a := <1, 2, 3, 4, 5>;
+b := < >;
+FOR n IN a DO
+  b := <n + 10> ++ b OD;
+IF b = <15, 14, 13, 12, 11>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "059";
+a := <1, 2, 3, 4, 5>;
+b := < >; c := < >;
+WHILE NOT EMPTY?(a) DO
+  b := <HEAD(a) + 10> ++ b;
+  c := <a[1] + 10> ++ c;
+  a := TAIL(a) OD;
+IF b = <15, 14, 13, 12, 11> AND c = <15, 14, 13, 12, 11>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "060";
+a := <<1>, <3>, <4>, <5>> /\ <<2>, <3>, <5>, <6>>;
+IF a = <<3>, <5>>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "061";
+a := <<1>, <3>, <4>, <5>> \/ <<2>, <3>, <5>, <6>>;
+IF a = <<1>, <2>, <3>, <4>, <5>, <6>>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "062";
+a := <<1>, <3>, <4>, <5>> \ <<2>, <3>, <5>, <6>>;
+IF a = <<1>, <4>>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "063";
+v := <@Make(T_Variable, @Make_Name("flag"), < >)>;
+a := FILL Statement @FOO(~*v VAR ~*v) ENDFILL;
+b := FILL Statement @FOO(flag VAR flag) ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "064";
+a := HASH_TABLE;
+a.("foo") := "bar";
+a.(@Make_Name("baz")) := "bim";
+IF a.("foo") = "bar" AND a.(@Make_Name("baz")) = "bim"
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "065";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "066";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "067";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "068";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "069";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "070";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "071";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "072";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "073";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "074";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "075";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "076";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "077";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "078";
+a := 1;
+IF a = 1
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "079";
+a := @Simplify_Cond(FILL Condition x = x ENDFILL);
+IF @ST(a) = T_True
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "080";
+list := < >;
+list := list ++ < ARRAY(8,0) >;
+ar := ARRAY(10,0);
+ar[5] := 5;
+list := list ++ < ar >;
+IF list[2][5] = 5 
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "081";
+ar := list[1];
+ar[2] := 2;
+IF list[1][2] = 2
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "082";
+list[1][2] := 3;
+IF list[1][2] = 3
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "083";
+IF LENGTH(list[1]) = 8
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "084";
+ar[2] := <1, 2, 3, 4>;
+ar[2][3] := 9;
+IF ar[2][3] = 9
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+

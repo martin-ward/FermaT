@@ -1,0 +1,281 @@
+<WSL_Definition>
+  <General_types>
+    <ASTNode ID="1" Name="T_Statement" Syntax_Name="Statement" General_Type="0" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="2" Name="T_Expression" Syntax_Name="Expression" General_Type="0" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="3" Name="T_Condition" Syntax_Name="Condition" General_Type="0" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="4" Name="T_Definition" Syntax_Name="Definition" General_Type="0" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="5" Name="T_Lvalue" Syntax_Name="Lvalue" General_Type="0" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="6" Name="T_Assign" Syntax_Name="Assign" General_Type="0" Allowed_children="5;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_BECOMES; ;(C1)" />
+    <ASTNode ID="7" Name="T_Guarded" Syntax_Name="Guarded" General_Type="0" Allowed_children="3;17" Has_Value="0" PrettyPrintTemplate="(C0); ;PARENT(T_Cond:S_THEN);PARENT(T_Ifmatch_Guarded:S_THEN);PARENT(T_Ifmatch2_Guarded:S_THEN);PARENT(T_D_If:S_ARROW);PARENT(T_D_Do:S_ARROW);\n;(C1)" />
+    <ASTNode ID="8" Name="T_Action" Syntax_Name="Action" General_Type="0" Allowed_children="9;17" Has_Value="0" PrettyPrintTemplate="(C0); ;S_DEFINE;\n;(C1);S_END;\n" />
+    <ASTNode ID="9" Name="T_Name" Syntax_Name="Name" General_Type="0" Allowed_children="" Has_Value="1" PrettyPrintTemplate="(V)" />
+  </General_types>
+  <Group_types>
+    <ASTNode ID="10" Name="T_Expressions" Syntax_Name="Expressions" General_Type="0" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="(A,S_COMMA)" />
+    <ASTNode ID="12" Name="T_Lvalues" Syntax_Name="Lvalues" General_Type="0" Allowed_children="5" Has_Value="0" PrettyPrintTemplate="(A,S_COMMA)" />
+    <ASTNode ID="13" Name="T_Assigns" Syntax_Name="Assigns" General_Type="0" Allowed_children="6" Has_Value="0" PrettyPrintTemplate=" ;(A,S_COMMA# ); " />
+    <ASTNode ID="14" Name="T_Definitions" Syntax_Name="Definitions" General_Type="0" Allowed_children="4" Has_Value="0" PrettyPrintTemplate="(A,\n);\n" />
+    <ASTNode ID="15" Name="T_Actions" Syntax_Name="Actions" General_Type="0" Allowed_children="8" Has_Value="0" PrettyPrintTemplate="(A,)" />
+    <ASTNode ID="16" Name="T_Guardeds" Syntax_Name="Guardeds" General_Type="0" Allowed_children="" Has_Value="0" PrettyPrintTemplate="(A,)" />
+    <ASTNode ID="17" Name="T_Statements" Syntax_Name="Statements" General_Type="0" Allowed_children="1" Has_Value="0" PrettyPrintTemplate="I;(A,S_SEMICOLON#\n);\n" />
+  </Group_types>
+  <Specific_types>
+    <ASTNode ID="101" Name="T_A_Proc_Call" Syntax_Name="A_Proc_Call" General_Type="1" Allowed_children="9;10;12" Has_Value="0" PrettyPrintTemplate="S_PLINK_P; ;(C0);S_LPAREN;(C1); ;S_VAR; ;(C2);S_RPAREN" />
+    <ASTNode ID="102" Name="T_MW_Proc_Call" Syntax_Name="MW_Proc_Call" General_Type="1" Allowed_children="9;10;12" Has_Value="0" PrettyPrintTemplate="(C0);S_LPAREN;(C1);S_RPAREN" />
+    <ASTNode ID="103" Name="T_X_Proc_Call" Syntax_Name="X_Proc_Call" General_Type="1" Allowed_children="9;10" Has_Value="0" PrettyPrintTemplate="S_PLINK_XP; ;(C0);S_LPAREN;(C1);S_RPAREN" />
+    <ASTNode ID="104" Name="T_Stat_Place" Syntax_Name="Stat_Place" General_Type="1" Allowed_children="" Has_Value="0" PrettyPrintTemplate="S_STAT_PLACE" />
+    <ASTNode ID="105" Name="T_Stat_Pat_One" Syntax_Name="Stat_Pat_One" General_Type="1" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ONE;(V)" />
+    <ASTNode ID="106" Name="T_Stat_Pat_Many" Syntax_Name="Stat_Pat_Many" General_Type="1" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_MANY;(V)" />
+    <ASTNode ID="107" Name="T_Stat_Pat_Any" Syntax_Name="Stat_Pat_Any" General_Type="1" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ANY;(V)" />
+    <ASTNode ID="108" Name="T_Abort" Syntax_Name="Abort" General_Type="1" Allowed_children="" Has_Value="0" PrettyPrintTemplate="S_ABORT" />
+    <ASTNode ID="109" Name="T_Assert" Syntax_Name="Assert" General_Type="1" Allowed_children="3" Has_Value="0" PrettyPrintTemplate="S_LBRACE;(C0);S_RBRACE" />
+    <ASTNode ID="110" Name="T_Assignment" Syntax_Name="Assignment" General_Type="1" Allowed_children="6" Has_Value="0" PrettyPrintTemplate="CS:S_LANGLE;(A,S_COMMA# );CS:S_RANGLE" />
+    <ASTNode ID="111" Name="T_A_S" Syntax_Name="A_S" General_Type="1" Allowed_children="9;15" Has_Value="0" PrettyPrintTemplate="S_ACTIONS; ;(C0);S_COLON;\n;(A[1],);S_ENDACTIONS" />
+    <ASTNode ID="112" Name="T_Call" Syntax_Name="Call" General_Type="1" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_CALL; ;(V)" />
+    <ASTNode ID="113" Name="T_Comment" Syntax_Name="Comment" General_Type="1" Allowed_children="" Has_Value="1" PrettyPrintTemplate="C:67;S_COLON;C:34;(V);C:34" />
+    <ASTNode ID="114" Name="T_Cond" Syntax_Name="Cond" General_Type="1" Allowed_children="7" Has_Value="0" PrettyPrintTemplate="S_IF; ;(C0);S_ELSIF; ;(A[1],S_ELSIF# );S_FI" />
+    <ASTNode ID="115" Name="T_D_If" Syntax_Name="D_If" General_Type="1" Allowed_children="7" Has_Value="0" PrettyPrintTemplate="S_D_IF; ;(C0);S_BOX; ;(A[1],S_BOX# );S_FI" />
+    <ASTNode ID="116" Name="T_D_Do" Syntax_Name="D_Do" General_Type="1" Allowed_children="7" Has_Value="0" PrettyPrintTemplate="S_D_DO; ;(C0);S_BOX; ;(A[1],S_BOX# );S_OD" />
+    <ASTNode ID="117" Name="T_Exit" Syntax_Name="Exit" General_Type="1" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_EXIT;S_LPAREN;(V);S_RPAREN" />
+    <ASTNode ID="118" Name="T_For" Syntax_Name="For" General_Type="1" Allowed_children="5;2;2;2;17" Has_Value="0" PrettyPrintTemplate="S_FOR; ;(C0); ;S_BECOMES; ;(C1); ;S_TO; ;(C2); ;S_STEP; ;(C3); ;S_DO;\n;(C4);S_OD" />
+    <ASTNode ID="119" Name="T_Foreach_Stat" Syntax_Name="Foreach_Stat" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_STATEMENT; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="120" Name="T_Foreach_Stats" Syntax_Name="Foreach_Stats" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_STATEMENTS; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="121" Name="T_Foreach_TS" Syntax_Name="Foreach_TS" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_TERMINAL; ;S_STATEMENT; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="122" Name="T_Foreach_TSs" Syntax_Name="Foreach_TSs" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_TERMINAL; ;S_STATEMENTS; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="123" Name="T_Foreach_STS" Syntax_Name="Foreach_STS" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_STS; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="124" Name="T_Foreach_Expn" Syntax_Name="Foreach_Expn" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_EXPRESSION; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="125" Name="T_Foreach_Cond" Syntax_Name="Foreach_Cond" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_CONDITION; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="126" Name="T_Ateach_Stat" Syntax_Name="Ateach_Stat" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_STATEMENT; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="127" Name="T_Ateach_Stats" Syntax_Name="Ateach_Stats" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_STATEMENTS; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="128" Name="T_Ateach_TS" Syntax_Name="Ateach_TS" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_TERMINAL; ;S_STATEMENT; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="129" Name="T_Ateach_TSs" Syntax_Name="Ateach_TSs" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_TERMINAL; ;S_STATEMENTS; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="130" Name="T_Ateach_STS" Syntax_Name="Ateach_STS" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_STS; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="131" Name="T_Ateach_Expn" Syntax_Name="Ateach_Expn" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_EXPRESSION; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="132" Name="T_Ateach_Cond" Syntax_Name="Ateach_Cond" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_CONDITION; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="133" Name="T_Floop" Syntax_Name="Floop" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_DO;\n;(C0);S_OD" />
+    <ASTNode ID="134" Name="T_Join" Syntax_Name="Join" General_Type="1" Allowed_children="17;17" Has_Value="0" PrettyPrintTemplate="S_JOIN;\n;(C0);S_COMMA;\n;(C1);S_ENDJOIN" />
+    <ASTNode ID="135" Name="T_Pop" Syntax_Name="Pop" General_Type="1" Allowed_children="5;5" Has_Value="0" PrettyPrintTemplate="S_POP;S_LPAREN;(C0);S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="136" Name="T_Proc_Call" Syntax_Name="Proc_Call" General_Type="1" Allowed_children="9;10;12" Has_Value="0" PrettyPrintTemplate="(C0);S_LPAREN;(C1); ;S_VAR; ;(C2);S_RPAREN" />
+    <ASTNode ID="137" Name="T_Push" Syntax_Name="Push" General_Type="1" Allowed_children="5;2" Has_Value="0" PrettyPrintTemplate="S_PUSH;S_LPAREN;(C0);S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="138" Name="T_Spec" Syntax_Name="Spec" General_Type="1" Allowed_children="12;3" Has_Value="0" PrettyPrintTemplate="S_SPEC; ;S_LANGLE;(C0);S_RANGLE;S_COLON; ;(C1); ;S_ENDSPEC" />
+    <ASTNode ID="139" Name="T_Var" Syntax_Name="Var" General_Type="1" Allowed_children="13;17" Has_Value="0" PrettyPrintTemplate="S_VAR; ;S_LANGLE;(C0);S_RANGLE;S_COLON;\n;(C1);S_ENDVAR" />
+    <ASTNode ID="140" Name="T_Where" Syntax_Name="Where" General_Type="1" Allowed_children="17;14" Has_Value="0" PrettyPrintTemplate="S_BEGIN;\n;(C0);S_WHERE;\n;(C1);S_END" />
+    <ASTNode ID="141" Name="T_While" Syntax_Name="While" General_Type="1" Allowed_children="3;17" Has_Value="0" PrettyPrintTemplate="S_WHILE; ;(C0); ;S_DO;\n;(C1);S_OD" />
+    <ASTNode ID="142" Name="T_MW_Proc" Syntax_Name="MW_Proc" General_Type="1" Allowed_children="9;12;12;17" Has_Value="0" PrettyPrintTemplate="S_MW_PROC; ;(C0);S_LPAREN;(C1); ;S_VAR; ;(C2);S_RPAREN; ;S_DEFINE;\n;(C3);S_END" />
+    <ASTNode ID="143" Name="T_MW_Funct" Syntax_Name="MW_Funct" General_Type="1" Allowed_children="9;12;13;17;2" Has_Value="0" PrettyPrintTemplate="S_MW_FUNCT; ;(C0);S_LPAREN;(C1);S_RPAREN; ;S_DEFINE;\n;S_VAR; ;S_LANGLE;(C2);S_RANGLE;S_COLON;\n;(C3);S_SEMICOLON;\n;S_LPAREN;(C4);S_RPAREN;\n;S_END" />
+    <ASTNode ID="144" Name="T_MW_BFunct" Syntax_Name="MW_BFunct" General_Type="1" Allowed_children="9;12;13;17;3" Has_Value="0" PrettyPrintTemplate="S_MW_BFUNCT; ;(C0);S_QUERY;S_LPAREN;(C1);S_RPAREN; ;S_DEFINE;\n;S_VAR; ;S_LANGLE;(C2);S_RANGLE;S_COLON;\n;(C3);S_SEMICOLON;\n;S_LPAREN;(C4);S_RPAREN;\n;S_END" />
+    <ASTNode ID="145" Name="T_Skip" Syntax_Name="Skip" General_Type="1" Allowed_children="" Has_Value="0" PrettyPrintTemplate="S_SKIP" />
+    <ASTNode ID="146" Name="T_Foreach_NAS" Syntax_Name="Foreach_NAS" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_NAS; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="147" Name="T_Ateach_NAS" Syntax_Name="Ateach_NAS" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_NAS; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="148" Name="T_Foreach_Variable" Syntax_Name="Foreach_Variable" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_VARIABLE; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="149" Name="T_Foreach_Global_Var" Syntax_Name="Foreach_Global_Var" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_GLOBAL; ;S_VARIABLE; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="150" Name="T_Ateach_Variable" Syntax_Name="Ateach_Variable" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_VARIABLE; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="151" Name="T_Ateach_Global_Var" Syntax_Name="Ateach_Global_Var" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_GLOBAL; ;S_VARIABLE; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="152" Name="T_Foreach_Lvalue" Syntax_Name="Foreach_Lvalue" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FOREACH; ;S_LVALUE; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="153" Name="T_Ateach_Lvalue" Syntax_Name="Ateach_Lvalue" General_Type="1" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_ATEACH; ;S_LVALUE; ;S_DO;\n;(A,);S_OD" />
+    <ASTNode ID="154" Name="T_For_In" Syntax_Name="For_In" General_Type="1" Allowed_children="5;2;17" Has_Value="0" PrettyPrintTemplate="S_FOR; ;(C0); ;S_IN; ;(C1); ;S_DO;\n;(C2);S_OD" />
+    <ASTNode ID="155" Name="T_Puthash" Syntax_Name="Puthash" General_Type="1" Allowed_children="5;2;2" Has_Value="0" PrettyPrintTemplate="(C0);S_FULLSTOP;S_LPAREN;(C1);S_RPAREN; ;S_BECOMES; ;(C2)" />
+    <ASTNode ID="156" Name="T_Print" Syntax_Name="Print" General_Type="1" Allowed_children="10" Has_Value="0" PrettyPrintTemplate="S_PRINT;S_LPAREN;(C0);S_RPAREN" />
+    <ASTNode ID="157" Name="T_Prinflush" Syntax_Name="Prinflush" General_Type="1" Allowed_children="10" Has_Value="0" PrettyPrintTemplate="S_PRINFLUSH;S_LPAREN;(C0);S_RPAREN" />
+    <ASTNode ID="158" Name="T_Maphash" Syntax_Name="Maphash" General_Type="1" Allowed_children="9;2" Has_Value="0" PrettyPrintTemplate="S_MAPHASH;S_LPAREN;S_QUOTES;(C0);S_QUOTES;S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="159" Name="T_Error" Syntax_Name="Error" General_Type="1" Allowed_children="10" Has_Value="0" PrettyPrintTemplate="S_ERROR;S_LPAREN;(C0);S_RPAREN" />
+    <ASTNode ID="160" Name="T_Stat_Int_One" Syntax_Name="Stat_Int_One" General_Type="1" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="161" Name="T_Stat_Int_Any" Syntax_Name="Stat_Int_Any" General_Type="1" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="162" Name="T_Stat_Val_One" Syntax_Name="Stat_Val_One" General_Type="1" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="163" Name="T_Stat_Val_Any" Syntax_Name="Stat_Val_Any" General_Type="1" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="166" Name="T_Ifmatch2_Stat" Syntax_Name="Ifmatch2_Stat" General_Type="1" Allowed_children="1;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_STATEMENT;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="167" Name="T_Ifmatch2_Expn" Syntax_Name="Ifmatch2_Expn" General_Type="1" Allowed_children="2;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_EXPRESSION;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="168" Name="T_Ifmatch2_Cond" Syntax_Name="Ifmatch2_Cond" General_Type="1" Allowed_children="3;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_CONDITION;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="169" Name="T_Ifmatch2_Defn" Syntax_Name="Ifmatch2_Defn" General_Type="1" Allowed_children="4;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_DEFINITION;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="170" Name="T_Ifmatch2_Lvalue" Syntax_Name="Ifmatch2_Lvalue" General_Type="1" Allowed_children="5;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_LVALUE;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="171" Name="T_Ifmatch2_Assign" Syntax_Name="Ifmatch2_Assign" General_Type="1" Allowed_children="6;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_ASSIGN;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="172" Name="T_Ifmatch2_Guarded" Syntax_Name="Ifmatch2_Guarded" General_Type="1" Allowed_children="7;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_GUARDED;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="173" Name="T_Ifmatch2_Action" Syntax_Name="Ifmatch2_Action" General_Type="1" Allowed_children="8;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_ACTION;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="174" Name="T_Ifmatch2_Stats" Syntax_Name="Ifmatch2_Stats" General_Type="1" Allowed_children="17;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_STATEMENTS;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="175" Name="T_Ifmatch2_Expns" Syntax_Name="Ifmatch2_Expns" General_Type="1" Allowed_children="10;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_EXPRESSIONS;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="177" Name="T_Ifmatch2_Lvalues" Syntax_Name="Ifmatch2_Lvalues" General_Type="1" Allowed_children="12;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_LVALUES;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="178" Name="T_Ifmatch2_Assigns" Syntax_Name="Ifmatch2_Assigns" General_Type="1" Allowed_children="13;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_ASSIGNS;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="179" Name="T_Ifmatch2_Defns" Syntax_Name="Ifmatch2_Defns" General_Type="1" Allowed_children="14;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH2; ;S_DEFINITIONS;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="180" Name="T_Ifmatch_Stat" Syntax_Name="Ifmatch_Stat" General_Type="1" Allowed_children="1;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_STATEMENT;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="181" Name="T_Ifmatch_Expn" Syntax_Name="Ifmatch_Expn" General_Type="1" Allowed_children="2;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_EXPRESSION;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="182" Name="T_Ifmatch_Cond" Syntax_Name="Ifmatch_Cond" General_Type="1" Allowed_children="3;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_CONDITION;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="183" Name="T_Ifmatch_Defn" Syntax_Name="Ifmatch_Defn" General_Type="1" Allowed_children="4;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_DEFINITION;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="184" Name="T_Ifmatch_Lvalue" Syntax_Name="Ifmatch_Lvalue" General_Type="1" Allowed_children="5;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_LVALUE;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="185" Name="T_Ifmatch_Assign" Syntax_Name="Ifmatch_Assign" General_Type="1" Allowed_children="6;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_ASSIGN;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="186" Name="T_Ifmatch_Guarded" Syntax_Name="Ifmatch_Guarded" General_Type="1" Allowed_children="7;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_GUARDED;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="187" Name="T_Ifmatch_Action" Syntax_Name="Ifmatch_Action" General_Type="1" Allowed_children="8;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_ACTION;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="188" Name="T_Ifmatch_Stats" Syntax_Name="Ifmatch_Stats" General_Type="1" Allowed_children="17;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_STATEMENTS;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="189" Name="T_Ifmatch_Expns" Syntax_Name="Ifmatch_Expns" General_Type="1" Allowed_children="10;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_EXPRESSIONS;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="191" Name="T_Ifmatch_Lvalues" Syntax_Name="Ifmatch_Lvalues" General_Type="1" Allowed_children="12;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_LVALUES;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="192" Name="T_Ifmatch_Assigns" Syntax_Name="Ifmatch_Assigns" General_Type="1" Allowed_children="13;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_ASSIGNS;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="193" Name="T_Ifmatch_Defns" Syntax_Name="Ifmatch_Defns" General_Type="1" Allowed_children="14;17;17" Has_Value="0" PrettyPrintTemplate="S_IFMATCH; ;S_DEFINITIONS;\n;(C0);\n;S_THEN;\n;(C1);S_ELSE;\n;(C2);S_ENDMATCH" />
+    <ASTNode ID="201" Name="T_X_Funct_Call" Syntax_Name="X_Funct_Call" General_Type="2" Allowed_children="9;10" Has_Value="0" PrettyPrintTemplate="S_PLINK_XF; ;(C0);S_LPAREN;(C1);S_RPAREN" />
+    <ASTNode ID="202" Name="T_MW_Funct_Call" Syntax_Name="MW_Funct_Call" General_Type="2" Allowed_children="9;10" Has_Value="0" PrettyPrintTemplate="(C0);S_LPAREN;(C1);S_RPAREN" />
+    <ASTNode ID="203" Name="T_Expn_Place" Syntax_Name="Expn_Place" General_Type="2" Allowed_children="" Has_Value="0" PrettyPrintTemplate="S_EXPN_PLACE" />
+    <ASTNode ID="204" Name="T_Var_Place" Syntax_Name="Var_Place" General_Type="2" Allowed_children="" Has_Value="0" PrettyPrintTemplate="S_VAR_PLACE" />
+    <ASTNode ID="205" Name="T_Number" Syntax_Name="Number" General_Type="2" Allowed_children="" Has_Value="1" PrettyPrintTemplate="(V)" />
+    <ASTNode ID="206" Name="T_String" Syntax_Name="String" General_Type="2" Allowed_children="" Has_Value="1" PrettyPrintTemplate="C:34;(V);C:34" />
+    <ASTNode ID="207" Name="T_Variable" Syntax_Name="Variable" General_Type="2" Allowed_children="" Has_Value="1" PrettyPrintTemplate="(V)" />
+    <ASTNode ID="208" Name="T_Primed_Var" Syntax_Name="Primed_Var" General_Type="2" Allowed_children="" Has_Value="1" PrettyPrintTemplate="" />
+    <ASTNode ID="209" Name="T_Sequence" Syntax_Name="Sequence" General_Type="2" Allowed_children="10" Has_Value="0" PrettyPrintTemplate="S_LANGLE; ;(A,); ;S_RANGLE" />
+    <ASTNode ID="210" Name="T_Aref" Syntax_Name="Aref" General_Type="2" Allowed_children="2;10" Has_Value="0" PrettyPrintTemplate="(C0);S_LBRACKET;(C1);S_RBRACKET" />
+    <ASTNode ID="211" Name="T_Sub_Seg" Syntax_Name="Sub_Seg" General_Type="2" Allowed_children="2;10;2" Has_Value="0" PrettyPrintTemplate="(C0);S_LBRACKET;(C1);S_DOTDOT;(C2);S_RBRACKET" />
+    <ASTNode ID="212" Name="T_Rel_Seg" Syntax_Name="Rel_Seg" General_Type="2" Allowed_children="2;10;2" Has_Value="0" PrettyPrintTemplate="(C0);S_LBRACKET;(C1);S_COMMA;(C2);S_RBRACKET" />
+    <ASTNode ID="213" Name="T_Final_Seg" Syntax_Name="Final_Seg" General_Type="2" Allowed_children="2;10" Has_Value="0" PrettyPrintTemplate="(C0);S_LBRACKET;(C1);S_DOTDOT;S_RBRACKET" />
+    <ASTNode ID="214" Name="T_Funct_Call" Syntax_Name="Funct_Call" General_Type="2" Allowed_children="9;10" Has_Value="0" PrettyPrintTemplate="(C0);S_LPAREN;(C1);S_RPAREN" />
+    <ASTNode ID="215" Name="T_Map" Syntax_Name="Map" General_Type="2" Allowed_children="9;2" Has_Value="0" PrettyPrintTemplate="S_MAP;S_LPAREN;C:34;(C0);C:34;S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="216" Name="T_Reduce" Syntax_Name="Reduce" General_Type="2" Allowed_children="9;2" Has_Value="0" PrettyPrintTemplate="S_REDUCE;S_LPAREN;C:34;(C0);C:34;S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="217" Name="T_Expn_Pat_One" Syntax_Name="Expn_Pat_One" General_Type="2" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ONE;(V)" />
+    <ASTNode ID="218" Name="T_Expn_Pat_Many" Syntax_Name="Expn_Pat_Many" General_Type="2" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_MANY;(V)" />
+    <ASTNode ID="219" Name="T_Expn_Pat_Any" Syntax_Name="Expn_Pat_Any" General_Type="2" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ANY;(V)" />
+    <ASTNode ID="220" Name="T_Plus" Syntax_Name="Plus" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_PLUS; ;(C1)" />
+    <ASTNode ID="221" Name="T_Minus" Syntax_Name="Minus" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_MINUS; ;(C1)" />
+    <ASTNode ID="222" Name="T_Times" Syntax_Name="Times" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_TIMES; ;(C1)" />
+    <ASTNode ID="223" Name="T_Divide" Syntax_Name="Divide" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_SLASH; ;(C1)" />
+    <ASTNode ID="224" Name="T_Exponent" Syntax_Name="Exponent" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_EXPONENT; ;(C1)" />
+    <ASTNode ID="225" Name="T_Mod" Syntax_Name="Mod" General_Type="2" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_MOD; ;(C1)" />
+    <ASTNode ID="226" Name="T_Div" Syntax_Name="Div" General_Type="2" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_DIV; ;(C1)" />
+    <ASTNode ID="227" Name="T_If" Syntax_Name="If" General_Type="2" Allowed_children="3;2;2" Has_Value="0" PrettyPrintTemplate="S_IF; ;(C0); ;S_THEN; ;(C1); ;S_ELSE; ;(C2); ;S_FI" />
+    <ASTNode ID="228" Name="T_Abs" Syntax_Name="Abs" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_ABS;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="229" Name="T_Frac" Syntax_Name="Frac" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_FRAC;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="230" Name="T_Int" Syntax_Name="Int" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_INT;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="231" Name="T_Sgn" Syntax_Name="Sgn" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_SGN;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="232" Name="T_Max" Syntax_Name="Max" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_MAX;S_LPAREN;(C0);S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="233" Name="T_Min" Syntax_Name="Min" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_MIN;S_LPAREN;(C0);S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="234" Name="T_Intersection" Syntax_Name="Intersection" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_INTERSECT; ;(C1)" />
+    <ASTNode ID="235" Name="T_Union" Syntax_Name="Union" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_UNION; ;(C1)" />
+    <ASTNode ID="236" Name="T_Set_Diff" Syntax_Name="Set_Diff" General_Type="2" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_BACKSLASH; ;(C1)" />
+    <ASTNode ID="237" Name="T_Powerset" Syntax_Name="Powerset" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_POWERSET;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="238" Name="T_Set" Syntax_Name="Set" General_Type="2" Allowed_children="2;3" Has_Value="0" PrettyPrintTemplate="S_LBRACE;(C0); ;S_VBAR; ;(C1);S_RBRACE" />
+    <ASTNode ID="239" Name="T_Array" Syntax_Name="Array" General_Type="2" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="S_ARRAY;S_LPAREN;(C0);S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="240" Name="T_Head" Syntax_Name="Head" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_HEAD;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="241" Name="T_Tail" Syntax_Name="Tail" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_TAIL;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="242" Name="T_Last" Syntax_Name="Last" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_LAST;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="243" Name="T_Butlast" Syntax_Name="Butlast" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_BUTLAST;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="244" Name="T_Length" Syntax_Name="Length" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_LENGTH;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="245" Name="T_Reverse" Syntax_Name="Reverse" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_REVERSE;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="246" Name="T_Concat" Syntax_Name="Concat" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_CONCAT; ;(C1)" />
+    <ASTNode ID="251" Name="T_Negate" Syntax_Name="Negate" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_MINUS;(C0)" />
+    <ASTNode ID="252" Name="T_Invert" Syntax_Name="Invert" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="253" Name="T_Struct" Syntax_Name="Struct" General_Type="2" Allowed_children="9;2" Has_Value="0" PrettyPrintTemplate="(C1);S_FULLSTOP;(C0)" />
+    <ASTNode ID="254" Name="T_Get_n" Syntax_Name="Get_n" General_Type="2" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0);S_CARET;(C1)" />
+    <ASTNode ID="255" Name="T_Get" Syntax_Name="Get" General_Type="2" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0);S_CARET;S_CARET;(C1)" />
+    <ASTNode ID="256" Name="T_Gethash" Syntax_Name="Gethash" General_Type="2" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0);S_FULLSTOP;S_LPAREN;(C1);S_RPAREN" />
+    <ASTNode ID="257" Name="T_Hash_Table" Syntax_Name="Hash_Table" General_Type="2" Allowed_children="" Has_Value="0" PrettyPrintTemplate="S_HASH_TABLE" />
+    <ASTNode ID="258" Name="T_Slength" Syntax_Name="Slength" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_SLENGTH;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="259" Name="T_Substr" Syntax_Name="Substr" General_Type="2" Allowed_children="10" Has_Value="0" PrettyPrintTemplate="S_SUBSTR;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="260" Name="T_Index" Syntax_Name="Index" General_Type="2" Allowed_children="10" Has_Value="0" PrettyPrintTemplate="S_INDEX;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="261" Name="T_Expn_Int_One" Syntax_Name="Expn_Int_One" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="262" Name="T_Expn_Int_Any" Syntax_Name="Expn_Int_Any" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="263" Name="T_Expn_Val_One" Syntax_Name="Expn_Val_One" General_Type="2" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="264" Name="T_Expn_Val_Any" Syntax_Name="Expn_Val_Any" General_Type="2" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="265" Name="T_Fill2_Stat" Syntax_Name="Fill2_Stat" General_Type="2" Allowed_children="1" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_STATEMENT;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="266" Name="T_Fill2_Expn" Syntax_Name="Fill2_Expn" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_EXPRESSION;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="267" Name="T_Fill2_Cond" Syntax_Name="Fill2_Cond" General_Type="2" Allowed_children="3" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_CONDITION;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="268" Name="T_Fill2_Defn" Syntax_Name="Fill2_Defn" General_Type="2" Allowed_children="4" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_DEFINITION;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="269" Name="T_Fill2_Lvalue" Syntax_Name="Fill2_Lvalue" General_Type="2" Allowed_children="5" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_LVALUE;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="270" Name="T_Fill2_Assign" Syntax_Name="Fill2_Assign" General_Type="2" Allowed_children="6" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_ASSIGN;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="271" Name="T_Fill2_Guarded" Syntax_Name="Fill2_Guarded" General_Type="2" Allowed_children="7" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_GUARDED;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="272" Name="T_Fill2_Action" Syntax_Name="Fill2_Action" General_Type="2" Allowed_children="8" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_ACTION;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="273" Name="T_Fill2_Stats" Syntax_Name="Fill2_Stats" General_Type="2" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_STATEMENTS;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="274" Name="T_Fill2_Expns" Syntax_Name="Fill2_Expns" General_Type="2" Allowed_children="10" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_EXPRESSIONS;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="276" Name="T_Fill2_Lvalues" Syntax_Name="Fill2_Lvalues" General_Type="2" Allowed_children="12" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_LVALUES;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="277" Name="T_Fill2_Assigns" Syntax_Name="Fill2_Assigns" General_Type="2" Allowed_children="13" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_ASSIGNS;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="278" Name="T_Fill2_Defns" Syntax_Name="Fill2_Defns" General_Type="2" Allowed_children="14" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_DEFINITIONS;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="281" Name="T_Fill_Stat" Syntax_Name="Fill_Stat" General_Type="2" Allowed_children="1" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_STATEMENT;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="282" Name="T_Fill_Expn" Syntax_Name="Fill_Expn" General_Type="2" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_EXPRESSION;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="283" Name="T_Fill_Cond" Syntax_Name="Fill_Cond" General_Type="2" Allowed_children="3" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_CONDITION;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="284" Name="T_Fill_Defn" Syntax_Name="Fill_Defn" General_Type="2" Allowed_children="4" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_DEFINITION;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="285" Name="T_Fill_Lvalue" Syntax_Name="Fill_Lvalue" General_Type="2" Allowed_children="5" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_LVALUE;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="286" Name="T_Fill_Assign" Syntax_Name="Fill_Assign" General_Type="2" Allowed_children="6" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_ASSIGN;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="287" Name="T_Fill_Guarded" Syntax_Name="Fill_Guarded" General_Type="2" Allowed_children="7" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_GUARDED;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="288" Name="T_Fill_Action" Syntax_Name="Fill_Action" General_Type="2" Allowed_children="8" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_ACTION;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="289" Name="T_Fill_Stats" Syntax_Name="Fill_Stats" General_Type="2" Allowed_children="17" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_STATEMENTS;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="290" Name="T_Fill_Expns" Syntax_Name="Fill_Expns" General_Type="2" Allowed_children="10" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_EXPRESSIONS;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="292" Name="T_Fill_Lvalues" Syntax_Name="Fill_Lvalues" General_Type="2" Allowed_children="12" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_LVALUES;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="293" Name="T_Fill_Assigns" Syntax_Name="Fill_Assigns" General_Type="2" Allowed_children="13" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_ASSIGNS;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="294" Name="T_Fill_Defns" Syntax_Name="Fill_Defns" General_Type="2" Allowed_children="14" Has_Value="0" PrettyPrintTemplate="S_FILL; ;S_DEFINITIONS;\n;(C0);\n;S_ENDFILL" />
+    <ASTNode ID="301" Name="T_X_BFunct_Call" Syntax_Name="X_BFunct_Call" General_Type="3" Allowed_children="9;10" Has_Value="0" PrettyPrintTemplate="S_PLINK_XC; ;(C0);S_QUERY;S_LPAREN;(C1);S_RPAREN" />
+    <ASTNode ID="302" Name="T_MW_BFunct_Call" Syntax_Name="MW_BFunct_Call" General_Type="3" Allowed_children="9;10" Has_Value="0" PrettyPrintTemplate="(C0);S_QUERY;S_LPAREN;(C1);S_RPAREN" />
+    <ASTNode ID="303" Name="T_Cond_Place" Syntax_Name="Cond_Place" General_Type="3" Allowed_children="" Has_Value="0" PrettyPrintTemplate="S_COND_PLACE" />
+    <ASTNode ID="304" Name="T_BFunct_Call" Syntax_Name="BFunct_Call" General_Type="3" Allowed_children="9;10" Has_Value="0" PrettyPrintTemplate="(C0);S_QUERY;S_LPAREN;(C1);S_RPAREN" />
+    <ASTNode ID="305" Name="T_Cond_Pat_One" Syntax_Name="Cond_Pat_One" General_Type="3" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ONE;(V)" />
+    <ASTNode ID="306" Name="T_Cond_Pat_Many" Syntax_Name="Cond_Pat_Many" General_Type="3" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_MANY;(V)" />
+    <ASTNode ID="307" Name="T_Cond_Pat_Any" Syntax_Name="Cond_Pat_Any" General_Type="3" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ANY;(V)" />
+    <ASTNode ID="308" Name="T_True" Syntax_Name="True" General_Type="3" Allowed_children="" Has_Value="0" PrettyPrintTemplate="S_TRUE" />
+    <ASTNode ID="309" Name="T_False" Syntax_Name="False" General_Type="3" Allowed_children="" Has_Value="0" PrettyPrintTemplate="S_FALSE" />
+    <ASTNode ID="310" Name="T_And" Syntax_Name="And" General_Type="3" Allowed_children="3" Has_Value="0" PrettyPrintTemplate="(C0); ;S_AND; ;(C1)" />
+    <ASTNode ID="311" Name="T_Or" Syntax_Name="Or" General_Type="3" Allowed_children="3" Has_Value="0" PrettyPrintTemplate="(C0); ;S_OR; ;(C1)" />
+    <ASTNode ID="312" Name="T_Not" Syntax_Name="Not" General_Type="3" Allowed_children="3" Has_Value="0" PrettyPrintTemplate="S_NOT; ;(A,)" />
+    <ASTNode ID="313" Name="T_Equal" Syntax_Name="Equal" General_Type="3" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_EQUAL; ;(C1)" />
+    <ASTNode ID="314" Name="T_Less" Syntax_Name="Less" General_Type="3" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_LANGLE; ;(C1)" />
+    <ASTNode ID="315" Name="T_Greater" Syntax_Name="Greater" General_Type="3" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_RANGLE; ;(C1)" />
+    <ASTNode ID="316" Name="T_Less_Eq" Syntax_Name="Less_Eq" General_Type="3" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_LEQ; ;(C1)" />
+    <ASTNode ID="317" Name="T_Greater_Eq" Syntax_Name="Greater_Eq" General_Type="3" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_GEQ; ;(C1)" />
+    <ASTNode ID="318" Name="T_Not_Equal" Syntax_Name="Not_Equal" General_Type="3" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_NEQ; ;(C1)" />
+    <ASTNode ID="319" Name="T_Even" Syntax_Name="Even" General_Type="3" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_EVEN;S_QUERY;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="320" Name="T_Odd" Syntax_Name="Odd" General_Type="3" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_ODD;S_QUERY;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="321" Name="T_Empty" Syntax_Name="Empty" General_Type="3" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="S_EMPTY;S_QUERY;S_LPAREN;(A,);S_RPAREN" />
+    <ASTNode ID="322" Name="T_Subset" Syntax_Name="Subset" General_Type="3" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="S_SUBSET;S_QUERY;S_LPAREN;(C0);S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="323" Name="T_Member" Syntax_Name="Member" General_Type="3" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="S_MEMBER;S_QUERY;S_LPAREN;(C0);S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="324" Name="T_Forall" Syntax_Name="Forall" General_Type="3" Allowed_children="12;3" Has_Value="0" PrettyPrintTemplate="S_FORALL;S_LANGLE;(C0);S_RANGLE;S_COLON; ;(C1); ;S_END" />
+    <ASTNode ID="325" Name="T_Exists" Syntax_Name="Exists" General_Type="3" Allowed_children="12;3" Has_Value="0" PrettyPrintTemplate="S_EXISTS;S_LANGLE;(C0);S_RANGLE;S_COLON; ;(C1); ;S_END" />
+    <ASTNode ID="326" Name="T_Implies" Syntax_Name="Implies" General_Type="3" Allowed_children="3;3" Has_Value="0" PrettyPrintTemplate="S_IMPLIES;S_QUERY;S_LPAREN;(C0);S_COMMA;(C1);S_RPAREN" />
+    <ASTNode ID="327" Name="T_Sequenceq" Syntax_Name="Sequenceq" General_Type="3" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="328" Name="T_Numberq" Syntax_Name="Numberq" General_Type="3" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="329" Name="T_Stringq" Syntax_Name="Stringq" General_Type="3" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="330" Name="T_In" Syntax_Name="In" General_Type="3" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_IN; ;(C1)" />
+    <ASTNode ID="331" Name="T_Not_In" Syntax_Name="Not_In" General_Type="3" Allowed_children="2;2" Has_Value="0" PrettyPrintTemplate="(C0); ;S_NOTIN; ;(C1)" />
+    <ASTNode ID="332" Name="T_Cond_Int_One" Syntax_Name="Cond_Int_One" General_Type="3" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="333" Name="T_Cond_Int_Any" Syntax_Name="Cond_Int_Any" General_Type="3" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="334" Name="T_Cond_Val_One" Syntax_Name="Cond_Val_One" General_Type="3" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="335" Name="T_Cond_Val_Any" Syntax_Name="Cond_Val_Any" General_Type="3" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="401" Name="T_Proc" Syntax_Name="Proc" General_Type="4" Allowed_children="9;12;12;17" Has_Value="0" PrettyPrintTemplate="S_PROC; ;(C0);S_LPAREN;(C1); ;CHILD(2:S_VAR); ;(C2);S_RPAREN; ;S_DEFINE;\n;(C3);S_END" />
+    <ASTNode ID="402" Name="T_Funct" Syntax_Name="Funct" General_Type="4" Allowed_children="9;12;13;2" Has_Value="0" PrettyPrintTemplate="S_FUNCT; ;(C0);S_LPAREN;(C1);S_RPAREN; ;S_DEFINE;\n;S_VAR; ;S_LANGLE;(C2);S_RANGLE;S_COLON;\n;(C3);\n;S_END" />
+    <ASTNode ID="403" Name="T_BFunct" Syntax_Name="BFunct" General_Type="4" Allowed_children="9;12;13;3" Has_Value="0" PrettyPrintTemplate="S_BFUNCT; ;(C0);S_QUERY;S_LPAREN;(C1);S_RPAREN; ;S_DEFINE;\n;S_VAR; ;S_LANGLE;(C2);S_RANGLE;S_COLON;\n;(C3);\n;S_END" />
+    <ASTNode ID="404" Name="T_Defn_Pat_One" Syntax_Name="Defn_Pat_One" General_Type="4" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ONE;(V)" />
+    <ASTNode ID="405" Name="T_Defn_Pat_Many" Syntax_Name="Defn_Pat_Many" General_Type="4" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_MANY;(V)" />
+    <ASTNode ID="406" Name="T_Defn_Pat_Any" Syntax_Name="Defn_Pat_Any" General_Type="4" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ANY;(V)" />
+    <ASTNode ID="407" Name="T_Defn_Int_One" Syntax_Name="Defn_Int_One" General_Type="4" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="408" Name="T_Defn_Int_Any" Syntax_Name="Defn_Int_Any" General_Type="4" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="409" Name="T_Defn_Val_One" Syntax_Name="Defn_Val_One" General_Type="4" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="410" Name="T_Defn_Val_Any" Syntax_Name="Defn_Val_Any" General_Type="4" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="501" Name="T_Var_Lvalue" Syntax_Name="Var_Lvalue" General_Type="5" Allowed_children="" Has_Value="1" PrettyPrintTemplate="(V)" />
+    <ASTNode ID="502" Name="T_Aref_Lvalue" Syntax_Name="Aref_Lvalue" General_Type="5" Allowed_children="5;10" Has_Value="0" PrettyPrintTemplate="(C0);S_LBRACKET;(C1);S_RBRACKET" />
+    <ASTNode ID="503" Name="T_Sub_Seg_Lvalue" Syntax_Name="Sub_Seg_Lvalue" General_Type="5" Allowed_children="5;10;2" Has_Value="0" PrettyPrintTemplate="(C0);S_LBRACKET;(C1);S_DOTDOT;(C2);S_RBRACKET" />
+    <ASTNode ID="504" Name="T_Rel_Seg_Lvalue" Syntax_Name="Rel_Seg_Lvalue" General_Type="5" Allowed_children="5;10;2" Has_Value="0" PrettyPrintTemplate="(C0);S_LBRACKET;(C1);S_COMMA;(C2);S_RBRACKET" />
+    <ASTNode ID="505" Name="T_Final_Seg_Lvalue" Syntax_Name="Final_Seg_Lvalue" General_Type="5" Allowed_children="5;10" Has_Value="0" PrettyPrintTemplate="(C0);S_LBRACKET;(C1);S_DOTDOT;S_RBRACKET" />
+    <ASTNode ID="506" Name="T_Lvalue_Pat_One" Syntax_Name="Lvalue_Pat_One" General_Type="5" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ONE;(V)" />
+    <ASTNode ID="507" Name="T_Lvalue_Pat_Many" Syntax_Name="Lvalue_Pat_Many" General_Type="5" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_MANY;(V)" />
+    <ASTNode ID="508" Name="T_Lvalue_Pat_Any" Syntax_Name="Lvalue_Pat_Any" General_Type="5" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ANY;(V)" />
+    <ASTNode ID="509" Name="T_Struct_Lvalue" Syntax_Name="Struct_Lvalue" General_Type="5" Allowed_children="9;5" Has_Value="0" PrettyPrintTemplate="(C1);S_FULLSTOP;(C0)" />
+    <ASTNode ID="510" Name="T_Lvalue_Int_One" Syntax_Name="Lvalue_Int_One" General_Type="5" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="511" Name="T_Lvalue_Int_Any" Syntax_Name="Lvalue_Int_Any" General_Type="5" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="512" Name="T_Lvalue_Val_One" Syntax_Name="Lvalue_Val_One" General_Type="5" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="513" Name="T_Lvalue_Val_Any" Syntax_Name="Lvalue_Val_Any" General_Type="5" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="601" Name="T_Assign_Pat_One" Syntax_Name="Assign_Pat_One" General_Type="6" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ONE;(V)" />
+    <ASTNode ID="602" Name="T_Assign_Pat_Any" Syntax_Name="Assign_Pat_Any" General_Type="6" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ANY;(V)" />
+    <ASTNode ID="603" Name="T_Assign_Pat_Many" Syntax_Name="Assign_Pat_Many" General_Type="6" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_MANY;(V)" />
+    <ASTNode ID="604" Name="T_Assign_Int_One" Syntax_Name="Assign_Int_One" General_Type="6" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="605" Name="T_Assign_Int_Any" Syntax_Name="Assign_Int_Any" General_Type="6" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="606" Name="T_Assign_Val_One" Syntax_Name="Assign_Val_One" General_Type="6" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="607" Name="T_Assign_Val_Any" Syntax_Name="Assign_Val_Any" General_Type="6" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="701" Name="T_Guarded_Pat_One" Syntax_Name="Guarded_Pat_One" General_Type="7" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ONE;(V)" />
+    <ASTNode ID="702" Name="T_Guarded_Pat_Any" Syntax_Name="Guarded_Pat_Any" General_Type="7" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ANY;(V)" />
+    <ASTNode ID="703" Name="T_Guarded_Pat_Many" Syntax_Name="Guarded_Pat_Many" General_Type="7" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_MANY;(V)" />
+    <ASTNode ID="704" Name="T_Guarded_Int_One" Syntax_Name="Guarded_Int_One" General_Type="7" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="705" Name="T_Guarded_Int_Any" Syntax_Name="Guarded_Int_Any" General_Type="7" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="706" Name="T_Guarded_Val_One" Syntax_Name="Guarded_Val_One" General_Type="7" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="707" Name="T_Guarded_Val_Any" Syntax_Name="Guarded_Val_Any" General_Type="7" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="801" Name="T_Action_Pat_One" Syntax_Name="Action_Pat_One" General_Type="8" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ONE;(V)" />
+    <ASTNode ID="802" Name="T_Action_Pat_Any" Syntax_Name="Action_Pat_Any" General_Type="8" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ANY;(V)" />
+    <ASTNode ID="803" Name="T_Action_Pat_Many" Syntax_Name="Action_Pat_Many" General_Type="8" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_MANY;(V)" />
+    <ASTNode ID="804" Name="T_Action_Int_One" Syntax_Name="Action_Int_One" General_Type="8" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="805" Name="T_Action_Int_Any" Syntax_Name="Action_Int_Any" General_Type="8" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="806" Name="T_Action_Val_One" Syntax_Name="Action_Val_One" General_Type="8" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="807" Name="T_Action_Val_Any" Syntax_Name="Action_Val_Any" General_Type="8" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="901" Name="T_Name_Pat_One" Syntax_Name="Name_Pat_One" General_Type="9" Allowed_children="" Has_Value="1" PrettyPrintTemplate="S_PAT_ONE;(V)" />
+    <ASTNode ID="902" Name="T_Name_Int_One" Syntax_Name="Name_Int_One" General_Type="9" Allowed_children="2" Has_Value="0" PrettyPrintTemplate="" />
+    <ASTNode ID="903" Name="T_Name_Val_One" Syntax_Name="Name_Val_One" General_Type="9" Allowed_children="" Has_Value="0" PrettyPrintTemplate="" />
+  </Specific_types>
+</WSL_Definition>

@@ -1,0 +1,246 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" Any Cond statement with more than this number of guards will ";
+C:" not be processed: ";
+
+Max_Cond_Size := 15;
+
+
+MW_PROC @Simplify_If_Test() ==
+  IF @ST(@I) <> T_Cond
+    THEN @Fail("Not an IF statement")
+  ELSIF @SI_Special?(@I)
+    THEN @Pass
+  ELSIF @Size(@I) > Max_Cond_Size
+    THEN @Fail("IF statement is too large")
+  ELSIF @ST(@I^(@Size(@I)-1)^1) = T_Not_Equal AND @ST(@I^@Size(@I)^1) = T_True
+    THEN @Pass
+  ELSIF @Simplify_If_Loop?
+    THEN @Pass
+    ELSE C: "Test for redundant or false cases";
+	 VAR < D := @Make(T_False, < >, < >), B := < > >:
+	 @Down; C:" to first guarded ";
+	 DO IF @Total_Size(@I^1) > 100 OR @Total_Size(D) > 100 THEN EXIT(1) FI;
+	    B := @Simplify_Cond(@I^1);
+	    IF @Simplify_If_Using?(D, B, @Cs(@I^2))
+	      THEN @Pass FI;
+	    IF @Passed? OR NOT @Right? THEN EXIT(1) FI;
+	    IF @ST(B) = T_False OR @ST(B) = T_True
+	      THEN @Pass
+	    ELSIF @Implies?(B, D)
+	      THEN @Pass
+	    ELSIF @ST(@Or(D, B)) = T_True
+	      THEN @Pass
+	    ELSIF @Stat_Types(@I^2) = <T_Comment>
+	      THEN @Pass
+	      ELSE D := @Or(D, B) FI;
+	    @Right;
+	    IF @Total_Size(@I^1) < 100 AND @Total_Size(D) < 100
+	         AND @Total_Size(@Simplify_Using(@I^1, @Not(D), 20)) < @Total_Size(@I^1)
+	      THEN @Pass FI OD;
+	 @Up; 
+	 IF NOT(@Passed?)
+	   THEN IFMATCH Statement IF TRUE THEN ~*S FI
+		  THEN @Pass ENDMATCH FI;
+	 IF NOT(@Passed?) AND @Trans?(TR_Separate_Right) THEN @Pass FI;
+	 IF NOT(@Passed?) AND @Trans?(TR_Separate_Left) THEN @Pass FI;
+	 IF NOT(@Passed?) THEN @Fail("No simplification possible") FI ENDVAR FI .;
+
+
+MW_PROC @Simplify_If_Code(Data) ==
+  IF @SI_Special?(@I)
+    THEN @SI_Special
+  ELSIF @Simplify_If_Loop?
+    THEN VAR < OK := 0 >:
+         IFMATCH Statement IF ~?B1 THEN DO ~*S; IF ~?B2 THEN EXIT(1) FI OD FI
+           THEN @Paste_Over(FILL Statement WHILE ~?B1 DO ~*S OD ENDFILL)
+	   ELSE ERROR("@Simplify_If_Code: match failed!") ENDMATCH ENDVAR
+    ELSE VAR < n := @Size(@I), D := @Make(T_False, < >, < >), B := < >, P := < >,
+               Q := < >, comments := < > >:
+         @Edit;
+         IF @ST(@I^(n-1)^1) = T_Not_Equal AND @ST(@I^n^1) = T_True
+           THEN @Down_To(n-1); @Trans(TR_Move_To_Right, ""); @Up FI;
+         @Down;
+         C:" Take out comments in branches that only contain comments ";
+         DO IF @Stat_Types(@I^2) = <T_Comment>
+              THEN comments := comments ++ @Cs(@I^2);
+                   @Down_To(2); @Paste_Over(@Skips); @Up FI;
+            IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+         IF EMPTY?(comments)
+           THEN @To(1)
+           ELSE @Up;
+                @End_Edit;
+                @Splice_Before(comments);
+                WHILE NOT EMPTY?(comments) DO
+                  @Right;
+                  comments := TAIL(comments) OD;
+                @Edit;
+                @Down FI;
+         DO B := @Simplify_Cond(@I^1);
+	    IF @Simplify_If_Using?(D, B, @Cs(@I^2))
+	      THEN @Down_To(2);
+                   @Simplify_If_Using(D, B);
+		   C:" Simplify_If_Using could delete the whole sequence ";
+		   IF @Up? THEN @Up FI;
+		   EXIT(1) FI;
+            IF NOT @Right? THEN EXIT(1) FI;
+            IF @ST(B) = T_False OR @Implies?(B, D)
+              THEN @Delete
+            ELSIF @ST(B) = T_True OR @ST(@Or(D, B)) = T_True
+              THEN @Down; @Paste_Over(@Make(T_True, < >, < >)); @Up;
+                   @Delete_Rest
+              ELSE D := @Or(D, B);
+                   @Right;
+		   Q := @Simplify_Using(@I^1, @Not(D), 20);
+	           IF @Total_Size(Q) < @Total_Size(@I^1)
+                     THEN @Down; @Paste_Over(Q); @Up FI FI OD;
+         @End_Edit;
+         @Fix_Cond;
+         IF @ST(@I) = T_Cond
+           THEN IF @Size(@I) = 2 AND @True?(@I^1^1)
+                  THEN @Splice_Over(@Components(@I^1^2))
+                  ELSE IF @Trans?(TR_Separate_Right)
+                         THEN @Trans(TR_Separate_Right,"") FI;
+                       IF @Trans?(TR_Separate_Left)
+                         THEN @Trans(TR_Separate_Left,"") FI;
+                       @Trans(TR_Delete_All_Skips, "") FI FI ENDVAR FI .;
+
+
+MW_BFUNCT @Simplify_If_Loop?() ==
+  VAR < OK := 0 >:
+  IFMATCH Statement IF ~?B1 THEN DO ~*S; IF ~?B2 THEN EXIT(1) FI OD FI
+    THEN IF @Gen_Proper?(@Make(T_Statements, < >, S), @AS_Type)
+              AND @Equal?(B1, @Not(B2))
+           THEN OK := 1 FI ENDMATCH;
+  (OK = 1) .;
+
+
+C:" Can we simplify the tests in a nested IF ";
+C:" using the fact that D is false and B is true? ";
+
+MW_BFUNCT @Simplify_If_Using?(D, B, Cs) ==
+  VAR < OK := 0 >:
+  WHILE NOT EMPTY?(Cs) AND @ST(HEAD(Cs)) = T_Comment DO
+    Cs := TAIL(Cs) OD;
+  IF NOT EMPTY?(Cs) AND @ST(HEAD(Cs)) = T_Cond
+    THEN D := @Or(D, @Not(B));
+         Cs := @Cs(HEAD(Cs));
+	 WHILE NOT EMPTY?(Cs) DO
+           B := HEAD(Cs)^1;
+           IF @Simplify_If_Using?(D, B, @Cs(HEAD(Cs)^2))
+	     THEN OK := 1; Cs := < >
+           ELSIF EMPTY?(TAIL(Cs))
+             THEN Cs := < >
+           ELSIF @Implies?(B, D)
+             THEN OK := 1; Cs := < >
+           ELSIF @ST(B) = T_True OR @ST(@Or(D, B)) = T_True
+             THEN OK := 1; Cs := < >
+             ELSE D := @Or(D, B);
+	          Cs := TAIL(Cs) FI OD FI;
+  (OK = 1) .;
+
+
+C:" Simplify the statement sequence item using the fact that D is false and B is true ";
+
+MW_PROC @Simplify_If_Using(D, B) ==
+  @Down;
+  WHILE @Right? AND @ST(@I) = T_Comment DO @Right OD;
+  IF @ST(@I) = T_Cond
+    THEN D := @Or(D, @Not(B));
+         @Down;
+         DO B := @Simplify_Cond(@I^1);
+            IF @Simplify_If_Using?(D, B, @Cs(@I^2))
+	      THEN @Down_To(2);
+                   @Simplify_If_Using(D, B);
+		   @Up;
+		   EXIT(1) FI;
+            IF NOT @Right? THEN EXIT(1) FI;
+            IF @Implies?(B, D)
+              THEN @Delete
+            ELSIF @ST(B) = T_True OR @ST(@Or(D, B)) = T_True
+              THEN @Down; @Paste_Over(@Make(T_True, < >, < >)); @Up;
+                   @Delete_Rest
+              ELSE D := @Or(D, B);
+                   @Right FI OD;
+         @Up;
+         @Fix_Cond FI;
+  @Up .;
+
+
+C:" Special case ";
+
+MW_BFUNCT @SI_Special?(I) ==
+  VAR < OK := 1, v := < >, S1 := < >, S2 := < >, L := < > >:
+  IF @Size(I) < 3
+    THEN OK := 0
+  ELSIF NOT @SI_Special_Guard?(I^1, v, S1, S2)
+    THEN OK := 0
+    ELSE v := I^1^1^1;
+         S1 := I^1^2^1^1^2; C:" THEN clause of inner IF ";
+	 S2 := I^1^2^1^2^2; C:" ELSE clause of inner IF ";
+	 L := TAIL(@Cs(I));
+	 WHILE OK = 1 AND NOT EMPTY?(L) DO
+	   IF EMPTY?(TAIL(L))
+	     THEN C:" This is the ELSE clause ";
+	          IF NOT @Equal?(HEAD(L)^2, S2)
+		    THEN OK := 0 FI
+           ELSIF NOT @SI_Special_Guard?(HEAD(L), v, S1, S2)
+	     THEN OK := 0 FI;
+           L := TAIL(L) OD FI;
+  (OK = 1) .;
+
+
+MW_BFUNCT @SI_Special_Guard?(G, v, S1, S2) ==
+  VAR < OK := 1 >:
+  IF @ST(G^1) <> T_Equal
+    THEN OK := 0
+  ELSIF @ST(G^1^2) <> T_String AND @ST(G^1^2) <> T_Number
+    THEN OK := 0
+  ELSIF NOT EMPTY?(v) AND NOT @Equal?(v, G^1^1)
+    THEN OK := 0
+  ELSIF @ST(G^2^1) <> T_Cond
+    THEN OK := 0
+  ELSIF @Size(G^2) <> 1
+    THEN OK := 0
+  ELSIF NOT EMPTY?(S1) AND NOT @Equal?(S1, G^2^1^1^2)
+    THEN OK := 0
+  ELSIF NOT EMPTY?(S2) AND NOT @Equal?(S2, G^2^1^2^2)
+    THEN OK := 0 FI;
+  (OK = 1) .;
+
+
+MW_PROC @SI_Special() ==
+  VAR < BL := <@Make(T_And, < >,  <@I^1^1, @I^1^2^1^1^1>)>,
+        B := < >, S1 := @Cs(@I^1^2^1^1^2), S2 := @Cs(@I^1^2^1^2^2),
+	L := @Cs(@I) >:
+  WHILE NOT EMPTY?(TAIL(L)) DO
+    BL := <@Make(T_And, < >, <HEAD(L)^1, HEAD(L)^2^1^1^1>)> ++ BL;
+    L := TAIL(L) OD;
+  B := @Make(T_Or, < >, REVERSE(BL));
+  @Paste_Over(FILL Statement IF ~?B THEN ~*S1 ELSE ~*S2 FI ENDFILL) ENDVAR .;
+
+
+
+SKIP
+
+
+

@@ -1,0 +1,7 @@
+VAR < x := x >:
+IF p = q
+  THEN x := 18
+  ELSE x := 17 FI;
+IF p <> q
+  THEN y := x
+  ELSE  y := 2 FI ENDVAR

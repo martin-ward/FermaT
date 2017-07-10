@@ -1,0 +1,48 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `For_To_While'",
+	    (FILL Statements FOR i := 1 TO 10 STEP 2 DO
+			       x := x + i OD ENDFILL),
+	    <1>,
+	    TR_For_To_While,
+	    < >,
+	    (FILL Statements VAR < i := 1 >:
+			     WHILE i <= 10 DO
+			       x := x + i;
+			       i := i + 2 OD ENDVAR ENDFILL));
+
+
+
+@Test_Trans(" 2nd test of `For_To_While'",
+	    (FILL Statements FOR i := 10 TO 1 STEP -2 DO
+			       x := x + i OD ENDFILL),
+	    <1>,
+	    TR_For_To_While,
+	    < >,
+	    (FILL Statements VAR < i := 10 >:
+			     WHILE i >= 1 DO
+			       x := x + i;
+			       i := i - 2 OD ENDVAR ENDFILL));
+
+
+
+SKIP
+

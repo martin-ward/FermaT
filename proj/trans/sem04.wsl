@@ -1,0 +1,9 @@
+x := 3;
+v := v + x;
+VAR < x := y >:
+x := x + 1;
+z1 := x;
+x := z2 + x;
+v := v + x;
+y := 0 ENDVAR;
+q := v

@@ -1,0 +1,4 @@
+IF x = 1 THEN IF y = 1 THEN z := 1 ELSE z := 2 FI
+         ELSE z := 3 FI;
+IF z = 1 THEN p := q FI
+

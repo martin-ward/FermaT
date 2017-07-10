@@ -1,0 +1,17 @@
+
+IF EMPTY?(TR_Reverse_All_Ifs ) THEN TR_Reverse_All_Ifs := @New_TR_Number()  FI;
+
+TRs_Proc_Name[TR_Reverse_All_Ifs] := "Reverse_All_Ifs" ;
+TRs_Test[TR_Reverse_All_Ifs]:=!XF funct(@Reverse_All_Ifs_Test);
+TRs_Code[TR_Reverse_All_Ifs]:=!XF funct(@Reverse_All_Ifs_Code);
+
+TRs_Name[TR_Reverse_All_Ifs] := "Reverse All Ifs";
+
+TRs_Keywords[TR_Reverse_All_Ifs] := < "Simplify" > ;
+
+TRs_Help[TR_Reverse_All_Ifs] := "Reverse All Ifs will apply TR_Reverse_If to every applicable statement .";
+
+TRs_Prompt[TR_Reverse_All_Ifs] := ""; 
+
+TRs_Data_Gen_Type[TR_Reverse_All_Ifs] := "" 
+ 

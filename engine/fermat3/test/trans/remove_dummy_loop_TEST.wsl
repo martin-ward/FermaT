@@ -1,0 +1,382 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+@Test_Trans(" 1st test of `Remove Dummy Loop'",
+	     (FILL Statements  DO  X:=B; EXIT(1) OD ENDFILL),
+	     <1>,
+	     TR_Remove_Dummy_Loop,
+	     < >,
+	     (FILL Statements X:=B; SKIP ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Remove Dummy Loop'",
+	     (FILL Statements DO IF B=10 THEN EXIT(1)
+				 ELSIF B=20 THEN 
+				    X:=B;
+				    DO X:=X-1; 
+				       IF X<20 THEN EXIT(1)
+				       ELSE B:=B-4 FI OD
+				   ELSE B:=B+X FI;
+				 EXIT(1) OD ENDFILL),
+	     <1>,
+	     TR_Remove_Dummy_Loop,
+	     < >,
+	     (FILL Statements IF B=10 THEN SKIP
+				 ELSIF B=20 THEN 
+				    X:=B;
+				    DO X:=X-1; 
+				       IF X<20 THEN EXIT(1)
+				       ELSE B:=B-4 FI OD
+				   ELSE B:=B+X; SKIP FI ENDFILL));
+
+
+@Test_Trans(" 3nd test of `Remove Dummy Loop'",
+	     (FILL Statements DO IF B=10 THEN EXIT(1)
+				 ELSIF B=20 THEN 
+				    X:=B;
+				    DO X:=X-1; 
+				       IF X<20 THEN EXIT(1)
+				       ELSE B:=B-4 FI OD
+				   ELSE B:=B+X FI OD ENDFILL),
+	     <1>,
+	     TR_Remove_Dummy_Loop,
+	     < >,
+	     "Fail");
+
+
+@Test_Trans(" 4th test of `Remove Dummy Loop'",
+	     (FILL Statements DO DO IF B=10 THEN EXIT(1)
+				 ELSIF B=20 THEN 
+				    X:=B;
+				    DO X:=X-1; 
+				       IF X<20 THEN EXIT(1)
+				       ELSE B:=B-4 FI OD
+				  ELSE B:=B+X FI
+			      OD; EXIT(1) OD ENDFILL),
+	     <1>,
+	     TR_Remove_Dummy_Loop,
+	     < >,
+	     (FILL Statements DO IF B=10 THEN EXIT(1)
+				 ELSIF B=20 THEN 
+				    X:=B;
+				    DO X:=X-1; 
+				       IF X<20 THEN EXIT(1)
+				       ELSE B:=B-4 FI OD
+				  ELSE B:=B+X FI
+			      OD; SKIP ENDFILL));
+
+
+@Test_Trans(" 5th test of `Remove Dummy Loop'",
+	     (FILL Statements
+
+DO IF F_OPENS = 1
+     THEN destination := NOTUSED_172;
+	  r2 := NOTUSED_176;
+	  ADDRECID();
+	  r2 := NOTUSED_180;
+	  CHGBATCH();
+	  IF exit_flag = 1
+	    THEN exit_flag := 1; EXIT(1)
+	    ELSE r2 := NOTUSED_184;
+		 CHGGRP();
+		 r2 := NOTUSED_188;
+		 SPECHNDL();
+		 destination := NOTUSED_188;
+		 IF exit_flag = 1
+		   THEN exit_flag := 1; EXIT(1)
+		   ELSE exit_flag := 1; EXIT(1) FI FI FI;
+   F_OPENS := 1;
+   !P OPEN(DATETBL_DDNAME, INPUT VAR os);
+   IF !XF bit_and(DATETBL[49], "hex 0x10") = 0
+     THEN cc := 0
+   ELSIF !XF bit_and(DATETBL[49], "hex 0x10") = "hex 0x10"
+     THEN cc := 3
+     ELSE cc := 1 FI;
+   IF !XF bit_and(DATETBL[49], "hex 0x10") = 0
+     THEN !P ABEND("3503,DUMP" VAR r0, r1, r15, os);
+	  exit_flag := 1;
+	  EXIT(1) FI;
+   r0 := 0;
+   r1 := 0;
+   r15 := 0;
+   !P GET(DATETBL_DDNAME VAR os, r0, r1, r15, TBL);
+   !P CLOSE(DATETBL_DDNAME VAR os);
+   !P OPEN(MSSG_DDNAME, OUTPUT VAR os);
+   IF !XF bit_and(MSSG[49], "hex 0x10") = 0
+     THEN cc := 0
+   ELSIF !XF bit_and(MSSG[49], "hex 0x10") = "hex 0x10"
+     THEN cc := 3
+     ELSE cc := 1 FI;
+   IF !XF bit_and(MSSG[49], "hex 0x10") = 0
+     THEN !P ABEND("3502,DUMP" VAR r0, r1, r15, os);
+	  exit_flag := 1;
+	  EXIT(1) FI;
+   RECORD := r10;
+   HOLDBN := a[RECORD].RPC[1..3];
+   RECTBLDS := r9;
+   HOLDOD := a[RECTBLDS].RDEVICE;
+   OUTPUT_[41..48] := "B       ";
+   OUTPUT_[42..44] := HOLDBN;
+   !P OPEN(BXXX, OUTPUT VAR os);
+   IF !XF bit_and(OUTPUT_[49], "hex 0x10") = 0
+     THEN cc := 0
+   ELSIF !XF bit_and(OUTPUT_[49], "hex 0x10") = "hex 0x10"
+     THEN cc := 3
+     ELSE cc := 1 FI;
+   IF !XF bit_and(OUTPUT_[49], "hex 0x10") = 0
+     THEN !P ABEND("3504,DUMP" VAR r0, r1, r15, os);
+	  exit_flag := 1;
+	  EXIT(1) FI;
+   LASTID := THISID;
+   HOLDGRP := a[RECTBLDS].RGRP;
+   r8 := 1242;
+   SAVER8 := NOTUSED_1242;
+   M := "-";
+   LINECT := 18;
+   cc := 2;
+   BATCOMN();
+   !P RDJFCB(OUTPUT VAR r15, os);
+   IF DSN.VOLSER[1] = "0"
+     THEN cc := 0
+   ELSIF DSN.VOLSER[1] < "0"
+     THEN cc := 1
+     ELSE cc := 2 FI;
+   IF DSN.VOLSER[1] <> "0"
+     THEN destination := r2; exit_flag := 0; EXIT(1) FI;
+   M[36..42] := "VOLSER=";
+   M[43..48] := DSN.VOLSER;
+   destination := r2;
+   exit_flag := 0;
+   EXIT(1) OD
+
+ENDFILL),
+	     <1>,
+	     TR_Remove_Dummy_Loop,
+	     < >,
+	     (FILL Statements
+
+IF F_OPENS = 1
+  THEN destination := NOTUSED_172;
+       r2 := NOTUSED_176;
+       ADDRECID();
+       r2 := NOTUSED_180;
+       CHGBATCH();
+       IF exit_flag = 1
+	 THEN exit_flag := 1; SKIP
+	 ELSE r2 := NOTUSED_184;
+	      CHGGRP();
+	      r2 := NOTUSED_188;
+	      SPECHNDL();
+	      destination := NOTUSED_188;
+	      IF exit_flag = 1
+		THEN exit_flag := 1; SKIP
+		ELSE exit_flag := 1; SKIP FI FI
+  ELSE F_OPENS := 1;
+       !P OPEN(DATETBL_DDNAME, INPUT VAR os);
+       IF !XF bit_and(DATETBL[49], "hex 0x10") = 0
+	 THEN cc := 0
+       ELSIF !XF bit_and(DATETBL[49], "hex 0x10") = "hex 0x10"
+	 THEN cc := 3
+	 ELSE cc := 1 FI;
+       IF !XF bit_and(DATETBL[49], "hex 0x10") = 0
+	 THEN !P ABEND("3503,DUMP" VAR r0, r1, r15, os);
+	      exit_flag := 1;
+	      SKIP
+	 ELSE r0 := 0;
+	      r1 := 0;
+	      r15 := 0;
+	      !P GET(DATETBL_DDNAME VAR os, r0, r1, r15, TBL);
+	      !P CLOSE(DATETBL_DDNAME VAR os);
+	      !P OPEN(MSSG_DDNAME, OUTPUT VAR os);
+	      IF !XF bit_and(MSSG[49], "hex 0x10") = 0
+		THEN cc := 0
+	      ELSIF !XF bit_and(MSSG[49], "hex 0x10") = "hex 0x10"
+		THEN cc := 3
+		ELSE cc := 1 FI;
+	      IF !XF bit_and(MSSG[49], "hex 0x10") = 0
+		THEN !P ABEND("3502,DUMP" VAR r0, r1, r15, os);
+		     exit_flag := 1;
+		     SKIP
+		ELSE RECORD := r10;
+		     HOLDBN := a[RECORD].RPC[1..3];
+		     RECTBLDS := r9;
+		     HOLDOD := a[RECTBLDS].RDEVICE;
+		     OUTPUT_[41..48] := "B       ";
+		     OUTPUT_[42..44] := HOLDBN;
+		     !P OPEN(BXXX, OUTPUT VAR os);
+		     IF !XF bit_and(OUTPUT_[49], "hex 0x10") = 0
+		       THEN cc := 0
+		     ELSIF !XF bit_and(OUTPUT_[49], "hex 0x10") = "hex 0x10"
+		       THEN cc := 3
+		       ELSE cc := 1 FI;
+		     IF !XF bit_and(OUTPUT_[49], "hex 0x10") = 0
+		       THEN !P ABEND("3504,DUMP" VAR r0, r1, r15, os);
+ exit_flag := 1;
+ SKIP
+		       ELSE LASTID := THISID;
+ HOLDGRP := a[RECTBLDS].RGRP;
+ r8 := 1242;
+ SAVER8 := NOTUSED_1242;
+ M := "-";
+ LINECT := 18;
+ cc := 2;
+ BATCOMN();
+ !P RDJFCB(OUTPUT VAR r15, os);
+ IF DSN.VOLSER[1] = "0"
+   THEN cc := 0
+ ELSIF DSN.VOLSER[1] < "0"
+   THEN cc := 1
+   ELSE cc := 2 FI;
+ IF DSN.VOLSER[1] <> "0"
+   THEN destination := r2; exit_flag := 0; SKIP
+   ELSE M[36..42] := "VOLSER=";
+	M[43..48] := DSN.VOLSER;
+	destination := r2;
+	exit_flag := 0;
+	SKIP FI FI FI FI FI
+
+ENDFILL));
+
+
+@Test_Trans(" 6th test of `Remove Dummy Loop'",
+	     (FILL Statements
+
+DO IF F_OPENS = 1
+     THEN destination := NOTUSED_172;
+	  r2 := NOTUSED_176;
+	  ADDRECID();
+	  r2 := NOTUSED_180;
+	  CHGBATCH();
+	  IF exit_flag = 1
+	    THEN exit_flag := 1; EXIT(1)
+	    ELSE r2 := NOTUSED_184;
+		 CHGGRP();
+		 r2 := NOTUSED_188;
+		 SPECHNDL();
+		 destination := NOTUSED_188 FI FI;
+   F_OPENS := 1;
+   !P OPEN(DATETBL_DDNAME, INPUT VAR os);
+   IF !XF bit_and(DATETBL[49], "hex 0x10") = 0
+     THEN cc := 0
+   ELSIF !XF bit_and(DATETBL[49], "hex 0x10") = "hex 0x10"
+     THEN cc := 3
+     ELSE cc := 1 FI;
+   IF !XF bit_and(DATETBL[49], "hex 0x10") = 0
+     THEN !P ABEND("3503,DUMP" VAR r0, r1, r15, os);
+	  exit_flag := 1;
+	  EXIT(1) FI;
+   r0 := 0;
+   r1 := 0;
+   r15 := 0;
+   !P GET(DATETBL_DDNAME VAR os, r0, r1, r15, TBL);
+   !P CLOSE(DATETBL_DDNAME VAR os);
+   !P OPEN(MSSG_DDNAME, OUTPUT VAR os);
+   IF !XF bit_and(MSSG[49], "hex 0x10") = 0
+     THEN cc := 0
+   ELSIF !XF bit_and(MSSG[49], "hex 0x10") = "hex 0x10"
+     THEN cc := 3
+     ELSE cc := 1 FI;
+   IF !XF bit_and(MSSG[49], "hex 0x10") = 0
+     THEN !P ABEND("3502,DUMP" VAR r0, r1, r15, os);
+	  exit_flag := 1;
+	  EXIT(1) FI;
+   RECORD := r10;
+   HOLDBN := a[RECORD].RPC[1..3];
+   RECTBLDS := r9;
+   HOLDOD := a[RECTBLDS].RDEVICE;
+   OUTPUT_[41..48] := "B       ";
+   OUTPUT_[42..44] := HOLDBN;
+   !P OPEN(BXXX, OUTPUT VAR os);
+   IF !XF bit_and(OUTPUT_[49], "hex 0x10") = 0
+     THEN cc := 0
+   ELSIF !XF bit_and(OUTPUT_[49], "hex 0x10") = "hex 0x10"
+     THEN cc := 3
+     ELSE cc := 1 FI;
+   IF !XF bit_and(OUTPUT_[49], "hex 0x10") = 0
+     THEN !P ABEND("3504,DUMP" VAR r0, r1, r15, os);
+	  exit_flag := 1;
+	  EXIT(1) FI;
+   LASTID := THISID;
+   HOLDGRP := a[RECTBLDS].RGRP;
+   r8 := 1242;
+   SAVER8 := NOTUSED_1242;
+   M := "-";
+   LINECT := 18;
+   cc := 2;
+   BATCOMN();
+   !P RDJFCB(OUTPUT VAR r15, os);
+   IF DSN.VOLSER[1] = "0"
+     THEN cc := 0
+   ELSIF DSN.VOLSER[1] < "0"
+     THEN cc := 1
+     ELSE cc := 2 FI;
+   IF DSN.VOLSER[1] <> "0"
+     THEN destination := r2; exit_flag := 0; EXIT(1) FI;
+   M[36..42] := "VOLSER=";
+   M[43..48] := DSN.VOLSER;
+   destination := r2;
+   exit_flag := 0;
+   EXIT(1) OD
+
+ENDFILL),
+	     <1>,
+	     TR_Remove_Dummy_Loop,
+	     < >,
+	     "Fail");
+
+
+@Test_Trans(" 7th test of `Remove Dummy Loop'",
+	     (FILL Statements
+
+DO IF x1 = 1 THEN EXIT(1) FI;
+   DO IF x2 = 1 THEN EXIT(1)
+      ELSIF x2 = 2 THEN y2 := y2 + 1
+      ELSIF x2 = 3 THEN y3 := y3 + 1 FI;
+      x1 := x1 + 1;
+      x2 := x2 + 1 OD;
+   x1 := x1 + 1;
+   EXIT(1) OD
+
+             ENDFILL),
+	     <1>,
+	     TR_Remove_Dummy_Loop,
+	     < >,
+	     (FILL Statements
+
+IF x1 = 1
+  THEN SKIP
+  ELSE DO IF x2 = 1
+            THEN EXIT(1)
+          ELSIF x2 = 2
+            THEN y2 := y2 + 1
+          ELSIF x2 = 3
+            THEN y3 := y3 + 1 FI;
+          x1 := x1 + 1;
+          x2 := x2 + 1 OD;
+       x1 := x1 + 1;
+       SKIP FI
+
+             ENDFILL));
+
+SKIP
+
+
+

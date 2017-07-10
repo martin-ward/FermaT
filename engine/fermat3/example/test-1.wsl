@@ -1,0 +1,1 @@
+IF x = 0 THEN SKIP ELSE y := 2 FI

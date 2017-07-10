@@ -1,0 +1,288 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+MW_PROC @Separate_Right_Test() ==
+  VAR < S := < >, F := 0, Count := 1, All_The_Same := 1, Type := @ST(@I),
+	OK := 0, Message := "" >:
+  IF Type IN <T_Cond, T_D_If> AND @Size(@I) <= Max_Cond_Size
+    THEN @Down_Last; @Down_Last; @Down_Last;
+	 C:" to last statement of last guarded ";
+	 S := @I;
+	 IF @Is_Improper? THEN F := 1 FI;
+	 @Up; @Up; C:" back to guarded ";
+	 DO IF @Left? THEN @Left ELSE EXIT(1) FI;
+	    @Down_Last; @Down_Last; C:" to last statement of guarded ";
+	    IF NOT @Equal?(@I, S)
+	      THEN All_The_Same := 0;
+		   IF NOT @Is_Improper?
+		     THEN IF F = 1
+			    THEN F := 0; S := @I 
+			    ELSE @Fail("Nothing to take out");
+			         @Up; @Up;
+				 EXIT(1) FI FI FI;
+	    @Up; @Up OD;
+         @Up;
+	 IF F = 1 AND All_The_Same = 0
+	   THEN @Fail("Not all the same") FI;
+	 IF (NOT @Failed?) AND @ST(S) <> T_Skip
+	   THEN @Pass
+	   ELSE @Fail("Nothing to take out") FI;
+         IF @Failed?
+	   THEN IF @Size(@I) = 2 AND @Equal?(@Last_Non_Comment(@Cs(@I^1^2)),
+	                                     @Last_Non_Comment(@Cs(@I^2^2)))
+                  THEN IF NOT EMPTY?(@Last_Non_Comment(@Cs(@I^1^2)))
+                         THEN @Pass FI FI FI
+
+  ELSIF Type = T_Where
+    THEN @Down; @Down_Last; C:" to last statement of body ";
+	 VAR < Calls := @Make_Set(MAP("HEAD", @Proc_Calls(@I))
+				      ++ MAP("HEAD", @Funct_Calls(@I))) >:
+	 @Up; @Up; @Down_Last; C:" to definitions ";
+	 IF EMPTY?(Calls /\ @Make_Set(MAP("@V1", @Cs(@I))))
+	   THEN @Pass
+	   ELSE @Fail("The statement uses procs or functs defined in the WHERE") FI ENDVAR
+
+  ELSIF Type = T_Var
+    THEN VAR < V := @Assigned(@I^1) >:
+	 @Down_Last; @Down_Last;
+	 C:" to last statement of body ";
+	 IF NOT EMPTY?(V /\ @Variables(@I))
+	   THEN @Fail("The statement uses the local variables")
+	 ELSIF NOT EMPTY?(@Stat_Types(@I) /\ @Make_Set(<T_MW_Proc_Call, T_Proc_Call>))
+	   THEN @Fail("Calls in the statement may use the local variables")
+	   ELSE @Pass FI ENDVAR
+
+  ELSIF Type IN <T_While, T_For>
+    THEN @Down_Last; @Down_Last;
+	 IF @Trans?(TR_Take_Out_Right)
+	   THEN @Pass
+	   ELSE @Fail("Cannot take anything out") FI
+
+  ELSIF Type = T_Floop
+    THEN @SR_Floop_Test(@AS_Type VAR OK, Message);
+	 IF OK = 1
+	   THEN @Pass 
+	   ELSE @Fail(Message) FI
+
+  ELSIF Type = T_Assignment AND @Size(@I) > 1
+    THEN @SR_Assignment_Test(VAR OK, Message);
+	 IF OK = 1
+	   THEN @Pass 
+	   ELSE @Fail(Message) FI
+
+    ELSE @Fail("Can't separate from this kind of statement") FI ENDVAR.;
+
+
+MW_PROC @SR_Floop_Test(ASType VAR OK, Message) ==
+  VAR < N := 0, T := 0, S := < >, S1 := < > >:
+  OK := 0;
+  Message :="Nothing to take out";
+  IF @Gen_TVs(@I, ASType) = <Omega>
+    THEN IF ASType = "Reg" AND LENGTH(@Calls(@I)) = 1
+	   THEN OK := 1
+	   ELSE Message := "Cannot take out of this loop" FI
+  ELSIF @Gen_TVs(@I, ASType) = < >
+    THEN Message :="Cannot take anything out of this loop"
+    ELSE OK := 1;
+	 WHILE T NOTIN @Gen_TVs(@I, ASType) DO T := T + 1 OD;
+	 ATEACH STS DO
+	   IF @Gen_TVs(@I, ASType) = <Depth + T>
+	     THEN N := N + 1;
+		  IF @Left?
+		    THEN @Left;
+			 IF NOT @Gen_Proper?(@I, ASType)
+			   THEN OK := 0
+			   ELSE S := @I FI;
+			 @Right
+		    ELSE OK := 0 FI;
+		 IF N > 1
+		   THEN IF NOT @Equal?(S, S1)
+			  THEN OK := 0 FI
+		 ELSIF EMPTY?(S)
+		   THEN OK := 0
+		   ELSE S1 := S FI FI OD;
+	 IF OK = 1 AND N <> 0
+	   THEN OK := 1
+	   ELSE OK := 0 FI FI ENDVAR .;
+
+
+MW_PROC @SR_Assignment_Test(VAR OK, Message) ==
+  VAR < vars := < >, last := LAST(@Cs(@I)),
+	first := BUTLAST(@Cs(@I)), assign := < > >:
+  FOR assign IN first DO
+    vars := @Elts_Assigned(assign) \/ vars OD;
+  IF @Elt_Clash_List?(vars, @Elts_Used(last))
+    THEN OK := 0;
+	 Message := "A variable used in the last assign is assigned to in the others"
+    ELSE OK := 1 FI ENDVAR .;
+
+
+MW_PROC @Separate_Right_Code(Data) ==
+  VAR < Orig_Pos := @Posn, Type := @ST(@I) >:
+  IF Type = T_Cond OR Type = T_D_If
+    THEN VAR < S := < >, F := 1, P := < >, OK := 1 >:
+	 C:" F = 1 if all branches end with the same statement.";
+	 C:" F = 0 implies all branches end with the same statement or with";
+	 C:"       an improper statement";
+	 @Down;
+         S := LAST(@Cs(@I^2));
+	 DO IF @Right? THEN @Right ELSE EXIT(1) FI;
+	    IF NOT @Equal?(S, LAST(@Cs(@I^2))) THEN F := 0; EXIT(1) FI OD;
+	 @To(1);
+         S := < >;
+	 DO @Down_Last; @Down_Last;
+	    IF (F = 1) OR NOT @Is_Improper?
+	      THEN IF EMPTY?(S)
+	             THEN S := @I
+                   ELSIF NOT @Equal?(S, @I)
+		     THEN OK := 0 FI FI;
+	    @Up; @Up;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+         @Up; C:" back to cond ";
+         IF OK = 1
+	   THEN @Paste_After(S);
+                FOR J := 1 TO @Size(@I) STEP 1 DO
+                  @Down_To(J); @Down_Last; @Down_Last;
+                  IF @Equal?(S, @I) THEN @Delete FI;
+                  @Up; @Up; @Up OD
+         ELSIF @Size(@I) = 2 AND @Equal?(@Last_Non_Comment(@Cs(@I^1^2)),
+	                                 @Last_Non_Comment(@Cs(@I^2^2)))
+           THEN VAR < save := < > >:
+	        @Down; @Down_Last; @Down_Last;
+	        WHILE @ST(@I) = T_Comment DO @Left OD;
+		S := @I;
+		@Delete;
+		@Up; @Up;
+		@Right; C:" to second guarded ";
+		@Down_Last; @Down_Last;
+	        WHILE @ST(@I) = T_Comment DO @Left OD;
+		@Delete;
+		@Up; @Up; @Up; C:" back to cond ";
+		@Splice_After(<S> ++ save) ENDVAR
+           ELSE ERROR("BUG in @Separate_Right_Code!") FI;
+	 IF Type = T_Cond THEN @Fix_Cond ELSE @Fix_Dijkstra FI;
+	 IF @Right?
+	   THEN @Right;
+		IF @ST(@I) = T_Skip THEN @Delete FI FI ENDVAR; 
+	 @Goto(Orig_Pos)
+
+  ELSIF Type = T_Where
+    THEN @Down; @Down_Last;
+	 S := @I;
+	 @Up; @Up;
+	 @Paste_After(S); @Goto(@Posn);
+	 @Down; @Down_Last;
+	 @Delete; @Fixup;
+	 @Goto(Orig_Pos)
+
+  ELSIF Type IN <T_While, T_For, T_Var>
+    THEN @Down_Last; @Down_Last;
+	 S := @I;
+	 @Up; @Up;
+	 @Paste_After(S); @Goto(@Posn); 
+	 @Down_Last; @Down_Last; @Delete; @Fixup; 
+	 @Goto(Orig_Pos)
+
+  ELSIF Type = T_Floop
+    THEN @SR_Floop(@AS_Type)
+
+  ELSIF Type = T_Assignment
+    THEN @Down_Last; @Cut; @Up;
+	 @Paste_After(@Make(T_Assignment, < >, <@Buffer>)) FI;
+
+  IF @Trans?(TR_Separate_Right)
+    THEN @Trans(TR_Separate_Right, < >) FI ENDVAR .;
+
+
+MW_PROC @SR_Floop(ASType) ==
+  VAR < S := < >, T := 0, P := @Posn, PP := < >, D := 0,
+	Take_Out := < >, S1 := < >, tail := < >, taken := 0 >:
+  IF @Gen_TVs(@I, ASType) = <Omega>
+    THEN FOREACH Statement DO
+	   IF @ST(@I) = T_Call
+	     THEN S := @I;
+		  @Paste_Over(@Make(T_Exit, Depth, < >)) FI OD;
+	 @Paste_After(S); @Goto(P)
+    ELSE C:" If all the exits have TV at least T, then take out ";
+	 C:" the statements with TV = T ";
+	 WHILE T NOTIN @Gen_TVs(@I, ASType) DO T := T + 1 OD;
+	 @Edit; C:"We want to get the _relative_ positions of the STS's";
+	 ATEACH STS DO  
+	   IF @Gen_TVs(@I, ASType) = <Depth + T>
+	     THEN PP := <<@Posn, Depth>> ++ PP;
+		  C:" ensure that the EXIT is at the end of the sequence: ";
+		  IF @Right? THEN @Delete_Rest FI;
+		  C:" Put proper statements into the tail ";
+		  tail := < >;
+		  DO IF @Left? THEN @Left ELSE EXIT(1) FI;
+		     IF NOT @Gen_Proper?(@I, ASType) THEN EXIT(1) FI;
+		     tail := <@I> ++ tail OD;
+		  WHILE @Right? DO @Right OD;
+		  IF EMPTY?(Take_Out)
+		    THEN Take_Out := tail
+		    ELSE Take_Out := @LC_Suffix(Take_Out, tail) FI FI OD;
+	 PP := REVERSE(PP);
+	 @End_Edit;
+	 taken := LENGTH(Take_Out);
+	 IF T > 0 THEN Take_Out := Take_Out ++ <@Make(T_Exit, T, < >)> FI;
+	 @Splice_After(Take_Out);
+	 @Goto(P);
+
+	 @Edit;
+	 WHILE NOT EMPTY?(PP) DO
+	   @Goto(PP[1][1]);
+	   @Up;
+	   S1 := @Cs(@I);
+	   C:" Chop off the EXIT and Take_Out statements in @I ";
+	   C:" and replace them with a new EXIT statement ";
+
+	   @Paste_Over(@Make(T_Statements, < >,
+			     S1[1..@Size(@I) - taken - 1]
+			       ++ <@Make(T_Exit, PP[1][2], < >)>));
+	   PP := TAIL(PP) OD;
+	 @End_Edit FI ENDVAR .;
+
+
+C:" A function which returns the largest common suffix of ";
+C:" the two given lists of items: ";
+
+MW_FUNCT @LC_Suffix(L1, L2) ==
+  VAR < R := < > >:
+  L1 := REVERSE(L1); L2 := REVERSE(L2);
+  WHILE NOT EMPTY?(L1) AND NOT EMPTY?(L2) AND @Equal?(HEAD(L1), HEAD(L2)) DO
+    R := <HEAD(L1)> ++ R;
+    L1 := TAIL(L1); L2 := TAIL(L2) OD;
+  (R) .;
+
+
+C:" Return the last non-comment statement in the given list ";
+
+MW_FUNCT @Last_Non_Comment(L) == 
+  VAR < R := < >, L1 := REVERSE(L) >:
+  WHILE NOT EMPTY?(L1) AND @ST(HEAD(L1)) = T_Comment DO
+    L1 := TAIL(L1) OD;
+  IF NOT EMPTY?(L1)
+    THEN R := HEAD(L1) FI;
+  (R) .;
+
+
+SKIP

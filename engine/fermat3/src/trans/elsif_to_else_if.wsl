@@ -1,0 +1,48 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+ 
+
+MW_PROC @Elsif_To_Else_If_Test () ==
+  IF @ST(@I) = T_Cond AND @Size(@I) > 2 OR
+       @GT(@I) = T_Guarded AND @Left? AND @Right?
+    THEN @Pass
+    ELSE @Fail("The selected item is not, or does not contain, an `Elsif' clause.") FI .;
+
+
+MW_PROC @Elsif_To_Else_If_Code (Data) ==
+  VAR < C := 0, B := < >, S := < > >:
+  C:" C records whether the cond itself was originally selected ";
+  IF @ST(@I) = T_Cond THEN C := 1; @Down; @Right FI;
+  B := @I^1; S := @Cs(@I^2);
+  @Cut_Rest;
+  @Paste_Over(FILL Guarded TRUE -> IF ~?B THEN ~*S FI ENDFILL);
+  @Down_Last;
+  @Down;
+  @Down_Last; C:" to the TRUE THEN SKIP guarded clause ";
+  @Splice_Over(@Buffer);
+  @Up; @Up; @Up; C:" back to Guarded ";
+  IF C = 1 THEN @Up FI ENDVAR .;
+
+
+SKIP
+
+
+

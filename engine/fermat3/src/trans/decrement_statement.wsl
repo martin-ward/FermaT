@@ -1,0 +1,52 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" If the item can be decremented and the decremented item can be incremented ";
+C:" then the transformation is OK ";
+
+MW_PROC @Decrement_Statement_Test() ==
+  IF @GT(@I) <> T_Statement
+    THEN @Fail("Current item is not a statement")
+  ELSIF NOT @Up?
+    THEN @Fail("Statement is not in an enclosing loop")
+  ELSIF NOT @Is_Improper?
+    THEN @Fail("Statement cannot be decremented")
+    ELSE VAR < orig := @I >:
+         C:" Note: a decrement of a single statement is always a single statement ";
+         @Splice_Over(@Increment(@I, @AS_Type, -1, 0));
+	 IF @Trans?(TR_Increment_Statement)
+	   THEN @Pass
+	   ELSE @Fail(@Fail_Message) FI;
+         @Paste_Over(orig) ENDVAR FI .;
+
+
+MW_PROC @Decrement_Statement_Code(Data) ==
+  @Splice_Over(@Increment(@I, @AS_Type, -1, 0)) .;
+
+
+
+SKIP
+
+
+
+
+
+

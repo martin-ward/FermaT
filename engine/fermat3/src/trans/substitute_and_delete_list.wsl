@@ -1,0 +1,40 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Substitute_And_Delete_List_Test () ==
+  IF (@Spec_Type(@Item) = T_Action)
+    THEN @Pass
+    ELSE @Fail("Selected item is not an Action.") FI .;
+
+
+
+MW_PROC @Substitute_And_Delete_List_Code (Data) ==
+	VAR
+	    <Orig_Pos:=@Posn, as:=< >, span:=@Span, n:=LAST (@Posn)> :
+	    @Up;
+	    @Up;
+	    as:=@Posn;
+	    FOR i:=span TO 0 STEP (-1) DO
+		@Goto (as);@Down_Last;
+		@Down_To ((n+i));
+		PRINT("Testing action ",@V(@Item^1));
+		IF ((@Call_Freq (@V(@Item^1), @Get (@Program, as))=1) AND @Trans? (TR_Substitute_And_Delete))
+		   THEN PRINT("Deleting ",@V(@Item^1)); @Trans (TR_Substitute_And_Delete, "") FI OD ENDVAR.

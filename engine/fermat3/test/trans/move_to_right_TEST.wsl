@@ -1,0 +1,341 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Move To Right'",
+	    (FILL Statements SKIP; X := 1 ENDFILL),
+	    <2>,
+	    TR_Move_To_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 2nd test of `Move To Right'",
+	    (FILL Statements SKIP; X := 1 ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements X := 1; SKIP ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Move To Right'",
+	    (FILL Statements A := B + C;
+			     IF B = 4 THEN X := 1 ELSE Y := 2 FI ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements IF B = 4 THEN X := 1 ELSE Y := 2 FI;
+			     A := B + C ENDFILL));
+
+
+@Test_Trans(" 4th test of `Move To Right'",
+	    (FILL Statements IF B = 4 THEN !XP funny () FI;
+			     IF B = 4 THEN X := 1 ELSE Y := 2 FI ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 5th test of `Move To Right'",
+	    (FILL Statements B := X;
+			     IF B = 4 THEN X := 1 ELSE Y := 2 FI ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 6th test of `Move To Right'",
+	    (FILL Statements <A := 1, B := 0>;
+			     IF B = 4 THEN X := A + 2 ELSE Y := 2 FI ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements IF FALSE THEN X := 3 ELSE Y := 2 FI;
+			     <A := 1, B := 0> ENDFILL));
+
+
+@Test_Trans(" 7th test of `Move To Right'",
+	    (FILL Statements <A := 1, B := 0>;
+			     VAR <A := 9, X := A> :
+				 J := A + B + X ENDVAR ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements VAR <A := 9, X := 1> :
+				 J := A + X ENDVAR;
+			     <A := 1, B := 0> ENDFILL));
+
+
+@Test_Trans(" 8th test of `Move To Right'",
+	    (FILL Statements <A := 1, B := 0> ENDFILL),
+	    <1, 1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements <B := 0, A := 1> ENDFILL));
+
+
+@Test_Trans(" 9th test of `Move To Right'",
+	    (FILL Statements A := P + Q + R ENDFILL),
+	    <1, 1, 2, 2>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements A := P + R + Q ENDFILL));
+
+
+@Test_Trans("10th test of `Move To Right'",
+	    (FILL Statements {(A=1) AND (B=2) AND (C<3)} ENDFILL),
+	    <1, 1, 2>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements {(A=1) AND (C<3) AND (B=2)} ENDFILL));
+
+
+@Test_Trans("11th test of `Move To Right'",
+	    (FILL Statements IF A = 1
+				THEN CALL P
+			     ELSIF B > 20
+				THEN CALL QQ
+			     ELSIF B > 2
+				THEN CALL RRR
+				ELSE CALL Z FI ENDFILL),
+	    <1, 2>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements IF A = 1
+				THEN CALL P
+			     ELSIF (B > 2) AND (B <= 20)
+				THEN CALL RRR
+			     ELSIF B > 20
+				THEN CALL QQ
+				ELSE CALL Z FI ENDFILL));
+
+
+@Test_Trans("12th test of `Move To Right'",
+	    (FILL Statements IF A = 1
+				THEN CALL P
+			     ELSIF B > 20
+				THEN CALL QQ
+			     ELSIF B > 2
+				THEN CALL RRR
+				ELSE CALL Z FI ENDFILL),
+	    <1, 3>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements IF A = 1
+				THEN CALL P
+			     ELSIF B > 20
+				THEN CALL QQ
+			     ELSIF B <= 2
+				THEN CALL Z
+				ELSE CALL RRR FI ENDFILL));
+
+
+@Test_Trans("13th test of `Move To Right'",
+	    (FILL Statements D_IF A = 1  -> CALL P
+			       [] B > 20 -> CALL QQ
+			       [] B > 2  -> CALL RRR FI ENDFILL),
+	    <1, 2>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements D_IF A = 1  -> CALL P
+			       [] B > 2  -> CALL RRR
+			       [] B > 20 -> CALL QQ FI ENDFILL));
+
+
+@Test_Trans("14th test of `Move To Right'",
+	    (FILL Statements X := 1; EXIT(1) ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("15th test of `Move To Right'",
+	    (FILL Statements X := 1; SKIP ENDFILL),
+	    <1, 1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements SKIP; X := 1 ENDFILL));
+
+@Test_Trans("16th test of `Move To Right'",
+	    (FILL Statements VAR <B:=1>: 
+			     <A := 1, B := 0>;
+			     IF B = 4 THEN X := A + 2 ELSE Y := 2 FI ENDVAR ENDFILL),
+	    <1,2,1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements VAR <B:=1>:
+			      IF FALSE THEN X := 3 ELSE Y := 2 FI ;
+			      <A := 1, B := 0> ENDVAR ENDFILL));
+
+
+@Test_Trans("17th test of `Move To Right'",
+	    (FILL Statements X := 1; !P proc1(X VAR Y, Z)  ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements !P proc1(1 VAR Y, Z); X := 1 ENDFILL));
+
+@Test_Trans("18th test of `Move To Right'",
+	    (FILL Statements X := 1; !P proc1(Y VAR X, Z)  ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    "Fail");
+
+@Test_Trans("19th test of `Move To Right'",
+	    (FILL Statements {X = 1}; !P proc1(Y VAR X, Z)  ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    "Fail");
+
+@Test_Trans("20th test of `Move To Right'",
+	    (FILL Statements {X = 1}; !P proc1(X VAR Y, Z)  ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements !P proc1(X VAR Y, Z); {X=1} ENDFILL));
+
+ 
+@Test_Trans("21st test of `Move To Right'",
+	    (FILL Statements X:=1; Y:=Y+2  ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements Y:=Y+2; X:=1 ENDFILL));
+
+
+@Test_Trans("22nd test of `Move To Right'",
+	    (FILL Statements X := 1; Y := X + 2  ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements Y := 3; X := 1 ENDFILL));
+
+@Test_Trans("23rd test of `Move To Right'",
+	    (FILL Statements X:=Y+1; Y:=X*2  ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements Y:= 2*(Y+1); X:=Y/2 ENDFILL));
+
+@Test_Trans("24th test of `Move To Right'",
+	    (FILL Statements X:=Y+1; Y:=Y+2  ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements  Y:=Y+2; X:=Y-1  ENDFILL));
+
+
+@Test_Trans("25th test of `Move To Right'",
+	    (FILL Statements {X=Y}; <X:=X+1, Y:=Y+2>  ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements <X:=X+1, Y:=Y+2>; {X-1 = Y-2}  ENDFILL));
+
+
+@Test_Trans("26th test of `Move To Right'",            
+	    (FILL Statements A := A + 1; {X<100};
+			     !P proc1(C VAR D, A);
+			     X := X - 2 ENDFILL),
+	    <2>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements A := A + 1; 
+			     !P proc1(C VAR D, A); {X<100};
+			     X := X - 2 ENDFILL));
+
+@Test_Trans("27th test of `Move To Right'",            
+	    (FILL Statements A := A + 1; 
+			     !P proc1(C VAR D, A); {X<100};
+			     X := X - 2 ENDFILL),
+	    <3>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements A := A + 1; 
+			     !P proc1(C VAR D, A);
+			     X := X - 2; {X+2<100} ENDFILL));
+
+@Test_Trans("28th test of `Move To Right'",            
+	    (FILL Statements A := (-1) + X; 
+			     X := A - 2 ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements  X := X - 3; 
+			      A := X+2  ENDFILL));
+
+@Test_Trans("29th test of `Move To Right'",            
+	    (FILL Statements A := A + 1; 
+			     !P proc1(X, Y VAR Z);
+			     X := X - 2 ENDFILL),
+	    <2>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements A := A + 1; 
+			     X := X - 2;
+			     !P proc1(X+2, Y VAR Z)  ENDFILL));
+
+
+@Test_Trans("30th test of `Move To Right'",            
+	    (FILL Statements A := A + 1; 
+			     !P proc1(X, Y VAR Z);
+			     <X := X - 2, Z := 2> ENDFILL),
+	    <2>,
+	    TR_Move_To_Right,
+	    < >,
+	    "Fail");
+
+@Test_Trans("31st test of `Move To Right'",            
+	    (FILL Statements IF (A = 1) THEN C := A + 1; B := 2
+			     ELSE B := 3; C := A + 4 FI;
+			     A := A + 1 ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements A := A + 1;
+			     IF A = 2 THEN C := A; B := 2
+			     ELSE B := 3; C := A + 3 FI ENDFILL));
+
+
+@Test_Trans("32nd test of `Move To Right'",            
+	    (FILL Statements IF (A = 1) THEN C := A + 1; B := 2
+			     ELSE B := 3; A := A + 4 FI;
+			     A := A + 1 ENDFILL),
+	    <1>,
+	    TR_Move_To_Right,
+	    < >,
+	    "Fail");
+
+@Test_Trans("33rd test of `Move To Right'",            
+	    (FILL Statements IF NOT !XC foo(os)
+			       THEN IF y = 0 THEN x := 1 ELSE x := 2 FI
+			       ELSE x := 3 FI ENDFILL),
+	    <1, 1>,
+	    TR_Move_To_Right,
+	    < >,
+	    (FILL Statements IF !XC foo(os)
+			       THEN x := 3
+			       ELSE IF y = 0 THEN x := 1 ELSE x := 2 FI FI ENDFILL));
+
+SKIP

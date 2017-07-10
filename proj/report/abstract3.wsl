@@ -1,0 +1,17 @@
+VAR < i := 0, changed := 0 >:
+ !P write("Management Report... " VAR );
+ i := 1;
+ WHILE i <= LENGTH(records) DO
+   total := records[i].number;
+   i := (i + 1);
+   WHILE records[(i - 1)].name = records[i].name AND i <= LENGTH(records) DO
+      total := (total + records[i].number);
+      i := (i + 1)
+   OD;
+   IF total <> 0 THEN
+      !P write(records[(i - 1)].name,total VAR );
+      changed := (changed + 1)
+   FI
+ OD;
+ !P write("Changed items:",changed VAR )
+ENDVAR

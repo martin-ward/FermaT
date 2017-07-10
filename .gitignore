@@ -1,0 +1,24 @@
+# This file tells git which files to ignore.
+# Ignore any scmfmt file:
+scmfmt*
+
+# These are generated files
+ALL.scm
+ALL.c
+ALL.h
+
+# scx files are expanded from scm files:
+*.scx
+*.scx.c
+*.scx.h
+
+# Ignore objects:
+*.o
+
+# Ignore backup files
+*~
+*+
+
+# Ignore test file
+.last_run
+

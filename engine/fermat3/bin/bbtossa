@@ -1,0 +1,117 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+# bbtossa [input] [output]
+# Compute phi placement for a CFG in basic block list format
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/\"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+use Blocks;
+use SSA;
+use Control_Dep;
+use VCG;
+use warnings;
+use strict;
+
+$| = 1;
+
+# Structures with more than this many fields will not be expanded
+# (This is to reduce the size of df files):
+$::S_Max_Fields_Expanded = 10;
+
+read_options();
+
+my ($myname, $Usage, @succslist, $num);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [input] [output]\n";
+
+my ($input, $output);
+
+# Check zero to two arguments:
+shift while (@ARGV && ($ARGV[0] =~ /^-/));
+if (@ARGV == 2) {
+  ($input, $output) = @ARGV;
+} elsif (@ARGV == 1) {
+  $input = $ARGV[0];
+  $output = $input;
+  $output .= ".ssa" unless ($output =~ s/\.bb/\.ssa/);
+} elsif (@ARGV == 0) {
+  ($input, $output) = ("-", "-");
+} else {
+  die $Usage;
+}
+
+my ($bb, $start, $end, $cpu);
+
+($bb, $start, $end) = bb_read($input);
+
+delete_unreachable($bb, $start, "succs");
+calculate_reverse($bb, "succs", "preds");
+delete_unreachable($bb, $end,   "preds");
+
+$cpu = cpu();
+
+# SSA preprocessing:
+my @registers = qw(ax bx cx dx sp bp si di cs ds ss es _tmp_);
+my %regs = ();
+for (@registers) { $regs{$_}++ };
+register_preprocess($bb, \%regs);
+byte_preprocess($bb);
+
+my $base;
+($base = $input) =~ s/\.[^.]*$//;
+if (-f "$base.da1") {
+  struct_preprocess($bb, "$base.da1", $::S_Max_Fields_Expanded);
+} else {
+  struct_preprocess($bb, "", $::S_Max_Fields_Expanded);
+}
+
+build_adt($bb, $start, 1);
+
+my ($A, $E, $edge_index);
+if (grep { /^PROC / } map { $_->{type} } @$bb) {
+  # Compute control dependencies:
+  ($A, $E, $edge_index) = construct_roman_chariots($bb, $end);
+  conds_preprocessing($bb, $end, $A, 1);
+  cdequiv_preprocessing($bb, $end, $A);
+  compute_conds($bb, $A, $E);
+  calculate_proc_summaries($bb, $start, $end, 1);
+}
+
+calculate_SSA($bb, $start);
+
+bb_write($bb, $output);
+
+
+
+exit(0);
+
+
+sub cpu {
+  my ($user,$system,$cuser,$csystem) = times;
+  return($user + $system + $cuser + $csystem);
+}
+

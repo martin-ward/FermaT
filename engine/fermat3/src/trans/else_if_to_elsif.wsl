@@ -1,0 +1,64 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+ 
+
+MW_PROC @Else_If_To_Elsif_Test () ==
+  IF @ST(@I) = T_Cond THEN @Down_Last FI;
+  IF @GT(@I) = T_Guarded AND NOT @Right?
+    THEN @Down_Last; @Down; C:" to first statement in ELSE clause ";
+	 VAR < n := 0 >:
+	 DO IF @ST(@I) = T_Cond
+	      THEN n := n + 1;
+		   IF n > 1
+		     THEN @Fail("The ELSE clause has more than one IF statement.");
+			  EXIT(1) FI
+	    ELSIF @ST(@I) = T_Comment
+	      THEN SKIP
+	      ELSE @Fail("The ELSE clause contains something other than an IF statement.");
+		   EXIT(1) FI;
+	    IF @Right?
+	      THEN @Right
+	    ELSIF n = 0
+	      THEN @Fail("The ELSE clause doesn't have an IF statement."); EXIT(1)
+	      ELSE @Pass; EXIT(1) FI OD ENDVAR
+    ELSE @Fail("The selected item is not an ELSE clause or IF statement.") FI .;
+
+
+MW_PROC @Else_If_To_Elsif_Code (Data) ==
+  VAR < up := 0, comments := < >, S := < > >:
+  IF @ST(@I) = T_Cond THEN up := 1; @Down_Last FI;
+  @Down_Last; @Down; C:" to first statement in ELSE clause ";
+  DO IF @ST(@I) = T_Comment
+       THEN comments := <@I> ++ comments
+       ELSE S := @I FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up; @Up; C:" back to ELSE clause ";
+  @Splice_Over(@Cs(S));
+  @Down_Last; @Down;
+  @Splice_Before(REVERSE(comments));
+  @Up; @Up;
+  IF up = 1 THEN @Up FI ENDVAR .;
+	   
+       
+SKIP
+
+

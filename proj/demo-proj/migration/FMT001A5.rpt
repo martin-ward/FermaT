@@ -1,0 +1,42 @@
+WSL to C Migration Report: FMT001A5
+===================================
+
+
+Dead Code Candidates:
+
+Memory Overflows:
+
+CSECT:
+a
+
+Function Size, IF nesting depth and largest expression and condition size:
+
+DSECTs Referenced:
+WDS1
+
+DSECTs Updated:
+MODSTORE, WDS2
+
+Variables Referenced:
+
+DSECT WDS1:
+WDS1F1, WDS1F1, WDS1F2, WDS1F3, WDS1F4
+
+CSECT:
+NOT_USED, WTAB1, __r1_init__, a, os, r0, r1, r11, r5, r6, regs, result_code,
+v_fmt113, v_fmt114, v_fmt115
+
+Variables Updated:
+
+DSECT MODSTORE:
+AMOD113, AMOD114, AMOD115
+
+DSECT WDS2:
+WDS2F1, WDS2F2, WDS2F3, WDS2F4
+
+CSECT:
+WDS1, WREC2, os, r0, r1, r11, r15, r5, r6, regs, result_code
+
+EXecute statements and their targets:
+
+Dead Code Candidate Line Numbers:

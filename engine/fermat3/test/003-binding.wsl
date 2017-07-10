@@ -1,0 +1,57 @@
+
+MW_PROC @FOO(x, y VAR z) ==
+  VAR < a := 4 >:
+  PRINT("FOO local  a = ", a);
+  PRINT("FOO param  x = ", x);
+  PRINT("FOO global b = ", b);
+  PRINT("FOO global p = ", p);
+  r := r ++ <a, x, p, b>;
+  z := 5 ENDVAR .;
+
+MW_FUNCT @BAR(p, q) ==
+  VAR < a := 5 >:
+  PRINT("BAR local  a = ", a);
+  PRINT("BAR param  p = ", p);
+  PRINT("BAR global b = ", b);
+  r := r ++ <a, p, b>;
+  VAR < b := 7 >:
+    @FOO(a, 8 VAR q);
+    PRINT("BAR after FOO, q = ", q) ENDVAR;
+  (a) .;
+
+
+VAR < file := "003-binding: ", fail := < >, n := "", r := < >, b := 0, p := 0 >:
+
+PRINT("Testing Dynamic binding...");
+
+n := "001";
+
+b := 99;
+p := 98;
+
+VAR < a := 1, b := 2 >:
+PRINT("1 outer a = ", a);
+PRINT("1 outer b = ", b);
+r := r ++ <a, b>;
+@FOO(a, 3 VAR b);
+z := @BAR(a, 6);
+PRINT("result from BAR = ", z);
+PRINT("2 outer a = ", a);
+PRINT("2 outer b = ", b);
+r := r ++ <z, a, b>;
+SKIP ENDVAR;
+
+IF r = <1, 2, 4, 1, 98, 2, 5, 1, 5, 4, 5, 1, 7, 5, 1, 5>
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+

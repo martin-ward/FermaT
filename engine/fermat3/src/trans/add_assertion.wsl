@@ -1,0 +1,108 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Add_Assertion_Test() ==
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF @ST(@I) = T_Assignment
+    THEN C: "We can add an assertion after an assignment ";
+         C:" which assigns to some new variables.";
+         IF NOT EMPTY?(@Assigned(@I) \ @Used(@I))
+            THEN @Pass
+            ELSE @Fail("The assignment should assign to new variables.") FI
+  ELSIF @ST(@I) = T_Cond
+    THEN C: "We can add an assertion after an `If' statement if the guards of the";
+         C: "latter either end with assertions or do not terminate (are improper).";
+         VAR < Found := 0 >:
+         @Down;
+         DO IF NOT @Is_Improper?
+               THEN @Down_Last; @Down_Last;
+                    IF @ST(@I) = T_Assert THEN Found := 1 ELSE Found := 2 FI;
+                    @Up; @Up FI;
+            IF Found = 2 THEN EXIT(1) FI;
+            IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+         @Up;
+         IF Found = 1
+            THEN @Pass
+            ELSE @Fail("No reachable assertion in the `IF' statement.") FI ENDVAR
+  ELSIF @ST(@I) IN <T_Assert, T_While, T_Abort>
+    THEN @Pass
+  ELSIF @GT(@I) = T_Condition
+    THEN IF @ST(@Parent) IN <T_Assert, T_Guarded, T_While> AND
+              @ST(@I) <> T_True AND @ST(@I) <> T_False
+           THEN @Pass
+           ELSE @Fail("Condition is not in a guard or `While' loop.") FI
+  ELSIF @GT(@I) = T_Statement AND 0 NOTIN @TVs
+    THEN @Pass
+    ELSE @Fail("Cannot add an assertion after the selected type of item.") FI .;
+
+
+MW_PROC @Add_Assertion_Code(Data) ==
+  IF (@GT(@I) = T_Assign) AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  VAR < A := < >, B := < >, C := < >, S := < >, Assd_Vars := @Assigned(@I)> :
+  IF @ST(@I) = T_Assignment
+    THEN @Down;
+         A := @Make(T_True, < >, < >);
+         DO IFMATCH Assign ~?V := ~?E
+               THEN IF EMPTY?(@Used(@I) /\ Assd_Vars)
+                       THEN A := @And(A, (FILL Condition ~?V = ~?E
+                                          ENDFILL)) FI ENDMATCH;
+            IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+         @Up;
+         @Paste_After(FILL Statement {~?A} ENDFILL);
+         @Right
+  ELSIF @ST(@I) = T_Cond
+    THEN @Down;
+         A := @Make(T_False, < >, < >);
+         DO IF NOT @Is_Improper?
+               THEN IFMATCH Guarded ~?B -> ~*S; {~?C}
+                      THEN A := @Or(A, C) ENDMATCH FI;
+            IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+         @Up;
+         @Paste_After(FILL Statement {~?A} ENDFILL);
+         @Right
+  ELSIF @ST(@I) = T_While
+    THEN @Down;
+         A := @Not(@I);
+         @Up;
+         @Paste_After(FILL Statement {~?A} ENDFILL);
+         @Right
+  ELSIF @ST(@I) = T_Assert
+    THEN @Paste_After(@I); @Right
+  ELSIF @ST(@I) = T_Abort
+    THEN @Paste_After(FILL Statement {FALSE} ENDFILL); @Right
+  ELSIF (@GT(@I) = T_Condition) AND (@ST(@I) <> T_True) AND (@ST(@I) <> T_False)
+    THEN A := @I;
+         @Up;
+         IF @ST(@I) = T_Assert
+            THEN @Paste_After(FILL Statement {~?A} ENDFILL);
+                 @Right
+            ELSE @Down_Last;
+                 @Down;
+                 @Paste_Before(FILL Statement {~?A} ENDFILL) FI
+   ELSIF @GT(@I) = T_Statement AND 0 NOTIN @TVs
+     THEN B := @Make(T_False, < >, < >);
+          @Paste_After(FILL Statement {~?B} ENDFILL);
+          @Right FI ENDVAR .
+
+
+
+
+

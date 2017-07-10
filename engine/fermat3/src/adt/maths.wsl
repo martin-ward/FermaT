@@ -1,0 +1,1878 @@
+
+C: " This file contains the functions which perform symbolic mathematics. ";
+
+
+C:" Initialise local data for the simplifier: ";
+C:" NB for efficiency, call this once at the first call to the simplifier. ";
+
+Mth_True  := @Make(T_True, < >, < >);
+Mth_False := @Make(T_False, < >, < >);
+Mth_0     := @Make(T_Number, 0, < >);
+Mth_1     := @Make(T_Number, 1, < >);
+Mth_m1    := @Make(T_Number, -1, < >);
+Mth_Empty := @Make(T_Sequence, < >, < >);
+
+Qry_Simple := @Make_Name("Qry_Simple");
+
+MW_PROC @Mth_Init() ==
+
+  C:" Commutative operators ";
+  Comm_Ops := <T_Plus, T_Times, T_Union, T_Intersection,
+	       T_Equal, T_Not_Equal, T_And, T_Or, T_Max, T_Min>;
+
+  C:" Reversable operators relations ";
+  Reverse_Op := ARRAY(1999, 0);
+  FOR op IN Comm_Ops DO
+    Reverse_Op[op] := op OD;
+  Reverse_Op[T_Less] 	   := T_Greater;
+  Reverse_Op[T_Greater]    := T_Less;
+  Reverse_Op[T_Less_Eq]    := T_Greater_Eq;
+  Reverse_Op[T_Greater_Eq] := T_Less_Eq;
+
+  C:" Negated versions of the relations: ";
+  Inverse_Op := ARRAY(1999, 0);
+  Inverse_Op[T_Less] 	   := T_Greater_Eq;
+  Inverse_Op[T_Greater]    := T_Less_Eq;
+  Inverse_Op[T_Less_Eq]    := T_Greater;
+  Inverse_Op[T_Greater_Eq] := T_Less;
+  Inverse_Op[T_Equal]      := T_Not_Equal;
+  Inverse_Op[T_Not_Equal]  := T_Equal;
+
+  C:" De Morgan's Laws: ";
+  Inverse_Op[T_And]        := T_Or;
+  Inverse_Op[T_Or]         := T_And;
+
+  C:" Other inverses: ";
+  Inverse_Op[T_Odd]  := T_Even;
+  Inverse_Op[T_Even]  := T_Odd;
+  Inverse_Op[T_In]  := T_Not_In;
+  Inverse_Op[T_Not_In]  := T_In;
+
+  C:" Gen eval ops (type 1) can have any constant arguments ";
+  C:" Num eval ops (type 2) must have numeric arguments ";
+
+  Eval_Ops_Gen := <T_And, T_Or, T_Not, T_Subset, T_Member, T_Equal,
+		   T_Not_Equal, T_If, T_Intersection, T_Union, T_Set_Diff,
+		   T_Length, T_Reverse, T_Concat, T_Sequenceq, T_Numberq,
+		   T_Stringq, T_Implies, T_In, T_Not_In, T_X_Funct_Call,
+		   T_Slength, T_Length, T_Forall, T_Exists,
+                   T_Less, T_Less_Eq, T_Greater, T_Greater_Eq,
+		   T_Index, T_Substr, T_Head, T_Tail,
+		   T_MW_Funct_Call>;
+
+  Eval_Ops_Num := <T_Even, T_Odd, T_Abs, T_Sgn, T_Int, T_Frac,
+		   T_Max, T_Min, T_Exponent, T_Times, T_Divide, T_Plus, T_Div, T_Mod,
+		   T_Negate, T_Invert, T_Minus>;
+
+  Eval_Op := ARRAY(1999, 0);
+  FOR op IN Eval_Ops_Gen DO
+    Eval_Op[op] := 1 OD;
+  FOR op IN Eval_Ops_Num DO
+    Eval_Op[op] := 2 OD;
+
+  Idempotent_Ops := <T_Union, T_Intersection, T_And, T_Or, T_Max, T_Min>;
+  Power_Op := ARRAY(1999, 0);
+  FOR op IN Idempotent_Ops DO
+    Power_Op[op] := op OD;
+  Power_Op[T_Plus] := T_Times;
+  Power_Op[T_Times] := T_Exponent;
+
+  Identity_Value := ARRAY(1999, < >);
+  Identity_Value[T_Plus] := Mth_0;
+  Identity_Value[T_Times] := Mth_1;
+  Identity_Value[T_Union] := Mth_Empty;
+  Identity_Value[T_And] := Mth_True;
+  Identity_Value[T_Or] := Mth_False;
+
+  Zero_Value := ARRAY(1999, < >);
+  Zero_Value[T_Times] := Mth_0;
+  Zero_Value[T_Intersection] := Mth_Empty;
+  Zero_Value[T_And] := Mth_False;
+  Zero_Value[T_Or] := Mth_True;
+
+  C:" Operator ordering (for sorting components of commutative operators): ";
+  Mth_Ord := ARRAY(1999, 1999);
+  Mth_Ord[T_And]          := 1;
+  Mth_Ord[T_Or]           := 2;
+  Mth_Ord[T_Forall]       := 4;
+  Mth_Ord[T_Exists]       := 5;
+  Mth_Ord[T_Even]         := 6;
+  Mth_Ord[T_Odd]          := 7;
+  Mth_Ord[T_Empty]        := 8;
+  Mth_Ord[T_Subset]       := 9;
+  Mth_Ord[T_Member]       := 10;
+  Mth_Ord[T_Equal]        := 11;
+  Mth_Ord[T_Not_Equal]    := 11;
+  Mth_Ord[T_Less]         := 13;
+  Mth_Ord[T_Greater]      := 14;
+  Mth_Ord[T_Less_Eq]      := 15;
+  Mth_Ord[T_Greater_Eq]   := 16;
+  Mth_Ord[T_If]           := 19;
+  Mth_Ord[T_Abs]          := 20;
+  Mth_Ord[T_Sgn]          := 21;
+  Mth_Ord[T_Int]          := 22;
+  Mth_Ord[T_Frac]         := 23;
+  Mth_Ord[T_Max]          := 24;
+  Mth_Ord[T_Min]          := 25;
+  Mth_Ord[T_Intersection] := 26;
+  Mth_Ord[T_Union]        := 27;
+  Mth_Ord[T_Set_Diff]     := 28;
+  Mth_Ord[T_Powerset]     := 29;
+  Mth_Ord[T_Set]          := 30;
+  Mth_Ord[T_Array]        := 31;
+  Mth_Ord[T_Head]         := 32;
+  Mth_Ord[T_Tail]         := 33;
+  Mth_Ord[T_Butlast]      := 34;
+  Mth_Ord[T_Last]         := 35;
+  Mth_Ord[T_Length]       := 36;
+  Mth_Ord[T_Reverse]      := 37;
+  Mth_Ord[T_Exponent]     := 38;
+  Mth_Ord[T_Times]        := 39;
+  Mth_Ord[T_Plus]         := 40;
+  Mth_Ord[T_Concat]       := 41;
+  Mth_Ord[T_Div]          := 42;
+  Mth_Ord[T_Mod]          := 43;
+  Mth_Ord[T_Sequenceq]    := 44;
+  Mth_Ord[T_Numberq]      := 45;
+  Mth_Ord[T_Stringq]      := 46;
+  Mth_Ord[T_Map] 	  := 47;
+  Mth_Ord[T_Reduce] 	  := 48;
+  Mth_Ord[T_Forall] 	  := 49;
+  Mth_Ord[T_Exists] 	  := 50;
+  Mth_Ord[T_Implies] 	  := 51;
+  Mth_Ord[T_In] 	  := 52;
+  Mth_Ord[T_Not_In] 	  := 53;
+
+  Mth_Ord[T_Address_Of]		:= 70;
+
+  Mth_Ord[T_X_Funct_Call]	:= 71;
+  Mth_Ord[T_X_BFunct_Call]	:= 72;
+  Mth_Ord[T_MW_Funct_Call]	:= 73;
+  Mth_Ord[T_MW_BFunct_Call]	:= 74;
+  Mth_Ord[T_Funct_Call]		:= 75;
+  Mth_Ord[T_BFunct_Call]	:= 76;
+  Mth_Ord[T_Get_n]       	:= 77;
+  Mth_Ord[T_Get]       		:= 78;
+  Mth_Ord[T_Gethash]       	:= 79;
+
+  Mth_Ord[T_Fill_Stat]       	:= 80;
+  Mth_Ord[T_Fill_Expn]       	:= 81;
+  Mth_Ord[T_Fill_Cond]       	:= 82;
+  Mth_Ord[T_Fill_Defn]       	:= 83;
+  Mth_Ord[T_Fill_Lvalue]       	:= 84;
+  Mth_Ord[T_Fill_Assign]       	:= 85;
+  Mth_Ord[T_Fill_Guarded]       := 86;
+  Mth_Ord[T_Fill_Action]       	:= 87;
+  Mth_Ord[T_Fill_Stats]       	:= 88;
+  Mth_Ord[T_Fill_Expns]       	:= 89;
+  Mth_Ord[T_Fill_Lvalues]       := 91;
+  Mth_Ord[T_Fill_Assigns]       := 92;
+  Mth_Ord[T_Fill_Defns]       	:= 93;
+
+  Mth_Ord[T_Negate]       	:= 100;
+  Mth_Ord[T_Invert]       	:= 101;
+
+  C:" Variables, structs, arrays: ";
+  Mth_Ord[T_Primed_Var]       	:= 200;
+  Mth_Ord[T_Variable]       	:= 201;
+  Mth_Ord[T_Struct]       	:= 202;
+  Mth_Ord[T_Aref]       	:= 203;
+  Mth_Ord[T_Sub_Seg]       	:= 204;
+  Mth_Ord[T_Rel_Seg]       	:= 205;
+  Mth_Ord[T_Final_Seg]       	:= 206;
+  Mth_Ord[T_Expn_Pat_One]       := 207;
+  Mth_Ord[T_Expn_Pat_Many]      := 208;
+  Mth_Ord[T_Expn_Pat_Any]       := 209;
+  Mth_Ord[T_Mem]                := 210;
+  Mth_Ord[T_Mem_Seg]            := 211;
+  Mth_Ord[T_Mem_Rel]            := 212;
+
+  C:" Constants: ";
+  Mth_Ord[T_Expn_Place]       	:= 300;
+  Mth_Ord[T_Var_Place]       	:= 301;
+  Mth_Ord[T_Cond_Place]       	:= 302;
+  Mth_Ord[T_Number]       	:= 303;
+  Mth_Ord[T_String]       	:= 304;
+  Mth_Ord[T_Hash_Table]       	:= 309;
+  Mth_Ord[T_True]       	:= 310;
+  Mth_Ord[T_False]       	:= 311;
+
+  SKIP .;
+
+@Mth_Init;
+
+C: " ----------------------------------------------------------------------- ";
+C: " The interface functions which are called by transformations etc.        ";
+C: " ----------------------------------------------------------------------- ";
+
+Mth_Default_Budget := 10;
+
+MW_PROC @Set_Budget(n) ==
+  Mth_Default_Budget := n .;
+
+MW_FUNCT @Budget() == : SKIP;
+  (Mth_Default_Budget) .;
+
+MW_FUNCT @Simplify_Expn(Expn) == : SKIP;
+  (@Simplify(Expn, Mth_Default_Budget)) .;
+
+MW_FUNCT @Simplify_Cond(C) == : SKIP;
+  (@Simplify(C, Mth_Default_Budget)) .;
+
+MW_BFUNCT @True?(C) == : SKIP;
+  (@ST(@Simplify(C, Mth_Default_Budget)) = T_True) .;
+
+MW_BFUNCT @False?(C) == : SKIP;
+  (@ST(@Simplify(C, Mth_Default_Budget)) = T_False) .;
+
+MW_BFUNCT @Implies?(C1, C2) == : SKIP;
+  (@ST(@Simplify(@Make(T_Or, < >, <@Make(T_Not, < >, <C1>), C2>), Mth_Default_Budget))
+     = T_True) .;
+
+MW_FUNCT @And(C1, C2) == : SKIP;
+  (@Simplify(@Make(T_And, < >, <C1, C2>), Mth_Default_Budget)) .;
+
+MW_FUNCT @Or(C1, C2) == : SKIP;
+  (@Simplify(@Make(T_Or, < >, <C1, C2>), Mth_Default_Budget)) .;
+
+MW_FUNCT @Not(C) == : SKIP;
+  (@Simplify(@Make(T_Not, < >, <C>), Mth_Default_Budget)) .;
+
+MW_FUNCT @Implies(C1, C2) == : SKIP;
+  (@Simplify(@Make(T_Or, < >, <@Make(T_Not, < >, <C1>), C2>), Mth_Default_Budget)) .;
+
+
+C:" Return an equivalent expression with the first two components reversed, ";
+C:" eg: (x < y) becomes (y > x), while (x + y + z) becomes (y + x + z) ";
+
+MW_FUNCT @Swap_Expn(expn) ==
+  VAR < op := Reverse_Op[@ST(expn)], comps := @Cs(expn) >:
+  SKIP;
+  (IF op = 0
+     THEN expn
+     ELSE @Make(op, < >, <comps[2], comps[1]> ++ comps[3..]) FI) .;
+
+MW_BFUNCT @Mth_Swappable?(X) == : SKIP;
+  (Reverse_Op[@ST(X)] > 0) .;
+
+
+
+C:" The main simplifier. ";
+C:" The `Budget' gives the maximum depth of recursive calls to the simplifier. ";
+C:" The algorithm works in three stages: ";
+
+C:" REORGANISE: ";
+C:"   (1) Push NOT operators down to lowest level (de Morgan's laws) ";
+C:"       (1a) Delete pairs of NOTs and invert NOT (x relop y) ";
+C:"   (2) Reverse T_Greater and T_Greater_Eq ";
+C:"   (3) Flatten associative operators ";
+C:"   (4) Evaluate `constant' components ";
+C:"   (5) Sort components of commutative operators ";
+C:"       (5a) If a `power' op is available: merge groups ";
+C:"            of identical elements and re-sort ";
+C:"   (6) Merge groups of constant components and check for identity or zero ";
+C:"   (7) Multiply out * over + and AND over OR ";
+C:"       (7a) Re-flatten and re-sort if necessary ";
+
+C:" SIMPLIFY: ";
+C:"   (1) Apply all applicable patterns ";
+C:"   (2) Evaluate `constant' components ";
+C:"   (3) If some patterns applied then: ";
+C:"       (3a) Reduce budget. If still >0 then reorganise and simplify again ";
+
+C:" FACTORISE: ";
+C:"   (1) Take out common factors from + and OR compounds (re-ordering as necessary) ";
+C:"       (1a) Simplify the resulting factors (with a smaller budget) if they are compounds ";
+C:"   (2) Convert A*(1/B) to A/B and A+(-B) to A-B ";
+C:"   (3) Sort relations to put constants on the RHS, eg: 0<x becomes x>0 ";
+C:"   (4) Sort * operations to put constants first, and + to put constants last ";
+C:"       eg: 3*x but x+3 ";
+
+C:" Note that the first two stages are in a loop, while the third state ";
+C:" is a `finishing off' step which is applied once. ";
+
+C:" We can only simplify expressions or conditions if Eval_Op[@ST(I)] > 0 ";
+
+
+MW_FUNCT @Simplify(I, Budget) ==
+  VAR < new := I, level := @Dtable_Get(I, Qry_Simple) >:
+  IF NOT EMPTY?(level) AND @Dtable_Value_Part(level) >= Budget
+    THEN SKIP
+  ELSIF (@GT(I) <> T_Condition AND @GT(I) <> T_Expression) OR Eval_Op[@ST(I)] <= 0
+    THEN IF @Cs?(I)
+	   THEN C:" Call @Simplify recursively on the components: ";
+		VAR < comps := < > >:
+		FOR comp IN @Cs(I) DO
+		  comps := <@Simplify(comp, Budget)> ++ comps OD;
+		new := @Make(@ST(I), < >, REVERSE(comps));
+		@Dtable_Put(new, Qry_Simple, Budget) ENDVAR FI
+    ELSE IF @ST(I) = T_If
+           THEN VAR < comps := < > >:
+		FOR comp IN @Cs(I) DO
+		  comps := <@Simplify(comp, Budget)> ++ comps OD;
+		I := @Make(@ST(I), < >, REVERSE(comps)) ENDVAR FI;
+         VAR < old := < >, Orig_Budget := Budget,
+	       Orig_Size := @Total_Size(I), Orig := I >:
+	 @Edit;
+	 @New_Program(I);
+	 @Simplify_Bit_Ops;
+	 IF Budget > 5 THEN @Simplify_BFunct_Calls(Budget) FI;
+
+	 DO IF Budget = 0 THEN EXIT(1) FI;
+	    C:" REORGANISE ";
+	    C:" push down NOTs, delete pairs of NOTs and reverse >/>= ";
+	    C:" Also replace IMPLIES? by the equivalent: ";
+	    IF @GT(@I) = T_Condition AND @Cs?(@I)
+	      THEN @Paste_Over(@Mth_De_Morgan(@I)) FI;
+	    DO @Mth_Flatten;
+	       @Mth_Evaluate;
+	       @Mth_Sort_Merge;
+	       old := @Program;
+	       FOREACH Condition DO
+		 IF @ST(@I) = T_And OR @ST(@I) = T_Or
+		   THEN @Mth_Duplicate_Relations FI;
+		 IF @ST(@I) = T_And
+		   THEN @Mth_Known_Value1(Budget);
+			@Mth_Known_Value3(Budget) FI;
+		 IF @ST(@I) = T_Or
+		   THEN @Mth_Known_Value2(Budget);
+			@Mth_Known_Value4(Budget) FI;
+                 IF Budget > 10 THEN @Mth_Expensive(Budget) FI;
+		 IF @ST(@I) = T_Forall OR @ST(@I) = T_Exists
+		   THEN @Mth_Quantifiers(Budget) FI OD;
+	       C:" We can run into exponential growth if we try to expand ";
+	       C:" when the expression/condition is already `large'. ";
+	       C:" The value 2 * Budget was determined experimentally ";
+	       IF @Total_Size(@I) < 2 * Budget
+	         THEN @Mth_Expand(Budget) FI;
+	       FOREACH Condition DO
+		 IF @ST(@I) = T_And AND @Size(@I) > 1
+			AND @ST(@I^1) = T_Or AND @ST(@I^2) = T_Or
+		      OR @ST(@I) = T_Or AND @Size(@I) > 1
+			AND @ST(@I^1) = T_And AND @ST(@I^2) = T_And
+		   THEN @Mth_Common_Components(Budget) FI OD;
+	       IF @Total_Size(@Program) > Budget * Orig_Size
+		 THEN @Paste_Over(Orig); EXIT(2)
+	       ELSIF @Equal?(old, @Program)
+		 THEN EXIT(1) FI OD;
+
+	    C:" SIMPLIFY ";
+	    old := @Program;
+	    IF FALSE
+	      THEN PRINT("Patterns 1: ", Budget);
+                   @PP_Item(@I, 80, "");
+                   PRINT("-----") FI;
+	    IF @Total_Size(@I) >= 3
+	      THEN @Mth_Patterns(Budget) FI;
+	    IF FALSE
+	      THEN PRINT("Patterns 2:");
+                   @PP_Item(@I, 80, "");
+                   PRINT("-----") FI;
+	    @Mth_Evaluate;
+	    IF @Equal?(old, @Program) THEN EXIT(1) FI OD;
+
+	 C:" FACTORISE ";
+	 Budget := Orig_Budget;
+	 @Mth_Factorise(Budget);
+	 @Mth_Flatten;
+	 C:" Simplify A*(1/B) and A+(-B), sort relations, *, and + operations ";
+	 @Mth_Prettify;
+	 IF NOT @Equal?(@Program, Orig)
+	   THEN C:" Hack ";
+		@Mth_Flatten;
+		@Mth_Evaluate;
+		@Mth_Sort_Merge;
+		@Mth_Factorise(Budget);
+		@Mth_Flatten;
+		@Mth_Prettify FI;
+	 new := @Program;
+         IF Budget > 10
+	   THEN new := @Simplify(new, Budget - 10);
+	        IF @Total_Size(new) > @Total_Size(@Program)
+		  THEN new := @Program FI FI;
+	 @Undo_Edit;
+	 @Dtable_Put(new, Qry_Simple, Orig_Budget) ENDVAR FI;
+  (new) .;
+
+
+C:" Evaluate operators all of whose arguments are constants: ";
+
+C:" Note: T_Length, T_Reverse and T_Concat do not require the components ";
+C:" of the argument to be constants, but the other set operations do. ";
+
+MW_PROC @Mth_Evaluate() ==
+  VAR < ST := 0, v := < >, new := < > >:
+  FOREACH Expression DO
+    IF @Cs?(@I) AND Eval_Op[@ST(@I)] > 0 AND @Mth_Constants?(@Cs(@I), Eval_Op[@ST(@I)])
+      THEN ST := @ST(@I); v := @Mth_Values(@Cs(@I));
+           C:" Convert hex values to numbers ";
+           VAR < vv := < > >:
+	   FOR n IN v DO
+	     IF STRING?(n) AND @Starts_With?(n, "hex 0x") AND SLENGTH(n) < 14
+               THEN vv := <@Hex_To_Num(SUBSTR(n, 6))> ++ vv
+	       ELSE vv := <n> ++ vv FI OD;
+           v := REVERSE(vv) ENDVAR;
+	   IF ST = T_Plus
+	     THEN @Paste_Over(@Make(T_Number, REDUCE("+", v), < >))
+	   ELSIF ST = T_Times
+	     THEN @Paste_Over(@Make(T_Number, REDUCE("*", v), < >))
+	   ELSIF ST = T_Exponent
+	     THEN @Paste_Over(REDUCE("@Mth_Eval_Exponent", @Cs(@I)))
+	   ELSIF ST = T_Max
+	     THEN @Paste_Over(@Make(T_Number, REDUCE("MAX", v), < >))
+	   ELSIF ST = T_Min
+	     THEN @Paste_Over(@Make(T_Number, REDUCE("MIN", v), < >))
+	   ELSIF ST = T_Intersection
+	     THEN @Paste_Over(@Mth_Sequence(REDUCE("/\\", v)))
+	   ELSIF ST = T_Union
+	     THEN @Paste_Over(@Mth_Sequence(REDUCE("\\/", v)))
+	   ELSIF ST = T_Negate
+	     THEN @Paste_Over(@Make(T_Number, 0 - HEAD(v), < >))
+	   ELSIF ST = T_Invert
+	     THEN C:" Cannot simplify this since we only have integers! "
+	   ELSIF ST = T_Div
+	     THEN IF v[2] <> 0
+		    THEN @Paste_Over(@Make(T_Number, v[1] DIV v[2], < >)) FI
+	   ELSIF ST = T_Mod
+	     THEN IF v[2] <> 0
+		    THEN @Paste_Over(@Make(T_Number, v[1] MOD v[2], < >)) FI
+	   ELSIF ST = T_Abs
+	     THEN @Paste_Over(@Make(T_Number, ABS(HEAD(v)), < >))
+	   ELSIF ST = T_Sgn
+	     THEN @Paste_Over(@Make(T_Number, SGN(HEAD(v)), < >))
+	   ELSIF ST = T_Int
+	     THEN @Paste_Over(@Make(T_Number, INT(HEAD(v)), < >))
+	   ELSIF ST = T_Frac
+	     THEN @Paste_Over(@Make(T_Number, FRAC(HEAD(v)), < >))
+	   ELSIF ST = T_Length
+	     THEN @Paste_Over(@Make(T_Number, LENGTH(HEAD(v)), < >))
+	   ELSIF ST = T_Slength
+	     THEN @Paste_Over(@Make(T_Number, SLENGTH(HEAD(v)), < >))
+	   ELSIF ST = T_Reverse
+	     THEN @Paste_Over(@Mth_Sequence(REVERSE(HEAD(v))))
+	   ELSIF ST = T_Set_Diff
+	     THEN @Paste_Over(@Mth_Sequence(v[1] \ v[2]))
+	   ELSIF ST = T_Concat
+	     THEN @Paste_Over(@Mth_Sequence(REDUCE("++", v)))
+	   ELSIF ST = T_Minus
+	     THEN @Paste_Over(@Make(T_Number, REDUCE("-", v), < >))
+	   ELSIF ST = T_Divide
+	     THEN WHILE LENGTH(v) > 1 AND v[2] <> 0 AND v[1] MOD v[2] = 0 DO
+	            v := <v[1] / v[2]> ++ v[3..] OD;
+		  IF LENGTH(v) = 1
+		    THEN @Paste_Over(@Make(T_Number, v[1], < >)) FI
+	   ELSIF ST = T_If
+	     THEN IF @ST(@I^1) = T_True
+		    THEN @Paste_Over(@I^2) ELSE @Paste_Over(@I^3) FI
+           ELSIF ST = T_Index
+	     THEN IF @Size(@I^1) = 2
+	            THEN @Paste_Over(@Make(T_Number, INDEX(@V(@I^1^1),
+		                                           @V(@I^1^2)), < >))
+		    ELSE @Paste_Over(@Make(T_Number, INDEX(@V(@I^1^1),
+		                                           @V(@I^1^2),
+							   @V(@I^1^3)), < >)) FI
+           ELSIF ST = T_Substr
+	     THEN IF @V(@I^1^2) >= SLENGTH(@V(@I^1^1))
+	            THEN SKIP
+	          ELSIF @Size(@I^1) = 2
+	            THEN @Paste_Over(@Make(T_String, SUBSTR(@V(@I^1^1),
+		                                            @V(@I^1^2)), < >))
+		    ELSE @Paste_Over(@Make(T_String, SUBSTR(@V(@I^1^1),
+		                                            @V(@I^1^2),
+							    @V(@I^1^3)), < >)) FI
+           ELSIF ST = T_Tail OR ST = T_Head
+	     THEN SKIP
+
+	     ELSE PRINT("ERROR!!! Unknown type in @Mth_Evaluate: ",
+			@Type_Name(ST), "(", ST, ")") FI FI OD;
+  FOREACH Condition DO
+    IF @Cs?(@I) AND Eval_Op[@ST(@I)] > 0 AND @Mth_Constants?(@Cs(@I), Eval_Op[@ST(@I)])
+      THEN ST := @ST(@I); v := @Mth_Values(@Cs(@I));
+           C:" Convert hex values to numbers ";
+           VAR < vv := < > >:
+	   FOR n IN v DO
+	     IF STRING?(n) AND @Starts_With?(n, "hex 0x") AND SLENGTH(n) < 14
+               THEN vv := <@Hex_To_Num(SUBSTR(n, 6))> ++ vv
+	       ELSE vv := <n> ++ vv FI OD;
+           v := REVERSE(vv) ENDVAR;
+	   IF ST = T_And
+	     THEN IF NOT(T_False IN @Mth_Types(@Cs(@I)))
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Or
+	     THEN IF T_True IN @Mth_Types(@Cs(@I))
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Not
+	     THEN IF @ST(@I^1) = T_False
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Even
+	     THEN IF EVEN?(HEAD(v))
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Odd
+	     THEN IF ODD?(HEAD(v))
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Subset
+	     THEN IF SUBSET?(v[1], v[2])
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Member
+	     THEN IF v[1] IN v[2]
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_In
+	     THEN IF v[1] IN v[2]
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Not_In
+	     THEN IF NOT(v[1] IN v[2])
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Equal
+	     THEN IF v[1] = v[2]
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Not_Equal
+	     THEN IF v[1] <> v[2]
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+
+	   ELSIF ST = T_Less
+	     THEN C:" Can't use @String_Less? since assembler and COBOL strings ";
+	          C:" may be stored in EBCDIC! ";
+	          IF FALSE AND STRING?(v[1]) AND STRING?(v[2])
+	            THEN IF @String_Less?(v[1], v[2])
+		           THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+                  ELSIF STRING?(v[1]) OR STRING?(v[2])
+		    THEN SKIP
+		    ELSE IF v[1] < v[2]
+		           THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI FI
+
+	   ELSIF ST = T_Less_Eq
+	     THEN IF FALSE AND STRING?(v[1]) AND STRING?(v[2])
+	            THEN IF @String_Less_Eq?(v[1], v[2])
+		           THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+                  ELSIF STRING?(v[1]) OR STRING?(v[2])
+		    THEN SKIP
+		    ELSE IF v[1] <= v[2]
+		           THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI FI
+
+	   ELSIF ST = T_Greater
+	     THEN IF FALSE AND STRING?(v[1]) AND STRING?(v[2])
+	            THEN IF @String_Less?(v[2], v[1])
+		           THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+                  ELSIF STRING?(v[1]) OR STRING?(v[2])
+		    THEN SKIP
+		    ELSE IF v[1] > v[2]
+		           THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI FI
+
+	   ELSIF ST = T_Greater_Eq
+	     THEN IF FALSE AND STRING?(v[1]) AND STRING?(v[2])
+	            THEN IF @String_Less_Eq?(v[2], v[1])
+		           THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+                  ELSIF STRING?(v[1]) OR STRING?(v[2])
+		    THEN SKIP
+		    ELSE IF v[1] >= v[2]
+		           THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI FI
+
+	   ELSIF ST = T_Sequenceq
+	     THEN IF @ST(@I^1) = T_Sequence
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Numberq
+	     THEN IF @ST(@I^1) = T_Number
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Stringq
+	     THEN IF @ST(@I^1) = T_String
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	   ELSIF ST = T_Implies
+	     THEN IF @ST(@I^1) = T_False OR @ST(@I^2) = T_True
+		    THEN @Paste_Over(Mth_True) ELSE @Paste_Over(Mth_False) FI
+	     ELSE PRINT("ERROR!!! Unknown type in @Mth_Evaluate: ",
+			@Type_Name(ST), "(", ST, ")") FI FI OD ENDVAR .;
+
+
+MW_FUNCT @Mth_Eval_Exponent(X, Y) ==
+  VAR < R := < > >:
+  IF @ST(X) <> T_Number OR @ST(Y) <> T_Number OR @V(X) <= 0
+       OR NOT NUMBER?(@V(X)) OR NOT NUMBER?(@V(Y))
+       OR @V(Y) > 27
+    THEN R := @Make(T_Exponent, < >, <X, Y>)
+    ELSE R := @Make(T_Number, @V(X) ** @V(Y), < >) FI;
+  (R) .;
+
+
+C:" Convert a list of values to a T_Sequence item: ";
+MW_FUNCT @Mth_Sequence(L) ==
+  VAR < comps := < >, val := < >, R := < > >:
+  IF STRING?(L)
+    THEN C:" ++ on strings returns a string ";
+         R := @Make(T_String, L, < >)
+    ELSE FOR val IN L DO
+           IF NUMBER?(val)
+             THEN comps := <@Make(T_Number, val, < >)> ++ comps
+           ELSIF STRING?(val)
+             THEN comps := <@Make(T_String, val, < >)> ++ comps
+           ELSIF SEQUENCE?(val)
+             THEN comps := <@Mth_Sequence(val)> ++ comps
+             ELSE PRINT("ERROR: Unknown value in Mth_Sequence: ", val) FI OD;
+         R := @Make(T_Sequence, < >, <@Make(T_Expressions, < >, REVERSE(comps))>) FI;
+  (R) .;
+
+
+C:" Check that the list of items consists only of constants: ";
+
+MW_BFUNCT @Mth_Constants?(L, type) ==
+  VAR < OK := 0 >:
+  IF type = 1 AND @Mth_All_Constants?(L)
+    THEN OK := 1
+  ELSIF type = 2 AND @Mth_All_Numbers?(L)
+    THEN OK := 1 FI;
+  (OK = 1) .;
+
+MW_BFUNCT @Mth_All_Constants?(L) ==
+  VAR < OK := 1 >:
+  WHILE OK = 1 AND NOT EMPTY?(L) DO
+    IF NOT @Mth_Constant?(HEAD(L))
+      THEN OK := 0
+      ELSE L := TAIL(L) FI OD;
+  (OK = 1) .;
+
+MW_BFUNCT @Mth_Constant?(I) == : SKIP;
+  (@ST(I) = T_Number OR @ST(I) = T_String OR @ST(I) = T_True OR @ST(I) = T_False
+    OR (@ST(I) = T_Sequence AND @Mth_All_Constants?(@Cs(I^1)))
+    OR (@ST(I) = T_Expressions AND @Mth_All_Constants?(@Cs(I)))) .;
+
+MW_FUNCT @Mth_Values(L) ==
+  VAR < R := < >, I := < > >:
+  FOR I IN L DO
+    IF @ST(I) = T_Sequence
+      THEN R := <@Mth_Values(@Cs(I^1))> ++ R
+      ELSE R := <@Value(I)> ++ R FI OD;
+  (REVERSE(R)) .;
+
+MW_FUNCT @Mth_Types(L) ==
+  VAR < R := < > >:
+  WHILE NOT EMPTY?(L) DO
+    R := <@ST(HEAD(L))> ++ R;
+    L := TAIL(L) OD;
+  (REVERSE(R)) .;
+
+C:" Check for a list of all numbers: ";
+
+MW_BFUNCT @Mth_All_Numbers?(L) ==
+  VAR < OK := 1 >:
+  WHILE OK = 1 AND NOT EMPTY?(L) DO
+    IF @ST(HEAD(L)) = T_String AND @Starts_With?(@V(HEAD(L)), "hex 0x")
+          AND (SLENGTH(@V(HEAD(L))) < 14 OR @Starts_With?(@V(HEAD(L)), "hex 0x00"))
+      THEN L := TAIL(L)
+    ELSIF @ST(HEAD(L)) = T_Number
+      THEN L := TAIL(L)
+      ELSE OK := 0 FI OD;
+  (OK = 1) .;
+
+C: " ----------------------------------------------------------------------- ";
+C: " Flatten assocative operators by removing nested parentheses; e.g.       ";
+C: " ((a+b) + c) --> (a+b+c). This function also deals with `-' and `/'      ";
+C: " operations by replacing them with `Negate' and `Invert' operations,     ";
+C: " respectively.                                                           ";
+C: " ----------------------------------------------------------------------- ";
+
+MW_PROC @Mth_Flatten() ==
+  VAR < ST := < >, new := < >, x := < > >:
+  FOREACH Expression DO
+    IF @Cs?(@I)
+      THEN ST := @ST(@I);
+	   IF ST = T_Minus
+	     THEN @Paste_Over(@Make(T_Plus, < >,
+				    <@I^1> ++ MAP("@Mth_Negate", TAIL(@Cs(@I)))));
+		  ST := T_Plus
+	   ELSIF ST = T_Divide
+	     THEN @Paste_Over(@Make(T_Times, < >,
+				    <@I^1> ++ MAP("@Mth_Invert", TAIL(@Cs(@I)))));
+		 ST := T_Times
+           ELSIF ST = T_Concat AND @ST(@I^1) = T_Concat
+             THEN @Paste_Over(@Make(T_Concat, < >,  @Cs(@I^1) ++ TAIL(@Cs(@I)))); FI;
+	   C:" The remaining associative operators are the commutative operators ";
+	   IF Reverse_Op[ST] = ST
+	     THEN new := < >;
+		  FOR x IN @Cs(@I) DO
+		    IF @ST(x) = ST
+		      THEN new := REVERSE(@Cs(x)) ++ new
+		      ELSE new := <x> ++ new FI OD;
+		  @Paste_Over(@Make(ST, < >, REVERSE(new))) FI FI OD;
+  IF @GT(@I) = T_Condition
+    THEN FOREACH Condition DO
+	   ST := @ST(@I);
+	   IF Reverse_Op[ST] = ST
+	     THEN new := < >;
+		  FOR x IN @Cs(@I) DO
+		    IF @ST(x) = ST
+		      THEN new := REVERSE(@Cs(x)) ++ new
+		      ELSE new := <x> ++ new FI OD;
+		  @Paste_Over(@Make(ST, < >, REVERSE(new))) FI OD FI ENDVAR .;
+
+
+C:" Negate an item: converting (a + b) to (-a) + (-b) ";
+
+MW_FUNCT @Mth_Negate(I) == : SKIP;
+  (IF @ST(I) = T_Plus
+     THEN @Make(T_Plus, < >, MAP("@Mth_Negate", @Cs(I)))
+   ELSE IF @ST(I) = T_Times OR @ST(I) = T_Divide 
+     THEN @Make(@ST(I), < >, <@Mth_Negate(I^1)> ++ TAIL(@Cs(I)))
+     ELSE @Make(T_Negate, < >, <I>) FI FI) .;
+
+C:" Invert an item: converting (a * b) to (1/a) * (1/b) ";
+
+MW_FUNCT @Mth_Invert(I) == : SKIP;
+  (IF @ST(I) = T_Times
+     THEN @Make(T_Times, < >, MAP("@Mth_Invert", @Cs(I)))
+     ELSE @Make(T_Invert, < >, <I>) FI) .;
+
+
+
+C:" Push down NOTs, delete pairs of NOTs and reverse >/>= ";
+
+MW_FUNCT @Mth_De_Morgan(I) ==
+  VAR < R := < > >:
+  IF @ST(I) = T_Not
+    THEN IF @ST(I^1) = T_And OR @ST(I^1) = T_Or
+	   THEN R := @Make(Inverse_Op[@ST(I^1)], < >,
+			   MAP("@Mth_De_Morgan_Not", @Cs(I^1)))
+	 ELSIF Inverse_Op[@ST(I^1)] > 0
+	   THEN IF Inverse_Op[@ST(I^1)] = T_Greater OR Inverse_Op[@ST(I^1)] = T_Greater_Eq
+		  THEN R := @Make(Reverse_Op[Inverse_Op[@ST(I^1)]], < >,
+				  <I^^<1, 2>, I^^<1, 1>>)
+		  ELSE R := @Make(Inverse_Op[@ST(I^1)], < >, @Cs(I^1)) FI
+	 ELSIF @ST(I^1) = T_Implies
+	   THEN R := @Make(T_And, < >,
+			   <@Mth_De_Morgan(I^^<1, 1>), @Mth_De_Morgan_Not(I^^<1, 2>)>)
+	 ELSIF @ST(I^1) = T_Not
+	   THEN R := @Mth_De_Morgan(I^^<1, 1>)
+	   ELSE R := I FI
+  ELSIF @ST(I) = T_Greater OR @ST(I) = T_Greater_Eq
+    THEN R := @Make(Reverse_Op[@ST(I)], < >, <I^2, I^1>)
+  ELSIF @ST(I) = T_Implies
+    THEN R := @Make(T_Or, < >, <@Mth_De_Morgan_Not(I^1), @Mth_De_Morgan(I^2)>)
+  ELSIF @ST(I) = T_And OR @ST(I) = T_Or
+    THEN R := @Make(@ST(I), < >, MAP("@Mth_De_Morgan", @Cs(I)))
+    ELSE R := I FI;
+  (R) .;
+
+
+MW_FUNCT @Mth_De_Morgan_Not(I) ==
+  VAR < R := < > >:
+  IF @ST(I) = T_Not
+    THEN R := @Mth_De_Morgan(I^1)
+  ELSIF @ST(I) = T_And OR @ST(I) = T_Or
+    THEN R := @Make(Inverse_Op[@ST(I)], < >, MAP("@Mth_De_Morgan_Not", @Cs(I)))
+  ELSIF Inverse_Op[@ST(I)] > 0
+    THEN IF Inverse_Op[@ST(I)] = T_Greater OR Inverse_Op[@ST(I)] = T_Greater_Eq
+	   THEN R := @Make(Reverse_Op[Inverse_Op[@ST(I)]], < >, <I^2, I^1>)
+	   ELSE R := @Make(Inverse_Op[@ST(I)], < >, @Cs(I)) FI
+  ELSIF @ST(I) = T_Implies
+    THEN R := @Make(T_And, < >, <@Mth_De_Morgan(I^1), @Mth_De_Morgan_Not(I^2)>)
+    ELSE R := @Make(T_Not, < >, <I>) FI;
+  (R) .;
+
+
+C:" Sort components of commutative operators and combine groups of ";
+C:" so that identical terms: for example  (a+a+b+a+b) = ((a*3) + (b*2)). ";
+C:" This function also deals with identity elements and annihilating elements, ";
+C:" for example a+0 = 0 and a*0 = 0 ";
+
+C:" If a power op was inserted and there are two or more than arguments remaining, ";
+C:" then the arguments need to be re-sorted (to put the power op in the right place) ";
+
+MW_PROC @Mth_Sort_Merge() ==
+  VAR < count := 0 >:
+  C:" Check for two or more unsafe tests in an AND or OR :";
+  FOREACH Expression DO
+    IF Reverse_Op[@ST(@I)] = @ST(@I)
+      THEN @Paste_Over(@Mth_Sort_Merge_Item(@I, @ST(@I), 0))
+    ELSIF @ST(@I) = T_Concat AND @Size(@I) = 1
+      THEN @Paste_Over(@I^1) FI OD;
+  FOREACH Condition DO
+    count := 0;
+    IF @ST(@I) = T_And OR @ST(@I) = T_Or
+      THEN FOR comp IN @Cs(@I) DO
+             IF @Unsafe_Test?(comp)
+               THEN count := count + 1 FI OD FI;
+    IF Reverse_Op[@ST(@I)] = @ST(@I)
+      THEN @Paste_Over(@Mth_Sort_Merge_Item(@I, @ST(@I), count)) FI OD ENDVAR .;
+
+
+MW_FUNCT @Mth_Sort_Merge_Item(I, ST, count) ==
+  VAR < R := < >, comps := @Cs(I), new := < >, n := 0, re_sort := 0, nums := < >,
+	power := Power_Op[ST], id := Identity_Value[ST], zero := Zero_Value[ST] >:
+  DO re_sort := 0;
+     IF count < 2 THEN comps := @Mth_Sort(comps) FI;
+     new := < >;
+     WHILE NOT EMPTY?(comps) DO
+       IF NOT EMPTY?(id) AND @Equal?(HEAD(comps), id)
+	 THEN comps := TAIL(comps)
+       ELSIF NOT EMPTY?(zero) AND @Equal?(HEAD(comps), zero)
+	 THEN new := <zero>; comps := < >
+       ELSIF ST = T_Times AND @ST(HEAD(comps)) = T_Invert AND @ST(HEAD(comps)^1) = T_Number
+	 THEN C:" Combine numeric operands, note that (-n) has been evaluated ";
+	      C:" Any numbers should directly follow any inverted numbers ";
+              VAR < num := 1, denom := 1 >:
+              WHILE NOT EMPTY?(comps) AND @ST(HEAD(comps)) = T_Invert
+	              AND @ST(HEAD(comps)^1) = T_Number DO
+	        denom := denom * @V(HEAD(comps)^1);
+		comps := TAIL(comps) OD;
+              WHILE NOT EMPTY?(comps) AND @ST(HEAD(comps)) = T_Number DO
+	        num := num * @V(HEAD(comps));
+		comps := TAIL(comps) OD;
+	      IF num = 1
+	        THEN new := <@Make(T_Invert, < >, <@Make(T_Number, denom, < >)>)> ++ new
+	      ELSIF ABS(num) > ABS(denom) AND denom <> 0 AND num MOD denom = 0
+                THEN new := <@Make(T_Number, num / denom, < >)> ++ new
+		ELSE new := <@Make(T_Invert, < >, <@Make(T_Number, denom, < >)>),
+		             @Make(T_Number, num, < >)> ++ new FI ENDVAR
+       ELSIF @ST(HEAD(comps)) = T_Number
+	 THEN C:" Combine numeric operands, note that (-n) has been evaluated ";
+	      nums := < >;
+	      WHILE NOT EMPTY?(comps)
+		      AND @ST(HEAD(comps)) = T_Number DO
+		nums := <HEAD(comps)> ++ nums;
+		comps := TAIL(comps) OD;
+	      IF LENGTH(nums) = 1
+		THEN new := nums ++ new
+		ELSE C:" Evaluate the numeric component ";
+		     @Edit;
+		     @New_Program(@Make(ST, < >, nums));
+		     @Mth_Evaluate;
+		     IF NOT @Equal?(@Program, id)
+		       THEN new := <@Program> ++ new FI;
+		     @Undo_Edit FI
+       ELSIF power > 0
+	 THEN C:" Check for identical elements: ";
+	      n := 1;
+	      WHILE NOT EMPTY?(TAIL(comps))
+		      AND @Equal?(HEAD(comps), HEAD(TAIL(comps))) DO
+		n := n + 1;
+		comps := TAIL(comps) OD;
+	      IF n = 1 OR power = ST
+		THEN C:" There is only one element, or the operator is idempotent ";
+		     new := <HEAD(comps)> ++ new
+		ELSE new := <@Make(power, < >,
+		                   <HEAD(comps), @Make(T_Number, n, < >)>)> ++ new;
+		     re_sort := 1 FI;
+	      comps := TAIL(comps)
+	 ELSE new := <HEAD(comps)> ++ new;
+	      comps := TAIL(comps) FI OD;
+     IF EMPTY?(new)
+       THEN C:" Everything was an identity (so there must be an identity for this ST!) ";
+	    R := id; EXIT(1)
+     ELSIF LENGTH(new) = 1
+	THEN R := HEAD(new); EXIT(1)
+     ELSIF re_sort = 0
+	THEN R := @Make(ST, < >, REVERSE(new)); EXIT(1)
+	ELSE comps := REVERSE(new) FI OD;
+  (R) .;
+
+
+MW_FUNCT @Mth_Sort(L) == : SKIP;
+  (IF EMPTY?(L) OR EMPTY?(TAIL(L))
+     THEN L
+     ELSE IF LENGTH(L) = 2
+	    THEN IF @Mth_Lt?(L[2], L[1])
+		   THEN <L[2], L[1]>
+		   ELSE L FI
+	    ELSE @Mth_Merge(@Mth_Sort(L[1 .. (LENGTH(L) DIV 2)]),
+			    @Mth_Sort(L[(LENGTH(L) DIV 2) + 1 .. ])) FI FI) .;
+
+
+C:" Merge two sorted lists using @Mth_Lt? ";
+MW_FUNCT @Mth_Merge(L1, L2) ==
+  VAR < R := < > >:
+  WHILE NOT EMPTY?(L1) AND NOT EMPTY?(L2) DO
+    IF @Mth_Lt?(HEAD(L2), HEAD(L1))
+      THEN R := <HEAD(L2)> ++ R; L2 := TAIL(L2)
+      ELSE R := <HEAD(L1)> ++ R; L1 := TAIL(L1) FI OD;
+  C:" One of L1 or L2 is empty, so prepend the other list to R ";
+  WHILE NOT EMPTY?(L1) DO
+    R := <HEAD(L1)> ++ R; L1 := TAIL(L1) OD;
+  WHILE NOT EMPTY?(L2) DO
+    R := <HEAD(L2)> ++ R; L2 := TAIL(L2) OD;
+  (REVERSE(R)) .;
+
+
+C:" By sorting first on the total size we ensure that (-x) comes before x ";
+C:" no matter what the type of x is. We put larger components first: ";
+MW_BFUNCT @Mth_Lt?(x, y) ==
+  VAR < OK := 0 >:
+  IF @Total_Size(x) > @Total_Size(y)
+    THEN OK := 1
+  ELSIF @Total_Size(x) < @Total_Size(y)
+    THEN OK := 0
+  ELSIF Mth_Ord[@ST(x)] < Mth_Ord[@ST(y)]
+    THEN OK := 1
+  ELSIF Mth_Ord[@ST(x)] > Mth_Ord[@ST(y)]
+    THEN OK := 0
+  ELSIF @Size(x) < @Size(y)
+    THEN OK := 1
+  ELSIF @Size(x) > @Size(y)
+    THEN OK := 0
+  ELSIF @Has_Value_Type?(@ST(x))
+    THEN IF @ST(x) = T_Number OR @ST(x) = T_Exit
+	   THEN IF @V(x) < @V(y) THEN OK := 1 FI
+	 ELSIF @ST(x) = T_String OR @ST(x) = T_Comment
+	   THEN IF @String_Less?(@V(x), @V(y)) THEN OK := 1 FI
+	 ELSIF @String_Less?(@N_String(@V(x)), @N_String(@V(y)))
+	   THEN OK := 1 FI
+  ELSIF NOT @Cs?(x)
+    THEN OK := 1
+  ELSIF NOT @Cs?(y)
+    THEN OK := 0
+  ELSIF @Mth_Lt?(x^1, y^1)
+    THEN OK := 1
+  ELSIF @Equal?(x^1, y^1)
+    THEN VAR < c1 := TAIL(@Cs(x)), c2 := TAIL(@Cs(y)) >:
+	 OK := 0;
+	 WHILE NOT EMPTY?(c1) DO
+	   IF @Mth_Lt?(HEAD(c1), HEAD(c2))
+	     THEN OK := 1; c1 := < >
+	   ELSIF @Equal?(HEAD(c1), HEAD(c2))
+	     THEN c1 := TAIL(c1); c2 := TAIL(c2)
+	     ELSE OK := 0; c1 := < > FI OD ENDVAR 
+    ELSE OK := 0 FI;
+  (OK = 1) .;
+
+
+
+C:" Check for an AND or OR with an invertable relation at the top level. ";
+C:" Check for other copies of the relation or inverse relation in other components ";
+C:" and replace by TRUE or FALSE as appropriate. ";
+C:" Eg: (x = y OR p = q) AND x <> y simplifies to (FALSE OR p = q) AND x <> y ";
+C:" since if x = y the whole thing is false anyway. ";
+
+MW_PROC @Mth_Duplicate_Relations() ==
+  VAR < top := @ST(@I), comp := < >, rels := < >, rel := < >, new := < >,
+	same := < >, diff := < >, comps := @Cs(@I), change := 0 >:
+  IF top = T_And
+    THEN same := Mth_True;  diff := Mth_False
+    ELSE same := Mth_False; diff := Mth_True FI; 
+  FOR comp IN comps DO
+    IF @ST(comp) IN <T_Equal, T_Not_Equal, T_Less, T_Less_Eq>
+      THEN rels := <comp> ++ rels FI OD;
+  IF NOT EMPTY?(rels)
+    THEN @Edit;
+	 FOR rel IN rels DO
+	   new := < >;
+	   FOR comp IN comps DO
+	     IF @Equal?(comp, rel)
+	       THEN new := <comp> ++ new
+	     ELSIF @ST(comp) = Reverse_Op[@ST(rel)]
+	       THEN IF @Equal?(comp^1, rel^2) AND  @Equal?(comp^2, rel^1)
+		      THEN change := 1;
+			   new := <same> ++ new
+		      ELSE new := <comp> ++ new FI
+	     ELSIF @ST(comp) = Inverse_Op[@ST(rel)]
+	       THEN IF @Equal?(comp^1, rel^1) AND  @Equal?(comp^2, rel^2)
+		      THEN change := 1;
+			   new := <diff> ++ new
+		      ELSE new := <comp> ++ new FI
+	     ELSIF @ST(comp) = Inverse_Op[Reverse_Op[@ST(rel)]]
+	       THEN IF @Equal?(comp^1, rel^2) AND  @Equal?(comp^2, rel^1)
+		      THEN change := 1;
+			   new := <diff> ++ new
+		      ELSE new := <comp> ++ new FI
+	     ELSIF @ST(comp) IN <T_Equal, T_Not_Equal, T_Less, T_Less_Eq>
+		      AND @Equal?(comp^1, rel^1) AND @Equal?(comp^2, rel^2)
+	       THEN new := <@Mth_Same_Args(top, comp, rel, 0)> ++ new;
+		    IF NOT @Equal?(HEAD(new), comp) THEN change := 1 FI
+	     ELSIF @ST(comp) IN <T_Equal, T_Not_Equal, T_Less, T_Less_Eq>
+		      AND @Equal?(comp^1, rel^2) AND @Equal?(comp^2, rel^1)
+	       THEN new := <@Mth_Same_Args(top, comp, rel, 1)> ++ new;
+		    IF NOT @Equal?(HEAD(new), comp) THEN change := 1 FI
+	     ELSIF @ST(comp) = T_Or OR @ST(comp) = T_And
+	       THEN @Mth_Duplicate_Relations_Sub(comp, rel VAR change);
+		    new := <@Program> ++ new
+	       ELSE new := <comp> ++ new FI OD;
+	   comps := REVERSE(new) OD;
+	 @Undo_Edit;
+	 IF change = 1
+	   THEN @Paste_Over(@Make(top, < >, comps));
+		C:" Get rid of any inserted TRUE/FALSE components: ";
+		@Mth_Sort_Merge FI FI ENDVAR .;
+
+
+MW_PROC @Mth_Duplicate_Relations_Sub(comp, rel VAR change) ==
+  @New_Program(comp);
+  FOREACH Condition DO
+    IF @Equal?(@I, rel)
+      THEN change := 1;
+	   @Paste_Over(same)
+    ELSIF @ST(@I) = Reverse_Op[@ST(rel)]
+      THEN IF @Equal?(@I^1, rel^2) AND  @Equal?(@I^2, rel^1)
+	     THEN change := 1;
+		  @Paste_Over(same) FI
+    ELSIF @ST(@I) = Inverse_Op[@ST(rel)]
+      THEN IF @Equal?(@I^1, rel^1) AND  @Equal?(@I^2, rel^2)
+	     THEN change := 1;
+		  @Paste_Over(diff) FI
+    ELSIF @ST(@I) = Inverse_Op[Reverse_Op[@ST(rel)]]
+      THEN IF @Equal?(@I^1, rel^2) AND  @Equal?(@I^2, rel^1)
+	     THEN change := 1;
+		  @Paste_Over(diff) FI FI OD .;
+
+
+C:" rel and comp have the same two arguments (rev = 1 if args are reversed) ";
+C:" Return the new comp (note: rel will still be there) ";
+
+MW_FUNCT @Mth_Same_Args(top, comp, rel, rev) ==
+  VAR < R := comp >:
+  IF top = T_And
+    THEN IF @ST(rel) = T_Equal
+	   THEN IF @ST(comp) = T_Not_Equal OR @ST(comp) = T_Less
+		  THEN R := Mth_False
+		  ELSE R := Mth_True FI
+	 ELSIF @ST(rel) = T_Not_Equal
+	   THEN C:" Do these cases the other way round "
+	 ELSIF @ST(rel) = T_Less AND rev = 0
+	   THEN IF @ST(comp) = T_Equal
+		  THEN R := Mth_False
+		ELSIF @ST(comp) = T_Not_Equal
+		  THEN R := Mth_True
+		ELSIF @ST(comp) = T_Less_Eq
+		  THEN R := Mth_True FI
+	 ELSIF @ST(rel) = T_Less_Eq
+	   THEN IF @ST(comp) = T_Not_Equal
+		  THEN R := @Make(T_Less, < >, <rel^1, rel^2>)
+		ELSIF @ST(comp) = T_Less_Eq AND rev = 1
+		  THEN R := @Make(T_Equal, < >, <rel^1, rel^2>) FI
+	 ELSIF @ST(rel) = T_Less AND rev = 1
+	   THEN IF @ST(comp) = T_Equal
+		  THEN R := Mth_False
+		ELSIF @ST(comp) = T_Not_Equal
+		  THEN R := Mth_True
+		ELSIF @ST(comp) = T_Less
+		  THEN R := Mth_False
+		ELSIF @ST(comp) = T_Less_Eq
+		  THEN R := Mth_False FI FI
+  ELSE IF @ST(comp) = T_Equal
+	 THEN C:" Do these the other way round "
+       ELSIF @ST(rel) = T_Not_Equal
+	 THEN IF @ST(comp) = T_Equal
+		THEN R := Mth_True
+	      ELSIF @ST(comp) = T_Less
+		THEN R := Mth_False
+	      ELSIF @ST(comp) = T_Less_Eq
+		THEN R := Mth_True FI
+       ELSIF @ST(rel) = T_Less AND rev = 0
+	 THEN IF @ST(comp) = T_Equal
+		THEN R := @Make(T_Less_Eq, < >, <rev^1, rev^2>) FI
+       ELSIF @ST(rel) = T_Less_Eq AND rev = 0
+	 THEN IF @ST(comp) = T_Equal
+		THEN R := Mth_False
+	      ELSIF @ST(comp) = T_Not_Equal
+		THEN R := Mth_True
+	      ELSIF @ST(comp) = T_Less
+		THEN R := Mth_False FI
+       ELSIF @ST(rel) = T_Less_Eq AND rev = 1
+	 THEN IF @ST(comp) = T_Equal
+		THEN R := Mth_False
+		ELSE R := Mth_True FI FI FI;
+  (R) .;
+
+
+C:" Check for an AND at the top level which gives a value to a variable ";
+C:" where the variable appears in the other components, eg: X = 1 AND (X > 2) ";
+C:" Replace the variable by its known value and see if the result is ";
+C:" TRUE or FALSE (ie we get 1 = 1 AND 1 > 2 which is FALSE) ";
+
+MW_PROC @Mth_Known_Value1(Budget) ==
+  VAR < comp := < >, vars := < >, vals := < >, done := 0, ST := 0 >:
+  FOR comp IN @Cs(@I) DO
+    IF @ST(comp) = T_Equal
+      THEN IF (@ST(comp^2) = T_Number OR @ST(comp^2) = T_String)
+		AND @Mth_Count_Occs(comp^1) > 1
+	     THEN vars := <comp^1> ++ vars; vals := <comp^2> ++ vals FI FI OD;
+  WHILE NOT EMPTY?(vars) AND done = 0 DO
+    @Edit;
+    FOREACH Expression DO
+      IF @Equal?(@I, HEAD(vars))
+	THEN @Paste_Over(HEAD(vals)) FI OD;
+    ST := @ST(@Simplify(@I, Budget DIV 2));
+    IF ST = T_True
+      THEN @Paste_Over(@Make(T_Equal, < >, <HEAD(vars), HEAD(vals)>));
+	   done := 1; @End_Edit
+    ELSIF ST = T_False
+      THEN @Paste_Over(@Make(T_False, < >, < >));
+	   done := 1; @End_Edit
+      ELSE @Undo_Edit FI;
+    vals := TAIL(vals); vars := TAIL(vars) OD ENDVAR .;
+
+
+C:" Check for an OR at the top level which denies a value to a variable ";
+C:" where the variable appears in the other components, eg: X <> 1 OR (X > 2) ";
+C:" Replace the variable the value and see if the result is TRUE or FALSE ";
+C:" (ie we get 1 = 1 AND 1 > 2 which is FALSE) ";
+
+MW_PROC @Mth_Known_Value2(Budget) ==
+  VAR < comp := < >, vars := < >, vals := < >, done := 0, ST := 0 >:
+  FOR comp IN @Cs(@I) DO
+    IF @ST(comp) = T_Not_Equal
+      THEN IF (@ST(comp^2) = T_Number OR @ST(comp^2) = T_String)
+		AND @Mth_Count_Occs(comp^1) > 1
+	     THEN vars := <comp^1> ++ vars; vals := <comp^2> ++ vals FI FI OD;
+  WHILE NOT EMPTY?(vars) AND done = 0 DO
+    @Edit;
+    FOREACH Expression DO
+      IF @Equal?(@I, HEAD(vars))
+	THEN @Paste_Over(HEAD(vals)) FI OD;
+    ST := @ST(@Simplify(@I, Budget DIV 2));
+    IF ST = T_True
+      THEN @Paste_Over(@Make(T_True, < >, < >));
+	   done := 1; @End_Edit
+    ELSIF ST = T_False
+      THEN @Paste_Over(@Make(T_Not_Equal, < >, <HEAD(vars), HEAD(vals)>));
+	   done := 1; @End_Edit
+      ELSE @Undo_Edit FI;
+    vals := TAIL(vals); vars := TAIL(vars) OD ENDVAR .;
+
+
+
+C:" Check for an AND at the top level of the form var <> value ";
+C:" where the variable appears in the other components. ";
+C:" Replace the variable by the denied value and see if any other conjunct ";
+C:" simplifies to FALSE: if so, then the original conjunct is redundant: ";
+
+MW_PROC @Mth_Known_Value3(Budget) ==
+  VAR < comp := < >, comps := @Cs(@I), vars := < >, vals := < >, index := < >,
+	n := 0, i := 0, done := 0, ST := 0, 
+	var := < >, val := < > >:
+  FOR comp IN comps DO
+    n := n + 1;
+    IF @ST(comp) = T_Not_Equal
+      THEN IF (@ST(comp^2) = T_Number OR @ST(comp^2) = T_String)
+		AND @Mth_Count_Occs(comp^1) > 1
+	     THEN vars := <comp^1> ++ vars; vals := <comp^2> ++ vals;
+		  index := <n> ++ index FI FI OD;
+  @Edit;
+  WHILE NOT EMPTY?(vars) AND done = 0 DO
+    var := HEAD(vars); val := HEAD(vals); i := HEAD(index);
+    vars := TAIL(vars); vals := TAIL(vals); index := TAIL(index);
+    n := 0;
+    FOR comp IN comps DO
+      n := n + 1;
+      IF n <> i
+	THEN @New_Program(comp);
+	     IF @Mth_Count_Occs(var) > 0
+	       THEN FOREACH Expression DO
+		      IF @Equal?(@I, var)
+			THEN @Paste_Over(val) FI OD;
+		    ST := @ST(@Simplify(@I, Budget DIV 2));
+		    IF ST = T_False THEN done := 1 FI FI FI OD OD;
+  @Undo_Edit;
+  IF done = 1
+    THEN C:" Delete ith component of the AND ";
+	 @Down_To(i);
+	 @Clever_Delete;
+	 IF @Up? THEN @Up FI FI ENDVAR .;
+
+
+C:" Check for an OR at the top level of the form var = value ";
+C:" where the variable appears in the other components. ";
+C:" Replace the variable by its known value and see if any other conjunct ";
+C:" simplifies to TRUE: if so, then this conjunct is redundant: ";
+
+MW_PROC @Mth_Known_Value4(Budget) ==
+  VAR < comp := < >, comps := @Cs(@I), vars := < >, vals := < >, index := < >,
+	n := 0, i := 0, done := 0, ST := 0, 
+	var := < >, val := < > >:
+  FOR comp IN comps DO
+    n := n + 1;
+    IF @ST(comp) = T_Equal
+      THEN IF (@ST(comp^2) = T_Number OR @ST(comp^2) = T_String)
+		AND @Mth_Count_Occs(comp^1) > 1
+	     THEN vars := <comp^1> ++ vars; vals := <comp^2> ++ vals;
+		  index := <n> ++ index FI FI OD;
+  @Edit;
+  WHILE NOT EMPTY?(vars) AND done = 0 DO
+    var := HEAD(vars); val := HEAD(vals); i := HEAD(index);
+    vars := TAIL(vars); vals := TAIL(vals); index := TAIL(index);
+    n := 0;
+    FOR comp IN comps DO
+      n := n + 1;
+      IF n <> i
+	THEN @New_Program(comp);
+	     IF @Mth_Count_Occs(var) > 0
+	       THEN FOREACH Expression DO
+		      IF @Equal?(@I, var)
+			THEN @Paste_Over(val) FI OD;
+		    ST := @ST(@Simplify(@I, Budget DIV 2));
+		    IF ST = T_True THEN done := 1 FI FI FI OD OD;
+  @Undo_Edit;
+  IF done = 1
+    THEN C:" Delete ith component of the AND ";
+	 @Down_To(i);
+	 @Clever_Delete;
+	 IF @Up? THEN @Up FI FI ENDVAR .;
+
+
+C:" Check for an AND with OR components, or an OR with AND components, ";
+C:" where the elements of one component are a subset of another component. ";
+C:" If so, then delete the larger component. ";
+
+C:" Either main = T_And and sub = T_Or or main = T_Or and sub := T_And ";
+
+MW_PROC @Mth_Common_Components(Budget) ==
+  VAR < main := @ST(@I), sub := @ST(@I^1), comps := < >, delete := < >,
+	comp1 := < >, comp2 := < >, elts := < > >:
+  @Edit;
+  C:" We must ensure that there are no duplicates in the component list ";
+  C:" (otherwise we end up deleting both: since each is a subset of the other!) ";
+  C:" We also want each component to have its components sorted ";
+  @Mth_Sort_Merge;
+  IF @ST(@I) <> main OR EMPTY?(@Cs(@I))
+    THEN @Undo_Edit
+    ELSE comps := @Cs(@I);
+         WHILE NOT EMPTY?(TAIL(comps)) DO
+           comp1 := HEAD(comps); comps := TAIL(comps);
+           elts := @Elements(comp1);
+           FOR comp2 IN comps DO
+             IF @ST(comp2) = sub
+               THEN IF SUBSET?(@Elements(comp2), elts)
+                         AND @Mth_Subset?(@Cs(comp2), @Cs(comp1))
+                      THEN delete := <comp1> ++ delete
+                    ELSIF SUBSET?(elts, @Elements(comp2))
+                         AND @Mth_Subset?(@Cs(comp1), @Cs(comp2))
+                      THEN delete := <comp2> ++ delete FI FI OD OD;
+         IF EMPTY?(delete)
+           THEN @Undo_Edit
+           ELSE @End_Edit;
+                C:" Delete one occurrence of each element of the delete list ";
+                C:" (There can only be one occurrence) ";
+                FOR comp1 IN delete DO
+                  @Down;
+                  DO IF @Equal?(@I, comp1) THEN @Delete; EXIT(1)
+                     ELSIF @Right? THEN @Right ELSE EXIT(1) FI OD;
+                  @Up;
+                  IF NOT @Cs?(@I) THEN
+                    ERROR("BUG in @Mth_Common_Components!!!") FI OD FI FI ENDVAR .;
+
+
+
+C:" See if one (sorted) set of items is a subset of another ";
+
+MW_BFUNCT @Mth_Subset?(L1, L2) == : SKIP;
+  (@Mth_Subset_Sub(L1, L2) = 1) .;
+
+MW_FUNCT @Mth_Subset_Sub(L1, L2) == : SKIP;
+  (IF EMPTY?(L1)
+     THEN 1
+   ELSE IF EMPTY?(L2)
+     THEN 0
+   ELSE IF @Equal?(HEAD(L1), HEAD(L2))
+     THEN @Mth_Subset_Sub(TAIL(L1), TAIL(L2))
+   ELSE IF @Mth_Lt?(HEAD(L1), HEAD(L2))
+     THEN 0
+     ELSE @Mth_Subset_Sub(L1, TAIL(L2)) FI FI FI FI) .;
+
+
+C:" Count the occurrences of an item in the current item: ";
+
+MW_FUNCT @Mth_Count_Occs(I) ==
+  VAR < R := 0 >:
+  FOREACH Expression DO
+    IF @Equal?(I, @I) THEN R := R + 1 FI OD;
+  (R) .;
+
+
+C:" Expand * over + and AND over OR ";
+C:" NOTE: after @Mth_Sort_Merge the +/OR components will have been ";
+C:" collected together. We process them in pairs (for simplicity) ";
+
+MW_PROC @Mth_Expand(Budget) ==
+  FOREACH Expression DO
+    C:" Check for * with + components ";
+    IF @ST(@I) = T_Times
+      THEN C:" Search for the group of + components: ";
+	   @Down;
+	   WHILE @Right? AND Mth_Ord[@ST(@I)] < Mth_Ord[T_Plus]
+	     DO @Right OD;
+	   IF @ST(@I) = T_Plus AND @Right? 
+	     THEN WHILE @Right? AND @ST(@Parent^(@Posn_n + 1)) = T_Plus DO
+		    C:" Multiply out current item with next item ";
+		    @Mth_Multiply(T_Times, T_Plus, Budget) OD;
+		  C:" Check if there is now only one component: ";
+		  @Up;
+		  IF @Size(@I) = 1
+		    THEN @Paste_Over(@I^1) FI FI FI OD;
+  IF @GT(@I) = T_Condition
+    THEN FOREACH Condition DO
+	   C:" Check for AND with OR components ";
+	   IF @ST(@I) = T_And
+	     THEN C:" Search for the group of OR components: ";
+		  @Down;
+		  WHILE @Right? AND Mth_Ord[@ST(@I)] < Mth_Ord[T_Or]
+		    DO @Right OD;
+		  IF @ST(@I) = T_Or AND @Right? 
+		    THEN WHILE @Right? AND @ST(@Parent^(@Posn_n + 1)) = T_Or DO
+			   C:" Multiply out current item with next item ";
+			   @Mth_Multiply(T_And, T_Or, Budget) OD;
+			 IF @Right? AND @Size(@I) < (Budget DIV 2)
+			   THEN @Right; @Paste_Over(@Make(T_Or, < >, <@I>));
+				@Left; @Mth_Multiply(T_And, T_Or, Budget) FI;
+			 C:" Check if there is now only one component: ";
+			 @Up;
+			 IF @Size(@I) = 1
+			   THEN @Paste_Over(@I^1) FI FI FI OD FI .;
+
+
+C:" Multiply out current item with next item (unless the result is too big) ";
+MW_PROC @Mth_Multiply(mul, add, Budget) ==
+  VAR < L1 := @Cs(@I), L2 := < >, new := < >, x := < >, y := < > >:
+  @Right;
+  IF LENGTH(L1) * @Size(@I) < (Budget DIV 2)
+    THEN L2 := @Cs(@I);
+	 FOR x IN L1 DO
+	   FOR y IN L2 DO
+	     IF @ST(x) = mul
+	       THEN new := <@Make(mul, < >, @Cs(x) ++ <y>)> ++ new
+	       ELSE new := <@Make(mul, < >, <x, y>)> ++ new FI OD OD;
+	 @Left; @Delete;
+	 @Paste_Over(@Make(add, < >, REVERSE(new))) FI ENDVAR .;
+
+
+C:" Take common factors out of * components of + operations ";
+C:" and out of AND components of OR operations ";
+MW_PROC @Mth_Factorise(Budget) ==
+  VAR < orig := < > >:
+  DO orig := @I;
+     FOREACH Expression DO
+       IF @ST(@I) = T_Plus AND @Mth_Occs(T_Times, MAP("@ST", @Cs(@I))) > 1
+	 THEN @Mth_Factor(T_Plus, T_Times) FI OD;
+     FOREACH Condition DO
+       IF @ST(@I) = T_Or AND @Mth_Occs(T_And, MAP("@ST", @Cs(@I))) > 1
+	 THEN @Mth_Factor(T_Or, T_And) FI OD;
+     IF @Equal?(@I, orig) THEN EXIT(1) FI OD ENDVAR .;
+
+
+C:" Return number if times elt occurs in list: ";
+MW_FUNCT @Mth_Occs(elt, list) ==
+  VAR < R := 0 >:
+  WHILE NOT EMPTY?(list) DO
+    IF elt = HEAD(list) THEN R := R + 1 FI;
+    list := TAIL(list) OD;
+  (R) .;
+
+C:" Search for common factors in the Times components of the Plus operation. ";
+C:" The brute force method is O(n^2) in the number of factors. ";
+C:" The simple, elegant, solution is to use a hash table: BUT we can't do that ";
+C:" because of the dbase tables (need a hash table with @Equal? as the equality op) ";
+C:" So instead, we sort the list of factors (using @Mth_Sort) ";
+C:" and check the list for duplicates ";
+
+MW_PROC @Mth_Factor(Plus, Times) ==
+  VAR < factors := < >, common := < >, occs := 0, max := 0, comp := < > >:
+  C:" Get the list of factors, sort it, then find the most common ";
+  FOR comp IN @Cs(@I) DO
+    IF @ST(comp) = Times THEN factors := @Cs(comp) ++ factors FI OD;
+  factors := @Mth_Sort(factors);
+  WHILE NOT EMPTY?(factors) DO
+    occs := 1;
+    WHILE NOT EMPTY?(TAIL(factors))
+	    AND @Equal?(HEAD(factors), HEAD(TAIL(factors))) DO
+      occs := occs + 1;
+      IF occs > max THEN common := HEAD(factors); max := occs FI;
+      factors := TAIL(factors) OD;
+    factors := TAIL(factors) OD;
+  IF max >= 2
+    THEN C:" We have found a common factor, so take it out. ";
+	 C:" From this point on, efficiency isn't so important. ";
+	 VAR < new := < >, sub := < >, newsub := < >, newcomp := < >, done := 0 >:
+	 FOR comp IN @Cs(@I) DO
+	   IF @ST(comp) = Times
+	     THEN newcomp := < >; done := 0;
+		  FOR sub IN @Cs(comp) DO
+		    IF done = 0 AND @Equal?(common, sub)
+		      THEN IF Power_Op[Times] <> Times
+			     THEN C:" Don't take out more than one ";
+				  done := 1 FI
+		      ELSE newcomp := <sub> ++ newcomp FI OD;
+		  IF LENGTH(newcomp) = 0
+		    THEN SKIP
+		  ELSIF LENGTH(newcomp) = 1
+		    THEN newsub := newcomp ++ newsub
+		  ELSIF LENGTH(newcomp) < @Size(comp)
+		    THEN newsub := <@Make(Times, < >, REVERSE(newcomp))> ++ newsub
+		    ELSE new := <comp> ++ new FI
+	     ELSE new := <comp> ++ new FI OD;
+	 C:" newsub is the result after common has been taken out ";
+	 C:" new contains the elements which didn't contain common ";
+	 IF LENGTH(newsub) = 0
+	   THEN SKIP
+	 ELSIF LENGTH(newsub) = 1
+	   THEN newsub := @Make(Times, < >, @Mth_Sort(<common, newsub[1]>))
+	   ELSE newsub := @Make(Times, < >,
+				@Mth_Sort(<common, @Make(Plus, < >,
+				                         @Mth_Sort(newsub))>)) FI;
+	 IF NOT EMPTY?(newsub)
+	   THEN IF EMPTY?(new)
+		  THEN @Paste_Over(newsub)
+		  ELSE @Paste_Over(@Make(Plus, < >,
+					 @Mth_Sort(<newsub> ++ new))) FI
+         FI ENDVAR FI ENDVAR .;
+
+
+
+C:" Simplify A*(1/B) and A+(-B), sort relations, *, and + operations ";
+C:" Constants are placed last, so x+5 will be OK, but we need to re-sort x*5 to 5*x ";
+C:" NB: We ensure that negative numbers are implemented using T_Negate ";
+C:" so that x - 1 doesn't come out as x + -1 ";
+C:" Although -n is larger than x (and therefore is normally ordered first) ";
+C:" we want to say x = -n and not -n = x ";
+
+C:" Ensure T_Concat has only two components to work around a bug in FME ";
+
+MW_PROC @Mth_Prettify() ==
+  VAR < count := 0 >:
+  FOREACH Expression DO
+    IF @ST(@I) = T_Number AND @V(@I) < 0
+      THEN @Paste_Over(@Make(T_Negate, < >, <@Make(T_Number, -@V(@I), < >)>))
+    ELSIF @ST(@I) = T_Times
+      THEN IF T_Invert IN MAP("@ST", @Cs(@I))
+	     THEN @Mth_Prettify_Inverses(T_Times, T_Invert, T_Divide) FI
+    ELSIF @ST(@I) = T_Plus
+      THEN IF T_Negate IN MAP("@ST", @Cs(@I))
+	     THEN @Mth_Prettify_Inverses(T_Plus, T_Negate, T_Minus) FI
+    ELSIF @ST(@I) = T_Concat AND @Size(@I) > 2
+      THEN @Paste_Over(@Mth_Bug_Fix_Concat(@I)) FI OD;
+  IF @GT(@I) = T_Condition 
+    THEN C:" Check for two or more unsafe tests in an AND or OR :";
+         IF @ST(@I) = T_And OR @ST(@I) = T_Or
+           THEN FOR comp IN @Cs(@I) DO
+                  IF @Unsafe_Test?(comp)
+                    THEN count := count + 1 FI OD FI FI;
+  IF @GT(@I) = T_Condition AND count < 2
+    THEN FOREACH Condition DO
+           IF @Size(@I) = 2 AND Reverse_Op[@ST(@I)] > 0
+	     THEN IF @ST(@I^1) = T_X_Funct_Call AND @V(@I^1^1) = @Make_Name("string")
+	            THEN @Paste_Over(@Make(Reverse_Op[@ST(@I)],
+		                           < >, <@I^2, @I^1>))
+	          ELSIF @ST(@I^2) = T_Negate AND @ST(@I^2^1) = T_Number
+		    THEN SKIP
+		  ELSIF @Mth_Lt?(@I^2, @I^1)
+		          OR @ST(@I^2) IN <T_Variable, T_Primed_Var>
+		               AND @ST(@I^1) NOTIN <T_Variable, T_Primed_Var>
+	            THEN @Paste_Over(@Make(Reverse_Op[@ST(@I)],
+		                           < >, <@I^2, @I^1>)) FI FI OD FI;
+  FOREACH Expression DO
+    IF @ST(@I) = T_Times
+      THEN IF @ST(@I^(@Size(@I))) = T_Number
+	     THEN @Paste_Over(@Make(T_Times, < >, <@I^(@Size(@I))>
+	                                            ++ BUTLAST(@Cs(@I)))) FI FI OD ENDVAR .;
+
+
+MW_FUNCT @Mth_Bug_Fix_Concat(I) == : SKIP;
+  (IF @ST(I) = T_Concat AND @Size(I) > 2
+     THEN @Make(T_Concat,
+                < >,
+                <@Mth_Bug_Fix_Concat(@Make(T_Concat, < >, BUTLAST(@Cs(I)))),
+		 LAST(@Cs(I))>)
+     ELSE I FI) .;
+
+
+MW_PROC @Mth_Prettify_Inverses(Times, Invert, Divide) ==
+  VAR < top := < >, bottom := < >, comp := < > >:
+  FOR comp IN @Cs(@I) DO
+    IF @ST(comp) = Invert
+      THEN bottom := <comp^1> ++ bottom
+      ELSE top := <comp> ++ top FI OD;
+  IF EMPTY?(top)
+    THEN @Paste_Over(@Make(Invert, < >, 
+			   <@C_Make(Times, bottom)>))
+    ELSE @Paste_Over(@Make(Divide, < >,
+			   <@C_Make(Times, top), @C_Make(Times, bottom)>)) FI ENDVAR .;
+
+
+C:" A conditional @Make: If there is one item in the list, return it. ";
+C:" Otherwise, construct an item of the given type: ";
+
+MW_FUNCT @C_Make(type, L) == : SKIP;
+  (IF LENGTH(L) = 1
+     THEN HEAD(L)
+     ELSE @Make(type, < >, L) FI) .;
+
+
+MW_PROC @Simplify_Bit_Ops() ==
+  VAR < bit_and := @Make_Name("bit_and"),
+	bit_or  := @Make_Name("bit_or"),
+	bit_xor := @Make_Name("bit_xor") >:
+  FOREACH Expression DO
+    IF @ST(@I) = T_X_Funct_Call
+      THEN IF @V(@I^1) = bit_and AND @Mth_All_Constants?(@Cs(@I^2))
+	     THEN @Simplify_Bit(bit_and)
+	   ELSIF @V(@I^1) = bit_or AND @Mth_All_Constants?(@Cs(@I^2))
+	     THEN @Simplify_Bit(bit_or)
+	   ELSIF @V(@I^1) = bit_xor AND @Mth_All_Constants?(@Cs(@I^2))
+	     THEN @Simplify_Bit(bit_xor)
+	   ELSIF @V(@I^1) = bit_or AND @Size(@I^2) = 2
+	           AND @ST(@I^2^1) = T_Number AND @V(@I^2^1) = 0
+	     THEN @Paste_Over(@I^2^2)
+	   ELSIF @V(@I^1) = bit_or AND @Size(@I^2) = 2
+	           AND @ST(@I^2^2) = T_Number AND @V(@I^2^2) = 0
+	     THEN @Paste_Over(@I^2^1) FI FI OD ENDVAR .;
+
+
+C:" Check that all the components are numbers or hex numbers, ";
+C:" Convert all components to hex strings and process them ";
+C:" a character at a time using a look-up table with keys: ";
+C:" <type, x, y> which returns a character ";
+C:" Paste over the hex string result. ";
+
+C:" Note: we produce a hex string result rather than a number ";
+C:" because of the limited size of integers in (efficient) compiled Scheme. ";
+
+MW_PROC @Simplify_Bit(type) ==
+  VAR < comps := @Cs(@I^2), OK := 1, comp := < >, pars := < > >:
+  FOR comp IN comps DO
+    IF @ST(comp) = T_Number
+      THEN pars := <@Num_To_Hex(@V(comp))> ++ pars
+    ELSIF @ST(comp) = T_String AND @Starts_With?(@V(comp), "hex 0x")
+      THEN pars := <!XF upcase(SUBSTR(@V(comp), 6))> ++ pars
+      ELSE OK := 0 FI OD;
+  IF OK = 1
+    THEN WHILE LENGTH(pars) > 1 DO
+	   pars := <@Bit_Op(type, pars[1], pars[2])> ++ pars[3..] OD;
+         IF @Mth_Zeros?(pars[1])
+	   THEN @Paste_Over(@Make(T_Number, 0, < >))
+	   ELSE @Paste_Over(@Make(T_String, "hex 0x" ++ pars[1], < >)) FI FI ENDVAR .;
+
+
+MW_BFUNCT @Mth_Zeros?(s) == : SKIP;
+  (SLENGTH(s) = 0
+    OR (SUBSTR(s, 0, 1) = "0" AND @Mth_Zeros?(SUBSTR(s, 1)))) .;
+
+
+
+C:" Apply the bitwise operation to the two hex strings and return the result: ";
+
+MW_FUNCT @Bit_Op(type, p1, p2) ==
+  VAR < R := "", n := MAX(SLENGTH(p1), SLENGTH(p2)), i := 0 >:
+  C:" Pad the strings to the same length ";
+  FOR i := SLENGTH(p1) + 1 TO n STEP 1 DO
+    p1 := "0" ++ p1 OD;
+  FOR i := SLENGTH(p2) + 1 TO n STEP 1 DO
+    p2 := "0" ++ p2 OD;
+  FOR i := 0 TO n - 1 STEP 1 DO
+    R := R ++ Bit_Op.(<type, SUBSTR(p1, i, 1), SUBSTR(p2, i, 1)>) OD;
+  (R) .;
+
+
+C:" Set up the Bit_Op lookup table: ";
+
+Bit_Op := HASH_TABLE;
+VAR < bit_and := @Make_Name("bit_and"),
+      bit_or  := @Make_Name("bit_or"),
+      bit_xor := @Make_Name("bit_xor"),
+      type := < >, p1 := 0, p2 := 0, p11 := 0, p22 := 0, r := 0, bit := 0,
+      digits := "0123456789ABCDEF" >:
+  FOR type IN <bit_and, bit_or, bit_xor> DO
+    FOR p1 := 0 TO 15 STEP 1 DO
+      FOR p2 := 0 TO 15 STEP 1 DO
+	C:" Compute r := p1 bit_XXX p2 and store in table: ";
+	bit := 1; r := 0;
+	p11 := p1; p22 := p2;
+	WHILE p11 > 0 OR p22 > 0 DO
+	  IF type = bit_and
+	    THEN IF p11 MOD 2 = 1 AND p22 MOD 2 = 1 THEN r := r + bit FI
+	  ELSIF type = bit_or
+	    THEN IF p11 MOD 2 = 1 OR  p22 MOD 2 = 1 THEN r := r + bit FI
+	  ELSIF type = bit_xor
+	    THEN IF (p11 MOD 2 = 0 AND p22 MOD 2 = 1)
+		      OR (p11 MOD 2 = 1 AND p22 MOD 2 = 0)
+		   THEN r := r + bit FI FI;
+	  p11 := p11 DIV 2;
+	  p22 := p22 DIV 2;
+	  bit := bit * 2 OD;
+	Bit_Op.(<type, SUBSTR(digits, p1, 1), SUBSTR(digits, p2, 1)>)
+	  := SUBSTR(digits, r, 1) OD OD OD ENDVAR;
+
+
+
+C:" Computationally expensive simplifications ";
+
+MW_PROC @Mth_Expensive(Budget) ==
+  VAR < Orig := < >, B1 := < >, B2 := < >, comp := < >, not_comp := < >, R := < > >:
+  DO IF Budget <= 10 THEN EXIT(1) FI;
+     Orig := @I;
+
+IF FALSE AND (@ST(@I) = T_And OR @ST(@I) = T_Or)
+  THEN PRINT("@Mth_Expensive"); @PP_Item(@I, 80, ""); PRINT("") FI;
+
+     C:" In the following, the remainder could be a large formula ";
+     C:" and @Simplify_Using does a FOREACH over it. ";
+     C:" So limit the calls to cases where the component is a simple ";
+     C:" relation comparing something with a number. ";
+
+     IF @ST(@I) = T_And
+       THEN C:" Use each component to simplify the others ";
+            C:" Can assume any component is true if that simplifies the remainder ";
+            B1 := < >; B2 := TAIL(@Cs(@I)); comp := @I^1;
+	    DO IF @ST(comp) IN <T_Equal, T_Not_Equal, T_Less, T_Less_Eq,
+                                T_Greater, T_Greater_Eq>
+                     AND (@ST(comp^1) = T_Number OR @ST(comp^2) = T_Number)
+		     AND (@ST(comp^1) IN <T_Variable, T_Struct>
+		            OR @ST(comp^2) IN <T_Variable, T_Struct>)
+                     OR @ST(comp) = T_BFunct_Call
+                 THEN IF LENGTH(B1) = 1
+                        THEN R := @Mth_Simplify_Using(HEAD(B1), comp, Budget - 1);
+                             IF @Total_Size(R) < @Total_Size(HEAD(B1))
+                               THEN @Paste_Over(@Make(T_And, < >, <R, comp> ++ B2));
+                                    EXIT(1) FI
+                      ELSIF LENGTH(B1) > 1
+                        THEN R := @Mth_Simplify_Using(@Make(T_And, < >, B1),
+			                              comp, Budget - 1);
+                             IF @Total_Size(R) < @Total_Size(@Make(T_And, < >, B1))
+                               THEN @Paste_Over(@Make(T_And, < >, <R, comp> ++ B2));
+                                    EXIT(1) FI FI;
+                      IF LENGTH(B2) = 1
+                        THEN R := @Mth_Simplify_Using(HEAD(B2), comp, Budget - 1);
+                             IF @Total_Size(R) < @Total_Size(HEAD(B2))
+                               THEN @Paste_Over(@Make(T_And, < >, <comp, R> ++ B1));
+                                    EXIT(1) FI
+                      ELSIF LENGTH(B2) > 1
+                        THEN R := @Mth_Simplify_Using(@Make(T_And, < >, B2),
+			                              comp, Budget - 1);
+                             IF @Total_Size(R) < @Total_Size(@Make(T_And, < >, B2))
+                               THEN @Paste_Over(@Make(T_And, < >, <comp, R> ++ B1));
+                                    EXIT(1) FI FI FI;
+	       IF EMPTY?(B2) THEN EXIT(1) FI;
+               B1 := <comp> ++ B1;
+	       comp := HEAD(B2);
+	       B2 := TAIL(B2) OD;
+
+     ELSIF @ST(@I) = T_Or
+       THEN C:" Use each component to simplify the others ";
+            C:" Can assume any component is false if that simplifies the remainder ";
+            B1 := < >; B2 := TAIL(@Cs(@I)); comp := @I^1; not_comp := @Not(@I^1);
+	    DO IF @ST(comp) IN <T_Equal, T_Not_Equal, T_Less, T_Less_Eq,
+                                T_Greater, T_Greater_Eq>
+                     AND (@ST(comp^1) = T_Number OR @ST(comp^2) = T_Number)
+		     AND (@ST(comp^1) IN <T_Variable, T_Struct>
+		            OR @ST(comp^2) IN <T_Variable, T_Struct>)
+                     OR @ST(comp) = T_BFunct_Call
+                 THEN IF LENGTH(B1) = 1
+                        THEN R := @Mth_Simplify_Using(HEAD(B1), not_comp, Budget - 1);
+                             IF @Total_Size(R) < @Total_Size(HEAD(B1))
+                               THEN @Paste_Over(@Make(T_Or, < >, <R, comp> ++ B2));
+                                    EXIT(1) FI
+                      ELSIF LENGTH(B1) > 1
+                        THEN R := @Mth_Simplify_Using(@Make(T_Or, < >, B1),
+                                                      not_comp, Budget - 1);
+                             IF @Total_Size(R) < @Total_Size(@Make(T_Or, < >, B1))
+                               THEN @Paste_Over(@Make(T_Or, < >, <R, comp> ++ B2));
+                                    EXIT(1) FI FI;
+                      IF LENGTH(B2) = 1
+                        THEN R := @Mth_Simplify_Using(HEAD(B2), not_comp, Budget - 1);
+                             IF @Total_Size(R) < @Total_Size(HEAD(B2))
+                               THEN @Paste_Over(@Make(T_Or, < >, <comp, R> ++ B1));
+                                    EXIT(1) FI
+                      ELSIF LENGTH(B2) > 1
+                        THEN R := @Mth_Simplify_Using(@Make(T_Or, < >, B2),
+                                                      not_comp, Budget - 1);
+                             IF @Total_Size(R) < @Total_Size(@Make(T_Or, < >, B2))
+                               THEN @Paste_Over(@Make(T_Or, < >, <comp, R> ++ B1));
+                                    EXIT(1) FI FI FI;
+               IF EMPTY?(B2) THEN EXIT(1) FI;
+               B1 := <comp> ++ B1;
+	       comp := HEAD(B2);
+	       not_comp := @Not(comp);
+	       B2 := TAIL(B2) OD FI;
+    IF @Equal?(Orig, @I) THEN EXIT(1) FI;
+    Budget := Budget - 1 OD ENDVAR .;
+
+
+
+
+C:" Simplify condition A given that condition B is true ";
+C:" For example: x = 0 AND y = 3 might simplify to FALSE when x > 0 is known. ";
+C:" We can assume that both A and B are already simplified ";
+
+MW_FUNCT @Simplify_Using(A, B, Budget) ==
+  VAR < R := < > >:
+  R := @Mth_Simplify_Using(A, B, Budget);
+  IF @Total_Size(R) < @Total_Size(A)
+    THEN R := @Simplify(R, Budget DIV 2)
+    ELSE R := A FI;
+  (R) .;
+
+
+C:" The internal version avoids calling @Simplify to avoid re-factorising ";
+
+MW_FUNCT @Mth_Simplify_Using(A, B, Budget) ==
+  VAR < R := < >, v := < >, e := < >, not_B := < > >:
+  IF Budget <= 10 OR EMPTY?(@Used(A) /\ @Used(B))
+    THEN C:" Not enough budget, or no shared variables ";
+         R := A FI;
+
+IF FALSE THEN
+PRINT("Simplify: "); @PP_Item(A, 80, "");
+PRINT("Using: "); @PP_Item(B, 80, "") FI;
+
+  IF EMPTY?(R) AND @ST(B) = T_Equal AND NOT EMPTY?(@Used(A) /\ @Used(B^1))
+    THEN C:" Try replacing B^1 with B^2 in A ";
+         R := @Mth_Replace(B^1, B^2, A);
+         IF @Total_Size(R) >= @Total_Size(A)
+           THEN R := < > FI FI;
+  IF EMPTY?(R) AND @ST(B) = T_Equal AND NOT EMPTY?(@Used(A) /\ @Used(B^2))
+    THEN C:" Try replacing B^2 with B^1 in A ";
+         R := @Mth_Replace(B^2, B^1, A);
+         IF @Total_Size(R) >= @Total_Size(A)
+           THEN R := < > FI FI;
+
+  C:" If any component of A is implied by B, then replace it by TRUE ";
+  IF EMPTY?(R)
+    THEN not_B := @Not(B);
+         @Edit; @New_Program(A);
+         FOREACH Condition DO
+	   IF @ST(@Or(not_B, @I)) = T_True
+	     THEN @Paste_Over(Mth_True)
+	   ELSIF @ST(@And(B, @I)) = T_False
+	     THEN @Paste_Over(Mth_False) FI OD;
+	 IF @Total_Size(@Program) <= @Total_Size(A)
+	   THEN R := @Program FI;
+	 @Undo_Edit FI;
+
+  IF EMPTY?(R) THEN R := A FI;
+
+IF FALSE THEN PRINT("Result: "); @PP_Item(R, 80, ""); PRINT("") FI;
+
+  (R) .;
+		
+
+
+MW_FUNCT @Mth_Replace(e1, e2, B) ==
+  VAR < R := < > >:
+  IF @Equal?(B, e1)
+    THEN R := e2
+  ELSIF @Total_Size(B) > @Total_Size(e1)
+    THEN VAR < new := < >, e := < > >:
+         FOR comp IN @Cs(B) DO
+	   new := <@Mth_Replace(e1, e2, comp)> ++ new OD;
+	 R := @Make(@ST(B), < >, REVERSE(new));
+	 IF @Equal?(R, B)
+	   THEN R := B
+	   ELSE R := @Simplify(R, 10) FI ENDVAR
+    ELSE R := B FI;
+  (R) .;
+
+
+
+C:" Simplify FORALL and EXISTS: ";
+
+MW_PROC @Mth_Quantifiers(Budget) ==
+  C:" Ex.(A OR B) simplifies to Ex.A OR Ex.B ";
+  C:" Ax.(A AND B) simplifies to Ax.A AND Ax.B ";
+  VAR < vars := @Variables(@I^1), new := < >, rest := < > >:
+  IF EMPTY?(vars /\ @Used(@I^2))
+    THEN @Paste_Over(@I^2)
+  ELSIF @ST(@I) = T_Exists AND @ST(@I^2) = T_Or
+      OR @ST(@I) = T_Forall AND @ST(@I^2) = T_And
+    THEN FOR comp IN @Cs(@I^2) DO
+	   IF EMPTY?(vars /\ @Used(comp))
+	     THEN new := <comp> ++ new
+	     ELSE new := <@Make(@ST(@I), < >, <@I^1, comp>)> ++ new FI OD;
+	 @Paste_Over(@Make(@ST(@I^2), < >, REVERSE(new)))
+  ELSIF @ST(@I^2) = T_Or OR @ST(@I^2) = T_And
+    THEN C:" Factor out any components which don't use vars ";
+         FOR comp IN @Cs(@I^2) DO
+	   IF NOT EMPTY?(vars /\ @Used(comp))
+	     THEN new := <comp> ++ new
+             ELSE rest := <comp> ++ rest FI OD;
+	 IF NOT EMPTY?(rest)
+	   THEN IF LENGTH(new) > 1
+	          THEN new := @Make(@ST(@I^2), < >, REVERSE(new))
+		  ELSE new := HEAD(new) FI;
+	        new := @Make(@ST(@I), < >, <@I^1, new>);
+                @Paste_Over(@Make(@ST(@I^2), < >, <new> ++ REVERSE(rest)))
+           ELSE @Mth_Quantifiers_Sub(Budget) FI
+    ELSE @Mth_Quantifiers_Sub(Budget) FI ENDVAR .;
+
+
+MW_PROC @Mth_Quantifiers_Sub(Budget) ==
+  VAR < vars := @Variables(@I^1), replace := HASH_TABLE,
+        sub := 0, rel := 0 >:
+  IF @ST(@I) = T_Forall
+    THEN sub := T_Or; rel := T_Not_Equal
+    ELSE sub := T_And; rel := T_Equal FI;
+   @Down_To(2); C:" to the condition ";
+   C:" Ax.(x <> e OR Q) simplifies to Q[e/x] ";
+   C:" Ex.(x = e AND Q) simplifies to Q[e/x] ";
+   IF @ST(@I) = sub
+     THEN FOR comp IN @Cs(@I) DO
+            IF @ST(comp) = rel AND @ST(comp^1) = T_Variable
+                 AND @V(comp^1) IN vars
+              THEN replace.(@V(comp^1)) := comp^2
+            ELSIF @ST(comp) = rel AND @ST(comp^2) = T_Variable
+                 AND @V(comp^2) IN vars
+              THEN replace.(@V(comp^2)) := comp^1 FI OD;
+          FOREACH Global Variable DO
+            IF NOT EMPTY?(replace.(@V(@I)))
+              THEN @Paste_Over(replace.(@V(@I))) FI OD FI;
+   @Up; C:" Back to FORALL/EXISTS ";
+   C:" Ex.( ... x = e ...) simplifies to Ex.( ... TRUE ...) ";
+   C:" if this is the only occurrence of x ";
+   IF @ST(@I) = T_Exists
+     THEN @Down_To(2); C:" to the condition ";
+          VAR < count := 0 >:
+          FOR v IN vars DO
+	    count := 0;
+	    FOREACH Global Variable DO
+	      IF @V(@I) = v THEN count := count + 1 FI OD;
+	    IF count = 1
+	      THEN VAR < var := @Make(T_Variable, v, < >) >:
+	           FOREACH Condition DO
+	             IFMATCH Condition ~?var = ~?exp
+		       THEN @Paste_Over(Mth_True) ENDMATCH;
+		     IFMATCH Condition ~?exp = ~?var
+		       THEN @Paste_Over(Mth_True) ENDMATCH OD ENDVAR FI OD ENDVAR;
+          @Up FI;
+   C:" Check for unused variables: ";
+   IF NOT EMPTY?(vars \ @Used(@I^2))
+     THEN vars := vars /\ @Used(@I^2);
+          IF EMPTY?(vars)
+            THEN @Paste_Over(@I^2)
+            ELSE VAR < new := < > >:
+                 FOR v IN vars DO
+                   new := <@Make(T_Var_Lvalue, v, < >)> ++ new OD;
+                 @Down;
+                 @Paste_Over(@Make(T_Lvalues, < >, REVERSE(new)));
+                 @Up ENDVAR FI FI ENDVAR .;
+
+
+C:" If (NOT q?(x)) appears, try replacing q?(x) by both TRUE and FALSE ";
+C:" If the results are identical and smaller than the original, then replace it ";
+C:" Ditto for (NOT !XC q(x)) ";
+
+MW_PROC @Simplify_BFunct_Calls(Budget) ==
+  VAR < calls := < > >:
+  FOREACH Condition DO
+    IF @ST(@I) = T_Not AND @ST(@I^1) IN <T_BFunct_Call, T_X_BFunct_Call>
+      THEN calls := <@I^1> ++ calls FI OD;
+  IF NOT EMPTY?(calls)
+    THEN VAR < new1 := < >, new2 := < > >:
+         FOR call IN calls DO
+           new1 := @Replace_Condition(@I, call, Mth_True, 5);
+	   new2 := @Replace_Condition(@I, call, Mth_False, 5);
+	   IF @Equal?(new1, new2) AND @Total_Size(new1) < @Total_Size(@I)
+	     THEN @Paste_Over(new1)
+           ELSIF @Total_Size(new1) + @Total_Size(new2) + 10 < @Total_Size(@I)
+	     THEN @Paste_Over(FILL Condition
+	                        ~?call AND ~?new1
+	                          OR NOT(~?call) AND ~?new2
+			      ENDFILL) FI OD ENDVAR FI ENDVAR .;
+
+
+MW_FUNCT @Replace_Condition(I, old, new, Budget) ==
+  VAR < R := < > >:
+  @Edit;
+  @New_Program(I);
+  FOREACH Condition DO
+    IF @Equal?(@I, old)
+      THEN @Paste_Over(new) FI OD;
+  R := @Simplify(@Program, Budget);
+  @Undo_Edit;
+  (R) .;
+	   
+
+
+SKIP
+
+

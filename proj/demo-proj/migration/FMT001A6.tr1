@@ -1,0 +1,15 @@
+Action system type is Reg
+Simplifying...
+Deleting unreachable code: xxxx
+26 actions
+Calculating Succs and Preds... Done.
+Looking for unreachable actions...
+FMTBBB2 
+Rebuilding the action system.
+There are 26 actions in the main system.
+Rebuilding the action system.
+There are 26 actions in the main system.
+
+Transformation time: 0
+Transformation Count: 20
+Result is in: FMT001A6.ws2

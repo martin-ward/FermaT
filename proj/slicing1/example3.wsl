@@ -1,0 +1,19 @@
+ BEGIN
+   sum := sum_0;
+   i := 1;
+   WHILE i <= 10 DO
+      A( VAR sum,i)
+   OD;
+   PRINT("sum = ",sum)
+ WHERE
+ PROC A( VAR x,y) ==
+   Add(y VAR x);
+   Inc( VAR y)
+ END
+ PROC Add(b VAR a) ==
+   a := (a + b)
+ END
+ PROC Inc( VAR z) ==
+   Add(1 VAR z)
+ END
+ END

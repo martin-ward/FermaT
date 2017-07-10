@@ -1,0 +1,78 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @While_To_Abort_Test() ==
+  IF @ST(@I) <> T_While
+    THEN @Fail("Item is not a WHILE loop")
+    ELSE C:"Deal with the trivial case first ";
+	 IFMATCH Statement WHILE TRUE DO ~*S OD
+	   THEN @Pass
+	   ELSE C:"If the body ends with an assertion which implies the";
+		C:"loop condition, the loop will never terminate.      ";
+		IFMATCH Statement WHILE ~?B DO ~*S; {~?B1} OD
+		  THEN IF @Implies?(B1, B)
+			 THEN @Pass FI
+		  ELSE @While_To_Abort_Test2() ENDMATCH ENDMATCH;
+       
+	 IF NOT(@Passed?)
+	   THEN @Fail("Cannot determine that the loop will not terminate") FI FI .;
+
+
+MW_PROC @While_To_Abort_Test2() ==
+  VAR < assigned := < > >:
+  C:"Can we prove that the loop will never terminate ?";
+  IFMATCH Statement WHILE ~?B DO ~+S OD
+    THEN C:"If the loop condition is not altered by the";
+	 C:"body, the loop will not terminate.         ";
+	 FOR I IN S DO
+	   assigned := @Assigned(I) \/ assigned OD;
+	 IF EMPTY?(@Variables(B) /\ assigned) 
+	      AND EMPTY?(Ext_Call_Types_Set /\ @Stat_Types(@I))
+	   THEN @Pass
+	   ELSE C:"If the loop condition is altered in such a way that it ";
+		C:"still remains true, the loop will never terminate.     ";
+		C:"We can test this by trying to move an assertion through";
+		C:"the loop and examining the effect on its condition.    ";
+		@Edit;
+		@Trans(TR_Insert_Assertion,"");
+		WHILE @Trans?(TR_Move_To_Right) DO
+		  @Trans(TR_Move_To_Right, "") OD;
+		WHILE @Up? DO @Up OD;
+		IFMATCH Statement WHILE ~?B DO ~*S; {~?B1} OD
+		  THEN IF @Implies?(B1, B) THEN @Pass FI ENDMATCH;
+		@Undo_Edit FI ENDMATCH ENDVAR .;
+
+
+MW_PROC @While_To_Abort_Code (Data) ==
+  IFMATCH Statement WHILE TRUE DO ~*S OD
+    THEN @Paste_Over(FILL Statement ABORT ENDFILL)  
+    ELSE 
+  IFMATCH Statement WHILE ~?B DO ~*S OD
+    THEN @Paste_Over(FILL Statement IF ~?B THEN ABORT FI ENDFILL) ENDMATCH ENDMATCH .;
+
+
+SKIP
+
+
+
+
+
+

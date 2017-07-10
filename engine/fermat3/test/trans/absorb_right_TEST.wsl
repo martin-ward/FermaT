@@ -1,0 +1,261 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Absorb Right'",
+	    (FILL Statements J := 0; J := J + 1 ENDFILL),
+	    <2>,
+	    TR_Absorb_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 2nd test of `Absorb Right'",
+	    (FILL Statements J := 0; J := J + 1 ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    (FILL Statements J := 1 ENDFILL) );
+
+
+@Test_Trans(" 3rd test of `Absorb Right'",
+	    (FILL Statements DO IF A = B
+				   THEN DO SKIP; EXIT(2) OD
+				   ELSE J := 4; EXIT(1) FI OD;
+			     J := J + 1 ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    (FILL Statements DO IF A = B
+				   THEN DO SKIP; J := J + 1; EXIT(2) OD
+				   ELSE J := 4; J := J + 1; EXIT(1) FI OD ENDFILL));
+
+
+@Test_Trans(" 4th test of `Absorb Right'",
+	    (FILL Statements VAR <A := 0, B := C> :
+				 SKIP;
+				 A := A + B ENDVAR;
+			     X := A ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 5th test of `Absorb Right'",
+	    (FILL Statements VAR <A := 0, B := C> :
+				 SKIP;
+				 A := A + B ENDVAR;
+			     X := C ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    (FILL Statements VAR <A := 0, B := C> :
+				 SKIP;
+				 A := A + B;
+				 X := C ENDVAR ENDFILL));
+
+
+@Test_Trans(" 6th test of `Absorb Right'",
+	    (FILL Statements BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y)
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END;
+			     IF A = 1 THEN John(2 VAR P) ELSE Mary(3 VAR Q) FI ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    (FILL Statements BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y);
+				   IF A = 1 THEN John(2 VAR P) ELSE Mary(3 VAR Q) FI
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END ENDFILL));
+
+
+@Test_Trans(" 7th test of `Absorb Right'",
+	    (FILL Statements BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y)
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END;
+			     IF A = 1 THEN John(2 VAR P) ELSE Increment(3 VAR Q) FI ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 8th test of `Absorb Right'",
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP OD;
+			     K := 1 ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP;
+				 K := 1 OD ENDFILL));
+
+
+@Test_Trans(" 9th test of `Absorb Right'",
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP OD;
+			     K := K + 1 ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("10th test of `Absorb Right'",
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP OD;
+			     K := I ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("11th test of `Absorb Right'",
+	    (FILL Statements FOR I := 0 TO 10 STEP (A * B) DO
+				 J := J + I;
+				 SKIP OD;
+			     K := 1 ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("12th test of `Absorb Right'",
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD;
+			     K := 1 ENDFILL),
+	    <2>,
+	    TR_Absorb_Right,
+	    < >,
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP;
+				   K := 1 OD ENDFILL));
+
+
+@Test_Trans("13th test of `Absorb Right'",
+	    (FILL Statements WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD;
+			     K := 1 ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("14th test of `Absorb Right'",
+	    (FILL Statements {(X <> 1)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD;
+			     K := 1 ENDFILL),
+	    <2>,
+	    TR_Absorb_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("15th test of `Absorb Right'",
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD;
+			     K := K + 1 ENDFILL),
+	    <2>,
+	    TR_Absorb_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("16th test of `Absorb Right'",
+	    (FILL Statements IF (X=1) THEN A:=2
+			     ELSIF (X=2) THEN
+				 DO A:=A+X;
+				    IF (A>10) THEN EXIT(2)
+				    ELSIF(A>5) THEN EXIT(1) FI
+				 OD
+			     ELSE A:=A+10 FI;
+			     X:=X+A ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    (FILL Statements IF (X=1) THEN A:=2; X:=X+A
+			     ELSIF (X=2) THEN
+				 DO A:=A+X;
+				    IF (A>10) THEN EXIT(2)
+				    ELSIF(A>5) THEN X:=X+A; EXIT(1) FI
+				 OD
+			     ELSE A:=A+10; X:=X+A FI ENDFILL));
+
+
+@Test_Trans("17th test of `Absorb Right'",
+	    (FILL Statements D_IF (X=1) -> A:=2
+			       [] (X=2) -> DO A:=A+X;
+					     IF (A>10) THEN EXIT(2)
+					     ELSIF(A>5) THEN EXIT(1) FI
+					   OD
+			       [] (X=3) -> A:=A+10 FI;
+			     X:=X+A ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    (FILL Statements D_IF (X=1) -> A:=2; X:=X+A
+			       [] (X=2) -> DO A:=A+X;
+					      IF (A>10) THEN EXIT(2)
+					      ELSIF(A>5) THEN X:=X+A; EXIT(1) FI
+					   OD
+			       [] (X=3) -> A:=A+10; X:=X+A FI ENDFILL));
+
+
+@Test_Trans("18th test of `Absorb Right'",
+	    (FILL Statements D_IF (X=1) -> A:=2
+			       [] (X=2) -> DO A:=A+X;
+					     IF (A>10) THEN EXIT(2)
+					     ELSIF(A>5) THEN EXIT(1) FI
+					   OD
+			       [] (X<>2) -> A:=A+10 FI;
+			     X:=X+A ENDFILL),
+	    <1>,
+	    TR_Absorb_Right,
+	    < >,
+	    (FILL Statements D_IF (X=1)  -> A:=2; X:=X+A
+			       [] (X=2)  -> DO A:=A+X;
+					       IF (A>10) THEN EXIT(2)
+					       ELSIF(A>5) THEN X:=X+A; EXIT(1) FI
+					    OD
+			       [] (X<>2) -> A:=A+10; X:=X+A FI ENDFILL))
+

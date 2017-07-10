@@ -1,0 +1,147 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Delete_All_Redundant'",
+	    (FILL Statements
+
+DO r6 := r6 + r7;
+   IF a[TVAENTRY].TVAWRK.TVAWER <= r6
+     THEN r1 := !XF address_of(a[TVAENTRY].TVAMSG); EXIT(1) FI;
+   IF r1 = r5
+     THEN r1 := r3 - r7;
+          B01();
+          IF exit_flag = 1 THEN EXIT(1) FI
+     ELSE C:"<FermaT> 00000585 ";
+          C:"SET ITEM = ITEM + 1";
+          C:"<FermaT> 00000586 ";
+          r1 := r1 + 1 FI OD
+
+
+ENDFILL),
+	    < >,
+	    TR_Delete_All_Redundant,
+	    "",
+	    (FILL Statements
+
+DO r6 := r6 + r7;
+   IF a[TVAENTRY].TVAWRK.TVAWER <= r6
+     THEN EXIT(1) FI;
+   IF r1 = r5
+     THEN r1 := r3 - r7;
+          B01();
+          IF exit_flag = 1 THEN EXIT(1) FI
+     ELSE C:"<FermaT> 00000585 ";
+          C:"SET ITEM = ITEM + 1";
+          C:"<FermaT> 00000586 ";
+          r1 := r1 + 1 FI OD
+
+ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Delete_All_Redundant'",
+	    (FILL Statements
+
+DO r6 := r6 + r7;
+   IF a[TVAENTRY].TVAWRK.TVAWER <= r6
+     THEN r1 := !XF address_of(a[TVAENTRY].TVAMSG); EXIT(1) FI;
+   IF r2 = r5
+     THEN r1 := r3 - r7;
+          B01();
+          IF exit_flag = 1 THEN EXIT(1) FI
+     ELSE C:"<FermaT> 00000585 ";
+          C:"SET ITEM = ITEM + 1";
+          C:"<FermaT> 00000586 ";
+          r1 := r1 + 1 FI OD
+
+ENDFILL),
+	    < >,
+	    TR_Delete_All_Redundant,
+	    "",
+	    (FILL Statements
+
+DO r6 := r6 + r7;
+   IF a[TVAENTRY].TVAWRK.TVAWER <= r6
+     THEN EXIT(1) FI;
+   IF r2 = r5
+     THEN r1 := r3 - r7;
+          B01();
+	  IF exit_flag = 1 THEN EXIT(1) FI
+     ELSE C:"<FermaT> 00000585 ";
+          C:"SET ITEM = ITEM + 1";
+          C:"<FermaT> 00000586 " FI OD
+
+ENDFILL));
+
+
+
+
+@Test_Trans(" 3rd test of `Delete_All_Redundant'",
+	    (FILL Statements
+
+r0 := 1;
+r1 := a[a[a[a[16..19], 4], 4] + 12, 4] + 24;
+r14 := 0;
+DO r14[4] := a[r1];
+   IF a[r1 + 4, 8] = "DFHRPL  " THEN EXIT(1) FI;
+   r1 := r1 + r14;
+   r0 := a[r1, 4];
+   IF r0 = 0 THEN EXIT(1) FI OD;
+IF r0 = 0
+  THEN cc := 0
+ELSIF r0 < 0
+  THEN cc := 1
+  ELSE cc := 2 FI;
+IF r0 = 0
+  THEN IF W_SML_1ST_ENTRY_FLAG = "hex 0x00"
+         THEN W_SML_1ST_ENTRY_FLAG := "hex 0xFF";
+              !P WTO(EDVSTAMP VAR os) FI FI
+
+
+ENDFILL),
+	    < >,
+	    TR_Delete_All_Redundant,
+	    "",
+	    (FILL Statements
+
+r0 := 1;
+r1 := a[a[a[a[16..19], 4], 4] + 12, 4] + 24;
+r14 := 0;
+DO r14[4] := a[r1];
+   IF a[r1 + 4, 8] = "DFHRPL  " THEN EXIT(1) FI;
+   r1 := r1 + r14;
+   r0 := a[r1, 4];
+   IF r0 = 0 THEN EXIT(1) FI OD;
+IF r0 = 0
+  THEN cc := 0
+ELSIF r0 < 0
+  THEN cc := 1
+  ELSE cc := 2 FI;
+IF r0 = 0
+  THEN IF W_SML_1ST_ENTRY_FLAG = "hex 0x00"
+         THEN W_SML_1ST_ENTRY_FLAG := "hex 0xFF";
+              !P WTO(EDVSTAMP VAR os) FI FI
+
+ENDFILL));
+
+
+
+
+SKIP
+

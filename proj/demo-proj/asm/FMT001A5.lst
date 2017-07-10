@@ -1,0 +1,148 @@
+  Page    1                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/22/05 16.01
+  ESD NAME     TYPE ADDRESS LENGTH
+ 0001 FMT001A5  SD   000000 000138
+ 0002 FMT200    ER                
+ Page    2                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/22/05 16.01
+    LOC DATA               ADR1   ADR2   LINE LABEL    OP       OPERANDS
+ 000000                                     1 FMT001A5 CSECT
+                                            2 * SAMPLE PROGRAM TO LOAD A SERIES OF PROGRAMS
+                                            3 * ADDRESSES STORED IN A REFERENCE TABLE
+ 000000                       00000000      4 R0       EQU   0
+ 000000                       00000001      5 R1       EQU   1
+ 000000                       00000003      6 R3       EQU   3
+ 000000                       00000005      7 R5       EQU   5
+ 000000                       00000006      8 R6       EQU   6
+ 000000                       0000000B      9 R11      EQU   11
+ 000000                       0000000E     10 R14      EQU   14
+ 000000                       0000000F     11 R15      EQU   15
+ 000000 0530                               12          BALR  R3,0
+ 000002                                    13          USING *,R3
+ 000002 58B10000                000000     14          L     R11,0(R1)
+ 000006                                    15          USING MODSTORE,R11
+ 000006                                    16          LOAD  EP=FMT113
+ 000006 45003010                000012     18+         BAL   0,*+12
+ 00000A C6D4E3F1F1F34040                   19+         DC    CL8'FMT113'
+ 000012 0A08                               20+         SVC   8
+ 000014 5000B000                000000     21          ST    R0,AMOD113
+ 000018                                    22          LOAD  EP=FMT114
+ 000018 45003022                000024     24+         BAL   0,*+12
+ 00001C C6D4E3F1F1F44040                   25+         DC    CL8'FMT114'
+ 000024 0A08                               26+         SVC   8
+ 000026 5000B004                000004     27          ST    R0,AMOD114
+ 00002A                                    28          LOAD  EP=FMT115
+ 00002A 45003034                000036     30+         BAL   0,*+12
+ 00002E C6D4E3F1F1F54040                   31+         DC    CL8'FMT115'
+ 000036 0A08                               32+         SVC   8
+ 000038 5000B008                000008     33          ST    R0,AMOD115
+                                           34 *        USER CALL. DEPENDENCY SATISFIED BY FMT200P9 USING VERSION.TAB
+ 00003C 415030E2                0000E4     35          LA    R5,WTAB1
+ 000040                                    36          USING WDS1,R5
+ 000040 41603092                000094     37          LA    R6,WREC2
+ 000044                                    38          USING WDS2,R6
+ 000044 95FF5000                000000     39 LABA     CLI   WDS1F1,X'FF'
+ 000048 47803090                000092     40          BE    LABZ
+ 00004C D20360005000     000000 000000     41 * <FERMAT ANN><S><1>                                                            
+ 00004C D20360005000     000000 000000     41          MVC   WDS2F1,WDS1F1
+ 000052 D20560085004     000008 000004     42          MVC   WDS2F2,WDS1F2
+ 000058 D2026012500A     000012 00000A     43          MVC   WDS2F3,WDS1F3
+ 00005E D2026019500D     000019 00000D     44          MVC   WDS2F4,WDS1F4
+ 000064                                    45 * <FERMAT ANN><E><1>                                                            
+ 000064                                    45          USRMAC3 EP=FMT200,DATA=WREC2
+ 000064 47F0306E                000070     46+         B     A0007
+ 000068 E8C5E240                           47+B0007    DC    CL4'YES'
+ 00006C 00000000                           48+         DC    A(0)
+ 000070                                    50+A0007    DS    0H
+ 000070 41103076                000078     51+         LA    1,MFI0008
+ 000074                                    52+         CNOP  0,4
+ 000074 47F0307A                00007C     53+         B     *+4+4*1
+ 000078                       00000078     54+MFI0008  EQU   *
+ 000078 00000068                           55+         DC    AL4(B0007)
+ 00007C 41000001                000001     56+         LA    0,1
+ 000080                                    57+         CNOP  0,4
+ 000080 45F03086                000088     58+         BAL   15,*+8
+ 000084 00000000                           59+         DC    V(FMT200)
+ Page    3                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/22/05 16.01
+    LOC DATA               ADR1   ADR2   LINE LABEL    OP       OPERANDS
+ 000088 58FF0000                000000     60+         L     15,0(15)
+ 00008C 05EF                               61+         BALR  14,15
+ 00008E 47F03042                000044     62          B     LABA
+ 000092 07FE                               63 LABZ     BR    R14
+                                           64 *
+ 000094 4040404040404040                   65 WREC2    DC    CL80' '
+ 0000E4 C1C1C1C1F1F2F3F4                   66 WTAB1    DC    CL16'AAAA123456BBBCCC'
+ 0000F4 C2C2C2C2F1F2F3F4                   67          DC    CL16'BBBB123456XXXDDD'
+ 000104 C3C3C3C3F1F2F3F4                   68          DC    CL16'CCCC123456XXXDDD'
+ 000114 C4C4C4C4F1F2F3F4                   69          DC    CL16'DDDD123456XXXDDD'
+ 000124 C5C5C5C5F1F2F3F4                   70          DC    CL16'EEEE123456XXXDDD'
+ 000134 FF                                 71          DC    X'FF'
+ 000135 000000                             72 
+ 000138                                    72          LTORG
+                                           73 *
+ 000000                                    74 WDS1     DSECT
+ 000000                                    75 WDS1F1   DS    CL4
+ 000004                                    76 WDS1F2   DS    CL6
+ 00000A                                    77 WDS1F3   DS    CL3
+ 00000D                                    78 WDS1F4   DS    CL3
+ 000010                       00000010     79 WDS1L    EQU   *-WDS1F1
+                                           80 *
+ 000000                                    81 WDS2     DSECT
+ 000000                                    82 WDS2F1   DS    CL4
+ 000004                                    83          DS    CL4
+ 000008                                    84 WDS2F2   DS    CL6
+ 00000E                                    85          DS    CL4
+ 000012                                    86 WDS2F3   DS    CL3
+ 000015                                    87          DS    CL4
+ 000019                                    88 WDS2F4   DS    CL3
+ 00001C                                    89          DS    CL52
+                                           90 *
+ 000000                                    91 MODSTORE DSECT
+ 000000                                    92 AMOD113  DS    F
+ 000004                                    93 AMOD114  DS    F
+ 000008                                    94 AMOD115  DS    F
+                                           95 *
+ 000138                                    96          END
+ Page    4                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/22/05 16.01
+ SEG   ADDRESS  LENGTH SIGN  RLD
+ 0001  000078   04     +    0001
+ 0001  000084   04     +    0002
+ Page    5                                                                                                      
+  Micro Focus Assembler version  V3.0.18  07/21/04 Listing as of 06/22/05 16.01
+ SYMBOL       VALUE LENGTH TYPE  EID   DEF  XREF
+ A0007     00000070 000002  REL 0001    50(5/44) 46(4/3) 49(4/11)
+ AMOD113   00000000 000004  REL FFFC    92(1/64) 21(1/17)
+ AMOD114   00000004 000004  REL FFFC    93(1/65) 27(1/19)
+ AMOD115   00000008 000004  REL FFFC    94(1/66) 33(1/21)
+ B0007     00000068 000004  REL 0001    47(4/4) 55(5/134)
+ FMT001A5  00000000 000138  CST 0001     1(1/1)
+ FMT200    00000000 000001  EXT 0002       59(5/159)
+ LABA      00000044 000004  REL 0001    39(1/27) 62(1/34)
+ LABZ      00000092 000002  REL 0001    63(1/35) 40(1/28)
+ MFI0008   00000078 000001  REL 0001    54(5/116) 51(5/100)
+ MODSTORE  00000000 00000C  DST FFFC    91(1/63) 15(1/15)
+ R0        00000000 000001  ABS 0000     4(1/4) 21(1/17) 27(1/19) 33(1/21)
+ R1        00000001 000001  ABS 0000     5(1/5) 14(1/14)
+ R11       0000000B 000001  ABS 0000     9(1/9) 14(1/14) 15(1/15)
+ R14       0000000E 000001  ABS 0000    10(1/10) 63(1/35)
+ R15       0000000F 000001  ABS 0000    11(1/11)
+ R3        00000003 000001  ABS 0000     6(1/6) 12(1/12) 13(1/13)
+ R5        00000005 000001  ABS 0000     7(1/7) 35(1/23) 36(1/24)
+ R6        00000006 000001  ABS 0000     8(1/8) 37(1/25) 38(1/26)
+ WDS1      00000000 000010  DST FFFE    74(1/46) 36(1/24)
+ WDS1F1    00000000 000004  REL FFFE    75(1/47) 39(1/27) 41(1/29) 79(1/51)
+ WDS1F2    00000004 000006  REL FFFE    76(1/48) 42(1/30)
+ WDS1F3    0000000A 000003  REL FFFE    77(1/49) 43(1/31)
+ WDS1F4    0000000D 000003  REL FFFE    78(1/50) 44(1/32)
+ WDS1L     00000010 000001  ABS 0000    79(1/51)
+ WDS2      00000000 000050  DST FFFD    81(1/53) 38(1/26)
+ WDS2F1    00000000 000004  REL FFFD    82(1/54) 41(1/29)
+ WDS2F2    00000008 000006  REL FFFD    84(1/56) 42(1/30)
+ WDS2F3    00000012 000003  REL FFFD    86(1/58) 43(1/31)
+ WDS2F4    00000019 000003  REL FFFD    88(1/60) 44(1/32)
+ WREC2     00000094 000050  REL 0001    65(1/37) 37(1/25)
+ WTAB1     000000E4 000010  REL 0001    66(1/38) 35(1/23)
+ 
+MM370ASM      0 errors found - end of processing

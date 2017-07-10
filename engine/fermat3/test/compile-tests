@@ -1,0 +1,7 @@
+foreach i ( [0-9][0-9][0-9]*.wsl )
+  set name=`basename $i .wsl`
+  echo ""
+  echo "compiling $i ..."
+  wsl2scm $name.wsl
+  expand-macros $name.scm $name.scx ../lib/macros.scm
+end

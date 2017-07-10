@@ -1,0 +1,42 @@
+
+
+
+@Test_Trans(" 8th test of `Substitute_And_Delete'",
+	    (FILL Statements BEGIN A := 3;
+				   B := inc(A)
+			     WHERE FUNCT inc (X) == : X+1 END
+			     END  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     (FILL Statements A:=3; B:=A+1 ENDFILL) );
+
+@Test_Trans(" 9th test of `Substitute_And_Delete'",
+	    (FILL Statements BEGIN A := 3;
+				   B := fact(A)
+			     WHERE FUNCT fact (X) == : IF X>0 THEN X * fact(X-1) ELSE 1 FI END
+			     END  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     "Fail");
+
+
+@Test_Trans("10th test of `Substitute_And_Delete'",
+	    (FILL Statements BEGIN A := 3;
+				   B := fact(A)
+			     WHERE FUNCT fact (X) == : IF X>0 THEN X*fact1(X-1) ELSE 1 FI END,
+				   FUNCT fact1(Y) == : IF Y=0 THEN 1 ELSE Y*fact(Y-1) FI  END
+			     END  ENDFILL),
+	     <1,2,1>,
+	     TR_Substitute_And_Delete,
+	     < >,
+	     (FILL Statements BEGIN A := 3;
+				    B := IF A<>0 THEN A*fact1(A-1) ELSE 1 FI
+			      WHERE FUNCT fact1(Y) == : IF Y=0 THEN 1 
+							     ELSE Y*(IF Y<>0 THEN Y*fact1(Y-1)
+									     ELSE 1 FI) FI
+				    END
+			      END  ENDFILL ) )
+
+

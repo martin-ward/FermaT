@@ -1,0 +1,32 @@
+#!/usr/bin/perl
+# Convert a VCG file to a GET (Graph Editor Toolkit) file
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+use VCG;
+use GET;
+
+my ($myname, $Usage, $nodes, $edges, $basename);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [input]\n";
+
+($nodes, $edges) = read_graph($ARGV[0] || "");
+$basename = $ARGV[0] || '<STDIN>';
+$basename =~ s/\.[^\.]*$//;
+$basename =~ s/^.*\Q$ds\E//;
+
+print STDERR "There are ", $#{$nodes} + 1, " nodes and ", $#{$edges} + 1, " edges.\n";
+
+print_GET_flowchart($basename, $nodes, $edges);
+
+exit(0);
+
+

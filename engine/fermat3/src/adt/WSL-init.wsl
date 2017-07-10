@@ -1,0 +1,1026 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" WSL Syntax: ";
+
+Syntax_List := 1;
+Syntax_One_Pattern := 2;
+Syntax_Many_Pattern := 3;
+Syntax_Any_Pattern := 4;
+Syntax_Ifmatch := 5;
+Syntax_Fill := 6;
+Syntax_One_Int := 9;
+Syntax_Any_Int := 10;
+Syntax_One_Var := 11;
+Syntax_Any_Var := 12;
+
+Syntax_Type   := ARRAY(1999, 0);
+Syntax_Comps  := ARRAY(1999, < >);
+Syntax_Name   := ARRAY(1999, "UNKNOWN");
+Syntax_V_To_E := ARRAY(1999, 0);
+Syntax_E_To_V := ARRAY(1999, 0);
+Syntax_Value  := ARRAY(1999, 0);
+
+C:" Set up the T_name variables and fill in the Syntax_Comps array ";
+
+T_Statement          := 1;
+T_Expression         := 2;
+T_Condition          := 3;
+T_Definition         := 4;
+T_Lvalue             := 5;
+T_Assign             := 6;
+T_Guarded            := 7;
+T_Action             := 8;
+T_Name		     := 9;
+T_Expressions        := 10;
+T_Lvalues            := 12;
+T_Assigns            := 13;
+T_Definitions        := 14;
+T_Actions            := 15;
+T_Guardeds           := 16;
+T_Statements         := 17;
+T_Datatype           := 18;
+
+T_A_Proc_Call        := 101;
+T_MW_Proc_Call       := 102;
+T_X_Proc_Call        := 103;
+T_Stat_Place         := 104;
+T_Stat_Pat_One       := 105;
+T_Stat_Pat_Many      := 106;
+T_Stat_Pat_Any       := 107;
+T_Abort              := 108;
+T_Assert             := 109;
+T_Assignment         := 110;
+T_A_S                := 111;
+T_Call               := 112;
+T_Comment            := 113;
+T_Cond               := 114;
+T_D_If               := 115;
+T_D_Do               := 116;
+T_Exit               := 117;
+T_For                := 118;
+T_Foreach_Stat       := 119;
+T_Foreach_Stats      := 120;
+T_Foreach_TS         := 121;
+T_Foreach_TSs        := 122;
+T_Foreach_STS        := 123;
+T_Foreach_Expn       := 124;
+T_Foreach_Cond       := 125;
+T_Ateach_Stat        := 126;
+T_Ateach_Stats       := 127;
+T_Ateach_TS          := 128;
+T_Ateach_TSs         := 129;
+T_Ateach_STS         := 130;
+T_Ateach_Expn        := 131;
+T_Ateach_Cond        := 132;
+T_Floop              := 133;
+T_Join               := 134;
+T_Pop                := 135;
+T_Proc_Call          := 136;
+T_Push               := 137;
+T_Spec               := 138;
+T_Var                := 139;
+T_Where              := 140;
+T_While              := 141;
+T_MW_Proc            := 142;
+T_MW_Funct           := 143;
+T_MW_BFunct          := 144;
+T_Skip               := 145;
+T_Foreach_NAS        := 146;
+T_Ateach_NAS         := 147;
+T_Foreach_Variable   := 148;
+T_Foreach_Global_Var := 149;
+T_Ateach_Variable    := 150;
+T_Ateach_Global_Var  := 151;
+T_Foreach_Lvalue     := 152;
+T_Ateach_Lvalue      := 153;
+T_For_In             := 154;
+T_Puthash            := 155;
+T_Print              := 156;
+T_Prinflush          := 157;
+T_Maphash	     := 158;
+T_Error              := 159;
+T_Stat_Int_One       := 160;
+T_Stat_Int_Any       := 161;
+T_Stat_Var_One       := 162;
+T_Stat_Var_Any       := 163;
+T_Declare_Datatype   := 164;
+T_Typedef            := 165;
+
+T_Ifmatch_Stat       := 180;
+T_Ifmatch_Expn       := 181;
+T_Ifmatch_Cond       := 182;
+T_Ifmatch_Defn       := 183;
+T_Ifmatch_Lvalue     := 184;
+T_Ifmatch_Assign     := 185;
+T_Ifmatch_Guarded    := 186;
+T_Ifmatch_Action     := 187;
+T_Ifmatch_Stats      := 188;
+T_Ifmatch_Expns      := 189;
+T_Ifmatch_Lvalues    := 191;
+T_Ifmatch_Assigns    := 192;
+T_Ifmatch_Defns      := 193;
+
+T_X_Funct_Call       := 201;
+T_MW_Funct_Call      := 202;
+T_Expn_Place         := 203;
+T_Var_Place          := 204;
+T_Number             := 205;
+T_String             := 206;
+T_Variable           := 207;
+T_Primed_Var         := 208;
+T_Sequence           := 209;
+T_Aref               := 210;
+T_Sub_Seg            := 211;
+T_Rel_Seg            := 212;
+T_Final_Seg          := 213;
+T_Funct_Call         := 214;
+T_Map                := 215;
+T_Reduce             := 216;
+T_Expn_Pat_One       := 217;
+T_Expn_Pat_Many      := 218;
+T_Expn_Pat_Any       := 219;
+T_Plus               := 220;
+T_Minus              := 221;
+T_Times              := 222;
+T_Divide             := 223;
+T_Exponent           := 224;
+T_Mod                := 225;
+T_Div                := 226;
+T_If                 := 227;
+T_Abs                := 228;
+T_Frac               := 229;
+T_Int                := 230;
+T_Sgn                := 231;
+T_Max                := 232;
+T_Min                := 233;
+T_Intersection       := 234;
+T_Union              := 235;
+T_Set_Diff           := 236;
+T_Powerset           := 237;
+T_Set                := 238;
+T_Array              := 239;
+T_Head               := 240;
+T_Tail               := 241;
+T_Last               := 242;
+T_Butlast            := 243;
+T_Length             := 244;
+T_Reverse            := 245;
+T_Concat             := 246;
+T_Negate             := 251;
+T_Invert             := 252;
+T_Struct             := 253;
+T_Get_n              := 254;
+T_Get                := 255;
+T_Gethash            := 256;
+T_Hash_Table         := 257;
+T_Slength            := 258;
+T_Substr             := 259;
+T_Index              := 260;
+T_Expn_Int_One       := 261;
+T_Expn_Int_Any       := 262;
+T_Expn_Var_One       := 263;
+T_Expn_Var_Any       := 264;
+T_Expn_Datatype      := 265;
+T_Mem                := 266;
+T_Mem_Seg            := 267;
+T_Mem_Rel            := 268;
+T_Address_Of         := 269;
+
+T_Fill_Stat          := 281;
+T_Fill_Expn          := 282;
+T_Fill_Cond          := 283;
+T_Fill_Defn          := 284;
+T_Fill_Lvalue        := 285;
+T_Fill_Assign        := 286;
+T_Fill_Guarded       := 287;
+T_Fill_Action        := 288;
+T_Fill_Stats         := 289;
+T_Fill_Expns         := 290;
+T_Fill_Lvalues       := 292;
+T_Fill_Assigns       := 293;
+T_Fill_Defns         := 294;
+
+T_X_BFunct_Call      := 301;
+T_MW_BFunct_Call     := 302;
+T_Cond_Place         := 303;
+T_BFunct_Call        := 304;
+T_Cond_Pat_One       := 305;
+T_Cond_Pat_Many      := 306;
+T_Cond_Pat_Any       := 307;
+T_True               := 308;
+T_False              := 309;
+T_And                := 310;
+T_Or                 := 311;
+T_Not                := 312;
+T_Equal              := 313;
+T_Less               := 314;
+T_Greater            := 315;
+T_Less_Eq            := 316;
+T_Greater_Eq         := 317;
+T_Not_Equal          := 318;
+T_Even               := 319;
+T_Odd                := 320;
+T_Empty              := 321;
+T_Subset             := 322;
+T_Member             := 323;
+T_Forall             := 324;
+T_Exists             := 325;
+T_Implies            := 326;
+T_Sequenceq          := 327;
+T_Numberq            := 328;
+T_Stringq            := 329;
+T_In                 := 330;
+T_Not_In             := 331;
+T_Cond_Int_One       := 332;
+T_Cond_Int_Any       := 333;
+T_Cond_Var_One       := 334;
+T_Cond_Var_Any       := 335;
+
+T_Proc               := 401;
+T_Funct              := 402;
+T_BFunct             := 403;
+T_Defn_Pat_One       := 404;
+T_Defn_Pat_Many      := 405;
+T_Defn_Pat_Any       := 406;
+T_Defn_Int_One       := 407;
+T_Defn_Int_Any       := 408;
+T_Defn_Var_One       := 409;
+T_Defn_Var_Any       := 410;
+
+T_Var_Lvalue         := 501;
+T_Aref_Lvalue        := 502;
+T_Sub_Seg_Lvalue     := 503;
+T_Rel_Seg_Lvalue     := 504;
+T_Final_Seg_Lvalue   := 505;
+T_Lvalue_Pat_One     := 506;
+T_Lvalue_Pat_Many    := 507;
+T_Lvalue_Pat_Any     := 508;
+T_Struct_Lvalue      := 509;
+T_Lvalue_Int_One     := 510;
+T_Lvalue_Int_Any     := 511;
+T_Lvalue_Var_One     := 512;
+T_Lvalue_Var_Any     := 513;
+T_Lvalue_Datatype    := 514;
+T_Mem_Lvalue         := 515;
+T_Mem_Seg_Lvalue     := 516;
+T_Mem_Rel_Lvalue     := 517;
+
+T_Assign_Pat_One     := 601;
+T_Assign_Pat_Any     := 602;
+T_Assign_Pat_Many    := 603;
+T_Assign_Int_One     := 604;
+T_Assign_Int_Any     := 605;
+T_Assign_Var_One     := 606;
+T_Assign_Var_Any     := 607;
+
+T_Guarded_Pat_One    := 701;
+T_Guarded_Pat_Any    := 702;
+T_Guarded_Pat_Many   := 703;
+T_Guarded_Int_One    := 704;
+T_Guarded_Int_Any    := 705;
+T_Guarded_Var_One    := 706;
+T_Guarded_Var_Any    := 707;
+
+T_Action_Pat_One     := 801;
+T_Action_Pat_Any     := 802;
+T_Action_Pat_Many    := 803;
+T_Action_Int_One     := 804;
+T_Action_Int_Any     := 805;
+T_Action_Var_One     := 806;
+T_Action_Var_Any     := 807;
+
+T_Name_Pat_One       := 901;
+T_Name_Int_One       := 902;
+T_Name_Var_One       := 903;
+
+T_Datatype_Integer   := 1801;
+T_Datatype_String    := 1802;
+T_Datatype_Struct    := 1803;
+T_Datatype_Array     := 1804;
+
+
+Syntax_Name[T_Statement]          := "Statement";
+Syntax_Name[T_Expression]         := "Expression";
+Syntax_Name[T_Condition]          := "Condition";
+Syntax_Name[T_Definition]         := "Definition";
+Syntax_Name[T_Lvalue]             := "Lvalue";
+Syntax_Name[T_Assign]             := "Assign";
+Syntax_Name[T_Guarded]            := "Guarded";
+Syntax_Name[T_Action]             := "Action";
+Syntax_Name[T_Statements]         := "Statements";
+Syntax_Name[T_Expressions]        := "Expressions";
+Syntax_Name[T_Lvalues]            := "Lvalues";
+Syntax_Name[T_Assigns]            := "Assigns";
+Syntax_Name[T_Definitions]        := "Definitions";
+Syntax_Name[T_Actions]            := "Actions";
+Syntax_Name[T_Guardeds]           := "Guardeds";
+Syntax_Name[T_Name]               := "Name";
+Syntax_Name[T_A_Proc_Call]        := "A_Proc_Call";
+Syntax_Name[T_MW_Proc_Call]       := "MW_Proc_Call";
+Syntax_Name[T_X_Proc_Call]        := "X_Proc_Call";
+Syntax_Name[T_Stat_Place]         := "Stat_Place";
+Syntax_Name[T_Stat_Pat_One]       := "Stat_Pat_One";
+Syntax_Name[T_Stat_Pat_Many]      := "Stat_Pat_Many";
+Syntax_Name[T_Stat_Pat_Any]       := "Stat_Pat_Any";
+Syntax_Name[T_Stat_Int_One]       := "Stat_Int_One";
+Syntax_Name[T_Stat_Int_Any]       := "Stat_Int_Any";
+Syntax_Name[T_Stat_Var_One]       := "Stat_Var_One";
+Syntax_Name[T_Stat_Var_Any]       := "Stat_Var_Any";
+Syntax_Name[T_Abort]              := "Abort";
+Syntax_Name[T_Assert]             := "Assert";
+Syntax_Name[T_Assignment]         := "Assignment";
+Syntax_Name[T_A_S]                := "A_S";
+Syntax_Name[T_Call]               := "Call";
+Syntax_Name[T_Comment]            := "Comment";
+Syntax_Name[T_Cond]               := "Cond";
+Syntax_Name[T_D_If]               := "D_If";
+Syntax_Name[T_D_Do]               := "D_Do";
+Syntax_Name[T_Exit]               := "Exit";
+Syntax_Name[T_For]                := "For";
+Syntax_Name[T_Foreach_Stat]       := "Foreach_Stat";
+Syntax_Name[T_Foreach_Stats]      := "Foreach_Stats";
+Syntax_Name[T_Foreach_TS]         := "Foreach_TS";
+Syntax_Name[T_Foreach_TSs]        := "Foreach_TSs";
+Syntax_Name[T_Foreach_STS]        := "Foreach_STS";
+Syntax_Name[T_Foreach_Expn]       := "Foreach_Expn";
+Syntax_Name[T_Foreach_Cond]       := "Foreach_Cond";
+Syntax_Name[T_Ateach_Stat]        := "Ateach_Stat";
+Syntax_Name[T_Ateach_Stats]       := "Ateach_Stats";
+Syntax_Name[T_Ateach_TS]          := "Ateach_TS";
+Syntax_Name[T_Ateach_TSs]         := "Ateach_TSs";
+Syntax_Name[T_Ateach_STS]         := "Ateach_STS";
+Syntax_Name[T_Ateach_Expn]        := "Ateach_Expn";
+Syntax_Name[T_Ateach_Cond]        := "Ateach_Cond";
+Syntax_Name[T_Floop]              := "Floop";
+Syntax_Name[T_Join]               := "Join";
+Syntax_Name[T_Pop]                := "Pop";
+Syntax_Name[T_Proc_Call]          := "Proc_Call";
+Syntax_Name[T_Push]               := "Push";
+Syntax_Name[T_Spec]               := "Spec";
+Syntax_Name[T_Var]                := "Var";
+Syntax_Name[T_Where]              := "Where";
+Syntax_Name[T_While]              := "While";
+Syntax_Name[T_MW_Proc]            := "MW_Proc";
+Syntax_Name[T_MW_Funct]           := "MW_Funct";
+Syntax_Name[T_MW_BFunct]          := "MW_BFunct";
+Syntax_Name[T_Skip]               := "Skip";
+Syntax_Name[T_Foreach_NAS]        := "Foreach_NAS";
+Syntax_Name[T_Ateach_NAS]         := "Ateach_NAS";
+Syntax_Name[T_Foreach_Variable]   := "Foreach_Variable";
+Syntax_Name[T_Foreach_Global_Var] := "Foreach_Global_Var";
+Syntax_Name[T_Ateach_Variable]    := "Ateach_Variable";
+Syntax_Name[T_Ateach_Global_Var]  := "Ateach_Global_Var";
+Syntax_Name[T_Foreach_Lvalue]     := "Foreach_Lvalue";
+Syntax_Name[T_Ateach_Lvalue]      := "Ateach_Lvalue";
+Syntax_Name[T_For_In]             := "For_In";
+Syntax_Name[T_Puthash]            := "Puthash";
+Syntax_Name[T_Print]              := "Print";
+Syntax_Name[T_Prinflush]          := "Prinflush";
+Syntax_Name[T_Maphash]            := "Maphash";
+Syntax_Name[T_Error]              := "Error";
+Syntax_Name[T_Ifmatch_Stat]       := "Ifmatch_Stat";
+Syntax_Name[T_Ifmatch_Expn]       := "Ifmatch_Expn";
+Syntax_Name[T_Ifmatch_Cond]       := "Ifmatch_Cond";
+Syntax_Name[T_Ifmatch_Defn]       := "Ifmatch_Defn";
+Syntax_Name[T_Ifmatch_Lvalue]     := "Ifmatch_Lvalue";
+Syntax_Name[T_Ifmatch_Assign]     := "Ifmatch_Assign";
+Syntax_Name[T_Ifmatch_Guarded]    := "Ifmatch_Guarded";
+Syntax_Name[T_Ifmatch_Action]     := "Ifmatch_Action";
+Syntax_Name[T_Ifmatch_Stats]      := "Ifmatch_Stats";
+Syntax_Name[T_Ifmatch_Expns]      := "Ifmatch_Expns";
+Syntax_Name[T_Ifmatch_Lvalues]    := "Ifmatch_Lvalues";
+Syntax_Name[T_Ifmatch_Assigns]    := "Ifmatch_Assigns";
+Syntax_Name[T_Ifmatch_Defns]      := "Ifmatch_Defns";
+Syntax_Name[T_X_Funct_Call]       := "X_Funct_Call";
+Syntax_Name[T_MW_Funct_Call]      := "MW_Funct_Call";
+Syntax_Name[T_Expn_Place]         := "Expn_Place";
+Syntax_Name[T_Var_Place]          := "Var_Place";
+Syntax_Name[T_Number]             := "Number";
+Syntax_Name[T_String]             := "String";
+Syntax_Name[T_Variable]           := "Variable";
+Syntax_Name[T_Primed_Var]         := "Primed_Var";
+Syntax_Name[T_Sequence]           := "Sequence";
+Syntax_Name[T_Aref]               := "Aref";
+Syntax_Name[T_Sub_Seg]            := "Sub_Seg";
+Syntax_Name[T_Rel_Seg]            := "Rel_Seg";
+Syntax_Name[T_Final_Seg]          := "Final_Seg";
+Syntax_Name[T_Funct_Call]         := "Funct_Call";
+Syntax_Name[T_Map]                := "Map";
+Syntax_Name[T_Reduce]             := "Reduce";
+Syntax_Name[T_Expn_Pat_One]       := "Expn_Pat_One";
+Syntax_Name[T_Expn_Pat_Many]      := "Expn_Pat_Many";
+Syntax_Name[T_Expn_Pat_Any]       := "Expn_Pat_Any";
+Syntax_Name[T_Expn_Int_One]       := "Expn_Int_One";
+Syntax_Name[T_Expn_Int_Any]       := "Expn_Int_Any";
+Syntax_Name[T_Expn_Var_One]       := "Expn_Var_One";
+Syntax_Name[T_Expn_Var_Any]       := "Expn_Var_Any";
+Syntax_Name[T_Mem]		  := "Mem";
+Syntax_Name[T_Mem_Seg]		  := "Mem_Seg";
+Syntax_Name[T_Mem_Rel]		  := "Mem_Rel";
+Syntax_Name[T_Plus]               := "Plus";
+Syntax_Name[T_Minus]              := "Minus";
+Syntax_Name[T_Times]              := "Times";
+Syntax_Name[T_Divide]             := "Divide";
+Syntax_Name[T_Exponent]           := "Exponent";
+Syntax_Name[T_Mod]                := "Mod";
+Syntax_Name[T_Div]                := "Div";
+Syntax_Name[T_If]                 := "If";
+Syntax_Name[T_Abs]                := "Abs";
+Syntax_Name[T_Frac]               := "Frac";
+Syntax_Name[T_Int]                := "Int";
+Syntax_Name[T_Sgn]                := "Sgn";
+Syntax_Name[T_Max]                := "Max";
+Syntax_Name[T_Min]                := "Min";
+Syntax_Name[T_Address_Of]         := "Address_Of";
+Syntax_Name[T_Intersection]       := "Intersection";
+Syntax_Name[T_Union]              := "Union";
+Syntax_Name[T_Set_Diff]           := "Set_Diff";
+Syntax_Name[T_Powerset]           := "Powerset";
+Syntax_Name[T_Set]                := "Set";
+Syntax_Name[T_Array]              := "Array";
+Syntax_Name[T_Head]               := "Head";
+Syntax_Name[T_Tail]               := "Tail";
+Syntax_Name[T_Last]               := "Last";
+Syntax_Name[T_Butlast]            := "Butlast";
+Syntax_Name[T_Length]             := "Length";
+Syntax_Name[T_Reverse]            := "Reverse";
+Syntax_Name[T_Concat]             := "Concat";
+Syntax_Name[T_Negate]             := "Negate";
+Syntax_Name[T_Invert]             := "Invert";
+Syntax_Name[T_Struct]             := "Struct";
+Syntax_Name[T_Get_n]              := "Get_n";
+Syntax_Name[T_Get]                := "Get";
+Syntax_Name[T_Gethash]            := "Gethash";
+Syntax_Name[T_Hash_Table]         := "Hash_Table";
+Syntax_Name[T_Slength]		  := "Slength";
+Syntax_Name[T_Substr]		  := "Substr";
+Syntax_Name[T_Index]              := "Index";
+Syntax_Name[T_Fill_Stat]          := "Fill_Stat";
+Syntax_Name[T_Fill_Expn]          := "Fill_Expn";
+Syntax_Name[T_Fill_Cond]          := "Fill_Cond";
+Syntax_Name[T_Fill_Defn]          := "Fill_Defn";
+Syntax_Name[T_Fill_Lvalue]        := "Fill_Lvalue";
+Syntax_Name[T_Fill_Assign]        := "Fill_Assign";
+Syntax_Name[T_Fill_Guarded]       := "Fill_Guarded";
+Syntax_Name[T_Fill_Action]        := "Fill_Action";
+Syntax_Name[T_Fill_Stats]         := "Fill_Stats";
+Syntax_Name[T_Fill_Expns]         := "Fill_Expns";
+Syntax_Name[T_Fill_Lvalues]       := "Fill_Lvalues";
+Syntax_Name[T_Fill_Assigns]       := "Fill_Assigns";
+Syntax_Name[T_Fill_Defns]         := "Fill_Defns";
+Syntax_Name[T_X_BFunct_Call]      := "X_BFunct_Call";
+Syntax_Name[T_MW_BFunct_Call]     := "MW_BFunct_Call";
+Syntax_Name[T_Cond_Place]         := "Cond_Place";
+Syntax_Name[T_BFunct_Call]        := "BFunct_Call";
+Syntax_Name[T_Cond_Pat_One]       := "Cond_Pat_One";
+Syntax_Name[T_Cond_Pat_Many]      := "Cond_Pat_Many";
+Syntax_Name[T_Cond_Pat_Any]       := "Cond_Pat_Any";
+Syntax_Name[T_Cond_Int_One]       := "Cond_Int_One";
+Syntax_Name[T_Cond_Int_Any]       := "Cond_Int_Any";
+Syntax_Name[T_Cond_Var_One]       := "Cond_Var_One";
+Syntax_Name[T_Cond_Var_Any]       := "Cond_Var_Any";
+Syntax_Name[T_True]               := "True";
+Syntax_Name[T_False]              := "False";
+Syntax_Name[T_And]                := "And";
+Syntax_Name[T_Or]                 := "Or";
+Syntax_Name[T_Not]                := "Not";
+Syntax_Name[T_Equal]              := "Equal";
+Syntax_Name[T_Less]               := "Less";
+Syntax_Name[T_Greater]            := "Greater";
+Syntax_Name[T_Less_Eq]            := "Less_Eq";
+Syntax_Name[T_Greater_Eq]         := "Greater_Eq";
+Syntax_Name[T_Not_Equal]          := "Not_Equal";
+Syntax_Name[T_Even]               := "Even";
+Syntax_Name[T_Odd]                := "Odd";
+Syntax_Name[T_Empty]              := "Empty";
+Syntax_Name[T_Subset]             := "Subset";
+Syntax_Name[T_Member]             := "Member";
+Syntax_Name[T_Forall]             := "Forall";
+Syntax_Name[T_Exists]             := "Exists";
+Syntax_Name[T_Implies]            := "Implies";
+Syntax_Name[T_Sequenceq]          := "Sequenceq";
+Syntax_Name[T_Numberq]            := "Numberq";
+Syntax_Name[T_Stringq]            := "Stringq";
+Syntax_Name[T_In]                 := "In";
+Syntax_Name[T_Not_In]             := "Not_In";
+Syntax_Name[T_Proc]               := "Proc";
+Syntax_Name[T_Funct]              := "Funct";
+Syntax_Name[T_BFunct]             := "BFunct";
+Syntax_Name[T_Defn_Pat_One]       := "Defn_Pat_One";
+Syntax_Name[T_Defn_Pat_Many]      := "Defn_Pat_Many";
+Syntax_Name[T_Defn_Pat_Any]       := "Defn_Pat_Any";
+Syntax_Name[T_Defn_Int_One]       := "Defn_Int_One";
+Syntax_Name[T_Defn_Int_Any]       := "Defn_Int_Any";
+Syntax_Name[T_Defn_Var_One]       := "Defn_Var_One";
+Syntax_Name[T_Defn_Var_Any]       := "Defn_Var_Any";
+Syntax_Name[T_Var_Lvalue]         := "Var_Lvalue";
+Syntax_Name[T_Aref_Lvalue]        := "Aref_Lvalue";
+Syntax_Name[T_Sub_Seg_Lvalue]     := "Sub_Seg_Lvalue";
+Syntax_Name[T_Rel_Seg_Lvalue]     := "Rel_Seg_Lvalue";
+Syntax_Name[T_Final_Seg_Lvalue]   := "Final_Seg_Lvalue";
+Syntax_Name[T_Lvalue_Pat_One]     := "Lvalue_Pat_One";
+Syntax_Name[T_Lvalue_Pat_Many]    := "Lvalue_Pat_Many";
+Syntax_Name[T_Lvalue_Pat_Any]     := "Lvalue_Pat_Any";
+Syntax_Name[T_Struct_Lvalue]      := "Struct_Lvalue";
+Syntax_Name[T_Mem_Lvalue]	  := "Mem_Lvalue";
+Syntax_Name[T_Mem_Seg_Lvalue]	  := "Mem_Seg_Lvalue";
+Syntax_Name[T_Mem_Rel_Lvalue]	  := "Mem_Rel_Lvalue";
+Syntax_Name[T_Assign_Pat_One]     := "Assign_Pat_One";
+Syntax_Name[T_Assign_Pat_Any]     := "Assign_Pat_Any";
+Syntax_Name[T_Assign_Pat_Many]    := "Assign_Pat_Many";
+Syntax_Name[T_Guarded_Pat_One]    := "Guarded_Pat_One";
+Syntax_Name[T_Guarded_Pat_Any]    := "Guarded_Pat_Any";
+Syntax_Name[T_Guarded_Pat_Many]   := "Guarded_Pat_Many";
+Syntax_Name[T_Action_Pat_One]     := "Action_Pat_One";
+Syntax_Name[T_Action_Pat_Any]     := "Action_Pat_Any";
+Syntax_Name[T_Action_Pat_Many]    := "Action_Pat_Many";
+Syntax_Name[T_Name_Pat_One]       := "Name_Pat_One";
+
+Syntax_Name[T_Lvalue_Int_One]     := "Lvalue_Int_One";
+Syntax_Name[T_Lvalue_Int_Any]     := "Lvalue_Int_Any";
+Syntax_Name[T_Lvalue_Var_One]     := "Lvalue_Var_One";
+Syntax_Name[T_Lvalue_Var_Any]     := "Lvalue_Var_Any";
+Syntax_Name[T_Struct_Lvalue]      := "Struct_Lvalue";
+Syntax_Name[T_Assign_Int_One]     := "Assign_Int_One";
+Syntax_Name[T_Assign_Int_Any]     := "Assign_Int_Any";
+Syntax_Name[T_Assign_Var_One]     := "Assign_Var_One";
+Syntax_Name[T_Assign_Var_Any]     := "Assign_Var_Any";
+Syntax_Name[T_Guarded_Int_One]    := "Guarded_Int_One";
+Syntax_Name[T_Guarded_Int_Any]    := "Guarded_Int_Any";
+Syntax_Name[T_Guarded_Var_One]    := "Guarded_Var_One";
+Syntax_Name[T_Guarded_Var_Any]    := "Guarded_Var_Any";
+Syntax_Name[T_Action_Int_One]     := "Action_Int_One";
+Syntax_Name[T_Action_Int_Any]     := "Action_Int_Any";
+Syntax_Name[T_Action_Var_One]     := "Action_Var_One";
+Syntax_Name[T_Action_Var_Any]     := "Action_Var_Any";
+Syntax_Name[T_Name_Int_One]       := "Name_Int_One";
+Syntax_Name[T_Name_Var_One]       := "Name_Var_One";
+
+
+Syntax_Comps[T_Statements]         := <T_Statement>;
+Syntax_Comps[T_Expressions]        := <T_Expression>;
+Syntax_Comps[T_Lvalues]            := <T_Lvalue>;
+Syntax_Comps[T_Assigns]            := <T_Assign>;
+Syntax_Comps[T_Definitions]        := <T_Definition>;
+Syntax_Comps[T_Assign]             := <T_Lvalue, T_Expression>;
+Syntax_Comps[T_Guarded]            := <T_Condition, T_Statements>;
+Syntax_Comps[T_Action]             := <T_Name, T_Statements>;
+Syntax_Comps[T_Print]              := <T_Expressions>;
+Syntax_Comps[T_Prinflush]          := <T_Expressions>;
+Syntax_Comps[T_Maphash]            := <T_Name, T_Expression>;
+Syntax_Comps[T_Error]              := <T_Expressions>;
+Syntax_Comps[T_A_Proc_Call]        := <T_Name, T_Expressions, T_Lvalues>;
+Syntax_Comps[T_X_Proc_Call]        := <T_Name, T_Expressions>;
+Syntax_Comps[T_Assert]             := <T_Condition>;
+Syntax_Comps[T_Assignment]         := <T_Assign>;
+Syntax_Comps[T_A_S]                := <T_Name, T_Actions>;
+Syntax_Comps[T_Actions]            := <T_Action>;
+Syntax_Comps[T_Cond]               := <T_Guarded>;
+Syntax_Comps[T_D_If]               := <T_Guarded>;
+Syntax_Comps[T_D_Do]               := <T_Guarded>;
+Syntax_Comps[T_For]                := <T_Lvalue, T_Expression, T_Expression,
+				       T_Expression, T_Statements>;
+Syntax_Comps[T_For_In]             := <T_Lvalue, T_Expression, T_Statements>;
+Syntax_Comps[T_Foreach_Stat]       := <T_Statements>;
+Syntax_Comps[T_Foreach_NAS]        := <T_Statements>;
+Syntax_Comps[T_Foreach_Stats]      := <T_Statements>;
+Syntax_Comps[T_Foreach_TS]         := <T_Statements>;
+Syntax_Comps[T_Foreach_TSs]        := <T_Statements>;
+Syntax_Comps[T_Foreach_STS]        := <T_Statements>;
+Syntax_Comps[T_Foreach_Cond]       := <T_Statements>;
+Syntax_Comps[T_Foreach_Expn]       := <T_Statements>;
+Syntax_Comps[T_Foreach_Lvalue]     := <T_Statements>;
+Syntax_Comps[T_Foreach_Variable]   := <T_Statements>;
+Syntax_Comps[T_Foreach_Global_Var] := <T_Statements>;
+Syntax_Comps[T_Ateach_Stat]        := <T_Statements>;
+Syntax_Comps[T_Ateach_Stats]       := <T_Statements>;
+Syntax_Comps[T_Ateach_TS]          := <T_Statements>;
+Syntax_Comps[T_Ateach_TSs]         := <T_Statements>;
+Syntax_Comps[T_Ateach_NAS]         := <T_Statements>;
+Syntax_Comps[T_Ateach_STS]         := <T_Statements>;
+Syntax_Comps[T_Ateach_Cond]        := <T_Statements>;
+Syntax_Comps[T_Ateach_Expn]        := <T_Statements>;
+Syntax_Comps[T_Ateach_Lvalue]      := <T_Statements>;
+Syntax_Comps[T_Ateach_Variable]    := <T_Statements>;
+Syntax_Comps[T_Ateach_Global_Var]  := <T_Statements>;
+Syntax_Comps[T_Floop]              := <T_Statements>;
+Syntax_Comps[T_Join]               := <T_Statements, T_Statements>;
+Syntax_Comps[T_Pop]                := <T_Lvalue, T_Lvalue>;
+Syntax_Comps[T_Puthash]            := <T_Lvalue, T_Expression, T_Expression>;
+Syntax_Comps[T_Proc_Call]          := <T_Name, T_Expressions, T_Lvalues>;
+Syntax_Comps[T_Push]               := <T_Lvalue, T_Expression>;
+Syntax_Comps[T_Spec]               := <T_Lvalues, T_Condition>;
+Syntax_Comps[T_Var]                := <T_Assigns, T_Statements>;
+Syntax_Comps[T_Where]              := <T_Statements, T_Definitions>;
+Syntax_Comps[T_While]              := <T_Condition, T_Statements>;
+Syntax_Comps[T_MW_Proc]            := <T_Name, T_Lvalues, T_Lvalues, T_Statements>;
+Syntax_Comps[T_MW_Funct]           := <T_Name, T_Lvalues, T_Assigns, T_Statements,
+				       T_Expression>;
+Syntax_Comps[T_MW_BFunct]          := <T_Name, T_Lvalues, T_Assigns, T_Statements,
+				       T_Condition>;
+Syntax_Comps[T_MW_Proc_Call]       := <T_Name, T_Expressions, T_Lvalues>;
+Syntax_Comps[T_Ifmatch_Stat]       := <T_Statement, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Expn]       := <T_Expression, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Cond]       := <T_Condition, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Defn]       := <T_Definition, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Lvalue]     := <T_Lvalue, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Assign]     := <T_Assign, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Guarded]    := <T_Guarded, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Action]     := <T_Action, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Stats]      := <T_Statements, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Expns]      := <T_Expressions, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Lvalues]    := <T_Lvalues, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Assigns]    := <T_Assigns, T_Statements, T_Statements>;
+Syntax_Comps[T_Ifmatch_Defns]      := <T_Definitions, T_Statements, T_Statements>;
+Syntax_Comps[T_Get_n]              := <T_Expression, T_Expression>;
+Syntax_Comps[T_Get]                := <T_Expression, T_Expression>;
+Syntax_Comps[T_Gethash]            := <T_Expression, T_Expression>;
+Syntax_Comps[T_Slength]		   := <T_Expression>;
+Syntax_Comps[T_Substr]		   := <T_Expressions>;
+Syntax_Comps[T_Index]              := <T_Expressions>;
+Syntax_Comps[T_X_Funct_Call]       := <T_Name, T_Expressions>;
+Syntax_Comps[T_MW_Funct_Call]      := <T_Name, T_Expressions>;
+Syntax_Comps[T_Sequence]           := <T_Expressions>;
+Syntax_Comps[T_Aref]               := <T_Expression, T_Expressions>;
+Syntax_Comps[T_Sub_Seg]            := <T_Expression, T_Expression, T_Expression>;
+Syntax_Comps[T_Rel_Seg]            := <T_Expression, T_Expression, T_Expression>;
+Syntax_Comps[T_Final_Seg]          := <T_Expression, T_Expression>;
+Syntax_Comps[T_Funct_Call]         := <T_Name, T_Expressions>;
+Syntax_Comps[T_Map]                := <T_Name, T_Expression>;
+Syntax_Comps[T_Reduce]             := <T_Name, T_Expression>;
+Syntax_Comps[T_Plus]               := <T_Expression>;
+Syntax_Comps[T_Minus]              := <T_Expression>;
+Syntax_Comps[T_Times]              := <T_Expression>;
+Syntax_Comps[T_Divide]             := <T_Expression>;
+Syntax_Comps[T_Exponent]           := <T_Expression>;
+Syntax_Comps[T_Mod]                := <T_Expression, T_Expression>;
+Syntax_Comps[T_Div]                := <T_Expression, T_Expression>;
+Syntax_Comps[T_If]                 := <T_Condition, T_Expression, T_Expression>;
+Syntax_Comps[T_Abs]                := <T_Expression>;
+Syntax_Comps[T_Frac]               := <T_Expression>;
+Syntax_Comps[T_Int]                := <T_Expression>;
+Syntax_Comps[T_Sgn]                := <T_Expression>;
+Syntax_Comps[T_Max]                := <T_Expression>;
+Syntax_Comps[T_Min]                := <T_Expression>;
+Syntax_Comps[T_Address_Of]         := <T_Expression>;
+Syntax_Comps[T_Mem]                := <T_Expression>;
+Syntax_Comps[T_Mem_Seg]            := <T_Expression, T_Expression>;
+Syntax_Comps[T_Mem_Rel]            := <T_Expression, T_Expression>;
+Syntax_Comps[T_Mem_Lvalue]         := <T_Expression>;
+Syntax_Comps[T_Mem_Seg_Lvalue]     := <T_Expression, T_Expression>;
+Syntax_Comps[T_Mem_Rel_Lvalue]     := <T_Expression, T_Expression>;
+Syntax_Comps[T_Intersection]       := <T_Expression>;
+Syntax_Comps[T_Union]              := <T_Expression>;
+Syntax_Comps[T_Set_Diff]           := <T_Expression, T_Expression>;
+Syntax_Comps[T_Powerset]           := <T_Expression>;
+Syntax_Comps[T_Set]                := <T_Expression, T_Condition>;
+Syntax_Comps[T_Array]              := <T_Expression, T_Expression>;
+Syntax_Comps[T_Head]               := <T_Expression>;
+Syntax_Comps[T_Tail]               := <T_Expression>;
+Syntax_Comps[T_Last]               := <T_Expression>;
+Syntax_Comps[T_Butlast]            := <T_Expression>;
+Syntax_Comps[T_Length]             := <T_Expression>;
+Syntax_Comps[T_Reverse]            := <T_Expression>;
+Syntax_Comps[T_Concat]             := <T_Expression>;
+Syntax_Comps[T_Negate]             := <T_Expression>;
+Syntax_Comps[T_Invert]             := <T_Expression>;
+Syntax_Comps[T_Struct]             := <T_Name, T_Expression>;
+Syntax_Comps[T_Fill_Stat]          := <T_Statement>;
+Syntax_Comps[T_Fill_Expn]          := <T_Expression>;
+Syntax_Comps[T_Fill_Cond]          := <T_Condition>;
+Syntax_Comps[T_Fill_Defn]          := <T_Definition>;
+Syntax_Comps[T_Fill_Lvalue]        := <T_Lvalue>;
+Syntax_Comps[T_Fill_Assign]        := <T_Assign>;
+Syntax_Comps[T_Fill_Guarded]       := <T_Guarded>;
+Syntax_Comps[T_Fill_Action]        := <T_Action>;
+Syntax_Comps[T_Fill_Stats]         := <T_Statements>;
+Syntax_Comps[T_Fill_Expns]         := <T_Expressions>;
+Syntax_Comps[T_Fill_Lvalues]       := <T_Lvalues>;
+Syntax_Comps[T_Fill_Assigns]       := <T_Assigns>;
+Syntax_Comps[T_Fill_Defns]         := <T_Definitions>;
+Syntax_Comps[T_X_BFunct_Call]      := <T_Name, T_Expressions>;
+Syntax_Comps[T_MW_BFunct_Call]     := <T_Name, T_Expressions>;
+Syntax_Comps[T_BFunct_Call]        := <T_Name, T_Expressions>;
+Syntax_Comps[T_And]                := <T_Condition>;
+Syntax_Comps[T_Or]                 := <T_Condition>;
+Syntax_Comps[T_Not]                := <T_Condition>;
+Syntax_Comps[T_Equal]              := <T_Expression, T_Expression>;
+Syntax_Comps[T_Not_Equal]          := <T_Expression, T_Expression>;
+Syntax_Comps[T_Less]               := <T_Expression, T_Expression>;
+Syntax_Comps[T_Greater]            := <T_Expression, T_Expression>;
+Syntax_Comps[T_Less_Eq]            := <T_Expression, T_Expression>;
+Syntax_Comps[T_Greater_Eq]         := <T_Expression, T_Expression>;
+Syntax_Comps[T_Even]               := <T_Expression>;
+Syntax_Comps[T_Odd]                := <T_Expression>;
+Syntax_Comps[T_Empty]              := <T_Expression>;
+Syntax_Comps[T_Subset]             := <T_Expression, T_Expression>;
+Syntax_Comps[T_Member]             := <T_Expression, T_Expression>;
+Syntax_Comps[T_In]                 := <T_Expression, T_Expression>;
+Syntax_Comps[T_Not_In]             := <T_Expression, T_Expression>;
+Syntax_Comps[T_Forall]             := <T_Lvalues, T_Condition>;
+Syntax_Comps[T_Exists]             := <T_Lvalues, T_Condition>;
+Syntax_Comps[T_Implies]            := <T_Condition, T_Condition>;
+Syntax_Comps[T_Sequenceq]          := <T_Expression>;
+Syntax_Comps[T_Numberq]            := <T_Expression>;
+Syntax_Comps[T_Stringq]            := <T_Expression>;
+Syntax_Comps[T_Proc]               := <T_Name, T_Lvalues, T_Lvalues, T_Statements>;
+Syntax_Comps[T_Funct]              := <T_Name, T_Lvalues, T_Assigns, T_Statements,
+                                       T_Expression>;
+Syntax_Comps[T_BFunct]             := <T_Name, T_Lvalues, T_Assigns, T_Statements,
+                                       T_Condition>;
+Syntax_Comps[T_Aref_Lvalue]        := <T_Lvalue, T_Expressions>;
+Syntax_Comps[T_Sub_Seg_Lvalue]     := <T_Lvalue, T_Expression, T_Expression>;
+Syntax_Comps[T_Rel_Seg_Lvalue]     := <T_Lvalue, T_Expression, T_Expression>;
+Syntax_Comps[T_Final_Seg_Lvalue]   := <T_Lvalue, T_Expression>;
+Syntax_Comps[T_Struct_Lvalue]      := <T_Name, T_Lvalue>;
+
+
+Syntax_Comps[T_Stat_Int_One] := <T_Expression>;
+Syntax_Comps[T_Stat_Int_Any] := <T_Expression>;
+Syntax_Comps[T_Expn_Int_One] := <T_Expression>;
+Syntax_Comps[T_Expn_Int_Any] := <T_Expression>;
+Syntax_Comps[T_Cond_Int_One] := <T_Expression>;
+Syntax_Comps[T_Cond_Int_Any] := <T_Expression>;
+Syntax_Comps[T_Defn_Int_One] := <T_Expression>;
+Syntax_Comps[T_Defn_Int_Any] := <T_Expression>;
+Syntax_Comps[T_Lvalue_Int_One] := <T_Expression>;
+Syntax_Comps[T_Lvalue_Int_Any] := <T_Expression>;
+Syntax_Comps[T_Assign_Int_One] := <T_Expression>;
+Syntax_Comps[T_Assign_Int_Any] := <T_Expression>;
+Syntax_Comps[T_Guarded_Int_One] := <T_Expression>;
+Syntax_Comps[T_Guarded_Int_Any] := <T_Expression>;
+Syntax_Comps[T_Action_Int_One] := <T_Expression>;
+Syntax_Comps[T_Action_Int_Any] := <T_Expression>;
+Syntax_Comps[T_Name_Int_One] := <T_Expression>;
+
+
+
+
+FOR type IN <T_Assignment, T_Cond, T_D_If, T_D_Do, T_Plus, T_Minus, T_Times,
+	     T_Divide, T_Exponent, T_Max, T_Min, T_Intersection, T_Union, T_Concat,
+	     T_And, T_Or, T_Statements, T_Expressions, T_Lvalues,
+	     T_Assigns, T_Definitions, T_Actions> DO
+  Syntax_Type[type] := Syntax_List OD;
+
+
+FOR type IN <T_Stat_Pat_One, T_Expn_Pat_One, T_Cond_Pat_One, T_Lvalue_Pat_One,
+	     T_Defn_Pat_One, T_Assign_Pat_One, T_Guarded_Pat_One,
+	     T_Action_Pat_One, T_Name_Pat_One> DO
+  Syntax_Type[type] := Syntax_One_Pattern OD;
+
+
+FOR type IN <T_Stat_Pat_Many, T_Expn_Pat_Many, T_Cond_Pat_Many, T_Lvalue_Pat_Many,
+	     T_Defn_Pat_Many, T_Assign_Pat_Many, T_Guarded_Pat_Many,
+	     T_Action_Pat_Many> DO
+  Syntax_Type[type] := Syntax_Many_Pattern OD;
+
+
+FOR type IN <T_Stat_Pat_Any, T_Expn_Pat_Any, T_Cond_Pat_Any, T_Lvalue_Pat_Any,
+	     T_Defn_Pat_Any, T_Assign_Pat_Any, T_Guarded_Pat_Any,
+	     T_Action_Pat_Any> DO
+  Syntax_Type[type] := Syntax_Any_Pattern OD;
+
+
+FOR type IN <T_Stat_Int_One, T_Expn_Int_One, T_Cond_Int_One, T_Lvalue_Int_One,
+	     T_Defn_Int_One, T_Assign_Int_One, T_Guarded_Int_One,
+	     T_Action_Int_One, T_Name_Int_One> DO
+  Syntax_Type[type] := Syntax_One_Int OD;
+
+
+FOR type IN <T_Stat_Int_Any, T_Expn_Int_Any, T_Cond_Int_Any, T_Lvalue_Int_Any,
+	     T_Defn_Int_Any, T_Assign_Int_Any, T_Guarded_Int_Any,
+	     T_Action_Int_Any> DO
+  Syntax_Type[type] := Syntax_Any_Int OD;
+
+
+FOR type IN <T_Stat_Var_One, T_Expn_Var_One, T_Cond_Var_One, T_Lvalue_Var_One,
+	     T_Defn_Var_One, T_Assign_Var_One, T_Guarded_Var_One,
+	     T_Action_Var_One, T_Name_Var_One> DO
+  Syntax_Type[type] := Syntax_One_Var OD;
+
+
+FOR type IN <T_Stat_Var_Any, T_Expn_Var_Any, T_Cond_Var_Any, T_Lvalue_Var_Any,
+	     T_Defn_Var_Any, T_Assign_Var_Any, T_Guarded_Var_Any,
+	     T_Action_Var_Any> DO
+  Syntax_Type[type] := Syntax_Any_Var OD;
+
+
+
+FOR type IN <T_Ifmatch_Stat, T_Ifmatch_Expn, T_Ifmatch_Cond, T_Ifmatch_Defn,
+	     T_Ifmatch_Lvalue, T_Ifmatch_Assign, T_Ifmatch_Guarded, T_Ifmatch_Action,
+	     T_Ifmatch_Stats, T_Ifmatch_Expns, T_Ifmatch_Lvalues,
+	     T_Ifmatch_Assigns, T_Ifmatch_Defns> DO
+  Syntax_Type[type] := Syntax_Ifmatch OD;
+
+
+FOR type IN <T_Fill_Stat, T_Fill_Expn, T_Fill_Cond, T_Fill_Defn,
+	     T_Fill_Lvalue, T_Fill_Assign, T_Fill_Guarded, T_Fill_Action,
+	     T_Fill_Stats, T_Fill_Stats, T_Fill_Lvalues,
+	     T_Fill_Assigns, T_Fill_Defns> DO
+  Syntax_Type[type] := Syntax_Fill OD;
+
+
+
+
+C:" Ensure Lvalues are converted to Expressions (and vice-versa): ";
+
+FOR type := 1 TO 1999 STEP 1 DO
+  Syntax_V_To_E[type] := type;
+  Syntax_E_To_V[type] := type OD;
+
+Syntax_V_To_E[T_Var_Lvalue]	  := T_Variable;
+Syntax_V_To_E[T_Aref_Lvalue]	  := T_Aref;
+Syntax_V_To_E[T_Sub_Seg_Lvalue]	  := T_Sub_Seg;
+Syntax_V_To_E[T_Rel_Seg_Lvalue]	  := T_Rel_Seg;
+Syntax_V_To_E[T_Final_Seg_Lvalue] := T_Final_Seg;
+Syntax_V_To_E[T_Struct_Lvalue] 	  := T_Struct;
+Syntax_V_To_E[T_Mem_Lvalue] 	  := T_Mem;
+Syntax_V_To_E[T_Mem_Seg_Lvalue]	  := T_Mem_Seg;
+Syntax_V_To_E[T_Mem_Rel_Lvalue]	  := T_Mem_Rel;
+
+
+Syntax_E_To_V[T_Variable]  := T_Var_Lvalue;
+Syntax_E_To_V[T_Aref]      := T_Aref_Lvalue;
+Syntax_E_To_V[T_Sub_Seg]   := T_Sub_Seg_Lvalue;
+Syntax_E_To_V[T_Rel_Seg]   := T_Rel_Seg_Lvalue;
+Syntax_E_To_V[T_Final_Seg] := T_Final_Seg_Lvalue;
+Syntax_E_To_V[T_Struct]    := T_Struct_Lvalue;
+Syntax_E_To_V[T_Mem] 	   := T_Mem_Lvalue;
+Syntax_E_To_V[T_Mem_Seg]   := T_Mem_Seg_Lvalue;
+Syntax_E_To_V[T_Mem_Rel]   := T_Mem_Rel_Lvalue;
+
+
+
+C:" Record which types have values: ";
+
+Syntax_Value[T_Name] := 1;
+Syntax_Value[T_Call] := 1;
+Syntax_Value[T_Comment] := 1;
+Syntax_Value[T_Exit] := 1;
+Syntax_Value[T_Number] := 1;
+Syntax_Value[T_String] := 1;
+Syntax_Value[T_Variable] := 1;
+Syntax_Value[T_Var_Lvalue] := 1;
+Syntax_Value[T_Primed_Var] := 1;
+
+Syntax_Value[T_Stat_Pat_One] := 1;
+Syntax_Value[T_Stat_Pat_Many] := 1;
+Syntax_Value[T_Stat_Pat_Any] := 1;
+Syntax_Value[T_Expn_Pat_One] := 1;
+Syntax_Value[T_Expn_Pat_Many] := 1;
+Syntax_Value[T_Expn_Pat_Any] := 1;
+Syntax_Value[T_Cond_Pat_One] := 1;
+Syntax_Value[T_Cond_Pat_Many] := 1;
+Syntax_Value[T_Cond_Pat_Any] := 1;
+Syntax_Value[T_Defn_Pat_One] := 1;
+Syntax_Value[T_Defn_Pat_Many] := 1;
+Syntax_Value[T_Defn_Pat_Any] := 1;
+Syntax_Value[T_Lvalue_Pat_One] := 1;
+Syntax_Value[T_Lvalue_Pat_Many] := 1;
+Syntax_Value[T_Lvalue_Pat_Any] := 1;
+Syntax_Value[T_Assign_Pat_One] := 1;
+Syntax_Value[T_Assign_Pat_Many] := 1;
+Syntax_Value[T_Assign_Pat_Any] := 1;
+Syntax_Value[T_Guarded_Pat_One] := 1;
+Syntax_Value[T_Guarded_Pat_Many] := 1;
+Syntax_Value[T_Guarded_Pat_Any] := 1;
+Syntax_Value[T_Action_Pat_One] := 1;
+Syntax_Value[T_Action_Pat_Many] := 1;
+Syntax_Value[T_Action_Pat_Any] := 1;
+Syntax_Value[T_Name_Pat_One] := 1;
+
+Syntax_Value[T_Stat_Var_One] := 1;
+Syntax_Value[T_Stat_Var_Any] := 1;
+Syntax_Value[T_Expn_Var_One] := 1;
+Syntax_Value[T_Expn_Var_Any] := 1;
+Syntax_Value[T_Cond_Var_One] := 1;
+Syntax_Value[T_Cond_Var_Any] := 1;
+Syntax_Value[T_Defn_Var_One] := 1;
+Syntax_Value[T_Defn_Var_Any] := 1;
+Syntax_Value[T_Lvalue_Var_One] := 1;
+Syntax_Value[T_Lvalue_Var_Any] := 1;
+Syntax_Value[T_Assign_Var_One] := 1;
+Syntax_Value[T_Assign_Var_Any] := 1;
+Syntax_Value[T_Guarded_Var_One] := 1;
+Syntax_Value[T_Guarded_Var_Any] := 1;
+Syntax_Value[T_Action_Var_One] := 1;
+Syntax_Value[T_Action_Var_Any] := 1;
+Syntax_Value[T_Name_Var_One] := 1;
+
+C:" The _Int_ types have one (expression) component and no value ";
+
+
+C:" Functions to access this data: ";
+
+
+MW_BFUNCT @List_Type?(type) == : SKIP;
+  (Syntax_Type[type] = Syntax_List) .;
+
+MW_BFUNCT @All_Pattern_Type?(type) == : SKIP;
+  (Syntax_Type[type] IN <Syntax_One_Pattern, Syntax_Many_Pattern, Syntax_Any_Pattern,
+                         Syntax_One_Int, Syntax_Any_Int,
+			 Syntax_One_Var, Syntax_Any_Var>) .;
+
+MW_BFUNCT @One_Pattern_Type?(type) == : SKIP;
+  (Syntax_Type[type] = Syntax_One_Pattern) .;
+
+MW_BFUNCT @Many_Pattern_Type?(type) == : SKIP;
+  (Syntax_Type[type] = Syntax_Many_Pattern) .;
+
+MW_BFUNCT @Any_Pattern_Type?(type) == : SKIP;
+  (Syntax_Type[type] = Syntax_Any_Pattern) .;
+
+MW_BFUNCT @One_Int_Type?(type) == : SKIP;
+  (Syntax_Type[type] = Syntax_One_Int) .;
+
+MW_BFUNCT @Any_Int_Type?(type) == : SKIP;
+  (Syntax_Type[type] = Syntax_Any_Int) .;
+
+MW_BFUNCT @One_Var_Type?(type) == : SKIP;
+  (Syntax_Type[type] = Syntax_One_Var) .;
+
+MW_BFUNCT @Any_Var_Type?(type) == : SKIP;
+  (Syntax_Type[type] = Syntax_Any_Var) .;
+
+MW_BFUNCT @Star_Match_Type?(type) == : SKIP;
+  (Syntax_Type[type] IN <Syntax_Many_Pattern, Syntax_Any_Pattern,
+                         Syntax_Any_Int, Syntax_Any_Var>) .;
+
+MW_BFUNCT @Ifmatch_Type?(type) == : SKIP;
+  (Syntax_Type[type] = Syntax_Ifmatch) .;
+
+MW_BFUNCT @Fill_Type?(type) == : SKIP;
+  (Syntax_Type[type] = Syntax_Fill) .;
+
+MW_FUNCT @Syntax(type) == : SKIP;
+  (Syntax_Comps[type]) .;
+
+MW_FUNCT @Type_Name(type) == : SKIP;
+  (Syntax_Name[type]) .;
+
+MW_FUNCT @Var_To_Expn_Type(type) == : SKIP;
+  (Syntax_V_To_E[type]) .;
+
+MW_FUNCT @Expn_To_Var_Type(type) == : SKIP;
+  (Syntax_E_To_V[type]) .;
+
+MW_FUNCT @Var_To_Expn(I) == : SKIP;
+  (@Make(Syntax_V_To_E[@ST(I)], @Value(I),
+   IF Syntax_Type[@ST(I)] = Syntax_Fill
+     THEN @Components(I)
+     ELSE MAP("@Var_To_Expn", @Components(I)) FI)) .;
+
+MW_FUNCT @Expn_To_Var(I) == : SKIP;
+  (IF @ST(I) IN <T_Aref, T_Sub_Seg, T_Rel_Seg>
+     THEN @Make(Syntax_E_To_V[@ST(I)], @Value(I),
+		<@Expn_To_Var(I^1)> ++ TAIL(@Components(I)))
+   ELSE IF @ST(I) = T_Struct
+     THEN @Make(T_Struct_Lvalue, < >, <I^1, @Expn_To_Var(I^2)>)
+     ELSE @Make(Syntax_E_To_V[@ST(I)], @Value(I), @Components(I)) FI FI) .;
+
+MW_FUNCT @Var_To_Expn_List(L) == : SKIP;
+  (MAP("@Var_To_Expn", L)) .;
+
+MW_FUNCT @Expn_To_Var_List(L) == : SKIP;
+  (MAP("@Expn_To_Var", L)) .;
+
+
+MW_BFUNCT @Has_Value_Type?(type) == : SKIP;
+  (Syntax_Value[type] = 1) .;
+
+MW_BFUNCT @Has_Comps_Type?(type) == : SKIP;
+  (Syntax_Value[type] = 0) .;
+
+MW_BFUNCT @Has_Value?(I) == : SKIP;
+  (Syntax_Value[@ST(I)] = 1) .;
+
+MW_BFUNCT @Has_Comps?(I) == : SKIP;
+  (Syntax_Value[@ST(I)] = 0) .;
+
+
+Call_Types_Set := @Make_Set(<T_X_Proc_Call, T_MW_Proc_Call,
+			     T_Call, T_Proc_Call>);
+
+Ext_Call_Types_Set := @Make_Set(<T_MW_Proc_Call, T_X_Proc_Call>);
+
+
+SKIP
+

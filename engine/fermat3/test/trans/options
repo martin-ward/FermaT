@@ -1,0 +1,188 @@
+# This file is called `options'
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+# Copy to the current directory and edit if necessary
+# before running analyse
+#
+# Options File for FermaT 2000
+# 1 = Yes, 0 = No
+
+# Should the analyser treat the listings as the starting point
+# (and not attempt to do any assemblies itself)?
+Listings	= 1
+
+# Should the analyser process all subdirectories of the current
+# directory before processing the current directory?
+Recursion	= 1
+
+# Keep the intermediate files?
+Debugging	= 0
+
+# Seek table file name (this file must exist):
+Seek_Table	= "demo03.tab"
+
+# Run crypscan on each source/listing file and append Seek_Table
+# to create a separate seek table for each module,
+# which will be used by f2kprep and datescan:
+Cryp_Scan	= 0
+
+# The seek table to use for crypscan.
+# This file must exist if Cryp_Scan = 1:
+Alpha_Seek_Table= "alpha03.tab"
+
+# Area Control Table for this directory
+# (if this is empty, then use <dirname>.act)
+Area_Control_Table = ""
+
+# Track addresses of date data as well as the data itself?
+Track_Addresses = 1
+
+# Max size of subfield to be tracked as individual bytes:
+# (Infecting a subfield bigger than this will infect the whole field):
+Max_Subfield	= 4
+
+# Draw lines depicting control flow?
+Control_Flow	= 0
+
+# Draw lines depicting data flow?
+Data_Flow	= 1
+
+# Ensure that the declarations of annotated symbols
+# are also annotated
+Declarations	= 1
+
+# ... including all symbols mentioned on any annotated line:
+Declarations2	= 1
+
+# ... including structures which have an annotated field or subfield:
+Declarations3	= 1
+
+# Time (in hours of wall clock time) after which the analysis
+# of a single file should be interrupted and the analyse script
+# move on to the next file (if any).
+# A value of 0 will allow the process to take as long as it needs.
+Alarm_Time	= 10
+
+#======== SCANNER OPTIONS ==============
+# These are passed to the scanner programs when they
+# are invoked by the date tracker.
+# Currently, the scanner programs themselves do NOT read this file!
+
+# Options for datescan:
+Datescan_Opts	= "/e/w/x/l"
+
+# Options for f2kprep:
+Scanner_Opts	= "/e/w/l"
+
+# Options for crypscan: (option /t is to scan text constants)
+CrypScan_Opts	= ""
+
+#======== CROSS REFERENCE ==============
+# Highlight ALL references to annotated lines in 
+# the cross reference listing -- even if the symbol is not a date carrier
+Highlight_All	= 1
+
+# Condensed cross reference listing -- only list annotated items:
+Condensed_Xref	= 0
+
+#============ OUTPUT ===================
+# Should "analyse" script generate .ps file from .as5:
+Generate_PS	= 1
+
+# Should "analyse" script generate .lps file from .ls5:
+Generate_LPS	= 1
+
+# Number of lines of listing per page
+# Use 92 for A4 paper; use 86 to 88 for 8.5 x 11" USA
+Lines_On_Page	= 92
+
+# Number of lines of context to print around each annotated line
+# "-1" means print the whole file,
+# "0" means only print the annotated lines (with no context):
+Context_Lines   = "-1"
+
+# Set this to 1 if you only want the cross reference part of the listing:
+Cross_Ref_Only  = 0
+
+# Include Macro expansions in the PostScript listing:
+Macros		= 1
+
+# Include Copybook lines in the PostScript listing:
+Copybooks	= 1
+
+#============ FLOWCHART ===================
+
+# Use many triangle nodes for dispatch?
+Dispatch_Nodes 	= 1
+
+# Connect BAL nodes and show dispatch nodes:
+Runtime_Flow 	= 0
+
+# Make backedge edges thinner:
+Thin_Back_Edges = 1		
+
+# Max number of lines in a label
+# A label longer than (Max_Box_Lines1 + Max_Box_Lines2 + 1) lines
+# will show tha first Max_Box_Lines1 lines then "..."
+# then the last Max_Box_Lines2 lines:
+Max_Box_Lines1 	= 8
+Max_Box_Lines2 	= 2
+
+# Max number of chars/line in a box label:
+Max_Box_Chars 	= 35
+
+# Max number of chars/line in a rhomb (ie diamond) label:
+Max_Rhomb_Chars = 20
+
+# Max number of edges into a node (nodes with more than this many
+# incoming edges will have the edges connected via triangle connectors.
+# Use 0 to disable this option):
+Max_Incoming_Edges = 5
+
+# Delete isolated single blocks in the flowchart (1 = yes):	
+Delete_Singletons  = 1
+
+# A space-separated list of files of structured macro declarations:
+Macro_Files	= "macros.tab"	
+
+# Expand #IF...#ELSE...#EIF macros in the flowchart:
+Expand_If_Macros	= 0	
+
+# Expand #GOTO...#LOCA macros in the flowchart:
+Expand_Goto_Macros 	= 0
+
+# Expand #DO...#DOEX...#EDO macros in the flowchart:
+Expand_Do_Macros 	= 0
+
+# Don't show the targets of EX instructions separately
+# in the flowchart. Note that if the target of an EX can be found,
+# then it will be copied in after each EX. This option
+# assumes that the instructions are only reached
+# via EXecute statements.
+Delete_EXeced_Instrs	= 1
+
+#============ MIGRATION ===================
+
+# In translating an EXecuted instruction, use all of the register
+# in the EX instruction as the length field (ie don't bother just
+# extracting the low order byte):
+EX_Full_Length	= 1
+
+
+#========== END OF OPTIONS =============

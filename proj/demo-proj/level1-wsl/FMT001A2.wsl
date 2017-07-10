@@ -1,0 +1,158 @@
+VAR < cc := 0, len_1 := 0, len_2 := 0,
+      destination := 0 >:
+BEGIN
+  ACTIONS _enter_:
+  _start_ == CALL Z;
+CALL FMT001A2 END
+FMT001A2 ==
+	C:"*********************************************************************";
+	 
+	CALL A_000000 END
+A_000000 ==
+	C:"<FermaT> 00000033 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+	!P push_regs(r0, r1, r2, r3, r4, r5, r6, r7, r8, r9,
+                           r10, r11, r12, r13, r14 VAR reg_stack);
+	!P chain_reg(VAR r13, os);
+	CALL A_000004 END
+A_000004 ==
+	C:"<FermaT> 00000034 r3 r15";
+	r3 := r15;
+	CALL A_000006 END
+A_000006 ==
+	C:"<FermaT> 00000036 WSAVE WSAVE[5] WSAVE[6] WSAVE[7] WSAVE[8] r3 r13";
+	a[dib(WSAVE+4, 0, r3), 4] := r13;
+	CALL A_00000A END
+A_00000A ==
+	C:"<FermaT> 00000037 WSAVE r14 r3";
+	r14 := dib(WSAVE, 0, r3);
+	CALL A_00000E END
+A_00000E ==
+	C:"<FermaT> 00000038 r13 r14";
+	a[dib(8, r13, 0), 4] := r14;
+	CALL A_000012 END
+A_000012 ==
+	C:"<FermaT> 00000039 WSAVE r13 r3";
+	r13 := dib(WSAVE, 0, r3);
+	CALL A_000016 END
+A_000016 ==
+	C:"*";
+	C:"<FermaT> 00000041 PRINT1 r15";
+	result_code := NOT_USED;
+        IF "OUTPUT" = "no_par_2"
+          THEN !P OPEN(PRINT1, "INPUT" VAR result_code, os) 
+          ELSE !P OPEN(PRINT1, "OUTPUT" VAR result_code, os) FI;
+        r15 := result_code;
+	CALL A_000034 END
+A_000034 ==
+	C:"<FermaT> 00000052 WPRT r3";
+	!P mvc(!XF c_lit(1, 25, "CALL TO FUNCTION FMT001A2") VAR a[db(WPRT, r3), 24 + 1]);
+	CALL A_00003A END
+A_00003A ==
+	C:"<FermaT> 00000053 PRINT1 WPRT r15";
+	C:"FIXME: Unknown File max for PRINT1 ";
+C:"FIXME: Unknown File max for PRINT1 ";
+C:"FIXME: Unknown File min for PRINT1 ";
+C:"FIXME: Unknown File max for PRINT1 ";
+C:"FIXME: Unknown File max for PRINT1 ";
+C:"FIXME: Unknown File min for PRINT1 ";
+result_code := NOT_USED;
+        IF "WPRT" = "no_par_2"
+          THEN C:"FIXME: PUT LOCATE encountered! ";
+               !P PUT1(PRINT1_DDNAME VAR result_code, os)
+        ELSIF FALSE
+          THEN IF 1 <> 1
+                 THEN !P PUT_VARIABLE(PRINT1,
+                                      a[WPRT + 4, a[WPRT, 2] - 4],
+                                      a[WPRT, 2] - 4
+                                      VAR result_code, os)
+                 ELSE !P PUT_FIXED(PRINT1,
+                                   a[WPRT, 1]
+                                   VAR result_code, os) FI
+          ELSE IF 1 <> 1
+                 THEN !P PUT_VARIABLE(PRINT1,
+                                      WPRT[5, WPRT[1..2] - 4],
+                                      WPRT[1..2] - 4
+                                      VAR result_code, os)
+                 ELSE !P PUT_FIXED(PRINT1,
+                                   WPRT[1..1]
+                                   VAR result_code, os) FI FI;
+        r15 := PRINT1_STATUS;
+	CALL A_00004A END
+A_00004A ==
+	C:"<FermaT> 00000059 PRINT1 r15";
+	result_code := NOT_USED;
+        !P CLOSE(PRINT1 VAR result_code, os);
+        r15 := result_code;
+	CALL A_000068 END
+A_000068 ==
+	C:"*";
+	C:"<FermaT> 00000074 WTOTAL r3";
+	!P zap(!XF p_lit(1, 1, "0") VAR a[db(WTOTAL, r3), 3 + 1]);
+        IF !XC dec_eq(a[db(WTOTAL, r3), 3 + 1], !XF p_lit(1, 1, "0"))
+          THEN cc := 0
+        ELSIF !XC dec_less(a[db(WTOTAL, r3), 3 + 1], !XF p_lit(1, 1, "0"))
+          THEN cc := 1
+          ELSE cc := 2 FI;
+	CALL A_00006E END
+A_00006E ==
+	C:"<FermaT> 00000075 WCT r3";
+	!P ap(!XF p_lit(1, 1, "1") VAR a[db(WCT, r3), 3 + 1]);
+        IF !XC dec_eq(a[db(WCT, r3), 3 + 1], !XF p_lit(1, 1, "0"))
+          THEN cc := 0
+        ELSIF !XC dec_less(a[db(WCT, r3), 3 + 1], !XF p_lit(1, 1, "0"))
+          THEN cc := 1
+          ELSE cc := 2 FI;
+	CALL A_000074 END
+A_000074 ==
+	C:"<FermaT> 00000076 WNUM r3";
+	!P ap(!XF p_lit(1, 1, "1") VAR a[db(WNUM, r3), 3 + 1]);
+        IF !XC dec_eq(a[db(WNUM, r3), 3 + 1], !XF p_lit(1, 1, "0"))
+          THEN cc := 0
+        ELSIF !XC dec_less(a[db(WNUM, r3), 3 + 1], !XF p_lit(1, 1, "0"))
+          THEN cc := 1
+          ELSE cc := 2 FI;
+	CALL A_00007A END
+A_00007A ==
+	C:"*";
+	C:"<FermaT> 00000078 WSAVE WSAVE[5] WSAVE[6] WSAVE[7] WSAVE[8] r13 r3";
+	r13 := a[dib(WSAVE+4, 0, r3), 4];
+	CALL A_00007E END
+A_00007E ==
+	C:"<FermaT> 00000079 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+	!P pop_regs(VAR r0, r1, r2, r3, r4, r5, r6, r7, r8, r9,
+                     r10, r11, r12, r13, r14, reg_stack);
+	CALL A_000082 END
+A_000082 ==
+	C:"<FermaT> 00000080 r15";
+	r15 := r15 - r15;
+        IF r15 = 0 THEN cc := 0 ELSE cc := 2 FI;
+	CALL A_000084 END
+A_000084 ==
+	C:"<FermaT> 00000081 r14";
+	IF TRUE
+          THEN IF 14 <> 0 THEN destination := r14; CALL dispatch FI FI;
+	CALL Z END
+  _enter_ == C:" <ENTRY POINT> ";
+             C:" <NAME=FMT001A2> ";
+                r1  := __r1_init__;
+		   r2  := __r2_init__;
+		   r3  := __r3_init__;
+		   r4  := __r4_init__;
+		   r5  := __r5_init__;
+		   r6  := __r6_init__;
+		   r7  := __r7_init__;
+		   r8  := __r8_init__;
+		   r9  := __r9_init__;
+		   r10 := __r10_init__;
+		   r11 := __r11_init__;
+		   r12 := __r12_init__;
+		   r13 := __r13_init__;
+		   r14 := __r14_init__;   CALL FMT001A2 END
+dispatch ==
+	IF destination = 0 THEN CALL Z
+		ELSE C:"FIXME: Unknown destination "; CALL Z FI END
+ENDACTIONS
+WHERE
+  FUNCT dib (d, i, b) ==: (d+i+b).,
+  FUNCT db (d, b) ==: (d+b).
+END ENDVAR

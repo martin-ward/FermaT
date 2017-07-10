@@ -1,0 +1,6 @@
+
+The WSL files in this directory are designed to be executed
+from the command line using the wsl perl script. For example:
+
+% wsl -q metrics_csv.wsl --help
+

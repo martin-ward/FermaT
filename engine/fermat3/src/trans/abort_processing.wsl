@@ -1,0 +1,120 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Abort_Processing_Test () ==
+  IF T_Abort IN @Stat_Types(@I)
+    THEN @Pass
+    ELSE @Fail("No ABORTs in the code to process") FI .;
+
+C:" Note: sequences such as IF B THEN EXIT(1) FI; ABORT ";
+C:"                     and IF B THEN CALL FOO FI; ABORT ";
+C:" are not equivalent to ABORT! ";
+
+
+MW_PROC @Abort_Processing_Code (Data) ==
+  VAR < types := @Make_Set(<T_Call, T_Abort>), done := 0,
+        B1 := < >, B2 := < >, cc_name := @Make_Name("cc"),
+        destination := @Make_Name("destination") >:
+  DO done := 0;
+     FOREACH Statements DO
+       IF T_Abort IN @Stat_Types(@I)
+         THEN @Down; C:" to first statement ";
+              DO IF @ST(@I) = T_Abort
+                   THEN @AP_Abort(VAR done);
+                        EXIT(1) FI;
+                 IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+     FOREACH Statement DO
+       IF @ST(@I) = T_A_S
+         THEN @Down_Last; @Down; C:" to first action ";
+              DO IF @Stat_Types(@I) = types AND @Trans?(TR_Substitute_And_Delete)
+                   THEN @Trans(TR_Substitute_And_Delete, "");
+                        done := 1 FI;
+		 IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+     FOREACH Statement DO
+       IF @ST(@I) = T_Where AND @Trans?(TR_Unfold_Proc_Calls)
+         THEN @Trans(TR_Unfold_Proc_Calls, "") FI OD;
+     FOREACH Statement DO
+       IF @ST(@I) = T_Cond
+         THEN C:" B1 will be the condition that leads to the ABORT guard: ";
+	      B1 := @Make(T_True, < >, < >);
+	      B2 := < >;
+	      @Down;
+	      DO C:" Convert cc IF statements before processing: ";
+	         IF cc_name IN @Variables(@I^1) OR destination IN @Variables(@I^1)
+                   THEN EXIT(1) FI;
+	         IF @ST(@I^2^1) = T_Abort AND T_Call NOTIN @Stat_Types(@I^2)
+	           THEN C:" If B1 AND @I^1 is true, then we abort ";
+		        C:" so the assertion must be the negation of this: ";
+		        B2 := @Not(@And(B1, @I^1));
+		        C:" Replace this guard by an assertion ";
+		        @Delete;
+		        EXIT(1)
+                   ELSE B1 := @And(B1, @Not(@I^1)) FI;
+		 IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+              @Up;
+	      IF NOT EMPTY?(B2)
+	        THEN done := 1;
+		     C:" Fix up the IF statement if necessary: ";
+		     IF @Size(@I) = 1
+		       THEN @Splice_Over(@Cs(@I^1^2)) FI;
+		     C:" Check for an existing assertion ";
+		     IF @Left?
+		       THEN @Left;
+		            IF @ST(@I) = T_Assert
+			      THEN @Paste_Over(@Make(T_Assert, < >, <@And(@I^1, B2)>))
+			      ELSE @Right;
+		                   @Paste_Before(@Make(T_Assert, < >, <B2>)) FI
+                       ELSE @Paste_Before(@Make(T_Assert, < >, <B2>)) FI FI FI OD;
+     IF done = 0 THEN EXIT(1) FI OD ENDVAR .;
+
+
+C:" Process the sequence (if any) around the ABORT: ";
+
+MW_PROC @AP_Abort(VAR done) ==
+  VAR < posn_n := @Posn_n, call := 0 >:
+  IF T_Call IN @Stat_Types(@Parent) THEN call := 1 FI;
+  IF @Right?
+    THEN @Right;
+         IFMATCH Statement CALL Z
+	   THEN IF @Right?
+	          THEN @Delete_Rest;
+		       done := 1 FI;
+                @Left
+           ELSE @Left;
+	        @Delete_Rest;
+		done := 1 ENDMATCH FI;
+  C:" Should still be on the ABORT after fixing what follows it. ";
+  IF call = 1 AND NOT @Right?
+    THEN @Paste_After(FILL Statement CALL Z ENDFILL) FI;
+  IF @ST(@I) <> T_Abort THEN ERROR("Not on ABORT now!!!") FI;
+  IF @Left?
+    THEN @Left;
+         DO IF @Is_Proper? AND T_Call NOTIN @Stat_Types(@I)
+	      THEN @Delete; done := 1
+	      ELSE EXIT(1) FI;
+            IF @Left? THEN @Left ELSE EXIT(1) FI OD;
+         IF @ST(@I) = T_Cond AND @Trans?(TR_Fully_Absorb_Right)
+	   THEN @Trans(TR_Fully_Absorb_Right, "");
+	        done := 1 FI FI ENDVAR .;
+
+
+SKIP
+

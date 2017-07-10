@@ -1,0 +1,50 @@
+;;; Scheme translation of WSL code
+(define /%const__reverse_if__1 (@Make 114 '() (list (@Make 7 '() (list (@Make 305 -1 '()) (@Make 17 '() (list (@Make 105 -2 '()))))) (@Make 7 '() (list (@Make 308 '() '()) (@Make 17 '() (list (@Make 105 -3 '()))))))))
+(define (@Reverse_If_Test)
+ (let ((//B '())
+       (//B2 '())
+       (//S1 '())
+       (//S2 '()))
+  (cond
+   ((not (= (@ST (@I)) //T_/Cond))
+    (@Fail "Not an IF statement"))
+   (#t
+    (let ((/__/O/K 1))
+     (set! /__/O/K (@New_Match  /%const__reverse_if__1 (@I) /__/O/K))
+     (cond
+      ((= /__/O/K 1)
+       (let ((/__/S2_save //S2)
+             (/__/S1_save //S1)
+             (/__/B_save //B))
+        (set! //S2 (vector-ref /__/Match_array 2))
+        (set! //S1 (vector-ref /__/Match_array 1))
+        (set! //B (vector-ref /__/Match_array 0))
+        (@Pass)
+        (set! //S2 /__/S2_save)
+        (set! //S1 /__/S1_save)
+        (set! //B /__/B_save)))
+      (#t
+       (@Fail "Not a simple IF statement"))))))))
+
+(define (@Reverse_If_Code //Data)
+ (let ((//B '())
+       (//B2 '())
+       (//S1 '())
+       (//S2 '()))
+  (let ((/__/O/K 1))
+   (set! /__/O/K (@New_Match  /%const__reverse_if__1 (@I) /__/O/K))
+   (cond
+    ((= /__/O/K 1)
+     (let ((/__/S2_save //S2)
+           (/__/S1_save //S1)
+           (/__/B_save //B))
+      (set! //S2 (vector-ref /__/Match_array 2))
+      (set! //S1 (vector-ref /__/Match_array 1))
+      (set! //B (vector-ref /__/Match_array 0))
+      (set! //B2 (@Not //B))
+      (@Paste_Over (@Make 114 '() (list (@Make 7 '() (list //B2 (@Make 17 '() (list //S2)))) (@Make 7 '() (list (@Make 308 '() '()) (@Make 17 '() (list //S1)))))))
+      (set! //S2 /__/S2_save)
+      (set! //S1 /__/S1_save)
+      (set! //B /__/B_save)))))))
+
+#t

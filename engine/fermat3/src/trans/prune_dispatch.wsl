@@ -1,0 +1,235 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" Check for dispatch codes which are tested in dispatch but never ";
+C:" assigned anywhere and remove them from dispatch ";
+C:" Note that an assignment like this: v := disp_code; FOO(); CALL Z ";
+C:" can be ignored since the disp_code assigned here can never reach ";
+C:" the dispatch action. ";
+C:" If there is an occurrence of NOTUSED_code, then don't treat code ";
+C:" as occuring simply because there is a reference to code-4 etc. ";
+
+
+MW_PROC @Prune_Dispatch_Test() ==
+  VAR < dispatch := @Make_Name("dispatch"),
+        destination := @Make_Name("destination") >:
+  IF @ST(@I) = T_A_S
+    THEN @Down_Last; @Down;
+         WHILE @Right? AND @V(@I) <> dispatch DO @Right OD FI;
+  IF @GT(@I) = T_Action
+    THEN IF @V(@I^1) = @Make_Name("dispatch")
+           THEN @Down_Last
+           ELSE @Fail("Only applies to the dispatch action.") FI FI;
+  IF NOT @Failed?
+    THEN IF @GT(@I) = T_Statements THEN @Down FI;
+         IF @ST(@I) <> T_Cond
+           THEN @Fail("IF statement not found")
+           ELSE @Down; C:" to first guarded ";
+	        DO IF NOT @Right? THEN EXIT(1) FI;
+		   @Down;
+                   IF @ST(@I) = T_Or THEN @Down FI;
+                   DO IFMATCH Condition destination = ~?n
+                      THEN IF @ST(n) <> T_Number
+		                AND NOT (@ST(n) = T_Negate AND @ST(n^1) = T_Number)
+                             THEN @Fail("destination is not compared to a number!") FI
+                      ELSE @Fail("IF statement is not in right format.") ENDMATCH;
+                      IF @Failed? THEN EXIT(2) FI;
+		      IF @ST(@Parent) <> T_Or THEN EXIT(1) FI;
+		      IF @Right? THEN @Right ELSE @Up; EXIT(1) FI OD;
+		  @Up;
+		  @Right OD;
+                IF NOT @Failed? THEN @Pass FI FI FI ENDVAR .;
+
+
+C:" dest_codes is a table of dispatch codes, dest_occ records which codes ";
+C:" are referenced apart from the tests in the dispatch action ";
+
+MW_PROC @Prune_Dispatch_Code(Data) ==
+  VAR < dest_codes := HASH_TABLE, dest_occ := HASH_TABLE, notused := HASH_TABLE,
+        dispatch := @Make_Name("dispatch"),
+	destination := @Make_Name("destination"), posn := @Posn,
+	action := < >, dispatch_posn := < >, vars := < >, delete := 0,
+	bit_ops := <@Make_Name("bit_and"), @Make_Name("bit_or")> >:
+  PRINT("Finding accessed variables...");
+  C:" R14 may be referenced via call_via_ptr functions since it holds a return address: ";
+  vars := @Elts_Used(@Program) \/ <<@Make_Name("r14")>>;
+  @Goto(< >);
+  FOREACH Expression DO
+    IF @ST(@I) = T_Variable AND @Starts_With?(@V(@I), "NOTUSED_")
+      THEN notused.(@String_To_Num(SUBSTR(@N_String(@V(@I)), 8))) := 1 FI OD;
+  FOREACH Statement DO
+    IF @ST(@I) = T_Var
+      THEN vars := vars \/ @Elts_Assigned(@I^1) FI OD;
+  @Goto(posn);
+  PRINT("Pruning dispatch...");
+  IF @ST(@I) = T_A_S
+    THEN @Down_Last; @Down;
+         WHILE @Right? AND @V(@I) <> dispatch DO @Right OD FI;
+  IF @GT(@I) = T_Action THEN @Down_Last FI;
+  IF @GT(@I) = T_Statements THEN @Down FI;
+  @Down; C:" to first guard ";
+  DO IF NOT @Right? THEN EXIT(1) FI;
+     @Down; C:" to condition ";
+     IF @ST(@I) = T_Or THEN @Down FI;
+     DO IFMATCH Condition destination = ~?n
+          THEN dest_codes.(@V(n)) := 1
+	  ELSE !XP prit(); ERROR("internal error in Prune_Dispatch") ENDMATCH;
+	IF @ST(@Parent) <> T_Or THEN EXIT(1) FI;
+	IF @Right? THEN @Right ELSE @Up; EXIT(1) FI OD;
+     @Up;
+     @Right OD;
+  C:" Temporarily delete the dispatch action, then search for references to dest codes: ";
+  @Up; @Up; @Up; C:" to the dispatch action ";
+  IF @GT(@I) <> T_Action
+    THEN ERROR("ERROR", "Prune_Dispatch", @ST(@I)) FI;
+  action := @I;
+  dispatch_posn := @Posn;
+  @Paste_Over(FILL Action dispatch == SKIP END ENDFILL);
+  @Goto(< >);
+  @PD_Check_Dest_Codes(dest_codes, vars, notused VAR dest_occ);
+  C:" Restore dispatch, then search for references to dest codes in the statements ";
+  @Goto(dispatch_posn);
+  @Paste_Over(action);
+  @Down_Last; @Down; @Down; C:" to first guard ";
+  DO @Down_To(2); C:" to the statements ";
+     @PD_Check_Dest_Codes(dest_codes, vars, notused VAR dest_occ);
+     @Up;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up; C:" to the IF ";
+  IF @Right?
+    THEN @Right;
+	 C:" Process the rest of the dispatch action ";
+	 DO @PD_Check_Dest_Codes(dest_codes, vars, notused VAR dest_occ);
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD FI;
+  @Goto(dispatch_posn);
+  C:" Prune the dispatch arms whose codes aren't used (but keep code zero): ";
+  dest_occ.(0) := 1;
+  @Down_Last; @Down; @Down; C:" to first guard ";
+  DO IF NOT @Right? THEN EXIT(1) FI;
+     @Down; C:" to condition ";
+     delete := 0;
+     IF @ST(@I) = T_Or THEN @Down FI;
+     DO IF @ST(@I) = T_Equal
+          THEN IF @ST(@I^1) = T_Variable
+                    AND @V(@I^1) = destination
+                    AND @ST(@I^2) = T_Number
+                    AND EMPTY?(dest_occ.(@V(@I^2)))
+                 THEN PRINFLUSH(@V(@I^2), " ");
+		      @Paste_Over(@Make(T_False, < >, < >)) FI FI;
+        IF @ST(@Parent) <> T_Or THEN EXIT(1) FI;
+	IF @Right? THEN @Right ELSE @Up; EXIT(1) FI OD;
+     @Paste_Over(@Simplify_Cond(@I));
+     IF @ST(@I) = T_False
+       THEN @Up; @Delete
+       ELSE @Up; @Right FI OD;
+  @Up; C:" back to cond ";
+  @Fixup;
+  PRINT("");
+  @Goto(posn) ENDVAR .;
+
+
+C:" Record in the occ table which codes are found in the current item ";
+C:" Ignore occurrences which are assignments to non-accessed variables ";
+C:" A statement sequence which is regular and only calls Z can be ignored ";
+C:" since any code references in this sequence cannot reach dispatch ";
+
+C:" codes is the table of codes, vars is the set of accessed variables ";
+C:" (if a dispatch code is assigned to a variable which is never accessed, ";
+C:" then that reference can be ignored). ";
+C:" occ is the table in which occurences of code references are recorded. ";
+
+MW_PROC @PD_Check_Dest_Codes(codes, vars, notused VAR occ) ==
+  VAR < n := 0, call_stack := @Make_Name("call_stack") >:
+  C:" Temporarily delete statements whose code references cannot reach dispatch: ";
+  @Edit;
+  FOREACH Statements DO
+    @Down_Last;
+    IF @Regular?(@I) AND @Only_Calls_Z?(@I) AND @Gen_Proper?(@I, "Reg")
+      THEN DO @Delete;
+              IF @Left? THEN @Left ELSE EXIT(1) FI;
+	      IF NOT @Only_Calls_Z?(@I) OR NOT @Gen_Proper?(@I, "Reg")
+	        THEN EXIT(1) FI OD FI OD;
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+      THEN @PD_Check_Dest_Codes_Assigns(@I, codes, vars, notused VAR occ)
+    ELSIF @ST(@I) = T_Var
+      THEN @PD_Check_Dest_Codes_Assigns(@I^1, codes, vars, notused VAR occ)
+    ELSIF @ST(@I) = T_Push AND @ST(@I^1) = T_Var_Lvalue AND @V(@I^1) = call_stack
+            AND @ST(@I^2) = T_Number
+      THEN IF NOT EMPTY?(codes.(@V(@I^2)))
+             THEN occ.(@V(@I^2)) := 1 FI FI OD;
+  @Undo_Edit ENDVAR .;
+
+
+MW_PROC @PD_Check_Dest_Codes_Assigns(I, codes, vars, notused VAR occ) ==
+  FOR assign IN @Cs(I) DO
+    IF @ST(assign^2) = T_Number AND NOT EMPTY?(vars /\ @Elements(assign^1))
+      THEN n := @V(assign^2);
+           IF NOT EMPTY?(codes.(n))
+             THEN occ.(n) := 1;
+                  WHILE NOT EMPTY?(codes.(n)) AND EMPTY?(notused.(n)) AND n < Omega DO
+                    occ.(n) := 1; n := n + 4 OD FI
+    ELSIF @ST(assign^2) = T_X_Funct_Call AND @V(assign^2^1) = inline_par
+            AND @ST(assign^2^2^1) = T_Number
+      THEN n := @V(assign^2^2^1);
+           IF NOT EMPTY?(codes.(n))
+             THEN occ.(n) := 1;
+                  WHILE NOT EMPTY?(codes.(n)) AND n < Omega DO
+                    occ.(n) := 1; n := n + 4 OD FI
+    ELSIF @ST(assign^2) = T_X_Funct_Call AND @V(assign^2^1) IN bit_ops
+            AND @ST(assign^2^2^1) = T_Number
+            AND NOT EMPTY?(vars /\ @Elements(assign^1))
+      THEN n := @V(assign^2^2^1);
+           IF NOT EMPTY?(codes.(n))
+             THEN occ.(n) := 1;
+                  WHILE NOT EMPTY?(codes.(n)) AND n < Omega DO
+                    occ.(n) := 1; n := n + 4 OD FI FI OD .;
+
+
+MW_BFUNCT @Only_Calls_Z?(I) ==
+  VAR < calls := @Calls(I) >:
+  SKIP;
+  (EMPTY?(calls) OR LENGTH(calls) = 1 AND HEAD(HEAD(calls)) = @Make_Name("Z")) .;
+
+
+
+
+MW_PROC @PD_Check_Dest_Codes_Orig(codes, vars VAR occ) ==
+  VAR < n := 0 >:
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+      THEN @Down; C:" to first assign ";
+	   DO IF @ST(@I^2) = T_Number AND @Struct_Elts(@I^1) IN vars
+		THEN n := @V(@I^2);
+		     IF NOT EMPTY?(codes.(n))
+		       THEN WHILE NOT EMPTY?(codes.(n)) AND n < Omega DO
+			      occ.(n) := 1; n := n + 4 OD FI
+	      ELSIF @ST(@I^2) = T_X_Funct_Call AND @V(@I^2^1) IN bit_ops
+		      AND @ST(@I^2^2^1) = T_Number AND @Struct_Elts(@I^1) IN vars
+		THEN n := @V(@I^2^2^1);
+		     IF NOT EMPTY?(codes.(n))
+		       THEN WHILE NOT EMPTY?(codes.(n)) AND n < Omega DO
+			      occ.(n) := 1; n := n + 4 OD FI FI;
+	      IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD ENDVAR .;
+
+
+
+SKIP

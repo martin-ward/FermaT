@@ -1,0 +1,67 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Convert any program to an equivalent specification statement. ";
+C:" Not implemented for programs with recursion or iteration. ";
+
+
+MW_PROC @Prog_To_Spec_Test() ==
+  IF @GT(@I) NOTIN <T_Statements, T_Statement>
+    THEN @Fail("Not a statement or statement sequence")
+  ELSIF NOT SUBSET?(@Stat_Types(@I),
+                    @Make_Set(<T_Assert, T_Comment, T_Skip, T_Print, T_Prinflush,
+  			       T_Abort, T_Assignment, T_Cond, T_D_If, T_Var, T_Spec>))
+    THEN @Fail("Program contains an statement type for which
+this transformation is undefined.")
+    ELSE @Pass FI .;
+
+
+
+MW_PROC @Prog_To_Spec_Code(Data) ==
+  C:" x := x'.(~WP(S, x <> x') AND WP(S, TRUE)) ";
+  VAR < WP := < >, WP_T := < >, R := < >, vars := < >, cond := < >, spec := < >,
+        Budget := @String_To_Num(Data) >:
+  IF Budget <= 0 THEN Budget := 50 FI;
+  C:" First compute the special postcondition: ";
+  FOR var IN @Assigned(@I) DO
+    vars := <@Make(T_Var_Lvalue, var, < >)> ++ vars;
+    R := <@Make(T_Not_Equal, < >, <@Make(T_Variable, var, < >),
+                                   @Make(T_Primed_Var, var, < >)>)> ++ R OD;
+  R := @Make(T_Or, < >, R);
+  C:" Now compute the weakest preconditions: ";
+  WP_T := @WP(@Item, @Make(T_True, < >, < >));
+  WP := @Simplify(@WP(@Item, R), Budget);
+  C:" Do an expensive simplify on the final condition: ";
+  cond := @Simplify(@Make(T_And, < >, <@Not(WP), WP_T>), Budget);
+  IF EMPTY?(vars)
+    THEN spec := @Make(T_Assert, < >, <cond>)
+    ELSE spec := @Make(T_Spec, < >, <@Make(T_Lvalues, < >, @Mth_Sort(vars)), cond>) FI;
+  C:" Finally, insert the specification statement or assertion: ";
+  IF @GT(@I) = T_Statements
+    THEN @Paste_Over(@Make(T_Statements, < >, <spec>))
+    ELSE @Paste_Over(spec) FI ENDVAR .;
+
+
+
+
+SKIP
+
+
+

@@ -1,0 +1,381 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:"
+==========================================================================
+* Compute the list of variables needed.
+* Save the global values of the variables.
+* Define a local array (__Match_array) to store the matches.
+* Replace the match var names in the pattern by array index numbers.
+* Replace interpolations in the pattern by local variables (__Match_int_NNN).
+* Add assignments to the __Match_int_NNN variables.
+* Pass the pattern and current item to the @New_Match function
+    -- this returns true or false and updates __Match_array as needed.
+* If the result is TRUE, copy from __Match_array to the variables
+  and execute the THEN part. Otherwise, execute the ELSE part.
+* Finally, restore the global values of variables.
+
+IFMATCH Statement IF ~?B THEN ~?(S1); ~*S2 ELSE ~*=S2 FI
+  THEN ... match part ...
+  ELSE ... nomatch part FI
+
+Becomes:
+
+VAR < __OK := 1 >:
+  __Match_array[2] := S1;
+
+  @New_Match(FILL Statement IF ~?1 THEN ~?(2); ~*3 ELSE ~*=3 FI ENDFILL, @I
+             VAR __OK);
+  IF __OK = 1
+    THEN VAR < __B_save := B,
+               __S2_save := S2 >:
+           B := __Match_array[1];
+           S2 := __Match_array[3];
+           ... match part ...;
+	   B := __B_save;
+           S2 := __S2_sav ENDVAR
+    ELSE ... nomatch part ... FI ENDVAR
+
+
+==========================================================================";
+
+
+
+
+
+
+C:" Match the pattern (WSL item which may contain Pat/Int/Var types) ";
+C:" against the data (WSL item). All variables and expressions are actually ";
+C:" integer indexes into the __Match_array table. ";
+C:" Updates __Match_array table with the matched pattern variables. ";
+
+__Match_array := ARRAY(1999, < >);
+
+MW_PROC @New_Match(pat, dat VAR OK) ==
+  VAR < type := Syntax_Type[@ST(pat)] >:
+  IF type = Syntax_One_Pattern
+    THEN C:" Store current item in table (matches anything): ";
+         __Match_array[-@V(pat)] := dat
+  ELSIF type = Syntax_One_Int
+    THEN C:" Match against the stored value in the table: ";
+         IF NOT @LR_Equal?(__Match_array[@V(pat^1)], dat)
+	   THEN OK := 0 FI
+  ELSIF type = Syntax_One_Var
+    THEN C:" Match against the stored value in the table: ";
+         IF NOT @LR_Equal?(__Match_array[-@V(pat)], dat)
+	   THEN OK := 0 FI
+  ELSIF @ST(pat) <> @ST(dat)
+    THEN OK := 0
+  ELSIF @Has_Value_Type?(@ST(pat))
+    THEN IF @V(pat) <> @V(dat)
+	   THEN OK := 0 FI
+    ELSE C:" Both pat and dat are types with components, ";
+         C:" so match the two lists of components: ";
+	 @New_Match_List(@Cs(pat), @Cs(dat) VAR OK) FI ENDVAR .;
+
+
+C:" Set OK to 0 unless the list of patterns matches the list of data items ";
+
+MW_PROC @New_Match_List(pats, dats VAR OK) ==
+  IF EMPTY?(pats) AND EMPTY?(dats)
+    THEN SKIP 
+  ELSIF EMPTY?(pats)
+    THEN OK := 0
+    ELSE @New_Match_List_Sub(pats, dats, Syntax_Type[@ST(HEAD(pats))] VAR OK) FI .;
+
+MW_PROC @New_Match_List_Sub(pats, dats, type VAR OK) ==
+  IF EMPTY?(dats)
+    THEN C:" The pattern must be an X_Int_Any or X_Var_Any with an empty value, ";
+         C:" or a ~*var which will match the empty list: ";
+         IF NOT EMPTY?(TAIL(pats))
+	   THEN C:" Cannot match empty data against more than one pattern ";
+	        OK := 0
+         ELSIF type = Syntax_Any_Int
+           THEN IF NOT EMPTY?(__Match_array[@V(HEAD(pats)^1)])
+                  THEN OK := 0 FI
+         ELSIF type = Syntax_Any_Var
+           THEN IF NOT EMPTY?(__Match_array[-@V(HEAD(pats))])
+                  THEN OK := 0 FI
+         ELSIF type = Syntax_Any_Pattern
+	   THEN __Match_array[-@V(HEAD(pats))] := < >
+           ELSE OK := 0 FI
+  ELSIF type = Syntax_Any_Pattern OR type = Syntax_Many_Pattern
+    THEN C:" Store as many components as required to match ";
+         C:" If this is the only star pattern, then we can work out how much it ";
+         C:" has to match from the lengths: ";
+         IF NOT @Star_Patterns?(TAIL(pats))
+           THEN VAR < dats1 := < >, len := LENGTH(TAIL(pats)) >:
+                IF LENGTH(dats) < len
+                  THEN C:" Not enough data items to match, even if this pat ";
+                       C:" matches zero data items ";
+                       OK := 0
+                ELSIF type = Syntax_Many_Pattern AND LENGTH(dats) = len
+                  THEN C:" This pat will consume at least one dat, so no match: ";
+                       OK := 0
+                  ELSE __Match_array[-@V(HEAD(pats))] := dats[1..LENGTH(dats)-len];
+                       C:" Match the rest of the list: ";
+                       @New_Match_List(TAIL(pats), dats[LENGTH(dats)-len+1..]
+		                       VAR OK) FI ENDVAR
+           ELSE C:" There is another pattern in the pats list to be matched ";
+                C:" so we may need to backtrack ";
+                C:" Attempt to match progressively more dats against this pattern ";
+                C:" until the remaining dats match the remaining pats: ";
+                VAR < match := < >, i := -@V(HEAD(pats)) >:
+                IF type = Syntax_Many_Pattern
+                  THEN C:" We must match at least one dat against this pat ";
+                       match := <HEAD(dats)>; dats := TAIL(dats) FI;
+                pats := TAIL(pats);
+                DO __Match_array[i] := REVERSE(match);
+		   @New_Match_List(pats, dats VAR OK);
+                   IF OK = 1 THEN EXIT(1) FI;
+                   IF EMPTY?(dats) THEN OK := 0; EXIT(1) FI;
+                   C:" Add next dat to match and try again: ";
+                   OK := 1;
+                   match := <HEAD(dats)> ++ match;
+                   dats := TAIL(dats) OD ENDVAR FI
+
+  ELSIF type = Syntax_Any_Int OR type = Syntax_Any_Var
+    THEN VAR < match := 0 >:
+         IF type = Syntax_Any_Int
+           THEN match := __Match_array[@V(HEAD(pats)^1)]
+           ELSE match := __Match_array[-@V(HEAD(pats))] FI;
+         IF NOT @LR_Seq_Equal?(match, dats[1..LENGTH(match)])
+           THEN OK := 0
+           ELSE @New_Match_List(TAIL(pats), dats[LENGTH(match)+1..] VAR OK) FI ENDVAR
+
+    ELSE @New_Match(HEAD(pats), HEAD(dats) VAR OK);
+         IF OK = 1
+           THEN @New_Match_List(TAIL(pats), TAIL(dats) VAR OK) FI FI .;
+
+
+C:" Check for ~*var, ~+var, ~*(e) or ~*=e patterns in the given list: ";
+
+MW_BFUNCT @Star_Patterns?(pats) == : SKIP;
+  (NOT EMPTY?(pats)
+    AND (@Star_Match_Type?(@ST(HEAD(pats))) OR @Star_Patterns?(TAIL(pats)))) .;
+
+
+
+
+
+
+
+C:" Below are the old match functions, these will eventually be replaced: ";
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The main pattern matching function.  It takes three arguments as follows:    ";
+C: "                                                                              ";
+C: " Pattern - the pattern against which the WSL code is to be matched.           ";
+C: "                                                                              ";
+C: "    Data - the WSL code against which the pattern is to be matched.           ";
+C: "                                                                              ";
+C: "   Table - the initial pattern-match table which consists of a list of pairs  ";
+C: "           in which each pair consists of a variable name and the WSL item    ";
+C: "           that it matches.                                                   ";
+C: "                                                                              ";
+C: " The function returns a new pattern-match table or an empty table if the      ";
+C: " match failed.                                                                ";
+C: " ---------------------------------------------------------------------------  ";
+
+
+MW_FUNCT @Match (Pattern, Data, Table) ==
+   VAR <Result := @Do_Match(Pattern, Data, Table, 0)> :
+       IF NUMBER?(Result) AND Result = 1
+	  THEN Result := <"T">
+       ELSIF NOT(EMPTY?(Result)) AND (NOT NUMBER?(Result) OR Result <> 1)
+	  THEN Result := <"T"> ++ Result FI;
+       (Result) .;
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The following functions perform the actual pattern matching.  In addition    ";
+C: " to the parameters used by `@Match' it adds an extra parameter:               ";
+C: "                                                                              ";
+C: " Seq_More - this is set to 1 if it is allowable for the pattern matcher to    ";
+C: "            match more code against a `*' pattern, ie it has not moved on to  ";
+C: "            matching the next part of the pattern.                            "; 
+C: "                                                                              ";
+C: " Note that all these functions use the tests `@LR_Equal?' and                 ";
+C: " `@LR_Seq_Equal?' to compare literal items since expressions may be required  ";
+C: " to match l-values; eg in looking for dummy assignments: `~?X := ~?X'.        ";
+C: "                                                                              ";
+C: " ---------------------------------------------------------------------------  ";
+
+
+MW_FUNCT @Do_Match (Pattern, Data, Table, Seq_More) ==
+   VAR <New := < >,
+	Temp := < >,
+	Pat    := IF EMPTY?(Pattern) THEN < > ELSE @Components(Pattern) FI,
+	Dat    := IF EMPTY?(Data)    THEN < > ELSE @Components(Data) FI,
+	Hd_Pat := IF EMPTY?(Pattern) OR EMPTY?(@Components(Pattern))
+		    THEN < > ELSE HEAD(@Components(Pattern)) FI,
+	Hd_Dat := IF EMPTY?(Data)    OR EMPTY?(@Components(Data))
+		    THEN < > ELSE HEAD(@Components(Data)) FI,
+	Tl_Pat := IF EMPTY?(Pattern) OR EMPTY?(@Components(Pattern))
+		    THEN < > ELSE TAIL(@Components(Pattern)) FI,
+	Tl_Dat := IF EMPTY?(Data)    OR EMPTY?(@Components(Data))
+		    THEN < > ELSE TAIL(@Components(Data)) FI >:
+       IF EMPTY?(Pattern)
+	  THEN IF EMPTY?(Data) THEN New := @Pat_True(Table) FI
+       ELSIF @One_Pattern_Type?(@Spec_Type(Pattern))
+	  THEN Temp := @Pat_Rcl(@Value(Pattern), Table);
+	       C: "If there has already been a match with this token, the result is stored in the variable `Temp'.";
+	       IF EMPTY?(Temp)
+		  THEN New := @Pat_Sto(@Value(Pattern), Data, Table)
+	       ELSIF @LR_Equal?(TAIL(Temp), Data)
+		  THEN New := Table FI
+       ELSIF NOT @Components?(Pattern)
+	  THEN New := IF @Equal?(Pattern, Data) THEN @Pat_True(Table) ELSE < > FI
+       ELSIF (@Spec_Type(Pattern) = @Spec_Type(Data)) AND (@Value(Pattern) = @Value(Data))
+	  THEN @Do_Match_Sequence(Pat, Hd_Pat, Tl_Pat, Dat, Hd_Dat, Tl_Dat, Table, Seq_More VAR New) FI;
+       (New).;
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The following function matches two lists of items.                           ";
+C: " ---------------------------------------------------------------------------  ";
+
+
+MW_FUNCT @Do_Match_List (Pat, Dat, Table, Seq_More) ==
+   VAR <New := < >> :
+       IF EMPTY?(Pat)
+	  THEN IF EMPTY?(Dat) THEN New := @Pat_True(Table) FI
+       ELSIF NOT SEQUENCE?(Pat)
+	  THEN New := IF @LR_Seq_Equal?(Pat, Dat) THEN @Pat_True(Table) ELSE < > FI
+	  ELSE @Do_Match_Sequence(Pat,
+				  IF EMPTY?(Pat) THEN < > ELSE HEAD(Pat) FI,
+				  IF EMPTY?(Pat) THEN < > ELSE TAIL(Pat) FI,
+				  Dat,
+				  IF EMPTY?(Dat) THEN < > ELSE HEAD(Dat) FI,
+				  IF EMPTY?(Dat) THEN < > ELSE TAIL(Dat) FI,
+				  Table, Seq_More VAR New) FI;
+       (New).;
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The following function matches two sequences of items and takes into         ";
+C: " account the fact that the pattern could contain wild cards.                  ";
+C: " ---------------------------------------------------------------------------  ";
+
+
+MW_PROC @Do_Match_Sequence (Pat, Hd_Pat, Tl_Pat, Dat, Hd_Dat, Tl_Dat, Table, Seq_More VAR New) ==
+   C: "Pattern must contain a sequence of components.";
+   C: "The value parts must match, if they have not already been skipped.";
+   IF NOT EMPTY?(Hd_Pat) AND @Any_Pattern_Type?(@Spec_Type(Hd_Pat))
+      THEN @Do_Match_Any(Pat, Hd_Pat, Tl_Pat, Dat, Hd_Dat, Tl_Dat, Table, Seq_More VAR New)
+   ELSIF NOT EMPTY?(Hd_Pat) AND @Many_Pattern_Type?(@Spec_Type(Hd_Pat))
+      THEN @Do_Match_Many(Pat, Hd_Pat, Tl_Pat, Dat, Hd_Dat, Tl_Dat, Table, Seq_More VAR New)
+   ELSIF NOT(EMPTY?(Pat)) AND NOT(EMPTY?(Dat))
+      THEN New := @Do_Match(Hd_Pat, Hd_Dat, Table, 0);
+	   IF NOT(EMPTY?(New)) THEN New := @Do_Match_List(Tl_Pat, Tl_Dat, New, 0) FI
+      ELSE New := < > FI .;
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The following function matches some actual WSL code against an `any' (ie     ";
+C: " `*') wild card.  Note the use of `Seq_More' both being tested and being set  ";
+C: " explicitly.                                                                  ";
+C: " ---------------------------------------------------------------------------  ";
+
+
+MW_PROC @Do_Match_Any (Pat, Hd_Pat, Tl_Pat, Dat, Hd_Dat, Tl_Dat, Table, Seq_More VAR New) ==
+   VAR <Temp := @Pat_Rcl(@Value(Hd_Pat), Table)> :
+       C: "If there has already been a match with this token, the result is stored in the variable `Temp'.";
+       IF NOT(EMPTY?(Temp)) AND (Seq_More = 0)
+	  THEN New := @Do_Match_List((TAIL(Temp) ++ Tl_Pat), Dat, Table, 0)
+	  ELSE IF SEQUENCE?(Dat) AND NOT(EMPTY?(Dat))
+		  THEN C: "Try to make this token match more of the data.";
+		       New := @Pat_Add(@Value(Hd_Pat), Hd_Dat, Table);
+		       New := @Do_Match_List(Pat, Tl_Dat, New, 1) FI;
+	       IF EMPTY?(New)
+		  THEN IF EMPTY?(Temp)
+			  THEN New := @Pat_Add(@Value(Hd_Pat), < >, Table)
+			  ELSE New := Table FI;
+		       New := @Do_Match_List(Tl_Pat, Dat, New, 0) FI FI ENDVAR .;
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " The following function matches some actual WSL code against a `many' (ie     ";
+C: " `+') wild card.  Note the use of `Seq_More' both being tested and being set  ";
+C: " explicitly.                                                                  ";
+C: " ---------------------------------------------------------------------------  ";
+
+
+MW_PROC @Do_Match_Many (Pat, Hd_Pat, Tl_Pat, Dat, Hd_Dat, Tl_Dat, Table, Seq_More VAR New) ==
+   VAR <Temp := @Pat_Rcl(@Value(Hd_Pat), Table)> :
+       C: "If there has already been a match with this token, the result is stored in the variable `Temp'.";
+       IF NOT(EMPTY?(Temp)) AND (Seq_More = 0)
+	  THEN New := @Do_Match_List((TAIL(Temp) ++ Tl_Pat), Dat, Table, 0)
+       ELSIF NOT(EMPTY?(Dat))
+	  THEN New := @Pat_Add(@Value(Hd_Pat), Hd_Dat, Table);
+	       New := @Do_Match_List(Tl_Pat, Tl_Dat, New, 0);
+	       IF EMPTY?(New)
+		  THEN C: "Try to make this token match more of the data.";
+		       New := @Pat_Add(@Value(Hd_Pat), Hd_Dat, Table);
+		       New := @Do_Match_List(Pat, Tl_Dat, New, 1) FI FI ENDVAR .;
+
+
+C: " ---------------------------------------------------------------------------  ";
+C: " Some support functions to make it all work.                                  ";
+C: "   `@Pat_Sto'   stores some data in the named token of the table.             ";
+C: "   `@Pat_Add'   concatenates some data in the named token of the table.       ";
+C: "   `@Pat_Rcl'   recalls some data in the named token of the table.            ";
+C: "   `@Pat_True'  sets a table to be `true' without storing anything.           ";
+C: " ---------------------------------------------------------------------------  ";
+
+
+MW_FUNCT @Pat_Sto (Key, Data, Table) ==
+   VAR <New := < >> :
+       IF EMPTY?(Table) OR (NUMBER?(Table) AND Table = 1)
+	  THEN New := <<Key> ++ Data>
+	  ELSE IF HEAD(HEAD(Table)) = Key
+		  THEN New := <<Key> ++ Data> ++ TAIL(Table)
+		  ELSE New := <HEAD(Table)> ++ @Pat_Sto(Key, Data, TAIL(Table)) FI FI;
+       (New) .;
+
+
+MW_FUNCT @Pat_Add (Key, Data, Table) ==
+   VAR <New := < >> :
+       IF EMPTY?(Table) OR (NUMBER?(Table) AND Table = 1)
+	  THEN IF EMPTY?(Data) THEN New := <<Key>> ELSE New := <<Key, Data>> FI
+	  ELSE IF HEAD(HEAD(Table)) = Key
+		  THEN IF EMPTY?(Data)
+			  THEN New := <HEAD(Table)> ++ TAIL(Table)
+			  ELSE New := <HEAD(Table) ++ <Data>> ++ TAIL(Table) FI
+		  ELSE New := <HEAD(Table)> ++ @Pat_Add(Key, Data, TAIL(Table)) FI FI;
+       (New) .;
+
+
+C:" TODO: should use a different notation for variables which match anything ";
+C:" versis variables which must match their current value. ";
+C:" Currently, a variable containing < > is allowed to match anything: ";
+
+MW_FUNCT @Pat_Rcl (Key, Table) ==
+  VAR < r := @Assoc(Key, Table) >:
+  SKIP;
+  (IF EMPTY?(r) OR EMPTY?(TAIL(r)) THEN < > ELSE r FI) .;
+
+MW_FUNCT @Pat_True (Table) == : SKIP; (IF EMPTY?(Table) THEN 1 ELSE Table FI) .;
+
+
+
+C: " ---------------------------------------------------------------------------  "

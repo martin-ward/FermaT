@@ -1,0 +1,22 @@
+The WSL test files in this directory have been tested
+and should all work.
+
+The command "test-trans" will run all the transformation tests.
+
+To run all the tests, save the result in a log file,
+and check for any errors or failures, run:
+
+source DOIT
+
+
+
+The @Test_Trans procedure takes 6 arguments:
+
+1: String to print before running the test
+2: Initial program
+3: Initial position
+4: Transformation to apply
+5: Data string, or empty list or string
+6: Final program, or the string "Fail" (if the transformation
+   is supposed to fail at that position in that program).
+

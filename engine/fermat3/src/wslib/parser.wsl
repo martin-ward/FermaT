@@ -1,0 +1,1831 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+C:"  Main parser functions for statements and programs.                           ";
+C:"                                                                               "; 
+C:"  See also: lexer.wsl (lexical analyser)                                       ";
+C:"            exp_parser.wsl (parser for expressions)                            "; 
+C:"            cond_parser.wsl (parser for conditions)                            ";
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------"; 
+
+C:" Convert a list to a hash table with the list elements as keys: ";
+
+MW_FUNCT @List_To_Set(L) ==
+  VAR < R := HASH_TABLE, elt := < > >:
+  FOR elt IN L DO
+    R.(elt) := 1 OD;
+  (R) .;
+
+
+MW_FUNCT @List_To_Vector(L) ==
+  VAR < R := ARRAY(1999, 0), elt := 0 >:
+  FOR elt IN L DO
+    R[elt] := 1 OD;
+  (R) .;
+
+
+C:" Terminals - numeric values of lexical tokens";
+    < S_BECOMES   := 1,       S_EQUAL     := 2,      S_PLUS       := 3, 
+      S_MINUS     := 4,       S_TIMES     := 5,      S_SLASH      := 6,
+      S_SEMICOLON := 7,       S_COLON     := 8,      S_NEQ        := 9,
+      S_LPAREN    := 10,      S_RPAREN    := 11,     S_COMMA      := 12,
+      S_LBRACKET  := 13,      S_RBRACKET  := 14,     S_LANGLE     := 15,
+      S_RANGLE    := 16,      S_LBRACE    := 17,     S_RBRACE     := 18,
+      S_QUOTES    := 19,      S_CONCAT    := 20,     S_DEFINE     := 21,
+      S_IF        := 22,      S_THEN      := 23,     S_ELSIF      := 24,
+      S_ELSE      := 25,      S_FI        := 26,     S_WHILE      := 27,
+      S_DO        := 28,      S_OD        := 29,     S_VAR        := 30,
+      S_AND       := 31,      S_OR        := 32,     S_NOT        := 33,
+      S_COMMENT   := 34,      S_IDENTIFIER:= 35,     S_NUMBER     := 36,
+      S_STRING    := 37,      S_LEQ       := 38,     S_GEQ        := 39,
+      S_BOX       := 40,      S_ARROW     := 41,     S_INTERSECT  := 42,
+      S_UNION     := 43,      S_BACKSLASH := 44,     S_D_IF       := 45,
+      S_EXPONENT  := 46,      S_D_DO      := 47,     S_SKIP       := 48,
+      S_TRUE      := 49,      S_FALSE     := 50,     S_QUERY      := 51,
+      S_FULLSTOP  := 52,      S_IN        := 53,     S_NOTIN      := 54,
+      S_MEMBER    := 55,      S_SUBSET    := 56,     S_EVEN       := 57,
+      S_ODD       := 58,      S_EMPTY     := 59,     S_FORALL     := 60,
+      S_EXISTS    := 61,      S_MOD       := 62,     S_DIV        := 63,
+      S_ENDVAR    := 64,      S_EXIT      := 65,     S_DOTDOT     := 66,
+      S_CALL      := 68,      S_ACTIONS   := 69,     S_ENDACTIONS := 70,
+      S_FOR       := 71,      S_TO        := 72,     S_STEP       := 73,
+      S_AT        := 74,      S_END       := 75,     S_SCOPAREN   := 76,
+      S_PLINK_P   := 77,      S_PLINK_XP  := 78,     S_PLINK_XF   := 79,
+      S_PLINK_XC  := 80,      S_RETURNS   := 81,     S_VBAR       := 82,
+      S_PUSH      := 83,      S_POP       := 84,     S_JOIN       := 85,
+      S_ENDJOIN   := 86,      S_DOTSPACE  := 87,
+      S_PRINT     := 88,      S_PRINFLUSH := 89,
+      S_NATS      := 90,      S_INTS      := 91,     S_RATS       := 92,
+      S_REALS     := 93,      S_ARRAY     := 94,     S_SEQUENCE   := 95,
+      S_STRINGBF  := 96,      S_NUMBERQ   := 97,     S_COLONCOLON := 98,
+
+      S_ABS       := 100,     S_INT       := 101,    S_FRAC      := 102,
+      S_SGN       := 103,     S_MIN       := 104,    S_MAX       := 105,
+      S_MAP       := 106,     S_REDUCE    := 107,    S_HEAD      := 108,
+      S_TAIL      := 109,     S_LAST      := 110,    S_BUTLAST   := 111,
+      S_REVERSE   := 112,     S_POWERSET  := 113,    S_LENGTH    := 114,
+      S_FILL1     := 115,     S_ENDFILL   := 116,    S_CARET     := 117,
+      S_SLENGTH	  := 118,     S_SUBSTR    := 119,    S_INDEX     := 120,
+      S_MAPHASH   := 121,     S_ERROR     := 122,    S_FILL      := 123,
+      S_ADDR      := 124,     
+
+      S_BEGIN     := 500,     S_WHERE     := 501,    S_PROC      := 502,
+      S_FUNCT     := 503,     S_BFUNCT    := 504,    S_MW_PROC   := 505,
+      S_MW_FUNCT  := 506,     S_MW_BFUNCT := 507,
+      S_SPEC      := 508,     S_ENDSPEC   := 509,
+      S_FOREACH   := 510,     S_ATEACH    := 511,
+      S_IFMATCH   := 512,     S_ENDMATCH  := 513,    S_MEM       := 514,
+      S_STATEMENT := 520,     S_STATEMENTS := 521,   S_EXPRESSION := 522,
+      S_EXPRESSIONS := 523,   S_CONDITION  := 524,
+      S_VARIABLE  := 526,     S_DEFINITION := 527,   S_DEFINITIONS := 528,
+      S_LVALUE    := 529,     S_LVALUES   := 530,    S_STS        := 531,
+      S_NAS       := 532,     S_ASSIGN    := 533,    S_ASSIGNS    := 534,
+      S_GUARDED   := 535,     S_ACTION    := 536,    S_TERMINAL   := 537,
+      S_GLOBAL    := 538,
+      S_PAT_ONE   := 700,     S_PAT_MANY  := 701,    S_PAT_ANY   := 702,
+      S_INT_ONE   := 703,     S_INT_ANY   := 704,    S_VAR_ONE   := 705,
+      S_VAR_ANY   := 706,     S_AT_PAT_ONE:= 707,
+      S_STAT_PLACE := 800,    S_EXPN_PLACE := 801,   S_VAR_PLACE := 802,
+      S_COND_PLACE := 803,    S_HASH_TABLE := 804,   S_PRIME     := 805,
+      S_ABORT     := 997,     S_INVALID   := 998,    S_EOF       := 999 >;
+
+
+
+C:" The first 3 variables shouldn't ordinarily be used outside the lexer";
+yy_ch := < >;        C:" Current character being processed in lexer"; 
+yy_sym := 0;         C:" Numerical value of lexer token";
+yy_value := < >;     C:" Value (number, string etc) associated with token";
+
+token1 := 0;
+token2 := < >;    C:" Current token in parser (returned by @yy_lex(): <sym,value>) ";
+yy_lineno := 0;   C:" Current line number in source file ";
+yy_line := < >;   C:" Current line being processed in lexer";
+
+Whitespace := @List_To_Set(<" ", Tab, Newline>);
+
+Digits := @List_To_Set(<"1","2","3","4","5","6","7","8","9","0">);
+
+
+C:" Reserved Words";
+C:" Used by initialisation function to build hash table, which";
+C:" is then used by the lexer as lookup table";
+Keywords := <<S_IF,         "IF">,             <S_THEN,        "THEN">,
+	     <S_ELSIF,      "ELSIF">,          <S_ELSE,        "ELSE">,
+	     <S_FI,         "FI" >,            <S_D_IF,        "D_IF">,
+	     <S_WHILE,      "WHILE">,          <S_DO,          "DO">,
+	     <S_D_DO,       "D_DO">,           <S_OD,          "OD">,
+	     <S_VAR,        "VAR">,            <S_ENDVAR,      "ENDVAR">,
+	     <S_SKIP,       "SKIP">,           <S_AND,         "AND">,
+	     <S_OR,         "OR">,             <S_NOT,         "NOT">,
+	     <S_COMMENT,    "Comment">,        <S_COMMENT,     "COMMENT">,
+	     <S_PRINT,      "PRINT">,          <S_PRINFLUSH,   "PRINFLUSH">,
+	     <S_TRUE,       "TRUE">,           <S_FALSE,       "FALSE">,
+	     <S_IN,         "IN">,             <S_NOTIN,       "NOTIN">,
+	     <S_EVEN,       "EVEN">,           <S_ODD,         "ODD">,
+	     <S_EMPTY,      "EMPTY">,          <S_SUBSET,      "SUBSET">,
+	     <S_MEMBER,     "MEMBER">,         <S_FORALL,      "FORALL">,
+	     <S_EXISTS,     "EXISTS">,         <S_SEQUENCE,    "SEQUENCE">,
+	     <S_STRINGBF,   "STRING">,         <S_NUMBERQ,     "NUMBER">,
+	     <S_ARRAY,      "ARRAY">,
+	     <S_REDUCE,     "REDUCE">,         <S_MAP,         "MAP">,
+	     <S_HEAD,       "HEAD">,           <S_TAIL,        "TAIL">,
+	     <S_BUTLAST,    "BUTLAST">,        <S_LAST,        "LAST">,
+	     <S_REVERSE,    "REVERSE">,        <S_LENGTH,      "LENGTH">,
+	     <S_POWERSET,   "POWERSET">,       <S_ABS,         "ABS">,
+	     <S_INT,        "INT">,            <S_FRAC,        "FRAC">,
+	     <S_SGN,        "SGN">,
+	     <S_MAX,        "MAX">,            <S_MIN,         "MIN">,
+	     <S_MOD,        "MOD">,            <S_DIV,         "DIV">,
+	     <S_PUSH,       "PUSH">,           <S_POP,         "POP">,
+	     <S_SLENGTH,    "SLENGTH">,	       <S_SUBSTR,      "SUBSTR">,
+	     <S_INDEX,      "INDEX">,          <S_MAPHASH,     "MAPHASH">,
+	     <S_ERROR,      "ERROR">,
+	     <S_JOIN,       "JOIN">,           <S_ENDJOIN,     "ENDJOIN">,
+	     <S_CALL,       "CALL">,           <S_ACTIONS,     "ACTIONS">,
+	     <S_FOR,        "FOR">,            <S_TO,          "TO">,
+	     <S_STEP,       "STEP">,           <S_END,         "END">,
+	     <S_BEGIN,      "BEGIN">,          <S_WHERE,       "WHERE">,
+	     <S_MW_PROC,    "MW_PROC">,        <S_MW_FUNCT,    "MW_FUNCT">,
+	     <S_MW_BFUNCT,  "MW_BFUNCT">,      <S_PROC,        "PROC">,
+	     <S_FUNCT,      "FUNCT">,          <S_BFUNCT,      "BFUNCT">,
+	     <S_ENDACTIONS, "ENDACTIONS">,     <S_RETURNS,     "RETURNS">,
+	     <S_SPEC,       "SPEC">,           <S_ENDSPEC,     "ENDSPEC">,
+	     <S_IFMATCH,    "IFMATCH">,        <S_ENDMATCH,    "ENDMATCH">,
+	     <S_FOREACH,    "FOREACH">,        <S_ATEACH,      "ATEACH">,
+	     <S_FILL,       "FILL">,           <S_ENDFILL,     "ENDFILL">,
+	     <S_STAT_PLACE, "$Statement$">,    <S_EXPN_PLACE,  "$Expn$">,
+	     <S_VAR_PLACE,  "$Var$">,          <S_COND_PLACE,  "$Condition$">,
+	     <S_HASH_TABLE, "HASH_TABLE">,
+	     <S_NATS,       "%N">,             <S_INTS,        "%Z">,
+	     <S_RATS,       "%Q">,             <S_REALS,       "%R">,
+	     <S_STATEMENT,  "Statement">,      <S_STATEMENTS,  "Statements">,
+	     <S_EXPRESSION, "Expression">,     <S_EXPRESSIONS, "Expressions">,
+	     <S_CONDITION,  "Condition">,
+	     <S_VARIABLE,   "Variable">,       <S_DEFINITION,  "Definition">,
+	     <S_DEFINITIONS, "Definitions">,   <S_LVALUE,      "Lvalue">,
+	     <S_LVALUES,    "Lvalues">,        <S_STS,         "STS">,
+	     <S_NAS,        "NAS">,            <S_ASSIGN,      "Assign">,
+	     <S_ASSIGNS,    "Assigns">,        <S_GUARDED,     "Guarded">,
+	     <S_ACTION,     "Action">,         <S_TERMINAL,    "Terminal">,
+	     <S_GLOBAL,     "Global">,
+	     <S_EXIT,       "EXIT">,           <S_ABORT,       "ABORT">,
+	     <S_ADDR,       "ADDRESS_OF">>;
+
+
+C:" The following list is used in comment parsing to attempt error recovery, ";
+C:" and nowhere else. ";
+Reserved_Words := @List_To_Vector(
+		   <S_IF, S_THEN, S_ELSIF, S_ELSE, S_FI, S_WHILE, S_DO, S_OD, S_SKIP,
+		    S_VAR, S_AND, S_OR, S_NOT, S_COMMENT, S_D_IF, S_D_DO, S_EOF, S_CALL,
+		    S_MW_PROC, S_MW_FUNCT, S_MW_BFUNCT, S_BEGIN, S_WHERE, S_END,
+		    S_RETURNS, S_FOR, S_ACTIONS, S_ENDACTIONS, S_ENDJOIN, S_ENDSPEC,
+		    S_MOD, S_DIV, S_EXIT, S_ABORT>);
+
+
+C:" List of `closing' tokens for composite statements. ";
+C:" Used to detect end of statement sequences which clueless ";
+C:" programmers have terminated with semicolons :-) ";
+Closing_Toks := @List_To_Vector(<S_FI, S_OD, S_LPAREN, S_ELSE, S_ELSIF, S_WHERE, 
+				 S_ENDVAR, S_EOF, S_RETURNS, S_ENDJOIN>);
+
+
+C:" Used in lexer to spot the end of identifiers/reserved words ";
+Special_Chars := @List_To_Set(<Quote, "+","=","-",")","(","*","^","}","{", "?","!","|","^",
+			       "]","[", ":",",",".","<",">","/","'",Backslash,"eof",";">);
+
+Special_Or_White := @List_To_Set(<Quote, "+","=","-",")","(","*","^","}","{", "?","!","|","^",
+				  "]","[", ":",",",".","<",">","/","'",Backslash,"eof",";",
+				  " ", Tab, Newline>);
+
+
+C:" Table mapping lexer symbols to their corresponding meta-WSL spec. types.";
+C:" Used by initialisation function to build hash table";
+Types := <<T_Equal,        S_EQUAL>,            <T_Not_Equal,    S_NEQ>,
+	  <T_Less,         S_LANGLE>,           <T_Less_Eq,      S_LEQ>,
+	  <T_Greater,      S_RANGLE>,           <T_Greater_Eq,   S_GEQ>,
+	  <T_True,         S_TRUE>,             <T_False,        S_FALSE>,
+	  <T_Plus,         S_PLUS>,             <T_Minus,        S_MINUS>,
+	  <T_Times,        S_TIMES>,            <T_Divide,       S_SLASH>,
+	  <T_Exponent,     S_EXPONENT>,
+	  <T_Set_Diff,     S_BACKSLASH>,        <T_Union,        S_UNION>,
+	  <T_Intersection, S_INTERSECT>,        <T_Mod,          S_MOD>,
+	  <T_Div,          S_DIV>,              <T_Concat,       S_CONCAT>,
+	  <T_Array,        S_ARRAY>,
+	  <T_Primed_Var,   S_PRIME>,
+
+	  <T_And,          S_AND>,              <T_Or,           S_OR>,
+	  <T_Even,         S_EVEN>,             <T_Odd,          S_ODD>,
+	  <T_Empty,        S_EMPTY>,
+	  <T_In,           S_IN>,               <T_Not_In,       S_NOTIN>,
+	  <T_Member,       S_MEMBER>,           <T_Subset,       S_SUBSET>,
+	  <T_Forall,       S_FORALL>,           <T_Exists,       S_EXISTS>,
+	  <T_Stringq,      S_STRINGBF>,         <T_Numberq,      S_NUMBERQ>,
+	  <T_Sequenceq,    S_SEQUENCE>,
+
+	  <T_Abs,          S_ABS>,              <T_Int,          S_INT>,
+	  <T_Frac,         S_FRAC>,             <T_Sgn,          S_SGN>,
+	  <T_Max,          S_MAX>,              <T_Min,          S_MIN>,
+	  <T_Length,       S_LENGTH>,
+	  <T_Slength,	   S_SLENGTH>,		<T_Index, 	 S_INDEX>,
+	  <T_Substr,	   S_SUBSTR>,
+
+	  <T_Reduce,       S_REDUCE>,           <T_Map,          S_MAP>, 
+	  <T_Tail,         S_TAIL>,             <T_Head,         S_HEAD>,
+	  <T_Butlast,      S_BUTLAST>,          <T_Last,         S_LAST>, 
+	  <T_Powerset,     S_POWERSET>,         <T_Reverse,      S_REVERSE>,
+	  <T_Skip,         S_SKIP>,             <T_For,          S_FOR>,
+	  <T_Actions,      S_ACTIONS>,          <T_Call,         S_CALL>,
+
+	  <T_Stat_Place,   S_STAT_PLACE>,       <T_Expn_Place,   S_EXPN_PLACE>,
+	  <T_Var_Place,    S_VAR_PLACE>,        <T_Cond_Place,   S_COND_PLACE>,
+	  <T_Exit,         S_EXIT>,             <T_Abort,        S_ABORT>,
+	  <T_Address_Of,   S_ADDR>>;
+
+
+
+C:" Table of unambiguous single-character terminal symbols ";
+C:" and their lexical tokens. Used to build lexer tables.  ";
+
+char_table := < <"eof", S_EOF>,        <"?",   S_QUERY>,
+		<",",   S_COMMA>,      <"]",   S_RBRACKET>,
+		<"{",   S_LBRACE>,     <"}",   S_RBRACE>,
+		<"(",   S_LPAREN>,     <")",   S_RPAREN>,
+		<"|",   S_VBAR>,
+		<";",   S_SEMICOLON>,  <"^",   S_CARET>  >;
+
+
+C:" Prefix condition operators ";
+Prefix_Conds := @List_To_Vector(
+		 <S_EVEN, S_ODD, S_EMPTY, S_SUBSET, S_MEMBER, S_FORALL, S_EXISTS, 
+		  S_STRINGBF, S_NUMBERQ, S_SEQUENCE>);
+
+C:" Number types ";
+numb_types := @List_To_Vector(<S_NATS, S_INTS, S_RATS, S_REALS>);
+
+C:" Prefix expression operators of various types ";
+a_prefix_ops := @List_To_Vector(<S_ABS, S_INT, S_FRAC, S_SGN, S_MAX, S_MIN, S_LENGTH,
+				 S_SLENGTH, S_INDEX, S_ADDR>);
+s_prefix_ops := @List_To_Vector(<S_MAP, S_POWERSET, S_TAIL, S_BUTLAST,
+				 S_REVERSE, S_ARRAY, S_SUBSTR>);
+g_prefix_ops := @List_To_Vector(<S_REDUCE, S_HEAD, S_LAST>);
+
+C:" Generic expression types ";
+g_exp_types  := @List_To_Vector(
+		 <T_Variable, T_Var_Place, T_Expn_Place, T_X_Funct_Call, 
+		  T_MW_Funct_Call, T_Aref, T_Sub_Seg, T_Rel_Seg, T_Final_Seg,
+		  T_Funct_Call, T_Reduce, T_Head, T_Last, T_Gethash, T_If,
+		  T_Expn_Pat_One, T_Expn_Pat_Many, T_Expn_Pat_Any,
+		  T_Expn_Int_One, T_Expn_Int_Any, T_Expn_Var_One, T_Expn_Var_Any,
+		  T_Struct, T_String, T_Primed_Var,
+		  T_Mem, T_Mem_Seg, T_Mem_Rel>);
+
+C:" Arithmetic operators - see expression grammar ";
+Term_Ops     := @List_To_Vector(<S_PLUS, S_MINUS>);
+Factor_Ops   := @List_To_Vector(<S_TIMES, S_SLASH, S_MOD, S_DIV>);
+Math_Exps    := @List_To_Vector(<T_Abs, T_Int, T_Max, T_Min, T_Length, T_Number,
+				 T_Negate,  T_Plus, T_Minus, T_Times, T_Divide,
+				 T_Exponent, T_Mod, T_Div>);
+
+C:" Sequence/set operators - see grammar ";
+S_Term_Ops   := @List_To_Vector(<S_BACKSLASH>);
+S_Factor_Ops := @List_To_Vector(<S_CONCAT, S_UNION>);
+S_Atom_Ops   := @List_To_Vector(<S_INTERSECT>);
+Seq_Exps     := @List_To_Vector(<T_Concat, T_Set_Diff, T_Union, T_Intersection,T_Map,
+				 T_Powerset, T_Tail, T_Butlast, T_Reverse>);
+
+C:" Relational and boolean operators - see condition grammar above"; 
+Rel_Ops := @List_To_Vector(<S_EQUAL, S_NEQ, S_LANGLE, S_LEQ, S_RANGLE, S_GEQ, S_IN, S_NOTIN>); 
+Bool_Ops := @List_To_Vector(<S_AND, S_OR>); 
+
+C:" Patterns ";
+Patterns := @List_To_Vector(<S_PAT_ONE, S_PAT_MANY, S_PAT_ANY,
+                             S_INT_ONE, S_INT_ANY,
+			     S_VAR_ONE, S_VAR_ANY, S_AT_PAT_ONE>);
+
+Error_Count := 0;
+
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+
+C:"-------------------------------------------------------------------------------";
+C:" This function is the main interface to the parser                             ";
+C:" It takes as arguments the name of a wsl file to be parsed,                    ";
+C:" and the generic type of the structure the file contains:                      ";
+C:" usually this will be T_Statements, for a WSL program.                         ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @Parse_File(infile, type) ==
+  VAR < S := < >, Input_Port := < > >:
+  IF infile = ""
+    THEN Input_Port := Standard_Input_Port;
+	 @initialise;
+	 S := @yy_parse(type);
+	 @yy_check_end
+  ELSIF @File_Exists?(infile)
+    THEN Input_Port := @Open_Input_File(infile);
+	 @initialise;
+	 S := @yy_parse(type);
+	 @yy_check_end;
+	 @Close_Input_Port(Input_Port)
+    ELSE PRINT("@Parse_File: file " ++ @String(infile) ++ " not found!") FI;
+  ( S ) .;
+
+Input_Port := < >;
+
+C:"-------------------------------------------------------------------------------";
+
+C:"****************";
+C:" The parser     ";
+C:"****************";
+
+C:" type can be any of the generic types below";
+
+MW_FUNCT @yy_parse(type) == 
+ VAR <S := < >>:
+   IF    type = T_Statements   THEN S := @yy_statements()
+   ELSIF type = T_Statement    THEN S := @yy_statement()
+   ELSIF type = T_Expression   THEN S := @yy_expression()
+   ELSIF type = T_Expressions  THEN S := @yy_expressions()
+   ELSIF type = T_Condition    THEN S := @yy_condition()
+   ELSIF type = T_Definition   THEN S := @yy_define()
+   ELSIF type = T_Definitions  THEN S := @yy_defines()
+   ELSIF type = T_Assign       THEN S := @yy_assign()
+   ELSIF type = T_Assigns      THEN S := @Make(T_Assigns, < >, @yy_assigns())
+   ELSIF type = T_Action       THEN S := @yy_action()
+   ELSIF type = T_Guarded      THEN S := @yy_guard_gen(<S_THEN, S_ARROW>)
+   ELSIF type = T_Lvalue       THEN S := @yy_lvalue()
+   ELSIF type = T_Lvalues      THEN S := @yy_lvalues() FI ;
+ ( S ) .;
+
+C:"-------------------------------------------------------------------------------";
+
+
+MW_PROC @Syntax_Error(spiel) ==
+  Error_Count := Error_Count + 1;
+  IF token1 IN <S_IDENTIFIER, S_NUMBER, S_STRING> THEN
+     PRINT("!!!! Line ",yy_lineno,": Syntax Error: ",spiel,": ", token1,": ",token2)
+   ELSE  PRINT("!!!! Line ",yy_lineno,": Syntax Error: ",spiel,": ", token1) FI.;
+
+MW_PROC @Warning(spiel) ==
+  PRINT("**** Line ",yy_lineno,": Warning: ",spiel,": ",token1) .;
+
+
+C:"  This proc. looks for the expected symbol and skips over it.     ";
+C:"  If the expected symbol is not found a syntax error is generated ";
+C:"  with the given message";
+MW_PROC @yy_skip_symbol(symbol, message) ==
+   IF token1 <> symbol THEN
+      @Syntax_Error(message)
+    ELSE @yy_lex FI .;
+
+ 
+MW_PROC @yy_old_PRINT(str) ==
+   PRINT(str) .;
+
+MW_PROC @yy_PRINT(str) == SKIP; SKIP .;
+
+
+C:" Table which maps a pattern symbol from the lexer plus a generic type ";
+C:" into the appropriate specific type ";
+
+pattern_type := HASH_TABLE;
+
+pattern_type.(<T_Statement, S_PAT_ONE>)  := T_Stat_Pat_One;
+pattern_type.(<T_Statement, S_PAT_MANY>) := T_Stat_Pat_Many;
+pattern_type.(<T_Statement, S_PAT_ANY>)  := T_Stat_Pat_Any;
+pattern_type.(<T_Statement, S_INT_ONE>)  := T_Stat_Int_One;
+pattern_type.(<T_Statement, S_INT_ANY>)  := T_Stat_Int_Any;
+pattern_type.(<T_Statement, S_VAR_ONE>)  := T_Stat_Var_One;
+pattern_type.(<T_Statement, S_VAR_ANY>)  := T_Stat_Var_Any;
+
+pattern_type.(<T_Condition, S_PAT_ONE>)  := T_Cond_Pat_One;
+pattern_type.(<T_Condition, S_PAT_MANY>) := T_Cond_Pat_Many;
+pattern_type.(<T_Condition, S_PAT_ANY>)  := T_Cond_Pat_Any;
+pattern_type.(<T_Condition, S_INT_ONE>)  := T_Cond_Int_One;
+pattern_type.(<T_Condition, S_INT_ANY>)  := T_Cond_Int_Any;
+pattern_type.(<T_Condition, S_VAR_ONE>)  := T_Cond_Var_One;
+pattern_type.(<T_Condition, S_VAR_ANY>)  := T_Cond_Var_Any;
+
+pattern_type.(<T_Expression, S_PAT_ONE>)  := T_Expn_Pat_One;
+pattern_type.(<T_Expression, S_PAT_MANY>) := T_Expn_Pat_Many;
+pattern_type.(<T_Expression, S_PAT_ANY>)  := T_Expn_Pat_Any;
+pattern_type.(<T_Expression, S_INT_ONE>)  := T_Expn_Int_One;
+pattern_type.(<T_Expression, S_INT_ANY>)  := T_Expn_Int_Any;
+pattern_type.(<T_Expression, S_VAR_ONE>)  := T_Expn_Var_One;
+pattern_type.(<T_Expression, S_VAR_ANY>)  := T_Expn_Var_Any;
+
+pattern_type.(<T_Lvalue, S_PAT_ONE>)  := T_Lvalue_Pat_One;
+pattern_type.(<T_Lvalue, S_PAT_MANY>) := T_Lvalue_Pat_Many;
+pattern_type.(<T_Lvalue, S_PAT_ANY>)  := T_Lvalue_Pat_Any;
+pattern_type.(<T_Lvalue, S_INT_ONE>)  := T_Lvalue_Int_One;
+pattern_type.(<T_Lvalue, S_INT_ANY>)  := T_Lvalue_Int_Any;
+pattern_type.(<T_Lvalue, S_VAR_ONE>)  := T_Lvalue_Var_One;
+pattern_type.(<T_Lvalue, S_VAR_ANY>)  := T_Lvalue_Var_Any;
+
+pattern_type.(<T_Guarded, S_PAT_ONE>)  := T_Guarded_Pat_One;
+pattern_type.(<T_Guarded, S_PAT_MANY>) := T_Guarded_Pat_Many;
+pattern_type.(<T_Guarded, S_PAT_ANY>)  := T_Guarded_Pat_Any;
+pattern_type.(<T_Guarded, S_INT_ONE>)  := T_Guarded_Int_One;
+pattern_type.(<T_Guarded, S_INT_ANY>)  := T_Guarded_Int_Any;
+pattern_type.(<T_Guarded, S_VAR_ONE>)  := T_Guarded_Var_One;
+pattern_type.(<T_Guarded, S_VAR_ANY>)  := T_Guarded_Var_Any;
+
+pattern_type.(<T_Assign, S_PAT_ONE>)  := T_Assign_Pat_One;
+pattern_type.(<T_Assign, S_PAT_MANY>) := T_Assign_Pat_Many;
+pattern_type.(<T_Assign, S_PAT_ANY>)  := T_Assign_Pat_Any;
+pattern_type.(<T_Assign, S_INT_ONE>)  := T_Assign_Int_One;
+pattern_type.(<T_Assign, S_INT_ANY>)  := T_Assign_Int_Any;
+pattern_type.(<T_Assign, S_VAR_ONE>)  := T_Assign_Var_One;
+pattern_type.(<T_Assign, S_VAR_ANY>)  := T_Assign_Var_Any;
+
+pattern_type.(<T_Action, S_PAT_ONE>)  := T_Action_Pat_One;
+pattern_type.(<T_Action, S_PAT_MANY>) := T_Action_Pat_Many;
+pattern_type.(<T_Action, S_PAT_ANY>)  := T_Action_Pat_Any;
+pattern_type.(<T_Action, S_INT_ONE>)  := T_Action_Int_One;
+pattern_type.(<T_Action, S_INT_ANY>)  := T_Action_Int_Any;
+pattern_type.(<T_Action, S_VAR_ONE>)  := T_Action_Var_One;
+pattern_type.(<T_Action, S_VAR_ANY>)  := T_Action_Var_Any;
+
+pattern_type.(<T_Definition, S_PAT_ONE>)  := T_Defn_Pat_One;
+pattern_type.(<T_Definition, S_PAT_MANY>) := T_Defn_Pat_Many;
+pattern_type.(<T_Definition, S_PAT_ANY>)  := T_Defn_Pat_Any;
+pattern_type.(<T_Definition, S_INT_ONE>)  := T_Defn_Int_One;
+pattern_type.(<T_Definition, S_INT_ANY>)  := T_Defn_Int_Any;
+pattern_type.(<T_Definition, S_VAR_ONE>)  := T_Defn_Var_One;
+pattern_type.(<T_Definition, S_VAR_ANY>)  := T_Defn_Var_Any;
+
+pattern_type.(<T_Name, S_PAT_ONE>)  := T_Name_Pat_One;
+pattern_type.(<T_Name, S_INT_ONE>)  := T_Name_Int_One;
+pattern_type.(<T_Name, S_VAR_ONE>)  := T_Name_Var_One;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"                                                                               ";
+C:"   The following functions parse an object whose type is given by the          ";
+C:"   function name, and return an AST node of that type.                         ";
+C:"   ALL functions must leave the NEXT token in `token' when they return         ";
+C:"                                                                               ";
+C:"-------------------------------------------------------------------------------";
+
+
+C:" Check that we are at the end of the file: ";
+
+MW_PROC @yy_check_end() ==
+  IF token1 <> S_EOF
+    THEN C:" Extra chars after `last' statement: search forward for a terminator";
+         WHILE token1 NOTIN <S_EOF, S_SEMICOLON> DO
+	   @yy_lex OD;
+         IF token1 = S_EOF
+	   THEN @Syntax_Error("Extra characters at end of program")
+           ELSE C:" Found a semicolon: there are in fact more statements";
+	        @Syntax_Error("Extra characters at end of statement");
+	        @yy_lex FI FI .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  Statement sequence                                                           ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_statements() == 
+   VAR <S:= < >, temp := < >>:
+@yy_PRINT("Statements");
+     S := <@yy_statement()>;
+     WHILE token1 = S_SEMICOLON DO
+	@yy_lex;
+	temp := @yy_statement();
+	IF temp = < > THEN
+	   IF token1 = S_EOF THEN
+	      @Syntax_Error("Missing <return> at end of final line") FI
+	 ELSE  S := <temp> ++ S FI OD;
+  IF S = < < > > THEN S := <@Skip> FI;
+  ( @Make(T_Statements, < >, REVERSE(S)) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Parse the generic type `Statement'                                           ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_statement() ==
+ VAR < S := < >>:
+@yy_PRINT("Statement");
+   IF    Closing_Toks[token1] = 1 THEN SKIP
+   ELSIF token1 = S_INVALID THEN @Syntax_Error("Invalid token: "++token2);
+				   S := @Make(T_Stat_Place, < >,< >);
+				   @yy_lex
+   ELSIF token1 = S_IF         THEN S := @yy_if()
+   ELSIF token1 = S_D_IF       THEN S := @yy_d_generic(T_D_If, S_FI)
+   ELSIF token1 = S_D_DO       THEN S := @yy_d_generic(T_D_Do, S_OD) 
+   ELSIF token1 = S_WHILE      THEN S := @yy_while()
+   ELSIF token1 = S_DO         THEN S := @yy_floop()
+   ELSIF token1 = S_EXIT       THEN S := @yy_exit()
+   ELSIF token1 = S_FOR        THEN S := @yy_for()
+   ELSIF token1 = S_VAR        THEN S := @yy_var()
+   ELSIF token1 = S_COMMENT    THEN S := @yy_comment()
+   ELSIF token1 = S_LBRACE     THEN S := @yy_assert()
+   ELSIF token1 = S_LANGLE     THEN S := @yy_assignment()
+   ELSIF token1 = S_PUSH       THEN S := @yy_push()
+   ELSIF token1 = S_POP        THEN S := @yy_pop()
+   ELSIF token1 = S_JOIN       THEN S := @yy_join()
+   ELSIF token1 = S_ACTIONS    THEN S := @yy_as()
+   ELSIF token1 = S_CALL       THEN S := @yy_call()
+   ELSIF token1 = S_PRINT      THEN S := @yy_gen_print(T_Print)
+   ELSIF token1 = S_PRINFLUSH  THEN S := @yy_gen_print(T_Prinflush)
+   ELSIF token1 = S_MW_PROC    THEN S := @yy_mw_proc()
+   ELSIF token1 = S_MW_FUNCT   THEN S := @yy_mw_funct()
+   ELSIF token1 = S_MW_BFUNCT  THEN S := @yy_mw_bfunct()
+   ELSIF token1 = S_BEGIN      THEN S := @yy_where()
+   ELSIF token1 = S_PLINK_P    THEN S := @yy_aproc_call()
+   ELSIF token1 = S_AT         THEN S := @yy_mw_proc_call()
+   ELSIF token1 = S_AT_PAT_ONE THEN S := @yy_mw_proc_call()
+   ELSIF token1 = S_PLINK_XP   THEN S := @yy_x_proc_call()
+   ELSIF token1 = S_FOREACH    THEN S := @yy_foreach()
+   ELSIF token1 = S_ATEACH     THEN S := @yy_ateach()
+   ELSIF token1 = S_IFMATCH    THEN S := @yy_ifmatch()
+   ELSIF token1 = S_MAPHASH    THEN S := @yy_maphash()
+   ELSIF token1 = S_ERROR      THEN S := @yy_error()
+   ELSIF token1 = S_SPEC       THEN S := @yy_spec()
+   ELSIF token1 = S_MEM        THEN S := @Make(T_Assignment, < >, <@yy_assign()>)
+   ELSIF Patterns[token1] = 1
+     THEN IF token2 = ""
+            THEN S := @yy_stat_pattern()
+	    ELSE ERROR("@yy_gen_pat(S, <T_Statement>) not yet implemented!") FI
+   ELSIF token1 IN <S_SKIP, S_ABORT, S_STAT_PLACE>
+				THEN S := @yy_trivial()
+   ELSIF token1 = S_NUMBER    THEN @Syntax_Error("Number invalid at start of statement");
+				     @yy_lex
+   ELSIF Key_Table.(token2) <> < > 
+				THEN @Reserved_Word_Error(token2)
+   ELSIF token1 = S_IDENTIFIER THEN
+     VAR <name := @Make_Name(token2)>:
+       @yy_lex;
+       IF token1 = S_LPAREN THEN  S := @yy_proc_call(name)
+	ELSE  S := @yy_single_assign(@Make(T_Var_Lvalue, name, < >))
+	FI ENDVAR
+    ELSE @Syntax_Error("Invalid string at start of statement") FI;
+
+   (S) .;
+
+MW_PROC @Reserved_Word_Error(Tok) ==
+   @Syntax_Error("reserved word "++Tok++" not valid here") .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  First, deal with the trivial cases (single token structure-less constructs)  ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_trivial() == 
+ VAR <type := Type_Table.(token1)>:
+   @yy_lex;
+ ( @Make(type,< >,< >) ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:" Functions to parse an IF, D_IF or D_DO statement                              ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_if() ==
+   VAR <guards := < >, cond := < >, body := < >, type := < >>:
+@yy_PRINT("If");
+     @yy_lex;
+     IF Patterns[token1] = 1 THEN guards := <@yy_guarded_pattern(<S_THEN>)>
+      ELSE  cond := @yy_condition();
+	@yy_skip_symbol(S_THEN, "Missing `THEN'");
+	body := @yy_statements();
+	guards := < @Make(T_Guarded, < >, <cond, body>) > FI;
+     WHILE  token1 = S_ELSIF
+	   DO guards := <@yy_guarded()> ++ guards OD;
+     IF token1 = S_ELSE THEN guards := <@yy_guarded()> ++ guards
+      ELSE cond := @Make(T_True,< >,< >);
+	   body := @Skips;
+	   guards := <@Make(T_Guarded,< >,<cond, body>)> ++ guards FI;
+     @yy_skip_symbol(S_FI, "Duff guard syntax or un-terminated IF");
+
+ ( @Make(T_Cond, < >, REVERSE(guards)) ).;
+
+
+C:" Generic function for Dijkstra If or DO ";
+MW_FUNCT @yy_d_generic(type, terminator) == 
+   VAR <Guards := < >, Cond := < >, Body := < >>:
+@yy_PRINT("D_If or D_Do, "++@String(type));
+
+     @yy_lex;
+     Cond := @yy_condition();
+     @yy_skip_symbol(S_ARROW, "Missing ->");
+     Body := @yy_statements();
+     Guards := < @Make(T_Guarded, < >, <Cond, Body>) >;
+     WHILE  token1 = S_BOX
+	   DO Guards := <@yy_guarded()> ++ Guards OD;
+     @yy_skip_symbol(terminator, "Duff guard syntax or un-terminated `Dijkstra'-construct");
+
+ ( @Make(type, < >, REVERSE(Guards)) ).;
+
+
+C:" Guards in an IF have different terminals to D_IF and D_DO ";
+MW_FUNCT @yy_guarded() ==
+   VAR <condition := < >, body := < >, type := < >,S := < >>:
+@yy_PRINT("Guarded");
+      IF    token1 = S_ELSIF THEN @yy_lex; S := @yy_guard_gen(<S_THEN>)
+      ELSIF token1 = S_BOX   THEN @yy_lex; S := @yy_guard_gen(<S_ARROW>)
+      ELSIF token1 = S_ELSE  THEN condition := @Make(T_True, < >, < >); 
+				    @yy_lex;
+				    body := @yy_statements(); 
+				    S := @Make(T_Guarded, < >, <condition, body>) FI;
+ ( S ) .;
+
+
+C:" Generic function to parse a guard ";
+MW_FUNCT @yy_guard_gen(then_sym) == 
+ VAR <condition:= < >, body:= < >, S := < >>:
+   IF Patterns[token1] = 1 THEN 
+      S := @yy_guarded_pattern(then_sym)
+    ELSE
+      condition := @yy_condition();
+      IF token1 IN then_sym THEN @yy_lex
+       ELSE @Syntax_Error("Missing delimiter in guard") FI;
+      body := @yy_statements();
+      S := @Make(T_Guarded, < >,<condition,body>) FI;
+ ( S ) .;
+
+
+C:" Check the type of pattern and set the name or comps as appropriate: ";
+MW_PROC @yy_parse_pattern(type VAR name, comps) ==
+  @yy_lex;
+  IF type = S_INT_ONE OR type = S_INT_ANY
+    THEN @yy_skip_symbol(S_LPAREN, "Missing '(' in pattern interpolation");
+         comps := <@yy_expression>;
+         @yy_skip_symbol(S_RPAREN, "Missing ')' in pattern interpolation");
+  ELSIF token1 = S_IDENTIFIER
+    THEN name := @Make_Name(token2);
+         @yy_lex
+  ELSIF token1 = S_NUMBER
+    THEN name := -token2;
+         @yy_lex
+    ELSE @Syntax_Error("Missing name in pattern");
+         name := @Make_Name("_Missing_") FI .;
+
+
+C:" Function for guarded which begins with a pattern ";
+C:" This may be a guarded, condition or expression pattern ";
+
+MW_FUNCT @yy_guarded_pattern(then_sym) ==
+  VAR < type := token1, cond := < >,  body := < >,
+        name := < >, S := < >, comps := < > >:
+  @yy_parse_pattern(type VAR name, comps);
+  IF token1 IN <S_ELSIF, S_BOX, S_ELSE, S_FI, S_ENDFILL>
+    THEN C:" It's a guarded pattern ";
+         @yy_PRINT("Guard pattern");
+         type := pattern_type.(<T_Guarded, type>);
+         S := @Make(type, name, comps)
+    ELSE C:" Parse the condition, then the statements ";
+         IF token1 IN then_sym
+           THEN C:" It's a condition pattern ";
+                type := pattern_type.(<T_Condition, type>);
+                cond := @Make(type, name, comps);
+         ELSIF token1 = S_EXPONENT OR Term_Ops[token1] = 1 OR Factor_Ops[token1] = 1
+                 OR S_Term_Ops[token1] = 1 OR S_Factor_Ops[token1] = 1
+                 OR S_Atom_Ops[token1] = 1 OR Rel_Ops[token1] = 1
+           THEN C:" It's an expression pattern at the start of a condition";
+                type := pattern_type.(<T_Expression, type>);
+                cond := @yy_rest_of_cond(@Make(type, name, comps));
+           ELSE C:" Assume it's a condition pattern ";
+               @yy_PRINT("Condition pattern");
+               type := pattern_type.(<T_Condition, type>);
+               cond := @yy_rest_of_cond(@Make(type, name, comps)) FI;
+         IF token1 NOTIN then_sym
+           THEN @Syntax_Error("Missing `THEN' or `[]'")
+           ELSE @yy_lex FI;
+         body := @yy_statements;
+         S := @Make(T_Guarded, < >, <cond, body>) FI;
+  ( S ) .;
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:" While - loop ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_while() == 
+  VAR <condition := < >, body := < >>:
+@yy_PRINT("While");
+     @yy_lex;
+     condition := @yy_condition();
+     @yy_skip_symbol(S_DO, "Missing `DO' in while-loop");
+     body := @yy_statements(); 
+     @yy_skip_symbol(S_OD, "Unterminated WHILE loop");
+
+   ( @Make(T_While, < >, <condition, body>) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  DO loop                                                                      ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_floop() ==
+ VAR <body := < >>:
+@yy_PRINT("Do-loop");
+   @yy_lex;
+   body := @yy_statements();
+   @yy_skip_symbol(S_OD, "Missing `OD'");
+ ( @Make(T_Floop, < >,<body>) ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  Exit                                                                         ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_exit() ==
+ VAR <n := < >>:
+   @yy_lex;
+   @yy_skip_symbol(S_LPAREN, "Missing `(' in exit statement");
+   IF token1 <> S_NUMBER THEN
+      @Syntax_Error("Numeric argument to EXIT expected");
+      n := -1
+   ELSIF token2 DIV 1 <> token2 THEN
+      @Syntax_Error("Natural number argument to EXIT required, got "++token2++" instead");
+      n := -1;
+      @yy_lex
+    ELSE n := token2;
+      @yy_lex FI;
+
+   @yy_skip_symbol(S_RPAREN, "Missing `)' in EXIT statement");
+
+ ( @Make(T_Exit, n, < >) ) .;  
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  FOR loop                                                                     ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_for() ==
+ VAR <comps := < >, index := < >, S := < >>:
+   @yy_lex;
+   IF token1 = S_IDENTIFIER
+     THEN index := @Make(T_Var_Lvalue, @Make_Name(token2), < >);
+          @yy_lex
+   ELSIF token1 = S_PAT_ONE
+     THEN @yy_lex;
+          index := @Make(T_Lvalue_Pat_One, @Make_Name(token2), < >);
+	  @yy_lex
+     ELSE @Syntax_Error("Missing for-loop index variable");
+          index := @Make(T_Var_Lvalue, @Make_Name("_Missing_"), < >) FI;
+   IF token1 = S_IN
+     THEN S := @yy_forin(index)
+     ELSE @yy_skip_symbol(S_BECOMES, "Missing `:='");
+          comps := <@yy_expression>;     
+          @yy_skip_symbol(S_TO, "Missing `TO'");
+          comps := <@yy_expression()> ++ comps;
+          @yy_skip_symbol(S_STEP, "Missing `STEP'");
+          comps := <@yy_expression()> ++ comps; 
+          @yy_skip_symbol(S_DO, "Missing `DO'");
+          comps := <@yy_statements()> ++ comps;
+          @yy_skip_symbol(S_OD, "Missing `OD'");
+          S := @Make(T_For, < >, <index> ++ REVERSE(comps)) FI;
+ ( S ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  FOR I in S ...                                                               ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_forin(index) ==
+ VAR <set := < >, body := < >>:
+   @yy_lex;
+   set := @yy_expression();
+   @yy_skip_symbol(S_DO,"Missing `DO'");
+   body := @yy_statements();
+   @yy_skip_symbol(S_OD,"Missing `OD'");
+ ( @Make(T_For_In, < >, <index, set, body>) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  VAR block                                                                    ";
+C:"-------------------------------------------------------------------------------";
+C:" As usual, most of this is error checking ;-) ";
+
+MW_FUNCT @yy_var() ==  
+ VAR <assigns := < >, body := < >, delimit := 0>: 
+@yy_PRINT("Var"); 
+   @yy_lex; 
+ C:" The assigns part may of may not have angle brackets round it ";
+   IF token1 = S_LANGLE THEN  
+      delimit := 1; 
+      @yy_lex FI;
+   assigns := @yy_assigns();
+   IF assigns = < > THEN @Warning("No local variables in VAR") FI;
+   assigns := @Make(T_Assigns, < >, assigns);
+   IF delimit = 1 THEN
+      @yy_skip_symbol(S_RANGLE, "Missing `>' after assigns") FI; 
+   @yy_skip_symbol(S_COLON, "Missing `:' after assigns");
+   body := @yy_statements(); 
+   @yy_skip_symbol(S_ENDVAR, "Missing `ENDVAR'");
+ ( @Make(T_Var, < >, <assigns, body>) ) .;
+	 
+
+C:"-------------------------------------------------------------------------------";
+C:"  Assertions                                                                   ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_assert() ==
+ VAR <cond := < >>:
+@yy_PRINT("Assertion");
+   @yy_lex;
+   cond := @yy_condition();
+   @yy_skip_symbol(S_RBRACE, "Missing ``}'' in assertion");
+   ( @Make(T_Assert, < >, <cond>) ) .;
+    
+
+C:"-------------------------------------------------------------------------------"; 
+C:"  Comments                                                                     "; 
+C:"-------------------------------------------------------------------------------"; 
+
+MW_FUNCT @yy_comment() ==
+ VAR <Text := < >>:
+@yy_PRINT("Comment");
+   @yy_lex;
+   @yy_skip_symbol(S_COLON,"Missing `:' in COMMENT statement");
+   IF token1 <> S_STRING THEN @Syntax_Error("Missing comment text");
+				C:"Try to recover by eating up tokens until";
+				C:"something that looks like a new statement";
+				Text := " ";
+				WHILE Reserved_Words[token1] = 0 AND token1 <> S_SEMICOLON
+				   DO @yy_lex OD
+     ELSE Text := token2; 
+	  @yy_lex FI;
+   ( @Make(T_Comment, Text, < >) ) .;   
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Assignments                                                                  ";
+C:"-------------------------------------------------------------------------------";
+
+C:" This first function does single assignments and puthash statements ";
+MW_FUNCT @yy_single_assign(Lhs) ==
+ VAR <key := < >, value := < >, S := < >>:
+@yy_PRINT("Assignment");
+   DO IF token1 =  S_LBRACKET THEN
+	 Lhs := @yy_lv_array_ref(Lhs) 
+      ELSIF token1 = S_FULLSTOP THEN
+	 @yy_lex;
+	 IF token1 = S_LPAREN THEN
+	    key := @yy_expression();
+	    C:" key is also used as a flag to indicate";
+	    C:" that we need to build a puthash.";
+	    EXIT(1)
+	  ELSE Lhs := @yy_lv_struct_ref(Lhs) FI
+       ELSE EXIT(1) FI OD;
+   IF token1 = S_BECOMES THEN
+      IF key <> < > THEN
+	 @yy_lex;
+	 value := @yy_expression();
+	 S := @Make(T_Puthash, < >,<Lhs,key,value>)
+       ELSE S := @Make(T_Assignment, < >, <@yy_infix_op(Lhs,T_Assign)> ) FI
+    ELSE @Syntax_Error("`:=' expected");
+      S := @Make(T_Stat_Place,< >,< >);
+      WHILE token1 NOTIN <S_SEMICOLON, S_EOF> DO @yy_lex OD FI;
+ ( S ) .;
+
+MW_FUNCT @yy_assignment() ==
+ VAR <assigns := < >>:
+@yy_PRINT("Multiple Assignment");
+   @yy_lex;
+   assigns := @yy_assigns();
+   @yy_skip_symbol(S_RANGLE, "Missing `>' after assignments");
+ ( @Make(T_Assignment, < >,assigns) ) .;
+
+
+MW_FUNCT @yy_assigns() ==
+ VAR <assigns := < >, flag := 0>:
+@yy_PRINT("Assigns");
+C:" May be called while sitting on a `<' which surrounds the assigns ";
+   IF token1 = S_LANGLE THEN flag := 1; @yy_lex FI;
+   assigns := <@yy_assign()>;
+   WHILE token1 = S_COMMA DO
+      @yy_lex;
+      assigns := <@yy_assign()> ++ assigns OD;
+   IF flag = 1 THEN @yy_skip_symbol(S_RANGLE, "Missing `>'") FI;
+ ( REVERSE(assigns) ) .;
+
+
+MW_FUNCT @yy_assign() == 
+ VAR <lhs := < >,  S := < >>: 
+@yy_PRINT("Assign");
+   IF Patterns[token1] = 1 THEN
+      S := @yy_assign_pattern()
+   ELSE IF token1 <> S_IDENTIFIER AND token1 <> S_MEM THEN  
+	   @Syntax_Error("Variable name expected"); 
+	   lhs := @Make(T_Var_Place, < >,< >)
+	 ELSE
+	   lhs := @yy_lvalue();
+	   IF token1 <> S_BECOMES THEN
+	      @Syntax_Error("Missing assignment operator") FI FI;
+	S :=  @yy_infix_op(lhs, T_Assign) FI;
+ ( S ) .;
+
+
+MW_FUNCT @yy_assign_pattern() ==
+  VAR < S := < >, name := < >, type := token1, lhs := < >, comps := < > >:
+  C:" Could be an assign pattern or a lvalue pattern on lhs of assign.";
+  @yy_parse_pattern(type VAR name, comps);
+  IF token1 = S_BECOMES
+    THEN type := pattern_type.(<T_Lvalue, type>);
+         lhs := @Make(type, name, comps);
+         S := @yy_infix_op(lhs, T_Assign)
+  ELSIF token1 = S_LBRACKET OR token1 = S_FULLSTOP
+    THEN C:" Some kind of array or struct: so can't be an assign pattern ";
+         type := pattern_type.(<T_Lvalue, type>);
+         lhs := @yy_lv_array_check(@Make(type, name, comps));
+         IF token1 <> S_BECOMES THEN @Syntax_Error("Missing assignment operator") FI;
+         S := @yy_infix_op(lhs, T_Assign)
+    ELSE type := pattern_type.(<T_Assign, type>);
+         S := @Make(type, name, comps) FI;
+  ( S ) .;
+
+
+MW_FUNCT @yy_lv_array_check(I) ==
+  VAR < S := I >:
+  DO IF token1 = S_LBRACKET THEN
+        S := @yy_lv_array_ref(S)
+     ELSIF token1 = S_FULLSTOP THEN
+        @yy_lex;
+        S := @yy_lv_struct_ref(S)
+      ELSE EXIT(1) FI OD;
+  (S) .;
+
+
+MW_FUNCT @yy_infix_op(lhs, type) == 
+  VAR < rhs := < > >:
+  @yy_lex;
+  rhs := @yy_expression();
+  (@Make(type, < >, <lhs, rhs>)) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Push                                                                         ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_push() ==
+ VAR <args := < >>:
+@yy_PRINT("Push");
+   @yy_lex;
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument list");
+   args := <@yy_lvalue()>;
+   @yy_skip_symbol(S_COMMA, "Missing `,'");
+   args := <@yy_expression()> ++ args;
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+ ( @Make(T_Push,< >,REVERSE(args)) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Pop                                                                          ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_pop() ==
+ VAR <args := < >>:
+@yy_PRINT("Pop");
+   @yy_lex;
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument list");
+   args := <@yy_lvalue()>;
+   @yy_skip_symbol(S_COMMA, "Missing `,'");
+   args := <@yy_lvalue()> ++ args;
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+ ( @Make(T_Pop,< >,REVERSE(args)) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Join                                                                         ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_join() ==
+ VAR <args := < >>:
+@yy_PRINT("Join");
+   @yy_lex;
+   args := <@yy_statements()>;
+   @yy_skip_symbol(S_COMMA, "Missing `,'");
+   args := <@yy_statements()> ++ args;
+   @yy_skip_symbol(S_ENDJOIN, "Missing `)'");
+ ( @Make(T_Join,< >,REVERSE(args)) ) .;
+
+
+C:" Parse a name or name pattern and return it ";
+C:" thing is the type of thing that the name is part of, eg `!P call' ";
+
+MW_FUNCT @yy_name(thing) ==
+  VAR < name := < >, type := token1, comps := < > >:
+  IF Patterns[token1] = 1
+    THEN @yy_parse_pattern(type VAR name, comps);
+         IF EMPTY?(pattern_type.(<T_Name, type>))
+           THEN @Syntax_Error("Invalid pattern for Name in " ++ thing);
+                name := @Name(@Make_Name("_missing_"))
+           ELSE name := @Make(pattern_type.(<T_Name, type>), name, comps) FI
+  ELSIF token1 = S_IDENTIFIER
+    THEN name := @Name(@Make_Name(token2)); @yy_lex 
+   ELSE @Syntax_Error("Missing name in " ++ thing);
+        name := @Name(@Make_Name("_Missing_"))  FI;
+  (name) .;
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Action system                                                                ";
+C:"-------------------------------------------------------------------------------";
+
+
+MW_FUNCT @yy_as() ==
+ VAR <actions := < >, name := < >>:
+@yy_PRINT("Action system: ");
+   @yy_lex;
+   name := @yy_name("action system");
+@yy_PRINT(@String(name));
+    @yy_skip_symbol(S_COLON, "Missing `:'");
+    actions := @yy_actions();
+ ( @Make(T_A_S, < >, <name, actions>) ) .;
+
+MW_FUNCT @yy_actions() == 
+ VAR <actions := <@yy_action()>>:
+@yy_PRINT("Actions");
+   WHILE  token1 <> S_ENDACTIONS AND token1 <> S_EOF DO
+     IF token1 <> S_ENDACTIONS
+       THEN actions := <@yy_action> ++ actions FI OD;
+   @yy_skip_symbol(S_ENDACTIONS, "Missing `ENDACTIONS'");
+ ( @Make(T_Actions, < >, REVERSE(actions)) ) .;
+
+
+C:" We could have a name pattern or an action pattern ";
+C:" depending on what comes next. ";
+
+MW_FUNCT @yy_action() == 
+  VAR < name := < >, body := < >, type := token1,  S := < >, comps := < > >:
+  @yy_PRINT("Action");
+  IF Patterns[token1] = 1
+    THEN @yy_parse_pattern(type VAR name, comps);
+         IF token1 = S_DEFINE
+           THEN IF EMPTY?(pattern_type.(<T_Name, type>))
+		  THEN @Syntax_Error("Invalid pattern for Name in action");
+		       name := @Name(@Make_Name("_missing_"))
+                  ELSE name := @Make(pattern_type.(<T_Name, type>), name, comps) FI
+           ELSE S := @Make(pattern_type.(<T_Action, type>), name, comps) FI
+    ELSE IF token1 <> S_IDENTIFIER
+           THEN @Syntax_Error("Missing action name");
+                name := @Name(@Make_Name("_missing_"))
+           ELSE name := @Name(@Make_Name(token2)) FI;
+         @yy_lex FI;
+  IF EMPTY?(S)
+    THEN C:" Parse the action body: ";
+         @yy_skip_symbol(S_DEFINE, "Missing `==' in action"); 
+         body := @yy_statements;
+         IF token1 NOTIN <S_DOTSPACE, S_END>
+           THEN @Syntax_Error("Missing `.' at end of action")
+           ELSE @yy_lex FI;
+         S := @Make(T_Action, < >, <name, body>) FI;
+  ( S ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  Action call                                                                  ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_call() ==
+ VAR <name := < >>:
+@yy_PRINT("Action Call");
+   @yy_lex;
+   IF token1 <> S_IDENTIFIER THEN
+      @Syntax_Error("Missing action name");
+      name := @Make_Name("_Missing_")
+    ELSE name := @Make_Name(token2);
+	 @yy_lex FI;
+( @Make(T_Call,name,< >) ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  PRINT and PRINFLUSH                                                          ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_gen_print(type) ==
+ VAR <args := < >>:
+@yy_PRINT("PRINT or PRINFLUSH");
+   @yy_lex;
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument list");
+   args := @yy_expressions();
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+ ( @Make(type,< >,<args>) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  MW PROC                                                                      ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_mw_proc() ==
+ VAR <name := < >, body := < >>:
+@yy_PRINT("MW Proc");
+IF FALSE THEN PRINT("MW Proc: token1 = ", token1, " token2 = ", token2) FI;
+   @yy_lex;
+   name := @yy_at_name;
+   body := @yy_generic_proc();
+( @Make(T_MW_Proc, < >, <name> ++ body) ) .;
+
+
+MW_FUNCT @yy_at_name() ==
+  VAR < name := < > >:
+  IF token1 = S_AT
+    THEN name := @Make(T_Name, @Make_Name("@"++token2), < >);
+         @yy_lex
+  ELSIF token1 = S_AT_PAT_ONE
+    THEN name := @Make(T_Name_Pat_One, @Make_Name(token2), < >);
+         @yy_lex
+    ELSE @Syntax_Error("Missing `@' symbol in proc name");
+         IF token1 = S_IDENTIFIER
+	   THEN name := @Make(T_Name, @Make_Name("@"++token2), < >);
+	        @yy_lex FI FI;
+  (name) .;
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  MW FUNCT                                                                     ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_mw_funct() ==
+ VAR <name := < >, body := < >>:
+@yy_PRINT("MW Funct");
+   @yy_lex;
+   IF token1 = S_AT THEN
+      name := @Make_Name("@"++token2);
+      @yy_lex
+   ELSE @Syntax_Error("Missing `@' symbol in funct. name");
+      IF token1 = S_IDENTIFIER THEN
+	 name := @Make_Name("@"++token2);
+	 @yy_lex
+       ELSE @Syntax_Error("Missing funct. name");
+	    name := @Make_Name("@_Missing_") FI FI;
+   @yy_skip_symbol(S_LPAREN, "Missing `('");
+   IF token1 = S_RPAREN THEN 
+      args := @Make(T_Lvalues, < >,< >)
+    ELSE args := @yy_lvalues() FI;
+   @yy_skip_symbol(S_RPAREN, "`)' expected");
+   @yy_skip_symbol(S_DEFINE, "Missing `=='");
+   IF token1 = S_VAR THEN
+      @yy_lex;
+      VAR <flag := 0>:
+	 IF token1 = S_LANGLE THEN flag := 1; @yy_lex FI;
+	 IF token1 NOTIN <S_RANGLE, S_COLON> THEN
+	    ass := @Make(T_Assigns, < >,@yy_assigns())
+	  ELSE ass := @Make(T_Assigns,< >,< >) FI;
+	 IF flag = 1 THEN @yy_skip_symbol(S_RANGLE, "Missing `>'") FI ENDVAR
+    ELSE ass := @Make(T_Assigns, < >,< >) FI;
+   @yy_skip_symbol(S_COLON, "Missing `:'");
+      
+   body := @yy_statements();
+      exp := @yy_expression();
+   IF token1 NOTIN <S_FULLSTOP, S_DOTSPACE, S_END> THEN  
+      @Syntax_Error("Missing end delimiter for MW Funct")
+    ELSE @yy_lex FI;
+( @Make(T_MW_Funct, < >, <@Make(T_Name, name, < >), args, ass, body, exp>) ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  MW BFUNCT                                                                     ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_mw_bfunct() ==
+ VAR <name := < >, args := < >, ass := < >, body := < >, cond := < >>:
+@yy_PRINT("MW B_Funct");
+   @yy_lex;
+   IF token1 = S_AT THEN   
+      name := @Make_Name("@"++token2++"?");
+      @yy_lex
+   ELSE @Syntax_Error("Missing `@' symbol in b_funct. name");
+      IF token1 = S_IDENTIFIER THEN
+	  name := @Make_Name("@"++token2++"?");
+	  @yy_lex
+       ELSE @Syntax_Error("Missing bfunct. name");
+	    name := @Make_Name("@_Missing_?") FI FI;
+   @yy_skip_symbol(S_QUERY, "Missing `?' after bfunct. name");
+   @yy_skip_symbol(S_LPAREN, "Missing `('");
+   IF token1 = S_RPAREN THEN 
+      args := @Make(T_Lvalues, < >,< >)
+    ELSE args := @yy_lvalues() FI;
+   @yy_skip_symbol(S_RPAREN, "`)' expected");
+   @yy_skip_symbol(S_DEFINE, "Missing `=='");
+   IF token1 = S_VAR THEN
+      @yy_lex;
+      VAR <flag := 0>:
+	 IF token1 = S_LANGLE THEN flag := 1; @yy_lex FI;
+	 IF token1 NOTIN <S_RANGLE, S_COLON> THEN
+	    ass := @Make(T_Assigns, < >,@yy_assigns())
+	  ELSE ass := @Make(T_Assigns,< >,< >) FI;
+	 IF flag = 1 THEN @yy_skip_symbol(S_RANGLE, "Missing `>'") FI ENDVAR
+    ELSE ass := @Make(T_Assigns, < >,< >) FI;
+   @yy_skip_symbol(S_COLON, "Missing `:'");      
+   body := @yy_statements();
+
+   cond := @yy_condition();
+
+   IF token1 NOTIN <S_FULLSTOP, S_DOTSPACE, S_END> THEN  
+      @Syntax_Error("Missing end delimiter for BFunct")
+    ELSE @yy_lex FI;
+( @Make(T_MW_BFunct, < >, <@Make(T_Name, name, < >), args, ass, body, cond>) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:" Generic function for proc/mw_proc                                             ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_generic_proc() ==
+ VAR <vals := < >, vars := < >, body := < >>:
+   @yy_skip_symbol(S_LPAREN, "Missing `('");
+   IF token1 = S_RPAREN THEN SKIP
+    ELSE IF token1 = S_VAR
+	   THEN vals := @Make(T_Lvalues,< >,< >)
+	   ELSE vals := @yy_lvalues() FI;
+      IF token1 = S_VAR THEN
+	 @yy_lex;
+	 IF token1 = S_RPAREN 
+	   THEN vars := @Make(T_Lvalues,< >,< >)
+	   ELSE vars := @yy_lvalues() FI FI FI;
+   @yy_skip_symbol(S_RPAREN, "`)' expected");
+   @yy_skip_symbol(S_DEFINE, "Missing `=='");
+   body := @yy_statements();
+   IF token1 NOTIN <S_FULLSTOP, S_DOTSPACE, S_END> THEN
+      @Syntax_Error("Missing `END'")
+    ELSE @yy_lex FI;
+   IF vals = < > THEN vals := @Make(T_Lvalues, < >,< >) FI;
+   IF vars = < > THEN vars := @Make(T_Lvalues, < >,< >) FI;
+ ( <vals, vars, body> ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  WHERE block                                                                  ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_where() ==
+ VAR <S := < >, defines := < >>:
+@yy_PRINT("Where-block");
+   @yy_lex;
+   S := @yy_statements();
+   @yy_skip_symbol(S_WHERE, "Missing `WHERE'");
+   defines := @yy_defines();
+   @yy_skip_symbol(S_END, "Missing `END' after WHERE-block");
+ ( @Make(T_Where, < >,<S, defines>) ) .;
+
+C:" The commas separating the definitions are now optional ";
+
+MW_FUNCT @yy_defines() ==
+ VAR <d := <@yy_define()>>:
+@yy_PRINT("Proc/Funct definitions");
+   WHILE token1 = S_PROC OR token1 = S_FUNCT OR token1 = S_BFUNCT
+           OR token1 = S_COMMA DO
+      IF token1 = S_COMMA THEN @yy_lex FI;
+      d := <@yy_define()> ++ d OD;
+ ( @Make(T_Definitions, < >, REVERSE(d) ) ) .;
+
+MW_FUNCT @yy_define() ==
+ VAR <S := < >>:
+@yy_PRINT("Definition");
+   IF    Patterns[token1] = 1 THEN S := @yy_defn_pattern()
+   ELSIF token1 = S_PROC   THEN S := @yy_proc()
+   ELSIF token1 = S_FUNCT  THEN S := @yy_funct()
+   ELSIF token1 = S_BFUNCT THEN S := @yy_bfunct()
+    ELSE @Syntax_Error("Expected PROC, FUNCT or BFUNCT definition");
+	 @yy_lex FI;
+ ( S ) .;
+
+MW_FUNCT @yy_defn_pattern() ==
+  VAR < name := < >, type := token1, comps := < > >:
+  @yy_parse_pattern(type VAR name, comps);
+  type := pattern_type.(<T_Definition, type>);
+  ( @Make(type, name, comps) ) .;
+
+MW_FUNCT @yy_proc() ==
+  VAR <name := < >, body := < >>:
+  @yy_PRINT("Procedure definition");
+  @yy_lex;
+  name := @yy_name("PROC");
+  body := @yy_generic_proc();
+  (@Make(T_Proc, < >, <name> ++ body)) .;
+
+
+MW_FUNCT @yy_funct() ==
+  VAR < name := < >, args := < >, ass := < >, body := < >, exp := < > >:
+  @yy_PRINT("Function definition");   
+  @yy_lex;
+  name := @yy_name("FUNCT definition");
+  @yy_skip_symbol(S_LPAREN, "Missing `('");
+  IF token1 = S_RPAREN
+    THEN args := @Make(T_Lvalues, < >,< >)
+    ELSE args := @yy_lvalues() FI;
+  @yy_skip_symbol(S_RPAREN, "`)' expected");
+  @yy_skip_symbol(S_DEFINE, "Missing `=='");
+  IF token1 = S_VAR
+    THEN @yy_lex;
+         @yy_skip_symbol(S_LANGLE, "Missing `<'");
+         IF token1 = S_RANGLE
+	   THEN ass := @Make(T_Assigns, < >, < >) 
+           ELSE ass := @Make(T_Assigns, < >, @yy_assigns) FI;
+         @yy_skip_symbol(S_RANGLE, "Missing `>'")
+  ELSIF token1 = S_COLON
+    THEN ass := @Make(T_Assigns, < >, < >)
+    ELSE ass := @yy_f_assigns FI;
+  @yy_skip_symbol(S_COLON, "Missing `:'");
+  body := @yy_statements();
+  exp := @yy_expression();
+  IF token1 NOTIN <S_FULLSTOP, S_DOTSPACE, S_END>
+    THEN @Syntax_Error("Missing `END'")
+    ELSE @yy_lex FI;
+ (@Make(T_Funct, < >, <name, args, ass, body, exp>)) .;
+
+
+MW_FUNCT @yy_bfunct() ==
+  VAR < name := < >, args := < >, ass := < >, body := < >, cond := < > >:
+  @yy_PRINT("Bfunct. definition");   
+  @yy_lex;
+  name := @yy_name("BFUNCT definition");
+  IF token1 = S_QUERY
+    THEN IF @ST(name) = T_Name
+           THEN name := @Name(@Make_Name(@N_String(@V(name)) ++ "?")) FI;
+         @yy_lex FI;
+  @yy_skip_symbol(S_LPAREN, "Missing `('");
+  IF token1 = S_RPAREN
+    THEN args := @Make(T_Lvalues, < >,< >)
+    ELSE args := @yy_lvalues() FI;
+  @yy_skip_symbol(S_RPAREN, "`)' expected");
+  @yy_skip_symbol(S_DEFINE, "Missing `=='");
+  IF token1 = S_VAR
+    THEN @yy_lex;
+         @yy_skip_symbol(S_LANGLE, "Missing `<'");
+         IF token1 = S_RANGLE
+	   THEN ass := @Make(T_Assigns,< >,< >) 
+           ELSE ass := @Make(T_Assigns, < >, @yy_assigns()) FI;
+         @yy_skip_symbol(S_RANGLE, "Missing `>'")
+  ELSIF token1 = S_COLON
+    THEN ass := @Make(T_Assigns, < >,< >)
+    ELSE ass := @yy_f_assigns() FI;
+  @yy_skip_symbol(S_COLON, "Missing `:'");
+  body := @yy_statements();
+  cond := @yy_condition();
+  IF token1 NOTIN <S_FULLSTOP, S_DOTSPACE, S_END>
+    THEN @Syntax_Error("Missing `END'")
+    ELSE @yy_lex FI;
+  ( @Make(T_BFunct, < >, <name, args, ass, body, cond>) ) .;
+
+
+C:" Parse the alternative form of ASSIGNS allowed in funct. definitions ";
+
+MW_FUNCT @yy_f_assigns() ==
+ VAR <assigns := < >>:
+   assigns := <@yy_assign()>;
+   WHILE token1 = S_SEMICOLON DO
+      @yy_lex;
+      assigns := <@yy_assign()> ++ assigns OD;
+ ( @Make(T_Assigns,< >,REVERSE(assigns)) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Proc call                                                                    ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_proc_call(name) ==
+ VAR < comps := @yy_proc_arg_list()>:
+@yy_PRINT("Proc. Call: "++@String(name));
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+ ( @Make(T_Proc_Call, < >, <@Make(T_Name, name, < >)> ++ comps) ) .;
+  
+
+MW_FUNCT @yy_proc_arg_list() ==
+ VAR <vals := < >, vars := < >>:
+   @yy_lex;
+   IF token1 = S_VAR THEN
+      @yy_lex;
+      vals := @Make(T_Expressions, < >,< >)
+   ELSIF token1 = S_RPAREN THEN 
+      vals := @Make(T_Expressions, < >,< >)
+    ELSE vals := @yy_expressions();
+	 IF token1 = S_VAR THEN @yy_lex FI FI;
+   IF token1 = S_RPAREN THEN
+      vars := @Make(T_Lvalues,< >,< >)  
+    ELSE C:" List of Lvalues ...";
+      vars := @yy_lvalues() FI;
+ ( <vals, vars> ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  !P call                                                                      ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_aproc_call() ==
+ VAR <name := < >, args := < >>:
+@yy_PRINT("!P or MW_Proc Call");
+   @yy_lex;
+   name := @yy_name("!P call");
+   IF token1 <> S_LPAREN THEN 
+      @Syntax_Error("Missing `(' or missing argument list")
+    ELSE args := @yy_proc_arg_list();
+	 @yy_skip_symbol(S_RPAREN,"Missing `)'") FI;
+ ( @Make(T_A_Proc_Call, < >, <name> ++ args) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  MW_Proc call                                                                 ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_mw_proc_call() ==
+ VAR <name := < >, args := < >>:
+@yy_PRINT("MW_PROC call");
+   name := @Make_Name("@"++token2);
+   @yy_lex;
+   IF token1 = S_LPAREN THEN 
+      args := @yy_proc_arg_list();
+      @yy_skip_symbol(S_RPAREN, "Missing `)'")
+    ELSE args := <@Make(T_Expressions,< >,< >),
+		  @Make(T_Lvalues, < >,< >)> FI;
+ ( @Make(T_MW_Proc_Call, < >, <@Make(T_Name, name, < >)> ++ args) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  !XP call                                                                     ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_x_proc_call() ==
+ VAR <name := < >, args := < >>:
+@yy_PRINT("!XP call");
+   @yy_lex;
+   IF token1 <> S_IDENTIFIER THEN 
+      @Syntax_Error("Missing procedure name in call");
+      name := @Make_Name("_Missing_")
+    ELSE name := @Make_Name(token2);
+	 @yy_lex FI; 
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument list");
+   IF token1 <> S_RPAREN THEN
+      args := @yy_expressions() FI;
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+   IF args =< > THEN args := @Make(T_Expressions,< >,< >) FI;
+ ( @Make(T_X_Proc_Call, < >, <@Make(T_Name, name, < >), args>) ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  FOREACH                                                                      ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_foreach() ==
+ VAR <type := < >, body := < >, S := < >>:
+@yy_PRINT("Foreach");
+   @yy_lex;
+   IF    token1 = S_STATEMENT  THEN type := T_Foreach_Stat; @yy_lex
+   ELSIF token1 = S_STATEMENTS THEN type := T_Foreach_Stats; @yy_lex
+   ELSIF token1 = S_VARIABLE   THEN type := T_Foreach_Variable; @yy_lex
+   ELSIF token1 = S_LVALUE     THEN type := T_Foreach_Lvalue; @yy_lex
+   ELSIF token1 = S_STS        THEN type := T_Foreach_STS; @yy_lex
+   ELSIF token1 = S_NAS        THEN type := T_Foreach_NAS; @yy_lex
+   ELSIF token1 = S_EXPRESSION THEN type := T_Foreach_Expn; @yy_lex
+   ELSIF token1 = S_CONDITION  THEN type := T_Foreach_Cond; @yy_lex
+   ELSIF token1 = S_TERMINAL   THEN @yy_lex;
+				    IF    token1 = S_STATEMENT THEN type := T_Foreach_TS;
+				       @yy_lex
+				    ELSIF token1 = S_STATEMENTS THEN type := T_Foreach_TSs;
+				       @yy_lex
+				     ELSE @Syntax_Error("Wrong type in `FOREACH Terminal'");
+				       @yy_lex FI
+   ELSIF token1 = S_GLOBAL     THEN @yy_lex;
+				    IF    token1 = S_VARIABLE THEN  @yy_lex;
+				       type := T_Foreach_Global_Var
+				     ELSE @Syntax_Error("Wrong type in `FOREACH Global'");
+					  @yy_lex FI
+    ELSE @Syntax_Error("Wrong or missing type in `FOREACH'");
+	 @yy_lex FI;
+
+    @yy_skip_symbol(S_DO, "Missing `DO' in `FOREACH'");
+    body := @yy_statements();
+    @yy_skip_symbol(S_OD, "Missing `OD' in `FOREACH'");
+    IF type = < > THEN S := @Make(T_Stat_Place,< >,< >)
+     ELSE S := @Make(type,< >,<body>) FI;
+ ( S ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  ATEACH                                                                      ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_ateach() ==
+ VAR <type := < >, body := < >, S := < >>:
+@yy_PRINT("Ateach");
+   @yy_lex;
+   IF     token1 = S_STATEMENT  THEN type := T_Ateach_Stat; @yy_lex
+    ELSIF token1 = S_STATEMENTS THEN type := T_Ateach_Stats; @yy_lex
+    ELSIF token1 = S_VARIABLE   THEN type := T_Ateach_Variable; @yy_lex
+    ELSIF token1 = S_LVALUE     THEN type := T_Ateach_Lvalue; @yy_lex
+    ELSIF token1 = S_STS        THEN type := T_Ateach_STS; @yy_lex
+    ELSIF token1 = S_NAS        THEN type := T_Ateach_NAS; @yy_lex
+    ELSIF token1 = S_EXPRESSION THEN type := T_Ateach_Expn; @yy_lex
+    ELSIF token1 = S_CONDITION  THEN type := T_Ateach_Cond; @yy_lex
+    ELSIF token1 = S_TERMINAL   THEN @yy_lex;
+				    IF    token1 = S_STATEMENT THEN type := T_Ateach_TS;
+				       @yy_lex
+				    ELSIF token1 = S_STATEMENTS THEN type := T_Ateach_TSs;
+				       @yy_lex
+				     ELSE @Syntax_Error("Wrong type in `ATEACH Terminal'");
+				       @yy_lex FI
+    ELSIF token1 = S_GLOBAL     THEN @yy_lex;
+				    IF token1 = S_VARIABLE THEN  @yy_lex;
+				       type := T_Ateach_Global_Var
+				     ELSE @Syntax_Error("Wrong type in `ATEACH Global'");
+					  @yy_lex FI
+     ELSE @Syntax_Error("Wrong or missing type in `ATEACH'");
+	  @yy_lex FI;
+
+    @yy_skip_symbol(S_DO, "Missing `DO' in `ATEACH'");
+    body := @yy_statements();
+    @yy_skip_symbol(S_OD, "Missing `OD' in `ATEACH'");
+    IF type = < > THEN S := @Make(T_Stat_Place,< >,< >)
+     ELSE S := @Make(type,< >,<body>) FI;
+ ( S ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  IFMATCH                                                                      ";
+C:"-------------------------------------------------------------------------------";
+
+
+MW_FUNCT @yy_ifmatch() ==
+ VAR <S := < >>:
+@yy_PRINT("IFMATCH");
+   @yy_lex;
+   IF    token1 = S_STATEMENT   THEN S := @yy_ifmatch_s(T_Statement, T_Ifmatch_Stat)
+   ELSIF token1 = S_STATEMENTS  THEN S := @yy_ifmatch_s(T_Statements, T_Ifmatch_Stats)
+   ELSIF token1 = S_LVALUE      THEN S := @yy_ifmatch_s(T_Lvalue, T_Ifmatch_Lvalue)
+   ELSIF token1 = S_LVALUES     THEN S := @yy_ifmatch_s(T_Lvalues, T_Ifmatch_Lvalues)
+   ELSIF token1 = S_EXPRESSION  THEN S := @yy_ifmatch_s(T_Expression, T_Ifmatch_Expn)
+   ELSIF token1 = S_EXPRESSIONS THEN S := @yy_ifmatch_s(T_Expressions, T_Ifmatch_Expns)
+   ELSIF token1 = S_CONDITION   THEN S := @yy_ifmatch_s(T_Condition, T_Ifmatch_Cond)
+   ELSIF token1 = S_ASSIGN      THEN S := @yy_ifmatch_s(T_Assign, T_Ifmatch_Assign)
+   ELSIF token1 = S_ASSIGNS     THEN S := @yy_ifmatch_s(T_Assigns, T_Ifmatch_Assigns)
+   ELSIF token1 = S_DEFINITION  THEN S := @yy_ifmatch_s(T_Definition, T_Ifmatch_Defn)
+   ELSIF token1 = S_DEFINITIONS THEN S := @yy_ifmatch_s(T_Definitions, T_Ifmatch_Defns)
+   ELSIF token1 = S_GUARDED     THEN S := @yy_ifmatch_s(T_Guarded, T_Ifmatch_Guarded)
+   ELSIF token1 = S_ACTION      THEN S := @yy_ifmatch_s(T_Action, T_Ifmatch_Action)
+    ELSE @Syntax_Error("Incorrect type in `IFMATCH'"); 
+           S := @Make(T_Stat_Place, < >,< >) FI;
+ ( S ) .;
+
+
+MW_FUNCT @yy_ifmatch_s(GT, result_type) ==
+ VAR <pat := < >, body := < >>:
+   @yy_lex;
+   pat := @yy_parse(GT);
+   body := @yy_ifmatch_body();
+ ( @Make(result_type,< >,<pat>++body) ) .;
+
+
+
+MW_FUNCT @yy_ifmatch_body() ==
+ VAR <S1 := < >, S2 := < >>:
+   @yy_skip_symbol(S_THEN, "Missing `THEN' in Ifmatch_Statement");
+   S1 := @yy_statements();
+   IF token1 = S_ELSE
+     THEN @yy_lex; S2 := @yy_statements()
+     ELSE S2 := @Skips FI;
+   @yy_skip_symbol(S_ENDMATCH, "Missing `ENDMATCH'");   
+ ( <S1, S2> ) .;
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Error                                                                        ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_error() ==
+  VAR <args := < >>:
+@yy_PRINT("Error");
+   @yy_lex;
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument list");
+   args := <@yy_expressions()>;
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+( @Make(T_Error, < >, args) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Specification Statement                                                      ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_spec() ==
+  VAR < vars := < >, cond := < > >:
+@yy_PRINT("Spec");
+  @yy_lex;
+  @yy_skip_symbol(S_LANGLE, "Missing `<' in specification statement");
+  vars := @yy_lvalues();
+  @yy_skip_symbol(S_RANGLE, "Missing `>' in specification statement");
+  @yy_skip_symbol(S_COLON, "Missing `:' in specification statement");
+  cond := @yy_condition();
+  @yy_skip_symbol(S_ENDSPEC, "Missing `ENDSPEC' in specification statement");  
+
+( @Make(T_Spec, < >, <vars, cond>) ) .;
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Maphash                                                                      ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_maphash() ==
+  VAR <args := < >>:
+@yy_PRINT("Maphash");
+   @yy_lex;
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument list");
+   IF token1 <> S_STRING THEN
+     @Syntax_Error("Missing string argument in MAPHASH");
+     args := <@Name(@Make_Name("_Missing_"))>
+   ELSE args := <@Name(@Make_Name(token2))>;
+	@yy_lex;
+	@yy_skip_symbol(S_COMMA, "Missing `,' or 2nd argument in MAPHASH") FI;
+   args := args ++ <@yy_s_expression()>;
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+( @Make(T_Maphash, < >, args) ) .;
+
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Statement patterns or Lvalue pats. at start of assignment statement.         ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_stat_pattern() ==
+  VAR < type := token1, name := < >, S := < >, comps := < > >:
+  @yy_parse_pattern(type VAR name, comps);
+  IF token1 IN <S_BECOMES, S_LBRACKET, S_FULLSTOP>
+    THEN C:" Tis an assignment ";
+         @yy_PRINT("Lvalue pattern");
+         type := pattern_type.(<T_Lvalue, type>);
+         S := @yy_single_assign(@Make(type, name, comps))
+    ELSE type := pattern_type.(<T_Statement, type>);
+         @yy_PRINT("Statement pattern");
+         S := @Make(type, name, comps) FI;
+ ( S ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Comma-separated list of Lvalues.                                             ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_lvalues() ==
+ VAR <vals := <@yy_lvalue>>:
+   WHILE token1 = S_COMMA DO
+      @yy_lex;
+      vals := <@yy_lvalue()> ++ vals OD;
+ ( @Make(T_Lvalues, < >,REVERSE(vals)) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Lvalue.                                                                      ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_lvalue() ==
+  VAR < name := < >, S := < >, type := token1, comps := < > >:
+  IF Patterns[token1] = 1
+    THEN @yy_parse_pattern(type VAR name, comps);
+         type := pattern_type.(<T_Lvalue, type>);
+         S := @Make(type, name, comps)
+  ELSIF token1 = S_MEM
+    THEN S := @yy_lv_mem_ref()
+    ELSE IF token1 <> S_IDENTIFIER
+           THEN @Syntax_Error("Missing variable name for Lvalue");
+                name := @Make_Name("_Missing_")
+           ELSE name := @Make_Name(token2);
+                @yy_lex FI;
+	 S := @Make(T_Var_Lvalue, name, < >) FI;
+  C:" Now check for array or structure reference";
+  S := @yy_lv_array_check(S);
+  (S) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  Array references (bracketed parts).                                          ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_lv_array_ref(lval) ==
+ VAR <exps := < >, S := < >,type := < >>:
+   @yy_lex;
+   exps := <@yy_expression()>;
+   IF    token1 = S_RBRACKET THEN
+      type := T_Aref_Lvalue;
+	  C:" TODO: Remove the next line to change the abstract syntax of";
+	  C:" Aref_Lvalue to be <Lvalue,Expression>";
+      exps := <@Make(T_Expressions,< >,exps)>
+   ELSIF token1 = S_COMMA THEN
+      type := T_Rel_Seg_Lvalue;
+      @yy_lex;
+      exps  := exps ++ <@yy_expression()>
+   ELSIF token1 = S_DOTDOT THEN
+      @yy_lex;
+      IF token1 = S_RBRACKET THEN
+	 type := T_Final_Seg_Lvalue
+       ELSE  type := T_Sub_Seg_Lvalue;
+	     exps  := exps ++ <@yy_expression()> FI
+    ELSE @Syntax_Error("Malformed array subscript");
+	 type := T_Aref_Lvalue; C:"Try to continue" FI;
+   @yy_skip_symbol(S_RBRACKET, "Missing `]'");
+   exps := <lval> ++ exps;
+ ( @Make(type,< >,exps) ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  Memory references.                                                           ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_lv_mem_ref() ==
+  VAR <exps := < >, S := < >,type := < >>:
+  @yy_lex;
+  exps := <@yy_expression()>;
+  IF token1 = S_RBRACKET
+    THEN type := T_Mem_Lvalue;
+  ELSIF token1 = S_COMMA
+    THEN type := T_Mem_Rel_Lvalue;
+         @yy_lex;
+         exps  := exps ++ <@yy_expression()>
+  ELSIF token1 = S_DOTDOT
+    THEN @yy_lex;
+         IF token1 = S_RBRACKET
+           THEN @Syntax_Error("Malformed memory sub seg");
+           ELSE type := T_Mem_Seg_Lvalue;
+                exps := exps ++ <@yy_expression()> FI
+   ELSE @Syntax_Error("Malformed memory subscript");
+        type := T_Mem_Lvalue; C:"Try to continue" FI;
+  @yy_skip_symbol(S_RBRACKET, "Missing `]' in memory reference");
+( @Make(type,< >,exps) ) .;
+
+C:"-------------------------------------------------------------------------------";
+C:"  Structure references.                                                        ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_lv_struct_ref(lval) ==
+ VAR <name := < >>:
+   IF token1 = S_IDENTIFIER THEN
+      name := @Make_Name(token2);
+      @yy_lex
+    ELSE @Syntax_Error("Missing structure element name");
+	 name := @Make_Name("_Missing_") FI;     
+ ( @Make(T_Struct_Lvalue, < >, <@Make(T_Name, name, < >), lval>) ) .;
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+C:"                       Here endeth the parser                                  ";
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"    Initialisation routine                                                     ";
+C:"-------------------------------------------------------------------------------";
+ 
+
+MW_PROC @initialise() ==
+ @yy_PRINT("Initialising ...");
+ Error_Count := 0;
+ yy_lineno := 1;
+
+ C:" Populate the hash table of reserved words";    
+ VAR <temp := Keywords, A := < >>:
+    Key_Table := HASH_TABLE;
+    WHILE temp <> < > DO
+       A := HEAD(temp);
+       Key_Table.(A[2]) := A[1];
+       temp := TAIL(temp) OD;
+
+    C:" Populate hash table of lexer/meta-WSL types";
+    temp := Types; A := < >;
+    Type_Table := HASH_TABLE;
+    WHILE temp <> < > DO
+       A := HEAD(temp);
+       Type_Table.(A[2]) := A[1];
+       temp := TAIL(temp) OD;
+
+    C:" Build list of single-char terminals and hash table ";
+    C:" of their corresponding lexer symbols.              ";
+    temp := char_table; A := < >;
+    Char_Table := HASH_TABLE;
+    Single_Chars := @List_To_Set(MAP("HEAD", temp));
+    WHILE temp <> < > DO
+       A := HEAD(temp);
+       Char_Table.(A[1]) := A[2];
+       temp := TAIL(temp) OD ENDVAR;  
+
+ C:" Prime the lexer: ";
+ C:" Set up the first character in `yy_ch' ...";
+ yy_ch := @yy_next();
+ C:" Turn the lexer over once: read in the first token ... ";
+ @yy_crank;
+ C:" ... and get the first token into token1 and token2 ";
+ @yy_lex .;
+
+C:"-------------------------------------------------------------------------------"
+

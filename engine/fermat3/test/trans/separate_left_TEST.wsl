@@ -1,0 +1,90 @@
+@Test_Trans(" 1st test of `Separate_Left'",
+	   (FILL Statements IF x = y THEN z := 1; y := 2 ELSE z := 1; y := 3 FI ENDFILL),
+	   <1>,
+	   TR_Separate_Left,
+	   < >,
+	   (FILL Statements z := 1; IF x = y THEN y := 2 ELSE y := 3 FI ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Separate_Left'",
+	   (FILL Statements IF x = z THEN z := 1; y := 2 ELSE z := 1; y := 3 FI ENDFILL),
+	   <1>,
+	   TR_Separate_Left,
+	   < >,
+	   "Fail");
+
+
+@Test_Trans(" 3rd test of `Separate_Left'",
+	   (FILL Statements IF x = y THEN z := 1 ELSE z := 1; y := 3 FI ENDFILL),
+	   <1>,
+	   TR_Separate_Left,
+	   < >,
+	   (FILL Statements z := 1; IF x <> y THEN y := 3 FI ENDFILL));
+
+
+@Test_Trans(" 4th test of `Separate_Left'",
+	   (FILL Statements IF x = y THEN z := 1 ELSE z := 1 FI ENDFILL),
+	   <1>,
+	   TR_Separate_Left,
+	   < >,
+	   (FILL Statements z := 1 ENDFILL));
+
+
+@Test_Trans(" 5th test of `Separate_Left'",
+	   (FILL Statements IF x = f(y) THEN z := 1; y := 2 ELSE z := 1; y := 3 FI ENDFILL),
+	   <1>,
+	   TR_Separate_Left,
+	   < >,
+	   "Fail");
+
+
+@Test_Trans(" 6th test of `Separate_Left'",
+	   (FILL Statements BEGIN z := 1; F(z) WHERE PROC F(z) == y := x END END ENDFILL),
+	   <1>,
+	   TR_Separate_Left,
+	   < >,
+	   (FILL Statements z := 1; BEGIN F(z) WHERE PROC F(z) == y := x END END ENDFILL));
+
+
+@Test_Trans(" 7th test of `Separate_Left'",
+	   (FILL Statements VAR < v := 1 >:  z := 1; y := z + v ENDVAR ENDFILL),
+	   <1>,
+	   TR_Separate_Left,
+	   < >,
+	   (FILL Statements z := 1; VAR < v := 1 >:  y := z + v ENDVAR ENDFILL));
+
+
+@Test_Trans(" 8th test of `Separate_Left'",
+	   (FILL Statements VAR < v := 1 >:  z := 1; y := z + y ENDVAR ENDFILL),
+	   <1>,
+	   TR_Separate_Left,
+	   < >,
+	   (FILL Statements z := 1; y := z + y ENDFILL));
+
+
+@Test_Trans(" 9th test of `Separate_Left'",
+	   (FILL Statements IF i = n
+                              THEN i := i + 1;
+			           !P write(line VAR os);
+				   EXIT(2)
+                            ELSIF last <> item[i + 1]
+                              THEN i := i + 1;
+                                   !P write(line VAR os);
+                                   line := "";
+                                   EXIT(1)
+                              ELSE i := i + 1 FI ENDFILL),
+	   <1>,
+	   TR_Separate_Left,
+	   < >,
+	   (FILL Statements i := i + 1;
+                            IF i - 1 = n
+                              THEN !P write(line VAR os);
+			           EXIT(2)
+                            ELSIF last <> item[i - 1 + 1]
+                              THEN !P write(line VAR os);
+			           line := "";
+				   EXIT(1) FI ENDFILL));
+
+SKIP
+
+

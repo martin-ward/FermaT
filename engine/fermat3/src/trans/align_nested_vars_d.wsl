@@ -1,0 +1,9 @@
+TR_Align_Nested_Vars:= @New_TR_Number;
+TRs_Name[TR_Align_Nested_Vars] := "Align_Nested_Vars";
+TRs_Proc_Name[TR_Align_Nested_Vars] := "Align_Nested_Vars";
+TRs_Test[TR_Align_Nested_Vars]:=!XF funct(@Align_Nested_Vars_Test);
+TRs_Code[TR_Align_Nested_Vars]:=!XF funct(@Align_Nested_Vars_Code);
+TRs_Keywords[TR_Align_Nested_Vars] := < "Simplify" >;
+TRs_Help[TR_Align_Nested_Vars] := "Aligns nested VAR blocks into a single block if the variables are all different"; 
+TRs_Prompt[TR_Align_Nested_Vars] := "";
+TRs_Data_Gen_Type[TR_Align_Nested_Vars] := "" 

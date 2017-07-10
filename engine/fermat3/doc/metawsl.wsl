@@ -1,0 +1,27 @@
+
+C:" A sample of MetaWSL code ";
+
+FOREACH Statement DO
+   DO IFMATCH Statement
+	IF ~*G1
+	ELSIF ~?B1 THEN ~+S1; ~+S
+	ELSIF ~?B2 THEN ~+S2; ~+S
+	ELSIF ~*G2 FI
+      THEN VAR < B := @Or(B1, B2) >:
+	   C: "Choose the simpler condition for the inside `IF'.";
+	   C: "For convenience of later transformation, assertions are also included.";
+	   IF (@Total_Size(B1) > @Total_Size(B2)) AND (@Spec_Type(B2) <> T_True)
+	     THEN @Paste_Over(FILL Statement
+			      IF ~*G1
+			      ELSIF ~?B THEN IF ~?B2 THEN {~?B2}; ~*S2
+						     ELSE {~?B1}; ~*S1 FI;
+					     ~*S
+			      ELSIF ~*G2 FI ENDFILL)
+	     ELSE @Paste_Over(FILL Statement
+			      IF ~*G1
+			      ELSIF ~?B THEN IF ~?B1 THEN {~?B1}; ~*S1
+						     ELSE {~?B2}; ~*S2 FI;
+					     ~*S
+			      ELSIF ~*G2 FI ENDFILL) FI;
+	   @Fix_Cond ENDVAR
+      ELSE EXIT(1) ENDMATCH OD OD

@@ -1,0 +1,97 @@
+How to write a transformation:
+
+(1) Write the WSL files foo.wsl (containing the definitions
+of procedures @Foo_Test and @Foo_Code) and foo_d.wsl
+(containing various assignments, especially to TR_Foo).
+
+(2) Check the syntax with:
+
+wslsyn foo.wsl
+wslsyn foo_d.wsl
+
+(3) Translate to Scheme with:
+
+wsl2scm foo.wsl
+wsl2scm foo_d.wsl
+
+(4) Write a patch file "patch.tr" containing:
+
+(define //T/R_/Foo '())
+(load "foo.scm")
+(load "foo_d.scm")
+...code to move to the right point in the tree...
+
+NOTE that all upper case letters in WSL symbols must be preceded
+with a slash (/) and there must be an initial slash added
+to convert a WSL symbol to the equivalent Scheme symbol.
+This is because Scheme is case-insensitive and to avoid
+clashes between WSL and Scheme symbols.
+
+All new variables used in your code must be defined in the patch file.
+
+Movement code could be a sequence of move commands:
+
+(@Up)
+(@Down)
+(@Left)
+(@Right)
+(@To n)
+(@Down_To n)
+
+or a @Goto:
+
+(@Goto '(n1 n2 n3 ...))
+
+or a @Find_Type:
+
+(@Find_Type //T_/Cond)
+
+or any combination of the above.
+
+(5) Write a sample imput file, xxx.wsl
+
+(6) Test the transformation with:
+
+dotrans xxx.wsl yyy.wsl TR_Foo
+
+NOTE: Rather than add (@Find_Type ...) to patch.tr you can give
+the required type as an option to the dotrans command:
+
+dotrans xxx.wsl yyy.wsl type=Cond TR_Foo
+
+
+
+If you get an error, you can run the system using the Gambit
+Scheme Interpreter which has a nice debugging environment:
+
+dotrans -gambit xxx.wsl yyy.wsl TR_Foo
+
+.....
+
+>
+
+type ,? for help
+
+
+Email me (martin@gkc.org.uk) if you need help!
+
+
+
+This directory contains sample code for a simple WSL transformation
+to reverse the arms of an IF statement, together with a sample
+patch.tr file to load the new transformation.
+
+To test it, type:
+
+dotrans test_reverse_if-1.wsl type=Cond Reverse_If
+
+The transformed program is put into file test_reverse_if-2.wsl
+
+
+See also sample_code.wsl for a sample of WSL and MetaWSL code
+including how to invoke a transformation from within WSL.
+
+
+
+
+

@@ -1,0 +1,72 @@
+C:" <ENTRY POINT> ";
+C:" <NAME=FMT001A2> ";
+r1 := __r1_init__;
+r2 := __r2_init__;
+r3 := __r3_init__;
+r4 := __r4_init__;
+r5 := __r5_init__;
+r6 := __r6_init__;
+r7 := __r7_init__;
+r8 := __r8_init__;
+r9 := __r9_init__;
+r10 := __r10_init__;
+r11 := __r11_init__;
+r12 := __r12_init__;
+r13 := __r13_init__;
+r14 := __r14_init__;
+C:"*********************************************************************";
+C:"<FermaT> 00000033 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+!P push_regs(r0,
+              r1,
+              r2,
+              r3,
+              r4,
+              r5,
+              r6,
+              r7,
+              r8,
+              r9,
+              r10,
+              r11,
+              r12,
+              r13,
+              r14
+  VAR reg_stack);
+!P chain_reg( VAR r13, os);
+C:"<FermaT> 00000034 r3 r15";
+C:"<FermaT> 00000036 WSAVE WSAVE[5] WSAVE[6] WSAVE[7] WSAVE[8] r3 r13";
+C:"<FermaT> 00000037 WSAVE r14 r3";
+C:"<FermaT> 00000038 r13 r14";
+C:"<FermaT> 00000039 WSAVE r13 r3";
+C:"*";
+C:"<FermaT> 00000041 PRINT1 r15";
+result_code := NOT_USED;
+!P OPEN(PRINT1, "OUTPUT" VAR result_code, os);
+C:"<FermaT> 00000052 WPRT r3";
+WPRT[1..25] := "CALL TO FUNCTION FMT001A2";
+C:"<FermaT> 00000053 PRINT1 WPRT r15";
+C:"FIXME: Unknown File max for PRINT1 ";
+C:"FIXME: Unknown File max for PRINT1 ";
+C:"FIXME: Unknown File min for PRINT1 ";
+C:"FIXME: Unknown File max for PRINT1 ";
+C:"FIXME: Unknown File max for PRINT1 ";
+C:"FIXME: Unknown File min for PRINT1 ";
+result_code := NOT_USED;
+!P PUT_FIXED(PRINT1, WPRT[1] VAR result_code, os);
+C:"<FermaT> 00000059 PRINT1 r15";
+result_code := NOT_USED;
+!P CLOSE(PRINT1 VAR result_code, os);
+C:"*";
+C:"<FermaT> 00000074 WTOTAL r3";
+!P zap(!XF p_dec("hex 0x0C", "0") VAR WTOTAL);
+C:"<FermaT> 00000075 WCT r3";
+!P ap(!XF p_dec("hex 0x1C", "1") VAR WCT);
+C:"<FermaT> 00000076 WNUM r3";
+!P ap(!XF p_dec("hex 0x1C", "1") VAR WNUM);
+C:"*";
+C:"<FermaT> 00000078 WSAVE WSAVE[5] WSAVE[6] WSAVE[7] WSAVE[8] r13 r3";
+C:"<FermaT> 00000079 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+SKIP;
+C:"<FermaT> 00000080 r15";
+r15 := 0;
+C:"<FermaT> 00000081 r14"

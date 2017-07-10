@@ -1,0 +1,18 @@
+
+MW_PROC @copy(P, Q) ==
+  VAR < P0 := P>:
+  ACTIONS A:
+  A == C[Q] := C[P]; E[Q] := E[P];
+     IF D[P] = NIL
+        THEN D[Q] := NIL; CALL hatA
+        ELSE P := D[P]; @Pop_Avail(VAR R1); D[Q] := R1; U[R1] := Q; Q := R1; CALL B1 FI .
+  B1 == CALL A .
+  hatA == IF P = P0 THEN CALL Z
+                  ELSE CALL A1 FI .
+  A1 == IF E[R[P]] = 0
+        THEN VAR < S := D[U[Q]] >: R[Q] := S; L[S] := Q ENDVAR;
+	     Q := U[Q]; P := U[P]; CALL hatA
+        ELSE P := R[P];
+            @Pop_Avail(VAR R1); U[R1] := U[Q]; L[R1] := Q; R[Q] := R1; Q := R1;
+            CALL B1 FI . ENDACTIONS ENDVAR .
+

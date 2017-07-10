@@ -1,0 +1,165 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Take_Out_Right_Test() ==
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF @GT(@I) <> T_Statement
+    THEN @Fail("The selected item is not a Statement.")
+  ELSIF @Right?
+    THEN @Fail("There is a statement to the right of this one.")
+  ELSIF NOT @Up?
+    THEN @Fail("There is no structure out of which to take this item.")
+  ELSIF NOT EMPTY?(@Stat_Types(@I) /\ Ext_Call_Types_Set)
+    THEN @Fail("There are undetermined procedure or function calls in the selected item.")
+    ELSE VAR < S := @I, Orig_AS := @AS_Type >:
+	 @Save_State;
+	 @Delete;
+	 @Up;
+	 IF NOT @Up?
+	   THEN @Fail("There is no structure out of which to take this item.")
+	   ELSE @Up;
+		IF @ST(@I) = T_For
+		  THEN @Take_Out_Right_Test_For(S)
+		ELSIF @ST(@I) = T_Var
+		  THEN @Take_Out_Right_Test_Var(S)
+		ELSIF @ST(@I) = T_Where
+		  THEN @Take_Out_Right_Test_Where(S)
+		ELSIF @ST(@I) = T_While
+		  THEN @Take_Out_Right_Test_While(S)
+		ELSIF @GT(@I) = T_Guarded AND @ST(@Parent) <> T_D_Do
+		  THEN @Take_Out_Right_Test_Guarded(S, Orig_AS)
+		  ELSE @Fail("The enclosing item is not of a suitable type.") FI FI;
+	 @Undo ENDVAR FI .;
+
+
+MW_PROC @Take_Out_Right_Test_For(S) ==
+  IF NOT EMPTY?(@Assigned(S) /\ @Used(S))
+    THEN @Fail("A statement cannot be taken out of a `For' if it could assign to variables it uses.")
+    ELSE C: "The thing being assigned is OK, but can it be taken from the loop?";
+	 VAR < L := @V(@I^1), E1 := @I^2, E2 := @I^3, E3 := @I^4, Body := @I^5,
+	       Assd := @Assigned(S) >:
+	 C: "Check that the loop doesn't use the same variables as the other statement...";
+	 C: "...and check that the loop will be executed at least once.";
+	 IF L IN @Variables(S)
+	   THEN @Fail("The statement uses the loop index.")
+	 ELSIF NOT EMPTY?(Assd /\ @Used(Body))
+	   THEN @Fail("The statement changes variables which are used in the loop body")
+	 ELSIF NOT ((@True?(FILL Condition ~?E3 > 0 ENDFILL) AND
+		     @True?(FILL Condition ~?E2 >= ~?E1 ENDFILL)) OR
+		    (@True?(FILL Condition ~?E3 < 0 ENDFILL) AND
+		     @True?(FILL Condition ~?E2 <= ~?E1 ENDFILL)))
+	   THEN @Fail("Cannot prove that the loop will be executed.")
+	   ELSE @Pass FI ENDVAR FI .;
+
+
+MW_PROC @Take_Out_Right_Test_Var(S) ==
+  C: "Check that the statement to be taken out doesn't use any of the local variables.";
+  VAR <Local := @Assigned(@I^1)> :
+  IF NOT EMPTY?(Local /\ @Variables(S))
+    THEN @Fail("The selected statement being uses some of the local variables.")
+  ELSIF NOT EMPTY?(@Stat_Types(S) /\ @Make_Set(<T_MW_Proc_Call, T_Proc_Call>))
+    THEN @Fail("Calls in the statement may use the local variables")
+    ELSE @Pass FI ENDVAR .;
+
+
+MW_PROC @Take_Out_Right_Test_Where(S) ==
+  C: "Check that the statement to be taken out doesn't use any of the definitions.";
+  VAR <D := @Make_Set(MAP("@V1", @Cs(@I^2)))> :
+  IF NOT EMPTY?(D /\ @Make_Set(MAP("HEAD", @Proc_Calls(S)) ++ MAP("HEAD", @Funct_Calls(S))))
+    THEN @Fail("The statement being taken out uses some of the definitions.")
+    ELSE @Pass FI ENDVAR .;
+
+
+MW_PROC @Take_Out_Right_Test_While(S) ==
+  IF NOT EMPTY?(@Assigned(S) /\ @Used(S))
+    THEN @Fail("A statement cannot be taken out into a `While' if it could assign to variables it uses.")
+    ELSE C: "The thing being assigned is OK, but can it be taken from the loop?";
+	 VAR < B := @I^1 >:
+	 C: "Check that the loop doesn't use the same variables as the other statement.";
+	 C: "Now check that the loop will be executed at least once.";
+	 C: "This is done by looking for an assertion before the loop.";
+	 IF NOT EMPTY?(@Assigned(S) /\ @Variables(@I))
+	   THEN @Fail("The loop used some variables assigned in the other statement.")
+	 ELSIF NOT @Left? OR @ST(@Parent^(@Posn_n - 1)) <> T_Assert
+	   THEN @Fail("There is no assertion before the loop.")
+	   ELSE @Left;
+		C: "The assertion my imply that the loop executes at least once.";
+		IF NOT @Implies?(@I^1, B)
+		  THEN @Fail("The assertion does not imply that the loop executes.")
+		ELSIF NOT EMPTY?(@Assigned(S) /\ @Variables(@I))
+		  THEN @Fail("The assertion could be changed by the statement being taken out.")
+		  ELSE @Pass FI FI ENDVAR FI .;
+
+
+MW_PROC @Take_Out_Right_Test_Guarded(S, AS_Type) ==
+  C: "This function is called with a guarded selected.";
+  VAR < P := @Posn_n, A := @Assigned(S) >:
+  WHILE NOT @Failed? AND @Left? DO
+    @Left;
+    IF 0 IN @Gen_TVs(@I^2, AS_Type)
+      THEN @Down_Last; @Down_Last;
+	   IF NOT (@Equal?(@I, S) OR (@ST(@I) = T_Exit AND @V(@I) > 1))
+	     THEN @Fail("The selected statement does not end each guard.") FI;
+	   @Up; @Up FI OD;
+  @To(P);
+  WHILE NOT @Failed? AND @Right? DO
+    @Right;
+    IF 0 IN @Gen_TVs(@I^2, AS_Type)
+      THEN @Down_Last; @Down_Last;
+	   IF NOT (@Equal?(@I, S) OR (@ST(@I) = T_Exit AND @V(@I) > 1))
+	     THEN @Fail("The selected statement does not end each guard.") FI;
+	   @Up; @Up FI OD;
+  IF NOT @Failed? THEN @Pass FI ENDVAR .;
+
+
+C: "-------------------------------------------------------------------------";
+
+
+MW_PROC @Take_Out_Right_Code(Data) ==
+  IF (@GT(@I) = T_Assign) AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  VAR <S := @I, P1 := < >, P2 := < >, P3 := < >> :
+  P1 := @Posn_n; @Up;
+  P2 := @Posn_n; @Up;
+  IF @GT(@I) = T_Guarded
+    THEN @Up;
+	 @Edit_Parent;
+	 @Down;
+	 DO @Down_Last; @Down_Last;
+	    IF @Equal?(@I, S) THEN @Delete FI;
+	    @Up; @Up;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	    @Up;
+	    @Paste_After(S);
+	    IF @ST(@I) = T_Cond
+	      THEN @Fix_Cond
+	      ELSE @Fix_Dijkstra FI;
+	    @End_Edit
+    ELSE @Edit_Parent;
+	 @Paste_After(S);
+	 @Down_To(P2); @Down_To(P1);
+	 @Clever_Delete;
+	 @End_Edit FI ENDVAR .;
+
+
+SKIP
+
+
+

@@ -1,0 +1,173 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Replace_Accs_With_Value_Test () ==
+  C:" For speed, we just check for occurrences of the accumulators ";
+  VAR < accs := @Make_Set(MAP("@Make_Name", <"ax", "bx", "cx", "dx", "si", "di",
+					     "zf", "cf", "__tmp", "__junk",
+					     "__tmp1",   "__tmp2",   "__tmp3", 
+					     "__tmp4",   "__tmp5",   "__tmp6", 
+					     "__tmp7",   "__tmp8",   "__tmp9", 
+					     "__tmp10",  "__tmp11",  "__tmp12", 
+					     "__tmp13",  "__tmp14",  "__tmp15", 
+					     "__cpar1",  "__cpar2",  "__cpar3",
+					     "__cpar4",  "__cpar5",  "__cpar6",
+					     "__cpar7",  "__cpar8",  "__cpar9",
+					     "__cpar10", "__cpar11", "__cpar12",
+					     "__cpar13", "__cpar14", "__cpar15",
+					     "a0", "a1", "a2", "a3",
+					     "a4", "a5", "a6", "a7",
+					     "a8", "a9", "a10","a11",
+					     "a12","a13","a14","a15",
+					     "x0", "x1", "x2", "x3",
+					     "x4", "x5", "x6", "x7",
+					     "x8", "x9", "x10","x11",
+					     "x12","x13","x14","x15",
+					     "r0", "r1", "r2", "r3",
+					     "r4", "r5", "r6", "r7",
+					     "r8", "r9", "r10","r11",
+					     "r12","r13","r14","r15", "cc",
+					     "IHADCB" >)) >:
+  IF NOT EMPTY?(accs /\ @Used(@Item))
+      OR @Cs?(@I) AND NOT EMPTY?(accs /\ @Used(@I^1))
+    THEN @Pass
+    ELSE @Fail("No accumulators are used in the selected item.") FI ENDVAR .;
+
+Max_Expression_Size := 20;
+
+MW_PROC @Replace_Accs_With_Value_Code (Data) ==
+  VAR < accs := @Make_Set(MAP("@Make_Name", <"ax", "bx", "cx", "dx", "si", "di",
+					     "zf", "cf", "__tmp", "__junk",
+					     "__tmp1",   "__tmp2",   "__tmp3", 
+					     "__tmp4",   "__tmp5",   "__tmp6", 
+					     "__tmp7",   "__tmp8",   "__tmp9", 
+					     "__tmp10",  "__tmp11",  "__tmp12", 
+					     "__tmp13",  "__tmp14",  "__tmp15", 
+					     "__cpar1",  "__cpar2",  "__cpar3",
+					     "__cpar4",  "__cpar5",  "__cpar6",
+					     "__cpar7",  "__cpar8",  "__cpar9",
+					     "__cpar10", "__cpar11", "__cpar12",
+					     "__cpar13", "__cpar14", "__cpar15",
+					     "a0", "a1", "a2", "a3",
+					     "a4", "a5", "a6", "a7",
+					     "a8", "a9", "a10","a11",
+					     "a12","a13","a14","a15",
+					     "x0", "x1", "x2", "x3",
+					     "x4", "x5", "x6", "x7",
+					     "x8", "x9", "x10","x11",
+					     "x12","x13","x14","x15",
+					     "r0", "r1", "r2", "r3",
+					     "r4", "r5", "r6", "r7",
+					     "r8", "r9", "r10","r11",
+					     "r12","r13","r14","r15", "cc",
+					     "IHADCB" >)),
+	DSECTs := HASH_TABLE >:
+  Options := @Read_Options_File(Options_File);
+  IF NOT EMPTY?(Options.("Max_Expression_Size"))
+    THEN Max_Expression_Size  := Options.("Max_Expression_Size") FI;
+
+  C:" Compute the DSECT pointer names ";
+  @CP_Find_DSECTs(VAR DSECTs);
+
+  PRINT("DSECTs = ", MAP("@N_String", @Hash_Keys(DSECTs)));
+
+  C:" ATEACH Variable does not work at all!!! Grrr... ";
+  @RAWV(accs);
+  PRINT(" ") ENDVAR .;
+
+
+MW_PROC @RAWV(accs) ==
+  VAR < elt := < > >:
+
+  C:" Don't replace r15 in assignment destination := r15 ";
+  C:" (Otherwise C_P can't tell that its a call rather than a return) ";
+  IF NOT EMPTY?(@Posn) AND @ST(@Parent) = T_Struct
+    THEN   C:" Don't replace in a struct "
+  ELSIF @ST(@I) = T_Variable AND @V(@I) = @Make_Name("r15")
+          AND LENGTH(@Posn) > 1 AND @ST(@GParent) = T_Assignment
+          AND @ST(@GParent^1^1) = T_Var_Lvalue
+          AND @V(@GParent^1^1) = @Make_Name("destination")
+   THEN C:" Don't replace in destination := r15 "
+  ELSIF @ST(@I) = T_Variable AND @V(@I) IN accs
+    THEN elt := <@V(@I)>;
+         IF @V(@I) = @Make_Name("IHADCB") AND @ST(@GParent) IN <T_Aref, T_Aref_Lvalue>
+	   THEN elt := < > FI
+  ELSIF @ST(@I) = T_Aref AND @ST(@I^1) = T_Variable AND @V(@I^1) IN accs
+	  AND @Size(@I^2) = 1 AND @ST(@I^2^1) = T_Number
+    THEN elt := <@V(@I^1), -@V(@I^2^1)> FI;
+
+  IF NOT EMPTY?(elt)
+    THEN VAR < val := @Find_Value(elt) >:
+	 IF EMPTY?(val)
+	   THEN PRINFLUSH(".")
+         ELSIF @ST(val) = T_X_Funct_Call AND @V(val^1) = address_of
+	         AND @ST(val^2^1) = T_String
+           THEN PRINFLUSH("."); C:" Don't replace the address of a string! "
+         ELSIF NOT EMPTY?(@Variables(val) /\ reg_inits)
+	   THEN PRINFLUSH(".")
+         ELSIF a_name IN @Variables(val) AND NOT EMPTY?(@Variables(val) /\ accs)
+	   THEN C:" Replacing a register with a[..reg..] is not very useful ";
+	        PRINFLUSH("r")
+         ELSIF @ST(val) = T_Variable AND @Starts_With?(@V(val), "NOTUSED_")
+	   THEN C:" Don't replace a variable with NOTUSED_nnn ";
+	        PRINFLUSH(".")
+	 ELSIF @Posn_n > 1
+	   THEN PRINFLUSH("x"); @Paste_Over(val)
+	 ELSIF @ST(@Parent) IN <T_Aref, T_Sub_Seg, T_Rel_Seg>
+		 AND @ST(val) <> T_Variable
+	   THEN PRINFLUSH(".")
+	 ELSIF @ST(@Parent) IN <T_Aref_Lvalue, T_Sub_Seg_Lvalue, T_Rel_Seg_Lvalue>
+		 AND @ST(val) <> T_Var_Lvalue
+	   THEN PRINFLUSH(".")
+         ELSIF address_of IN MAP("HEAD", @X_Funct_Calls(val))
+	         AND LENGTH(@Posn) > 2
+	         AND (@ST(@GParent) IN <T_Aref, T_Aref_Lvalue>
+		       OR @ST(@GGParent) IN <T_Aref, T_Aref_Lvalue>)
+           THEN PRINFLUSH("x"); @Paste_Over(val)
+         ELSIF @Variables(val) = <a_name>
+	   THEN PRINFLUSH("x"); @Paste_Over(val)
+         ELSIF NOT @Is_Addr?(val) AND @Total_Size(val) > Max_Expression_Size
+	   THEN PRINFLUSH("b")
+	   ELSE PRINFLUSH("x"); @Paste_Over(val) FI ENDVAR
+  ELSIF @ST(@I) = T_A_Proc_Call AND @Make_Name("vpp") IN @Assigned(@I)
+    THEN C:" Don't replace in a vpp function "
+  ELSIF @ST(@I) = T_A_Proc_Call AND @Make_Name("regs") IN @Assigned(@I)
+    THEN C:" Don't replace in a call "
+  ELSIF @ST(@I) = T_A_Proc_Call AND @V(@I^1) = @Make_Name("EXEC_CICS")
+    THEN C:" Don't replace in a CICS call since the register may be modified "
+  ELSIF @ST(@I) = T_A_Proc_Call AND @V(@I^1) = @Make_Name("str_copy")
+    THEN C:" Don't replace in str_cpy since the length might be different "
+  ELSIF @ST(@I) = T_Assign AND @ST(@I^1) = T_Var_Lvalue AND NOT EMPTY?(DSECTs.(@V(@I^1)))
+    THEN C:" Don't replace the register in a DSECT pointer assignment "
+  ELSIF @Cs?(@I)
+    THEN @Down;
+	 DO IF NOT EMPTY?(@Used(@I) /\ accs)
+	      THEN @RAWV(accs)
+	    ELSIF @ST(@I) = T_Var AND NOT EMPTY?(@Used(@I^1) /\ accs)
+	      THEN @RAWV(accs) FI;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up FI ENDVAR.;
+
+
+
+
+SKIP
+

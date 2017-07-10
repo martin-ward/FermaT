@@ -1,0 +1,122 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" Create a local WHERE for procs which are only called in the selected item. ";
+C:" Note: this only looks at the nearest enclosing WHERE, but can be applied ";
+C:" to a WHERE clause so that procs can be iteratively moved to more local ";
+C:" WHERE clauses ";
+
+
+MW_PROC @Localise_Procs_Test() ==
+  IF @GT(@I) NOTIN <T_Statement, T_Statements>
+    THEN @Fail("Current item is not a Statement or Statements.")
+  ELSIF NOT @Up?
+    THEN @Fail("Current statement is whole program (not a local statement).")
+  ELSIF EMPTY?(@Proc_Calls(@I))
+    THEN @Fail("The current item contains no proc calls.")
+  ELSIF NOT @Gen_Proper?(@I, @AS_Type)
+    THEN @Fail("The current item is not a proper sequence")
+  ELSIF NOT EMPTY?(@Calls(@I))
+    THEN @Fail("The current item contains action calls")
+  ELSIF EMPTY?(@LP_Localisable_Procs(@Proc_Calls(@I)))
+    THEN @Fail("The current item contains no localisable proc calls.")
+    ELSE @Pass FI .;
+
+
+MW_PROC @Localise_Procs_Code(Data) ==
+  VAR < procs := @LP_Localisable_Procs(@Proc_Calls(@I)), posn := @Posn,
+        defns := < >, new := < >, rel := < > >:
+  IF EMPTY?(procs) THEN ERROR("No procs returned by @LP_Localisable_Procs!") FI;
+  rel := procs[3];
+  @Goto(procs[2]);
+  FOR defn IN @Cs(@I^2) DO
+    IF @V(defn^1) IN procs[1]
+      THEN PRINT("Localising: ", @N_String(@V(defn^1)));
+           defns := <defn> ++ defns
+      ELSE new := <defn> ++ new FI OD;
+  IF EMPTY?(new)
+    THEN C:" Delete the WHERE ";
+         @Splice_Over(@Cs(@I^1));
+	 IF rel[1] = 1
+	   THEN rel := TAIL(rel);
+                IF NOT EMPTY?(rel)
+		  THEN C:" Do the first move: ";
+		       @To(@Posn_n - 1 + HEAD(rel));
+		       rel := TAIL(rel) FI FI
+    ELSE C:" Update the defns ";
+         @Down_To(2);
+	 @Paste_Over(@Make(T_Definitions, < >, REVERSE(new)));
+	 @Up FI;
+  C:" Return to the original item: ";
+  WHILE NOT EMPTY?(rel) DO
+    @Down_To(HEAD(rel));
+    rel := TAIL(rel) OD;
+  C:" Create a WHERE, or add defns to the existing WHERE: ";
+  @LP_Add_Defns(defns) ENDVAR .;
+
+
+MW_PROC @LP_Add_Defns(defns) ==
+  IF @ST(@I) = T_Where
+    THEN @Down_To(2);
+         @Paste_Over(@Make(T_Definitions, < >, @Cs(@I) ++ defns));
+         @Up
+  ELSIF @GT(@I) = T_Statements
+    THEN @Paste_Over(@Make(T_Statements, < >,
+                           <@Make(T_Where, < >,
+                                  <@I,
+                                   @Make(T_Definitions, < >, defns)>)>))
+    ELSE @Paste_Over(@Make(T_Where, < >,
+                           <@Make(T_Statements, < >, <@I>),
+                            @Make(T_Definitions, < >, defns)>)) FI;
+  IF @Trans?(TR_Sort_Procs) THEN @Trans(TR_Sort_Procs, "") FI .;
+
+
+C:" Localising the procs may leave the outer WHERE empty of definitions ";
+C:" in which case, it should be deleted. In which case, the position of ";
+C:" the original item will change. So we also return the _relative_ position ";
+C:" from the WHERE to the original item ";
+
+
+MW_FUNCT @LP_Localisable_Procs(local_calls) ==
+  VAR < procs := < >, global_calls := < >, posn := @Posn, R := < >, rel := < > >:
+  IF @Up?
+    THEN rel := <@Posn_n> ++ rel; @Up
+    ELSE ERROR("@LP_Localisable_Procs: can't go up!") FI;
+  WHILE @Up? AND @ST(@I) <> T_Where DO
+    rel := <@Posn_n> ++ rel; @Up OD;
+  IF @ST(@I) = T_Where
+    THEN global_calls := @Qry_Call_Join(@Proc_Calls(@I^1), @Proc_Calls(@I^2));
+         C:" If the number of global calls is the same as the local calls ";
+         C:" then all calls must be local and the proc can be localised ";
+         procs := MAP("HEAD", @Make_Set(local_calls) /\ @Make_Set(global_calls));
+	 IF NOT EMPTY?(procs)
+	   THEN R := <@Make_Set(procs), @Posn, rel> FI FI;
+  @Goto(posn);
+  (R) .;
+
+
+SKIP
+
+
+
+
+
+

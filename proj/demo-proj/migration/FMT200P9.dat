@@ -1,0 +1,333 @@
+# Written on Sat May 31 01:15:11 2008
+
+Label_Locn fmt200 = 000000
+Op fmt200 = EXPORT
+Orig_Sequence fmt200 = 0
+Repeat fmt200 = 1
+Value fmt200 = 0
+
+Op CSECT001 = CSECT
+Orig_Sequence CSECT001 = 1
+Type CSECT001 = CSECT
+
+Init R3 = 3
+Label_Locn R3 = 000000
+Op R3 = EQU
+Orig_Sequence R3 = 2
+Value R3 = 3
+
+Init R14 = 14
+Label_Locn R14 = 000000
+Op R14 = EQU
+Orig_Sequence R14 = 3
+Value R14 = E
+
+Label_Locn FMT200_ = 000000
+Op FMT200_ = CSECT
+Orig_Sequence FMT200_ = 4
+Type FMT200_ = CSECT
+Value FMT200_ = 0
+
+Full_Length WFIELD = 1
+Init WFIELD = 00
+Label_Locn WFIELD = 00000A
+Op WFIELD = DC
+Orig_Parent WFIELD = CSECT001
+Orig_Sequence WFIELD = 5
+Repeat WFIELD = 1
+Type WFIELD = X
+Value WFIELD = A
+
+Full_Length WREPORT = 50
+Label_Locn WREPORT = 00000B
+Op WREPORT = DS
+Orig_Parent WREPORT = CSECT001
+Orig_Sequence WREPORT = 6
+Repeat WREPORT = 0
+Type WREPORT = C
+Value WREPORT = B
+
+Full_Length WF1 = 10
+Label_Locn WF1 = 00000B
+Op WF1 = DS
+Orig_Parent WF1 = CSECT001
+Orig_Sequence WF1 = 7
+Repeat WF1 = 1
+Type WF1 = C
+Value WF1 = B
+
+Full_Length WF2 = 20
+Label_Locn WF2 = 00001A
+Op WF2 = DS
+Orig_Parent WF2 = CSECT001
+Orig_Sequence WF2 = 8
+Repeat WF2 = 0
+Type WF2 = C
+Value WF2 = 1A
+
+Full_Length WF2A = 5
+Label_Locn WF2A = 00001A
+Op WF2A = DS
+Orig_Parent WF2A = CSECT001
+Orig_Sequence WF2A = 9
+Repeat WF2A = 1
+Type WF2A = C
+Value WF2A = 1A
+
+Full_Length WF2B = 5
+Label_Locn WF2B = 00001F
+Op WF2B = DS
+Orig_Parent WF2B = CSECT001
+Orig_Sequence WF2B = 10
+Repeat WF2B = 1
+Type WF2B = C
+Value WF2B = 1F
+
+Full_Length WF2C = 5
+Label_Locn WF2C = 000024
+Op WF2C = DS
+Orig_Parent WF2C = CSECT001
+Orig_Sequence WF2C = 11
+Repeat WF2C = 1
+Type WF2C = C
+Value WF2C = 24
+
+Full_Length WF2D = 5
+Label_Locn WF2D = 000029
+Op WF2D = DS
+Orig_Parent WF2D = CSECT001
+Orig_Sequence WF2D = 12
+Repeat WF2D = 0
+Type WF2D = C
+Value WF2D = 29
+
+Full_Length WF2D1 = 1
+Label_Locn WF2D1 = 000029
+Op WF2D1 = DS
+Orig_Parent WF2D1 = CSECT001
+Orig_Sequence WF2D1 = 13
+Repeat WF2D1 = 1
+Type WF2D1 = C
+Value WF2D1 = 29
+
+Full_Length WF2D2 = 1
+Label_Locn WF2D2 = 00002A
+Op WF2D2 = DS
+Orig_Parent WF2D2 = CSECT001
+Orig_Sequence WF2D2 = 14
+Repeat WF2D2 = 1
+Type WF2D2 = C
+Value WF2D2 = 2A
+
+Full_Length WF2D3 = 1
+Label_Locn WF2D3 = 00002B
+Op WF2D3 = DS
+Orig_Parent WF2D3 = CSECT001
+Orig_Sequence WF2D3 = 15
+Repeat WF2D3 = 1
+Type WF2D3 = C
+Value WF2D3 = 2B
+
+Full_Length WF2D4 = 1
+Label_Locn WF2D4 = 00002C
+Op WF2D4 = DS
+Orig_Parent WF2D4 = CSECT001
+Orig_Sequence WF2D4 = 16
+Repeat WF2D4 = 1
+Type WF2D4 = C
+Value WF2D4 = 2C
+
+Full_Length WF2D5 = 1
+Label_Locn WF2D5 = 00002D
+Op WF2D5 = DS
+Orig_Parent WF2D5 = CSECT001
+Orig_Sequence WF2D5 = 17
+Repeat WF2D5 = 1
+Type WF2D5 = C
+Value WF2D5 = 2D
+
+Full_Length WF3 = 15
+Init WF3 = 12345
+Label_Locn WF3 = 00002E
+Op WF3 = DS
+Orig_Parent WF3 = CSECT001
+Orig_Sequence WF3 = 18
+Repeat WF3 = 3
+Type WF3 = P
+Value WF3 = 2E
+
+Full_Length star__0001 = 0
+Label_Locn star__0001 = 00003D
+Op star__0001 = STAR
+Orig_Parent star__0001 = CSECT001
+Orig_Sequence star__0001 = 19
+Repeat star__0001 = 0
+Value star__0001 = 00003D
+
+Init WTABLE = star__0001
+Label_Locn WTABLE = 00003D
+Op WTABLE = EQU
+Orig_Sequence WTABLE = 20
+Value WTABLE = 3D
+
+Comment WDTOT1 = AMOUNT
+Full_Length WDTOT1 = 4
+Init WDTOT1 = 0
+Label_Locn WDTOT1 = 00003D
+Op WDTOT1 = DC
+Orig_Parent WDTOT1 = CSECT001
+Orig_Sequence WDTOT1 = 21
+Repeat WDTOT1 = 1
+Type WDTOT1 = P
+Value WDTOT1 = 3D
+
+Comment WDTOT2 = RATE
+Full_Length WDTOT2 = 4
+Init WDTOT2 = 0
+Label_Locn WDTOT2 = 000041
+Op WDTOT2 = DC
+Orig_Parent WDTOT2 = CSECT001
+Orig_Sequence WDTOT2 = 22
+Repeat WDTOT2 = 1
+Type WDTOT2 = P
+Value WDTOT2 = 41
+
+Comment WDTOT3 = CREDIT
+Full_Length WDTOT3 = 4
+Init WDTOT3 = 0
+Label_Locn WDTOT3 = 000045
+Op WDTOT3 = DC
+Orig_Parent WDTOT3 = CSECT001
+Orig_Sequence WDTOT3 = 23
+Repeat WDTOT3 = 1
+Type WDTOT3 = P
+Value WDTOT3 = 45
+
+Comment WDTOT4 = AMOUNT
+Full_Length WDTOT4 = 4
+Init WDTOT4 = 0
+Label_Locn WDTOT4 = 000049
+Op WDTOT4 = DC
+Orig_Parent WDTOT4 = CSECT001
+Orig_Sequence WDTOT4 = 24
+Repeat WDTOT4 = 1
+Type WDTOT4 = P
+Value WDTOT4 = 49
+
+Full_Length WDTOT5 = 4
+Init WDTOT5 = 0
+Label_Locn WDTOT5 = 00004D
+Op WDTOT5 = DC
+Orig_Parent WDTOT5 = CSECT001
+Orig_Sequence WDTOT5 = 25
+Repeat WDTOT5 = 1
+Type WDTOT5 = P
+Value WDTOT5 = 4D
+
+Comment WETOT1 = AMOUNT
+Full_Length WETOT1 = 4
+Init WETOT1 = 0
+Label_Locn WETOT1 = 000051
+Op WETOT1 = DC
+Orig_Parent WETOT1 = CSECT001
+Orig_Sequence WETOT1 = 26
+Repeat WETOT1 = 1
+Type WETOT1 = P
+Value WETOT1 = 51
+
+Comment WETOT2 = RATE
+Full_Length WETOT2 = 4
+Init WETOT2 = 0
+Label_Locn WETOT2 = 000055
+Op WETOT2 = DC
+Orig_Parent WETOT2 = CSECT001
+Orig_Sequence WETOT2 = 27
+Repeat WETOT2 = 1
+Type WETOT2 = P
+Value WETOT2 = 55
+
+Comment WETOT3 = CREDIT
+Full_Length WETOT3 = 4
+Init WETOT3 = 0
+Label_Locn WETOT3 = 000059
+Op WETOT3 = DC
+Orig_Parent WETOT3 = CSECT001
+Orig_Sequence WETOT3 = 28
+Repeat WETOT3 = 1
+Type WETOT3 = P
+Value WETOT3 = 59
+
+Comment WETOT4 = AMOUNT
+Full_Length WETOT4 = 4
+Init WETOT4 = 0
+Label_Locn WETOT4 = 00005D
+Op WETOT4 = DC
+Orig_Parent WETOT4 = CSECT001
+Orig_Sequence WETOT4 = 29
+Repeat WETOT4 = 1
+Type WETOT4 = P
+Value WETOT4 = 5D
+
+Full_Length WETOT5 = 4
+Init WETOT5 = 0
+Label_Locn WETOT5 = 000061
+Op WETOT5 = DC
+Orig_Parent WETOT5 = CSECT001
+Orig_Sequence WETOT5 = 30
+Repeat WETOT5 = 1
+Type WETOT5 = P
+Value WETOT5 = 61
+
+Comment WFTOT1 = AMOUNT
+Full_Length WFTOT1 = 4
+Init WFTOT1 = 0
+Label_Locn WFTOT1 = 000065
+Op WFTOT1 = DC
+Orig_Parent WFTOT1 = CSECT001
+Orig_Sequence WFTOT1 = 31
+Repeat WFTOT1 = 1
+Type WFTOT1 = P
+Value WFTOT1 = 65
+
+Comment WFTOT2 = RATE
+Full_Length WFTOT2 = 4
+Init WFTOT2 = 0
+Label_Locn WFTOT2 = 000069
+Op WFTOT2 = DC
+Orig_Parent WFTOT2 = CSECT001
+Orig_Sequence WFTOT2 = 32
+Repeat WFTOT2 = 1
+Type WFTOT2 = P
+Value WFTOT2 = 69
+
+Comment WFTOT3 = CREDIT
+Full_Length WFTOT3 = 4
+Init WFTOT3 = 0
+Label_Locn WFTOT3 = 00006D
+Op WFTOT3 = DC
+Orig_Parent WFTOT3 = CSECT001
+Orig_Sequence WFTOT3 = 33
+Repeat WFTOT3 = 1
+Type WFTOT3 = P
+Value WFTOT3 = 6D
+
+Comment WFTOT4 = AMOUNT
+Full_Length WFTOT4 = 4
+Init WFTOT4 = 0
+Label_Locn WFTOT4 = 000071
+Op WFTOT4 = DC
+Orig_Parent WFTOT4 = CSECT001
+Orig_Sequence WFTOT4 = 34
+Repeat WFTOT4 = 1
+Type WFTOT4 = P
+Value WFTOT4 = 71
+
+Full_Length WFTOT5 = 4
+Init WFTOT5 = 0
+Label_Locn WFTOT5 = 000075
+Op WFTOT5 = DC
+Orig_Parent WFTOT5 = CSECT001
+Orig_Sequence WFTOT5 = 35
+Repeat WFTOT5 = 1
+Type WFTOT5 = P
+Value WFTOT5 = 75

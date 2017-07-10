@@ -1,0 +1,77 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+VAR <Test_Prog := (FILL Statements IF X = 0
+				      THEN X := 5
+				   ELSIF X = 1
+				      THEN X := 6
+				   ELSIF x = 2
+				      THEN X := 0
+				      ELSE X := 3 FI ENDFILL)> :
+
+
+    @Test_Trans(" 1st test of `Elsif To Else If' - the whole `If' statement selected.",
+		Test_Prog,
+		<1>,
+		TR_Elsif_To_Else_If,
+		< >,
+		(FILL Statements IF X = 0
+				    THEN X := 5
+				    ELSE IF X = 1
+					    THEN X := 6
+					 ELSIF x = 2
+					    THEN X := 0
+					    ELSE X := 3 FI FI ENDFILL));
+
+
+    @Test_Trans(" 2nd test of `Elsif To Else If' - a guard selected.",
+		Test_Prog,
+		<1, 3>,
+		TR_Elsif_To_Else_If,
+		< >,
+		(FILL Statements IF X = 0
+				    THEN X := 5
+				 ELSIF X = 1
+				    THEN X := 6
+				    ELSE IF x = 2
+					    THEN X := 0
+					    ELSE X := 3 FI FI ENDFILL));
+
+
+    @Test_Trans(" 3rd test of `Elsif To Else If' - the `If' statement is too small.",
+		(FILL Statements IF X = 0 THEN Y := 0 ELSE Y := 1 FI ENDFILL),
+		<1>,
+		TR_Elsif_To_Else_If,
+		< >,
+		"Fail");
+
+
+    @Test_Trans(" 4th test of `Elsif To Else If' - shouldn't work on the first guard.",
+		Test_Prog,
+		<1, 1>,
+		TR_Elsif_To_Else_If,
+		< >,
+		"Fail") ENDVAR;
+
+
+SKIP
+
+
+

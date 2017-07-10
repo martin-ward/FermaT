@@ -1,0 +1,183 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Meta-Transformation: Process a sequence of IFMATCH constructs into ";
+C:" something more efficient. ";
+
+MW_PROC @Meta_Trans_Test() ==
+  VAR < types := @Stat_Types(@Item) >:
+  IF T_Foreach_Expn IN types AND T_Ifmatch_Expn IN types
+    THEN @Pass
+  ELSIF T_Foreach_Cond IN types AND T_Ifmatch_Cond IN types
+    THEN @Pass
+    ELSE @Fail("No suitable structures found.") FI ENDVAR .;
+
+
+MW_PROC @Meta_Trans_Code(Data) ==
+  C:" Search for FOREACH Expression with a sequence of IFMATCH Expression components ";
+  VAR < OK := 0, comps := < >, type := 0, matches := < > >:
+  FOREACH Statement DO
+    IF @ST(@I) = T_Foreach_Expn
+      THEN type := T_Ifmatch_Expn
+    ELSIF @ST(@I) = T_Foreach_Cond
+      THEN type := T_Ifmatch_Cond
+      ELSE type := 0 FI;
+    IF type > 0
+      THEN @Down; C:" to statement sequence ";
+	   PRINT("Size = ", @Size(@I));
+	   IF @Size(@I) > 4
+	     THEN OK := 1;
+		  comps := @Cs(@I); matches := < >;
+		  WHILE OK = 1 AND NOT EMPTY?(comps) DO
+		    IF @ST(HEAD(comps)) = T_Comment OR @ST(HEAD(comps)) = T_Skip
+		      THEN SKIP
+		    ELSIF @ST(HEAD(comps)) <> type
+		      THEN OK := 0; PRINT("Failed for:"); @Print_WSL(HEAD(comps), "")
+		      ELSE matches := <HEAD(comps)> ++ matches FI;
+		    comps := TAIL(comps) OD;
+		  IF OK = 1 THEN @MT_Replace(REVERSE(matches), type) FI FI FI OD ENDVAR .;
+
+
+C:" Generate efficient code to replace the given sequence of IFMATCH statements. ";
+C:" Sort the matches according to the size and top level type matched for ";
+C:" (and sort within each section according to the lower level types ";
+C:" if the section has a lot of elements). ";
+C:" Note: when calculating the size of a match we should exclude the XXX_Pat_Any ";
+C:" items but note that the size may be `N or greater'. Sort according to size: ";
+C:" size=1, size=2, size>=3. Note that ~?x + ~*y + ~?z will appear in both ";
+C:" size=2 and size>=3 sets. "; 
+
+MW_PROC @MT_Replace(matches, type) ==
+  PRINT("MT_Replace called with ", LENGTH(matches), " matches.");
+  C:" matches is a list of IFMATCH clauses of given type ";
+  VAR < size_1 := < >, size_2 := < >, size_3 := < >,
+	var_pats := <T_Expn_Pat_Many, T_Expn_Pat_Any, T_Expn_Int_Any, T_Expn_Var_Any,
+                     T_Cond_Pat_Many, T_Cond_Pat_Any, T_Cond_Int_Any, T_Cond_Var_Any> >:
+  C:" Sort the matches according to size ";
+  @Paste_Over(FILL Statements IF @Size(@I) = 1 THEN SKIP
+			      ELSIF @Size(@I) = 2 THEN SKIP
+						  ELSE SKIP FI ENDFILL);
+  FOR match IN matches DO
+    IF @Size(match^1) = 1 
+      THEN size_1 := <match> ++ size_1;
+	   IF NOT EMPTY?(var_pats /\ @Spec_Types(match^1))
+	     THEN size_2 := <match> ++ size_2; size_3 := <match> ++ size_3 FI
+    ELSIF @Size(match^1) = 2
+      THEN size_2 := <match> ++ size_2;
+	   IF NOT EMPTY?(var_pats /\ @Spec_Types(match^1))
+	     THEN size_3 := <match> ++ size_3 FI
+      ELSE size_3 := <match> ++ size_3 FI OD;
+  @Down; @Down; @Down_To(2); C:" Move to size=1 body ";
+  IF @ST(@I^1) <> T_Skip THEN PRINT("ERROR in @MT_Replace size=1 !!!") FI;
+  @MT_Replace_ST(1, size_1, type, 0);
+  @Up; @Right; @Down_To(2); C:" Move to size=2 body ";
+  IF @ST(@I^1) <> T_Skip THEN PRINT("ERROR in @MT_Replace size=2 !!!") FI;
+  @MT_Replace_ST(2, size_2, type, 0);
+  @Up; @Right; @Down_To(2); C:" Move to size=3 body ";
+  IF @ST(@I^1) <> T_Skip THEN PRINT("ERROR in @MT_Replace size=3 !!!") FI;
+  @MT_Replace_ST(3, size_3, type, 0);
+  @Up; @Up; C:" to main Cond ";
+  @Paste_Over(FILL Statement VAR < MT_ST := @ST(@I) >: ~?(@I) ENDVAR ENDFILL) ENDVAR .;
+
+C:" comp = 0 means split on top level type ";
+C:" comp > 0 means split on type of component number comp (unless comp > size) ";
+
+MW_PROC @MT_Replace_ST(size, matches, type, comp) ==
+  PRINT("MT_Replace_ST called with ", LENGTH(matches), " matches.");
+  VAR < type2match := HASH_TABLE, types := < >, type := 0, match := < >,
+	size_limit := 4, guard := < >, ST := 0, e := < >, n := 0,
+	orig := matches, new := < >, saved := < >,
+	pats := <T_Expn_Pat_Many, T_Expn_Pat_Any, T_Expn_Pat_One,
+                 T_Cond_Pat_Many, T_Cond_Pat_Any, T_Cond_Pat_One,
+	         T_Expn_Int_One,  T_Expn_Int_Any, T_Expn_Var_One, T_Expn_Var_Any,
+	         T_Cond_Int_One,  T_Cond_Int_Any, T_Cond_Var_One, T_Cond_Var_Any> >:
+  @Down;
+  IF comp > 0
+    THEN C:" Take out any matches where the nth component is a pattern ";
+	 new := < >;
+	 FOR match IN matches DO
+	   IF comp > @Size(match^1) OR @ST(match^^<1, comp>) IN pats
+	     THEN saved := <match> ++ saved
+	     ELSE new := <match> ++ new FI OD;
+	 matches := REVERSE(new) FI;
+  C:" saved contains ifmatches which don't fit the pattern: ";
+  C:" these will go after the IF: ";
+  saved := REVERSE(saved);
+  IF LENGTH(matches) < size_limit OR comp > size
+    THEN C:" Either there is no point splitting such a small list, ";
+	 C:" or all the patterns are the same down to the first level ";
+	 IF EMPTY?(orig)
+	   THEN @Paste_Over(@Skip)
+	   ELSE @Splice_Over(orig) FI;
+	 @Up; C:" back to statement sequence "
+    ELSE C:" Split matches list according to specific type: ";
+	 FOR match IN matches DO
+	   IF comp = 0 
+	     THEN ST := @ST(match^1)
+	     ELSE ST := @ST(match^^<1, comp>) FI;
+	   IF EMPTY?(type2match.(ST))
+	     THEN type2match.(ST) := <match>; types := <ST> ++ types
+	     ELSE type2match.(ST) := <match> ++ type2match.(ST) FI OD;
+	 IF comp = 0 
+	   THEN e := FILL Expression MT_ST ENDFILL
+	   ELSE n := @Make(T_Number, comp, < >);
+		e := FILL Expression @ST(@I^~?n) ENDFILL;
+		e := FILL Expression MT_ST_n ENDFILL FI;
+	 @Paste_Over(FILL Statement IF ~?e = T_Skip THEN SKIP FI ENDFILL);
+	 C:" Partially sort the types list to put the most common types first: ";
+	 types := @MT_Sort_Types(types);
+	 @Down; C:" to first guarded ";
+	 FOR type IN types DO
+	   C:" Duplicate, then edit, the selected guarded ";
+	   @Paste_After(@I);
+	   @Down; @Down_To(2); C:" to the T_Skip ";
+	   @Paste_Over(@Make(T_Number, type, < >));
+	   @Up; @Right; C:" to the body ";
+	   @MT_Replace_ST(size, type2match.(type), type, comp + 1);
+	   @Up; @Right; C:" to next guarded " OD;
+	 C:" Delete the extra guard (leaving the ELSE clause intact): ";
+	 @Delete;
+	 @Up; C:" to Cond ";
+         IF comp > 0
+	   THEN @Paste_Over(FILL Statement VAR < MT_ST_n := @ST(@I^~?n) >:
+                                              ~?(@I) ENDVAR ENDFILL) FI;
+         @Splice_After(saved);
+	 @Up; C:" back to the statement sequence " FI ENDVAR .;
+
+
+MW_FUNCT @MT_Sort_Types(types) ==
+  VAR < common_types := <T_Plus, T_Times, T_Negate, T_Invert, 
+			 T_And, T_Or, T_Not, 
+			 T_Equal, T_Not_Equal, T_Less, T_Less_Eq>,
+	type := 0 >:
+  FOR type IN REVERSE(common_types) DO
+    IF type IN types THEN types := <type> ++ (types \ <type>) FI OD;
+  (types) .;                      
+
+
+
+
+SKIP
+
+
+
+
+

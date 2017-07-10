@@ -1,0 +1,114 @@
+#!/usr/bin/perl
+# Build FermaT using chicken
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g; #"
+  unshift(@INC, "$FermaT/config");
+}
+
+use fermat;
+use warnings;
+
+sub read_dir($);
+
+# chicken options:
+$opts = "-optimize-leaf-routines -unsafe -O3 -debug-level 0 -disable-interrupts";
+$opts .= " -fixnum-arithmetic";
+
+$opts = "-k";
+
+chdir "$FermaT/src" or die;
+
+@dirs = ("scheme", "adt", "trans", "wslib");
+
+my $header = <<'END';
+; Special code for chicken compiler:
+
+;(define-macro (defmacro name args . body)
+;  `(define-macro (,name ,@args) ,@body))
+
+(define get-internal-run-time cpu-time)
+
+(define (force-output) #t)
+
+(define integer-expt expt)
+
+; End of special code for chicken compiler.
+END
+
+# Add the object files to @obj and get the list of global variables:
+@obj = ();
+@modules = ();
+$odir = "$FermaT/$arch/chicken";
+mkdir $odir unless -d $odir;
+foreach $dir (@dirs) {
+  mkdir "$odir/$dir" unless -d "$odir/$dir";
+  foreach $file (grep(/\.scx$/, read_dir($dir))) {
+    next if $file eq "patch.scm";
+    next if $file =~ /^ADT2\.debug/;
+    my $base = $file;
+    $base =~ s/\.scx$//;
+    push(@modules, $base);
+    my $out = "$odir/$dir/$base.o";
+    push(@obj, $out);
+    next if newer($out, "$dir/$file");
+    unlink($out);
+    print "chicken compiling $dir/$file\n";
+    # Output object file always goes in a.o in current dir:
+    open(OUT, "|csc - -c $opts") or die "Can't run csc: $!\n";
+    print OUT "(declare (unit $base))\n";
+    print OUT $header;
+#    foreach  my $init ("$FermaT/config/macros") {
+#      open(IN, "$init.scm") or die "Can't read $init.scm: $!\n";
+#      print OUT <IN>;
+#      close(IN);
+#    }
+    open(IN, "$dir/$file") or die "Can't open file `$dir/$file': $!\n";
+    print OUT <IN>;
+    close(IN);
+    close(OUT);
+    die "$out not created" unless -f "a.o";
+    rename "a.o", $out;
+  } # next file
+} # next dir
+
+if (!newer("csi.o", "csi.scm")) {
+  print "chicken compiling csi.scm\n";
+  open(OUT, "|csc - -c $opts") or die "Can't run csc: $!\n";
+  foreach my $module (@modules) {
+    print OUT "(declare (uses $module))\n";
+  }
+  print OUT $header;
+  open(IN, "csi.scm") or die "Can't read csi.scm: $!\n";
+  print OUT <IN>;
+  close(IN);
+  close(OUT);
+  die "csi.o not created" unless -f "a.o";
+  rename "a.o", "csi.o" or die "rename failed: $!\n";
+}
+push(@obj, "csi.o");
+
+print "modules = @modules\n";
+
+unlink("scmfmt.chicken");
+system qq[csc -o scmfmt.chicken @obj];
+
+if (-f "scmfmt.chicken") {
+  print "scmfmt.chicken written\n";
+} else {
+  die "Failed to create scmfmt.chicken!\n";
+}
+
+
+sub read_dir($) {
+  my ($dir) = @_;
+  my @files = ();
+  local(*DIR);
+  opendir(DIR, $dir) or die "Can't read directory `$dir': $!\n";
+  @files = sort grep { !/^\./ && !/^,/ } readdir(DIR);
+  closedir(DIR);
+  return(@files);
+}
+

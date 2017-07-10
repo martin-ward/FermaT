@@ -1,0 +1,108 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+ 
+MW_PROC @Delete_Unreachable_Code_Test() ==
+  VAR < Orig_Pos := @Posn, ASType := < > >:
+  IF NOT(@Passed?) AND @Stat_Count(@Item) < 100
+    THEN IF @Spec_Type(@Item)=T_A_S THEN @Down_Last FI;
+         ASType:=@AS_Type;
+         ATEACH Statement DO
+           IF @Gen_Improper?(@Item,@AS_Type) AND @Right? THEN @Pass FI;
+           IF NOT(@Passed?) 
+                AND MEMBER?(@Spec_Type(@Item), <T_Cond, T_D_If, T_D_Do>)
+                AND @Size(@Item) <= 20
+             THEN VAR <D:=@Make(T_False,< >,< >),Con:=< >,B:=< >,
+                       Type:=@Spec_Type(@Item)>:
+                  @Down;
+                  DO IF NOT @Cs?(@I) THEN EXIT(1) FI;
+                     Con:=@Simplify_Cond(@Get_n(@Item,1));
+                     IF @Spec_Type(Con)=T_False THEN @Pass
+                     ELSIF Type=T_Cond THEN
+                       IF @Implies?(Con,D) THEN 
+                          IF @Right? THEN @Pass
+                            ELSE @Down_Last;
+                                 IFMATCH Statements SKIP
+				   THEN SKIP
+                                   ELSE @Pass ENDMATCH FI;
+                                 @Up
+                         ELSE D:=@Or(D,Con) FI FI;
+                     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+                  @Up ENDVAR FI OD FI;
+
+	IF NOT(@Passed?) THEN @Fail("Nothing to delete") FI ENDVAR.;
+
+
+MW_PROC @Delete_Unreachable_Code_Code(Data)==
+     VAR <Orig_Pos:=@Posn>:
+
+      IF @Spec_Type(@Item)=T_A_S THEN 
+       VAR <AS_Size:=@Size(@I^2),
+	    Unreachable:=< >,
+	    Actions:=< >>: 
+
+       @Down_Last; @Down_Last;
+
+       FOR I:=AS_Size TO 1 STEP (-1) DO
+	  IF NOT(MEMBER?(I,Unreachable)) THEN
+	    Actions:=<@Item>++Actions ELSE PRINFLUSH("x") FI;
+	  @Left OD;
+
+       @Up;
+       @Paste_Over(@Make(T_Actions,< >,Actions))  ENDVAR FI;
+
+      IF @Spec_Type(@Item)=T_A_S THEN @Down_Last FI;
+      VAR <ASTYPE:=@AS_Type>:
+     @Edit;
+      FOREACH Statements DO 
+	@Down;
+	DO C:"IF MEMBER?(@Spec_Type(@Item),<T_Cond,T_D_If,T_D_Do>)
+	     THEN @Delete_Unreachable_Cases() FI";
+
+	   IF @Gen_Improper?(@Item,ASTYPE) AND @Right?  THEN 
+	      @Delete_Rest; PRINFLUSH("x"); EXIT(1) FI;
+				  
+	   IF @Right? THEN @Right ELSE EXIT(1) FI OD OD;
+
+      IF MEMBER?(@Spec_Type(@Item),<T_Cond,T_D_If,T_D_Do>)
+	 THEN @Delete_Unreachable_Cases() FI; 
+     @End_Edit; @Goto(Orig_Pos) ENDVAR ENDVAR.;
+
+
+MW_PROC @Delete_Unreachable_Cases()==
+  VAR <D:=@Make(T_False,< >,< >),Con:=< >,
+       P:=< >,Pos:=@Posn,Type:=@Spec_Type(@Item)>:
+    @Down;
+    DO Con:=@Simplify_Cond(@Get_n(@Item,1));
+       IF @Spec_Type(Con)=T_False THEN 
+	    P:=@Posn; @Clever_Delete; PRINFLUSH("x"); @Goto(P)
+       ELSIF Type=T_Cond THEN
+	  IF @Implies?(Con,D) THEN @Delete; PRINFLUSH("x"); @Fixup
+	    ELSE D:=@Or(D,Con);
+		 IF (@Spec_Type(D)=T_True) AND @Right? THEN 
+		    @Delete_Rest; PRINFLUSH("x"); @Fixup; EXIT(1) FI;
+		 IF @Right? THEN @Right ELSE EXIT(1) FI FI
+	 ELSE IF @Right? THEN @Right ELSE EXIT(1) FI FI;
+       IF NOT(@Valid_Posn?(@Program, @Posn)) THEN EXIT(1) FI OD;
+    @Goto(Pos) ENDVAR .;
+     
+
+SKIP
+

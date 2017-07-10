@@ -1,0 +1,10 @@
+VAR < num := @Random(100), guess := 0 >:
+PRINT("I have thought of a number between 1 and 100 (", num, ")");
+DO PRINFLUSH("What is your guess? ");
+   guess := @String_To_Num(@Read_Line(Standard_Input_Port));
+   IF guess = num THEN PRINT("Correct!"); EXIT(1) FI;
+   IF guess < num
+     THEN PRINT("Too low.")
+     ELSE PRINT("Too high.") FI OD;
+PRINT("Goodbye.") ENDVAR
+

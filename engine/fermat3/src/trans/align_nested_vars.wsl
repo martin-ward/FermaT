@@ -1,0 +1,64 @@
+C:"Doni Pracner 2016";
+C:"This transformation tries to align nested VAR blocks into
+one if possible. It only looks at blocks directly next to
+one another. It will stop looking further if it finds a
+same variable in a lower block. It needs to be called
+on a VAR statement.";
+
+MW_PROC @Align_Nested_Vars_Test() ==
+  IF @ST(@I) <> T_Var
+    THEN @Fail("Current item not a VAR block")
+  ELSIF @ST(@I^2^1) <> T_Var
+    THEN @Fail("Current item not a nested VAR block")
+  ELSIF NOT EMPTY?(@Assigned(@I^1) /\ @Assigned(@I^2^1^1))
+    THEN @Fail("The two VARs have variables in common")
+    ELSE @Pass FI .;
+
+MW_PROC @Align_Nested_Vars_Code(Data) ==
+  IF @ST(@I) = T_Var
+    THEN VAR < start := < >, other := < >, L := < >, cont := 1,
+               v1 := < >, v2 := < > >:
+           WHILE cont = 1 DO
+             cont := 0;
+             start := @Posn;
+             @Down;
+             v1 := @Assigned(@I);
+             @Right;
+             @Down;
+             IF @ST(@I) = T_Var
+               THEN other := @Posn;
+
+                    C:"get assigns";
+                    @Down;
+                    @Down; C:" to assigns ";
+                    C:"check if the variables are not the same in the blocks";
+                    IF EMPTY?(@Assigned(@I) /\ v1)
+                      THEN cont := 1;
+                           @Cut_Rest;
+                           L := @Buffer;
+                           @Cut;
+
+                           C:"move";
+                           @Goto(start);
+                           @Down; @Down_Last;
+			   @Splice_After(L); @Paste_After(@Buffer);
+
+                           C:"get statements and move";
+                           @Goto(other);
+                           @Down_To(2);
+                           @Down;
+                           @Cut_Rest;
+                           L := @Buffer;
+                           @Cut;
+                           @Goto(start);
+                           @Down_To(2); @Down_Last;
+                           @Splice_After(L);
+                           @Paste_After(@Buffer);
+
+                           C:"remove the now empty VAR block";
+                           @Goto(other);
+                           @Delete;
+                           @Goto(start) FI FI OD ENDVAR FI .;
+
+
+SKIP

@@ -1,0 +1,71 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Unroll_Loop_Test() ==
+  IF @ST(@I) = T_While OR @ST(@I) = T_Floop
+    THEN @Pass
+    ELSE @Fail("Selected item is not a WHILE loop or Floop.") FI .;
+
+
+MW_PROC @Unroll_Loop_Code(Data) ==
+  IF @ST(@I) = T_Floop
+    THEN C:" do S od == S[do S od+d/T|t=0][T-1/T|t>0] provided S is reducible ";
+         VAR < loop := @I, AS := @AS_Type >:
+         IF NOT @Gen_Reducible?(@I^1, @AS_Type)
+           THEN @Down;
+	        @Trans(TR_Make_Reducible, "");
+		@Up FI;
+         @Down;
+	 C:" Add a SKIP at the end of the body, to avoid extra copies when ";
+	 C:" the last statement is a conditional ";
+	 @Down_Last;
+	 IF @ST(@I) = T_Cond AND @Gen_Proper?(@I, @AS_Type)
+	   THEN @Paste_After(@Skip) FI;
+	 @Up;
+	 FOREACH STS DO
+           IF @ST(@I) = T_Exit
+	     THEN IF @V(@I) = Depth
+	            THEN @Splice_Over(@Increment(loop, AS, Depth, 0))
+		    ELSE @Splice_Over(@Increment(@I, AS, -1, 1)) FI
+           ELSIF @ST(@I) = T_Skip
+	     THEN C:" depth must be zero! ";
+	          @Paste_Over(loop)
+           ELSIF @Gen_Improper?(@I, AS)
+	     THEN SKIP
+	   ELSIF @ST(@I) = T_Call AND @V(@I) = @Make_Name("Z")
+	     THEN SKIP
+             ELSE C:" depth must be zero! ";
+	          @Paste_After(loop) FI OD;
+         C:" Remove the extra surrounding loop ";
+	 @Up; C:" back to Floop ";
+	 @Splice_Over(@Cs(@I^1)) ENDVAR
+
+    ELSE IFMATCH Statement WHILE ~?B DO ~*S OD
+         THEN @Paste_Over(FILL Statement IF ~?B
+	                                    THEN ~*S;
+                                                 WHILE ~?B DO ~*S OD FI ENDFILL)
+         ELSE ERROR("Not a WHILE loop!") ENDMATCH FI .;
+
+
+
+SKIP
+
+

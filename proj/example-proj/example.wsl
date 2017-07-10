@@ -1,0 +1,18 @@
+BEGIN
+ VAR < r1 := 0, ret := 0 >:
+   r1 := 6;
+   facul(r1 VAR ret);
+   PRINT(ret)
+ ENDVAR
+WHERE
+PROC facul(f VAR ret) ==
+ VAR < i := 0 >:
+   ret := 1;
+   i := 1;
+   WHILE i < f + 1 DO
+      ret := ret * i;
+      i := i + 1
+   OD
+ ENDVAR
+END
+END

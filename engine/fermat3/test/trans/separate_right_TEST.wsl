@@ -1,0 +1,63 @@
+@Test_Trans(" 1st test of `Separate_Right'",
+	   (FILL Statements DO IF X=1 THEN Y:=1; X:=0; EXIT(1)
+				  ELSE X:=X-Y FI OD ENDFILL),
+	   <1>,
+	   TR_Separate_Right,
+	   < >,
+	   (FILL Statements DO IF X=1 THEN EXIT(1)
+					   ELSE X:=X-Y FI OD; 
+			    Y:=1; X:=0 ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Separate_Right'",
+	   (FILL Statements DO IF X=1 THEN Y:=1; X:=0; EXIT(1)
+			       ELSIF X=2 THEN Y:=1; X:=0; EXIT(1)
+				  ELSE X:=X-Y FI OD ENDFILL),
+	   <1>,
+	   TR_Separate_Right,
+	   < >,
+	   (FILL Statements DO IF X=1 THEN EXIT(1)
+			       ELSIF X=2 THEN EXIT(1)
+				  ELSE X:=X-Y FI OD; Y:=1; X:=0 ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Separate_Right'",
+	   (FILL Statements DO DO IF X=1 THEN Y:=1; X:=0; EXIT(1)
+				  ELSIF X=2 THEN Y:=1; X:=0; EXIT(1)
+				     ELSE X:=X-Y FI OD OD ENDFILL),
+	   <1,1,1>,
+	   TR_Separate_Right,
+	   < >,
+	   (FILL Statements DO DO IF X=1 THEN EXIT(1)
+				  ELSIF X=2 THEN EXIT(1)
+				     ELSE X:=X-Y FI OD; Y:=1; X:=0 OD ENDFILL));
+
+
+@Test_Trans(" 4th test of `Separate_Right'",
+	   (FILL Statements DO  X:=1; EXIT(1) OD ENDFILL),
+	   <1>,
+	   TR_Separate_Right,
+	   < >,
+	   (FILL Statements DO EXIT(1) OD; X:=1 ENDFILL));
+	    
+
+@Test_Trans(" 5th test of `Separate_Right'",
+	   (FILL Statements DO  DO IF X=1 THEN EXIT(1) FI; X:=X-1 OD; EXIT(1) OD ENDFILL),
+	   <1>,
+	   TR_Separate_Right,
+	   < >,
+	   (FILL Statements DO EXIT(1) OD; DO IF X=1 THEN EXIT(1) FI; X:=X-1 OD ENDFILL));
+
+@Test_Trans(" 6th test of `Separate_Right'",
+	   (FILL Statements IF x = 1 THEN foo(); C: " comment 1 "; C:" comment 2 "
+	                             ELSE foo() FI ENDFILL),
+	   <1>,
+	   TR_Separate_Right,
+	   < >,
+	   (FILL Statements IF x = 1
+                              THEN C:" comment 1 "; C:" comment 2 " FI;
+                            foo() ENDFILL));
+
+SKIP
+
+

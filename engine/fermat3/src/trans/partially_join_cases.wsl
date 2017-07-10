@@ -1,0 +1,149 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+MW_PROC @Partially_Join_Cases_Test() ==
+  IF @ST(@I) <> T_Cond
+    THEN @Fail("Not an IF statement")
+    ELSE @Down; C:" to first guarded ";
+	 VAR < S1 := LAST(@Cs(@I^2)), S2 := < > >:
+	 @Right;
+	 DO S2 := LAST(@Cs(@I^2));
+	    IF @ST(S1) <> T_Comment AND @Equal?(S1, S2) THEN @Pass; EXIT(1) FI;
+	    S1 := S2;
+	    IF @Right?
+	      THEN @Right
+	      ELSE @Fail("The `If' statement does not have two adjacent, and partially repeated, guards.");
+		   EXIT(1) FI OD ENDVAR FI .;
+
+
+MW_PROC @Partially_Join_Cases_Code(Data) ==
+  VAR < G1 := < >, GG := < >, S1 := < >, SS := < >, posn := @Posn,
+	B := < >, B1 := < >, S := < >, n := 0, tmp := < >,
+	add_assertions := 0 >:
+  IF @String_To_Num(@String(Data)) > 0
+    THEN add_assertions := 1 FI;
+  @Down; C:" to first guarded ";
+  DO S1 := LAST(@Cs(@I^2));
+     G1 := @I;
+     n := @Posn_n;
+     @Right;
+     IF @ST(S1) <> T_Comment AND @Equal?(S1, LAST(@Cs(@I^2))) THEN EXIT(1) FI OD;
+  C:" See how many more guardeds have S1 as their last statement: ";
+  DO GG := GG ++ <@I>;
+     IF NOT @Right? THEN @Delete; EXIT(1) FI;
+     @Delete;
+     IF NOT @Equal?(S1, LAST(@Cs(@I^2))) THEN EXIT(1) FI OD;
+  @To(n);
+  C:" Calculate B and put the reversed statement lists into SS, taking off S1: ";
+  B := G1^1;
+  SS := <TAIL(REVERSE(@Cs(G1^2)))>;
+  FOR G IN GG DO
+    B := @Or(B, G^1);
+    SS := <TAIL(REVERSE(@Cs(G^2)))> ++ SS OD;
+  SS := REVERSE(SS);
+  C:" Put the common statements into S ";
+  S := <S1>;
+  DO tmp := SS;
+     IF EMPTY?(HEAD(SS)) THEN EXIT(1) FI;
+     S1 := HEAD(HEAD(SS));
+     DO IF EMPTY?(tmp) THEN EXIT(1) FI;
+	IF EMPTY?(HEAD(tmp)) THEN EXIT(2) FI;
+	IF NOT @Equal?(HEAD(HEAD(tmp)), S1) THEN EXIT(2) FI;
+	tmp := TAIL(tmp) OD;
+     C:" Add S1 to S and remove from the front of each element of SS ";
+     S := <S1> ++ S;
+     tmp := SS;
+     SS := < >;
+     WHILE NOT EMPTY?(tmp) DO
+       SS := <TAIL(HEAD(tmp))> ++ SS;
+       tmp := TAIL(tmp) OD;
+     SS := REVERSE(SS) OD;
+  C:" Construct the inner guardeds from GG and SS ";
+  tmp := <G1> ++ GG;
+  GG := < >;
+  WHILE NOT EMPTY?(tmp) DO
+    IF EMPTY?(TAIL(tmp))
+      THEN B1 := @Make(T_True, < >, < >)
+      ELSE B1 := HEAD(tmp)^1 FI;
+    B1 := @Simplify_Cond(@Mth_Simplify_Using(B1, B, 20));
+    IF add_assertions = 1
+      THEN S1 := <@Make(T_Assert, < >, <HEAD(tmp)^1>)> ++ REVERSE(HEAD(SS))
+      ELSE S1 := REVERSE(HEAD(SS)) FI;
+    IF EMPTY?(S1) THEN S1 := <@Skip> FI;
+    GG := <@Make(T_Guarded, < >,
+		 <B1, @Make(T_Statements, < >, S1)>)> ++ GG;
+    tmp := TAIL(tmp);
+    SS := TAIL(SS) OD;
+  GG := REVERSE(GG);
+  @Paste_Over(@Make(T_Guarded, < >,
+		    <B, @Make(T_Statements, < >,
+			      <@Make(T_Cond, < >, GG)> ++ S)>));
+  @Down; C:" to the inner IF ";
+  @Trans(TR_Simplify_Item,"");
+  @Goto(posn);
+  @Fix_Cond;
+  @Trans(TR_Simplify_Item, "") ENDVAR .;
+
+
+
+
+MW_PROC @Partially_Join_Cases_Code_orig(Data) ==
+  VAR < G1 := < >, B1 := < >, B2 := < >, S1 := < >, S2 := < >,
+	B := < >, S := < >, posn := @Posn >:
+  @Down; C:" to first guarded ";
+  S1 := LAST(@Cs(@I^2));
+  G1 := @I;
+  @Right;
+  DO S2 := LAST(@Cs(@I^2));
+     IF @Equal?(S1, S2) THEN @Pass; EXIT(1) FI;
+     S1 := S2;
+     G1 := @I;
+     @Right OD;
+  C:" G1 contains the guardeds up to and including the first one to be joined. ";
+  C:" The next guarded is selected ";
+  B1 := G1^1;
+  B2 := @I^1;
+  B := @Or(B1, B2);
+  C:" Put the common statements into S ";
+  S1 := REVERSE(@Cs(G1^2));
+  S2 := REVERSE(@Cs(@I^2));
+  WHILE NOT EMPTY?(S1) AND NOT EMPTY?(S2) AND @Equal?(HEAD(S1), HEAD(S2)) DO
+    S := <HEAD(S1)> ++ S;
+    S1 := TAIL(S1);
+    S2 := TAIL(S2) OD;
+  S1 := REVERSE(S1);
+  S2 := REVERSE(S2);
+  C:" Delete this guarded and modify the previous one: ";
+  @Delete; @Left;
+  @Down; @Paste_Over(B); @Right;
+  @Paste_Over(FILL Statements IF ~?B1 THEN {~?B1}; ~*S1 ELSE {~?B2}; ~*S2 FI; ~*S ENDFILL);
+  @Down; C:" to the inner IF ";
+  @Trans(TR_Simplify_Item,"");
+  @Goto(posn);
+  @Fix_Cond;
+  @Trans(TR_Simplify_Item, "") ENDVAR .;
+  
+  
+
+
+SKIP
+
+
+

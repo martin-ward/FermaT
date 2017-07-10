@@ -1,0 +1,182 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+dummy_compiler_data := "                                       ";
+
+MW_PROC @Delete_Redundant_Regs_Test() ==
+  VAR < count := 0 >:
+  IF T_A_S IN @Stat_Types(@I)
+    THEN @Fail("Item contains an action system")
+    ELSE C:" Don't do Delete_Redundant_Regs if there are too many procs: ";
+         FOREACH Statement DO
+           IF @ST(@I) = T_Where
+             THEN count := count + @Size(@I^2) FI OD;
+         IF count > 200
+           THEN @Fail("Too many PROC/FUNCT definitions (" ++ @String(count) ++ ")")
+           ELSE @Pass FI FI ENDVAR .;
+
+
+MW_PROC @Delete_Redundant_Regs_Code(Data) ==
+  VAR < posn := @Posn,
+        block_file := @String(Data) ++ "tmp_drr.bb",
+	del_file := @String(Data) ++ "tmp_drr.del",
+	data := "",
+	pop_regs := @Make_Name("pop_regs"),
+	L := < >,
+	random := @Random(Omega),
+        dummy := FILL Statement dummy_reference_variable := ax + bx + cx + dx + sp
+                         + bp + si + di + cs + ds + ss + es + zf + cf + r15 ENDFILL >:
+  C:" Add a random prefix to filenames to avoid race condition clashes: ";
+  block_file := @String(random) ++ "_" ++ @Strip_Char("$", block_file);
+  del_file := @String(random) ++ "_" ++ @Strip_Char("$", del_file);
+
+  IF Data = ""
+    THEN PRINT("Warning: no data file supplied")
+  ELSIF @File_Exists?(Data)
+    THEN data := " data=" ++ Data
+    ELSE PRINT("Warning: data file `", Data, "' not found!") FI;
+
+  FOREACH Statement DO
+    IF @ST(@I) = T_A_Proc_Call AND @V(@I^1) = pop_regs
+      THEN @Paste_Over(@Skip) FI OD;
+
+  IF T_For IN @Stat_Types(@I)
+    THEN PRINT("Converting FOR loops...");
+	 FOREACH Statement DO
+	   IF @ST(@I) = T_For
+	     THEN @Trans(TR_For_To_While, "") FI OD FI;
+  IF @Trans?(TR_Rename_Local_Vars)
+    THEN PRINT("Renaming local variables...");
+	 @Trans(TR_Rename_Local_Vars, "") FI;
+  @Down;
+  WHILE @Right? AND @ST(@I) = T_Assignment AND @Size(@I) = 1
+          AND @ST(@I^1^1) = T_Var_Lvalue AND @Starts_With?(@V(@I^1^1), "var_") DO
+    L := <@I> ++ L;
+    @Delete OD;
+  @Up;
+  FOREACH Statement DO
+    IF @ST(@I) = T_Where
+      THEN IF @Trans?(TR_Globals_To_Pars)
+	     THEN PRINT("Converting global variables in procedures to parameters...");
+		  @Trans(TR_Globals_To_Pars, "") FI FI OD;
+
+  PRINT("Adding a dummy reference at the end of the program");
+  C:" Note: when we create the blocks file we link nodes which set exit_flag to 1 ";
+  C:" directly to the end node (node 0), so this assignment will be skipped over! ";
+  IF @ST(@I) = T_Statements
+    THEN @Down_Last;
+         @Paste_After(dummy);
+         @Up FI;
+  FOREACH Statement DO
+    IFMATCH Statement exit_flag := 1
+      THEN @Paste_Before(dummy) ENDMATCH OD;
+
+  PRINT("Computing Basic Blocks...");
+  @Basic_Blocks(@I, block_file);
+  PRINT("Computing Deletion List...");
+  IF @File_Exists?(del_file) THEN @Delete_File(del_file) FI;
+
+  !XP perlscript("bb_list_redundant", block_file ++ " " ++ del_file ++ data);
+
+  IF @File_Exists?(del_file)
+    THEN PRINT("Generating new WSL...");
+	 @Parse_Del_File(del_file);
+	 @Delete_File(block_file);
+	 @Delete_File(del_file)
+    ELSE PRINT("ERROR: bb_list_redundant failed to create " ++ del_file) FI;
+
+  C:" NB: This assumes that all parameters were introduced by TR_Globals_To_Pars! ";
+  PRINT("Finished deleting.");
+  @Goto(< >);
+  PRINT("Removing parameters from local procs");
+  FOREACH Statement DO
+    IF @ST(@I) = T_Proc_Call
+      THEN @Down_To(2); C:" to value pars ";
+	   @Paste_Over(@Make(T_Expressions, < >, < >));
+	   @Right;
+	   @Paste_Over(@Make(T_Lvalues, < >, < >))
+    ELSIF @ST(@I) = T_Where
+      THEN @Down_Last; @Down; C:" to first definition ";
+	   DO IF @ST(@I) = T_Proc
+		THEN @Down_To(2); C:" to value pars ";
+		     @Paste_Over(@Make(T_Lvalues, < >, < >));
+		     @Right;
+		     @Paste_Over(@Make(T_Lvalues, < >, < >));
+		     @Up FI;
+	      IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+  PRINT("Restoring local vars");
+  @Down;
+  FOR I IN L DO
+    @Paste_Before(I) OD;
+  @Up;
+  IF @Trans?(TR_Restore_Local_Vars) THEN @Trans(TR_Restore_Local_Vars, "") FI;
+  PRINT("Removing dummy reference");
+  @Goto(posn);
+  FOREACH Statement DO
+    IF @Equal?(@I, dummy)
+      THEN @Delete FI OD;
+  C:" May now be able to remove redundant variables: ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Var AND @Trans?(TR_Remove_Redundant_Vars)
+      THEN @Trans(TR_Remove_Redundant_Vars, "");
+           @Trans(TR_Simplify, "") FI OD ENDVAR .;
+
+
+C:" Read the list of `var posn length'  ";
+MW_PROC @Parse_Del_File(file) ==
+  VAR < port := @Open_Input_File(file),
+	line := "", word := "", var := < >,
+	posn := < >, len := 0, p := 0 >:
+  PRINT("Reading deletion list...");
+  DO line := @Read_Line(port);
+     IF @EOF?(line) THEN EXIT(1) FI;
+     p := 0;
+     @Parse_Word(line VAR p, word);
+     var := @Make_Name(word);
+     @Skip_Spaces(line VAR p);
+     IF SUBSTR(line, p, 1) <> "(" THEN ERROR("Badly formatted del line:", line) FI;
+     p := p + 1;
+     posn := < >;
+     @Parse_Nums(line VAR p, posn);
+     p := p + 1;
+     @Skip_Spaces(line VAR p);
+     @Parse_Num(line VAR p, len);
+     PRINT("Moving to: ", posn, " length = ", len);
+     @Goto(posn);
+     WHILE len >= 1 DO
+       IF @ST(@I) = T_Assignment AND var IN @Assigned(@I)
+	 THEN @Down; C:" To first assign ";
+	      DO IF var IN @Assigned(@I)
+	           THEN @PP_Item(@I, 80, "");
+		        @Delete;
+                        EXIT(1) FI;
+                 IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+              @Up;
+              IF @Size(@I) = 0
+	        THEN  @Paste_Over(@Skip) FI FI;
+       IF len > 1 AND @Right? THEN @Right FI;
+       len := len - 1 OD;
+
+     SKIP OD;
+  @Close_Input_Port(port) ENDVAR .;
+
+
+SKIP
+

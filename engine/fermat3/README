@@ -1,0 +1,51 @@
+This is the FermaT Transformation Engine by Martin Ward
+(martin@gkc.org.uk)
+
+Requirements:  you need to have perl version 5.6 or later installed.
+For the dataflow functions, including the Static Single Assignment
+and Slicing transformations, you need two perl modules installed:
+Set::IntRange and Bit::Vector which you can download from www.cpan.org
+Use "perl -MCPAN -e shell" to start a CPAN shell and type the commands:
+install Bit::Vector
+install Set::IntRange
+
+Source either DOIT.csh, DOIT.sh or DOIT.bash into your shell to set
+the path and environment variables (eg if your shell is csh or tcsh
+then type "source DOIT.csh").
+
+Type "make test" to build and test FermaT.
+
+See the doc directory for more documentation.
+
+FermaT has been tested under Linux, Solaris 5.5.1, Solaris 2.8,
+Alpha, HP-UX B.11.00 and Windows ME.
+
+To cross-compile for Windows, first install the MinGW cross-compiler
+(see http://www.stats.ox.ac.uk/pub/Rtools/mingw-cross.tar.bz2 for
+Linux binaries, http://www.stats.ox.ac.uk/pub/Rtools/sources-cross/
+for sources).  Put the bin directory (which contains mingw32-gcc etc.)
+in your path.  Build the native scmfmt and then run "make-fermat
+-mingw -install" in FermaT/src to build a scmfmt.exe for windows
+in the FermaT/MinGW directory.
+
+Note:  If you are using gcc 3.2 and have problems building FermaT,
+either switch to gcc 2.95.3 or 2.96 or try adding the -debug option
+to the make-fermat command in the Makefile ie:
+
+	cd src; make-fermat -install -debug
+
+This will compile FermaT with optimisation turned off, the result will
+be much slower but should at least work!
+
+
+NB: Compiling on genesis (ia64) use /usr/bin/gcc for linking (2.96)
+instead of /usr/local/bin/gcc (3.4.4) to avoid "undefined symbol: __udivdi3"
+
+
+MinGW uses cross-compiler build scripts x86-mingw32-build-1.0.1-sh.tar.bz2
+See: http://www.mingw.org/wiki/LinuxCrossMinGW
+This version of gcc has a bug which causes a crash when compiling eval.c
+with optimisation turned on.
+mingw32-gcc-4.3.2 seems to work OK.
+
+

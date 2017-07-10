@@ -1,0 +1,54 @@
+C:"Type-Level: SimpleTypedWSL";
+VAR <
+ SCALAR :: os := 0,
+ LIST[*:*]<SCALAR> :: item := <  >,
+ SCALAR :: n := 0,
+ SCALAR :: line := " ",
+ LIST[*:*]<SCALAR> :: number := <  >,
+ SCALAR :: i := 1
+>:
+ VAR <
+   SCALAR :: m := 0,
+   SCALAR :: p := 0,
+   SCALAR :: last := " "
+ >:
+   ACTIONS PROG:
+   PROG ==
+      <line := " ", m := 0, i := 1>;
+      CALL INHERE
+   END
+   L ==
+      i := i + 1;
+      IF i = n + 1 THEN
+          CALL ALLDONE
+      FI;
+      m := 1;
+      IF last <> item[i] THEN
+          !P write(line VAR os);
+          line := " ";
+          m := 0;
+          CALL INHERE
+      FI;
+      CALL MORE
+   END
+   INHERE ==
+      p := number[i];
+      line := item[i];
+      line := line ++ " " ++ p;
+      CALL MORE
+   END
+   MORE ==
+      IF m = 1 THEN
+          p := number[i];
+          line := line ++ ", " ++ p
+      FI;
+      last := item[i];
+      CALL L
+   END
+   ALLDONE ==
+      !P write(line VAR os);
+      CALL Z
+   END
+   ENDACTIONS
+ ENDVAR
+ENDVAR

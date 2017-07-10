@@ -1,0 +1,699 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:"-------------------------------------------------------------------------------";
+C:"                  Expression parsing functions.                                ";
+C:"-------------------------------------------------------------------------------";
+C:"                                                                               ";
+C:" Grammar for expressions is as follows:-                                       ";
+C:"                                                                               ";
+C:"  Arithmetic expressions:                                                      ";
+C:"                                                                               ";
+C:"  expression   ::=  a_expression | s_expression                                ";
+C:"                                                                               ";
+C:"  a_expression ::=  term [term_op term]*                                       ";
+C:"                                                                               ";
+C:"  term         ::=  factor [factor_op factor]*                                 ";
+C:"                                                                               ";
+C:"  factor       ::=  true_factor  |  `-' factor                                 ";
+C:"                                                                               ";
+C:"  true_factor  ::=  exp_atom [ `**' factor ]*                                  ";
+C:"                                                                               ";
+C:"  exp_atom     ::=  NUMBER | `(' a_expression `)' |                            ";
+C:"                    | a_prefix_op | gen_exp_atom                               ";
+C:"                                                                               "; 
+C:"  a_prefix_op  ::=  `ABS' `(' a_expression `)' | `FRAC' `(' a_expression `)' | "; 
+C:"                    `INT' `(' a_expression `)' | `SGN' `(' a_expression `)' |  "; 
+C:"                    `MAX' `(' a_expression {a_expression}* `)' |               "; 
+C:"                    `MIN' `(' a_expression {a_expression}* `)' |               "; 
+C:"                    `LENGTH' `(' s_expression `)'                              "; 
+C:"                                                                               "; 
+C:"  term_op      ::= `+' | `-'                                                   ";
+C:"  factor_op    ::= `*' | `/' | `MOD' | `DIV'                                   ";
+C:"                                                                               ";
+C:"    ----------------------------------------------------------------------     ";
+C:"                                                                               "; 
+C:" Generic expression atoms: (indeterminate type)                                ";
+C:"                                                                               ";
+C:"  gen_exp_atom ::=  IDENTIFIER | `$Expn$' | `$Var$' | array_ref |              ";
+C:"                    g_prefix_op | exp_pattern | fill | funct_call |            ";
+C:"                    gethash                                                    ";
+C:"                                                                               ";
+C:"  array_ref    ::=  s_expression `[' a_expression `]' |                        ";
+C:"                    s_expression `[' a_expression `..' a_expression `]' |      ";
+C:"                    s_expression `[' a_expression `..' `]' |                   ";
+C:"                    s_expression `[' a_expression `,' a_expression `]'         ";
+C:"                                                                               ";
+C:"  exp_pattern  ::=  `~?' IDENTIFIER | `~+' IDENTIFIER | `~*' IDENTIFIER        ";
+C:"                                                                               ";
+C:"  funct_call   ::=  IDENTIFIER `(' [expression] {`,' expression}* `)' |        ";
+C:"                    `@' IDENTIFIER `(' [expression] {`,' expression}* `)' |    ";
+C:"                    `!XF' IDENTIFIER `(' [expression] {`,' expression}* `)'    ";
+C:"                                                                               ";
+C:"  get          ::=  gen_exp_atom `^' a_expression |                            ";
+C:"                    gen_exp_atom `^^' s_expression                             ";
+C:"                                                                               ";
+C:"  g_prefix_op  ::= `REDUCE' `(' IDENTIFIER `,' s_expression `)' |              ";
+C:"                   `HEAD' `(' s_expression `)' |                               ";
+C:"                   `LAST' `(' s_expression `)' |                               ";
+C:"                                                                               ";
+C:"  gethash      ::=  gen_exp_atom`.'`(' expression `)'                          ";
+C:"                                                                               ";
+C:"    ----------------------------------------------------------------------     ";
+C:"                                                                               ";
+C:" Set/string/sequence expressions:                                              ";
+C:"                                                                               ";
+C:"  s_expression ::=  s_term [s_term_op s_term]*                                 ";
+C:"                                                                               ";
+C:"  s_term       ::=  s_factor [s_factor_op s_factor]*                           ";
+C:"                                                                               ";
+C:"  s_factor     ::=  s_atom [ `\/' s_atom]*                                     ";
+C:"                                                                               ";
+C:"  s_atom       ::=  IDENTIFIER | sequence | string | set | numb_type |         ";
+C:"                   `(' s_expression `)' | s_prefix_op | gen_exp_atom           ";
+C:"                                                                               ";
+C:"  sequence     ::= `<' expression [`,' expression]* `>'                        ";
+C:"  set          ::= `{' expression `|' condition `}'                            ";
+C:"  numb_type    ::= `%N' | `%Z' | `%Q' | `%R'                                   ";
+C:"  s_prefix_op  ::= `MAP' `(' IDENTIFIER `,' s_expression `)' |                 ";
+C:"                   `POWERSET' `(' s_expression `)' |                           ";
+C:"                   `TAIL' `( s_expression `)' |                                ";
+C:"                   `BUTLAST' `(' s_expression `)' |                            ";
+C:"                   `SLENGTH' `(' s_expression `)' |                            ";
+C:"                   `SUBSTR' `(' s_expressions `)' |                            ";
+C:"                   `INDEX' `(' s_expressions `)'                               ";
+C:"                                                                               ";
+C:"  s_term_op    ::= `++' | `\/'                                                 ";
+C:"  s_factor_op  ::= `\'                                                         ";
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+C:"  Parsing functions begin here                                                 ";
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_expression() ==
+ VAR <S := < >, op := 0, seq := 0>:
+@yy_PRINT("Expression");
+
+ C:" We attempt to do some rudimentary type checking here.        ";
+ C:" We can't necessarily tell from the first token whether this  ";
+ C:" is an a_expression or an s_expression. If the first token is ";
+ C:" number, a minus, or an arithmetic operator, it must be an    ";
+ C:" arithmetic expression. If it's a `<', a `{', a string or a   "; 
+ C:" string/sequence operator, it must be an s_expression.        ";
+ C:" If it's a `(' we can just recurse, otherwise, it is safe to  ";
+ C:" look for an exp_atom;  if we get back an identifier, we must ";
+ C:" look at the following operator to decide; otherwise, it must ";
+ C:" be an arithmetic expression.                                 ";
+
+ C:" This whole nasty monolith is to deal with the type      ";
+ C:" ambiguity in the first token !                          ";
+
+   IF token1 = S_LANGLE OR token1 = S_LBRACE OR s_prefix_ops[token1] = 1 THEN
+      S := @yy_s_expression() 
+   ELSIF token1 = S_NUMBER OR token1 = S_MINUS OR a_prefix_ops[token1] = 1 THEN 
+      S := @yy_a_expression() 
+   ELSIF token1 = S_FILL THEN S := @yy_fill()
+    ELSE IF token1 = S_LPAREN THEN  
+	    @yy_lex;
+	    S := @yy_expression();  
+	    IF token1 <> S_RPAREN THEN   
+	       @Syntax_Error("Missing `)'")  
+	     ELSE @yy_lex FI  
+	  ELSE S := @yy_factor() FI;    
+
+	 C:" Now look and see what we've got, and what operator follows";  
+	 IF g_exp_types[@Spec_Type(S)] = 1 THEN
+	    C:" Could be a sequence or a scalar";
+	    C:" Look at following operator, if any";
+	    IF token1 IN <S_EOF, S_SEMICOLON> THEN SKIP
+	    ELSIF Factor_Ops[token1] = 1 OR Term_Ops[token1] = 1 THEN
+	       S := @yy_build_a_expr(S)
+
+	    ELSIF S_Factor_Ops[token1] = 1
+		     OR S_Term_Ops[token1] = 1
+		     OR S_Atom_Ops[token1] = 1 THEN
+	       S := @yy_build_s_expr(S) FI
+
+	 ELSIF Math_Exps[@Spec_Type(S)] = 1 THEN
+	    IF token1 IN <S_EOF, S_SEMICOLON> THEN SKIP
+	     ELSE S := @yy_build_a_expr(S) FI
+
+	 ELSIF Seq_Exps[@Spec_Type(S)] = 1 THEN
+	    IF token1 IN <S_EOF, S_SEMICOLON> THEN SKIP
+	     ELSE S := @yy_build_s_expr(S) FI 
+	 ELSE C:" Now check for `^' or `^^' ";
+	      WHILE token1 = S_CARET DO
+		@yy_lex;
+		IF token1 = S_CARET THEN
+		   @yy_lex;
+		   S := @Make(T_Get, < >, <S, @yy_s_expression()>)
+		 ELSE S := @Make_Get_n(S, @yy_a_expression()) FI OD FI FI;
+   ( S ) .;
+
+
+C:" Make an item, checking for left-associative operations: ";
+
+C:" Took T_Concat out of L_Assoc_Types to work around a bug in FME! ";
+
+L_Assoc_Types := <T_Plus, T_Times, T_Union, T_Intersection,
+		  T_And, T_Or, T_Max, T_Min,
+		  T_Minus, T_Divide>;
+
+MW_FUNCT @Make_Assoc(op, S, I) == : SKIP;
+  (IF op IN L_Assoc_Types
+     THEN IF @ST(S) = op
+	    THEN @Make(op, < >, @Cs(S) ++ <I>)
+	    ELSE @Make(op, < >, <S, I>) FI
+     ELSE @Make(op, < >, <S, I>) FI) .;
+
+
+
+MW_FUNCT @yy_build_a_expr(S) == 
+ VAR <op := < >>:
+   WHILE Factor_Ops[token1] = 1 DO 
+      op := Type_Table.(token1); 
+      @yy_lex; 
+      S := @Make_Assoc(op, S, @yy_factor()) OD; 
+   WHILE Term_Ops[token1] = 1 DO
+      op := Type_Table.(token1);
+      @yy_lex;
+      S := @Make_Assoc(op, S, @yy_term()) OD;
+ ( S ) .;
+
+
+MW_FUNCT @yy_build_s_expr(S) == 
+ VAR <op := < >>:
+   WHILE S_Atom_Ops[token1] = 1 DO
+      op := Type_Table.(token1);
+      @yy_lex;
+      S := @Make_Assoc(op, S, @yy_s_atom()) OD;
+   WHILE S_Factor_Ops[token1] = 1 DO
+      op := Type_Table.(token1);
+      @yy_lex;
+      S := @Make_Assoc(op, S, @yy_s_factor()) OD;
+   WHILE S_Term_Ops[token1] = 1 DO
+      op := Type_Table.(token1);
+      @yy_lex;
+      S := @Make(op, < >,<S, @yy_s_term()>) OD;
+ ( S ) .;
+
+
+C:" Note how nicely structured the rest is :-) "; 
+ 
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+C:"  Arithmetic expressions                                                       ";
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_a_expression() == 
+  VAR <S := < >, op := < >>:
+@yy_PRINT("Arithmetic Expression");
+   S := @yy_term();
+   WHILE Term_Ops[token1] = 1 DO
+      op := Type_Table.(token1);
+      @yy_lex;
+      S := @Make_Assoc(op, S, @yy_term()) OD;
+   ( S ).;
+
+MW_FUNCT @yy_term() ==
+ VAR <S := @yy_factor(), op := < >>:
+   WHILE Factor_Ops[token1] = 1 DO
+      op := Type_Table.(token1);
+      @yy_lex;
+      S := @Make_Assoc(op, S, @yy_factor()) OD;
+   ( S ) .;
+
+MW_FUNCT @yy_factor() ==
+ VAR <S := < >>:
+   IF token1 = S_MINUS THEN
+      @yy_lex;
+      S := @Make(T_Negate, < >, <@yy_factor()>)
+    ELSIF token1 = S_PLUS THEN
+      @yy_lex;
+      S := @yy_factor()
+    ELSE S := @yy_true_factor() FI;
+ ( S ) .;
+
+MW_FUNCT @yy_true_factor() ==
+ VAR <S := @yy_exp_atom()>:
+   WHILE token1 = S_EXPONENT DO
+      @yy_lex;
+      S := @Make(T_Exponent, < >,<S, @yy_factor()>) OD;
+  ( S ) .;
+
+MW_FUNCT @yy_exp_atom() ==
+ VAR <S := < >, temp := < >>:
+@yy_PRINT("Expression Atom, token = ", token1, ", ", token2);
+   IF    token1 = S_NUMBER     THEN S := @Make(T_Number, token2,< >);
+				      @yy_PRINT("Number: "++ @String(token2));
+				      @yy_lex
+   ELSIF a_prefix_ops[token1] = 1 THEN S := @yy_a_prefix_op()
+   ELSIF token1 = S_MINUS      THEN @yy_lex;
+				      S := @Make(T_Negate,< >,<@yy_exp_atom()>) 
+   ELSIF token1 = S_LPAREN     THEN @yy_lex; 
+				      S := @yy_a_expression;
+				      IF token1 <> S_RPAREN
+					THEN @Syntax_Error("Missing ``)''")
+					ELSE @yy_lex FI
+    ELSE S := @yy_gen_exp_atom() FI;
+   S := @yy_checkfor_aref(S);
+ ( S ) .;
+
+C:"-------------------------------------------------------------------------------";
+
+
+MW_FUNCT @yy_a_prefix_op() ==
+ VAR <type := Type_Table.(token1), args := < >>:
+@yy_PRINT("Arith. prefix operator expression, type = ", @Type_Name(type));
+   @yy_lex;
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument");
+   IF type = T_Length THEN 
+      args := <@yy_s_expression()>
+   ELSIF type IN <T_Abs, T_Int, T_Frac, T_Sgn, T_Slength, T_Address_Of> THEN 
+      args := <@yy_a_expression()>
+   ELSIF type = T_Index THEN
+      args := <@yy_expressions()>
+    ELSE args := @Cs(@yy_expressions()) FI;
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+ ( @Make(type, < >, args) ) .;
+
+
+
+C:" The following should replace the previous function if/when the syntax ";
+C:" of MIN, MAX are changed to take a single list argument as parameter.  ";      
+MW_FUNCT @new_yy_a_prefix_op() ==
+ VAR <type := Type_Table.(token1), arg := < >>:
+   @yy_lex;
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument");
+   IF type IN <T_Abs, T_Int, T_Frac> THEN 
+      arg := @yy_a_expression()
+    ELSE arg := @yy_s_expression() FI;
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+ ( @Make(type,< >,<arg>) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+C:"  Generic expression atoms (arithmetic or set/list valued)                     ";
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_gen_exp_atom() ==
+ VAR <S:= < >>:
+@yy_PRINT("yy_gen_exp_atom, token = ", token1, ", ", token2);
+   IF    token1 = S_STRING     THEN S:= @Make(T_String, token2, < >);
+				      @yy_PRINT("String: " ++ token2);
+				      @yy_lex
+   ELSIF token1 = S_IDENTIFIER THEN IF HEAD(@yy_look()) = S_LPAREN THEN   
+					 S := @yy_funct_call()
+				       ELSE S := @Make(T_Variable, 
+						       @Make_Name(token2),
+						       < >);
+					   @yy_PRINT("Variable: "++@String(token2));
+					   @yy_lex FI
+   ELSIF token1 = S_HASH_TABLE THEN S := @Make(T_Hash_Table,< >,< >); @yy_lex
+   ELSIF token1 = S_MEM        THEN S := @yy_mem_ref()
+   ELSIF token1 = S_AT         THEN S := @yy_mw_funct_call()
+   ELSIF token1 = S_PLINK_XF   THEN S := @yy_x_funct_call()
+   ELSIF token1 = S_IF         THEN S := @yy_if_expression()
+   ELSIF token1 IN <S_EXPN_PLACE, S_VAR_PLACE> THEN
+				      S := @Make(Type_Table.(token1), < >,< >);
+				      @yy_PRINT("Place-holder");
+				      @yy_lex
+   ELSIF g_prefix_ops[token1] = 1 THEN S := @yy_gen_prefix_op()
+   ELSIF numb_types[token1] = 1 THEN S := @yy_trivial()
+   ELSIF Patterns[token1] = 1 THEN S := @yy_exp_pattern()
+     ELSE @Syntax_Error("Missing expression or operator type mismatch");
+	  S := @Make(T_Expn_Place, < >,< >) FI;
+
+   S := @yy_checkfor_aref(S);
+
+   C:" Now check for `^' or `^^' ";
+   WHILE token1 = S_CARET DO
+     @yy_lex;
+     IF token1 = S_CARET THEN
+	@yy_lex;
+	S := @Make(T_Get, < >, <S, @yy_s_expression()>)
+      ELSE S := @Make_Get_n(S, @yy_a_expression()) FI OD;
+
+ ( S ) .;
+
+
+C:" Check for nested Get_n, eg @I^(i^1) and fix it recursively: ";
+
+MW_FUNCT @Make_Get_n(I, exp) == : SKIP;
+  (IF @ST(exp) = T_Get_n
+     THEN @Make(T_Get_n, < >, <@Make_Get_n(I, exp^1), exp^2>)
+     ELSE @Make(T_Get_n, < >, <I, exp>) FI) .;
+
+
+C:" Function to test for and build an array reference, structure   ";
+C:" reference, or gethash. This is called after an expression atom ";
+C:" has been built.                                                ";
+MW_FUNCT @yy_checkfor_aref(e) ==
+ VAR <S := e>:
+   DO IF token1 = S_FULLSTOP THEN
+	 IF HEAD(@yy_look()) IN <S_IDENTIFIER, S_LPAREN> THEN
+	    S := @yy_struct_ref(S)
+	  ELSE EXIT(1) FI
+      ELSIF token1 = S_LBRACKET THEN
+	 S := @yy_array_ref(S)
+      ELSIF token1 = S_PRIME THEN
+	 S := @Make(T_Primed_Var, @V(S), < >);
+	 @yy_lex;
+	 EXIT(1)
+       ELSE EXIT(1) FI OD;
+ ( S ) .;
+
+MW_FUNCT @yy_struct_ref(e) ==
+ VAR <temp := < >, name := < >, S := < >>:
+   @yy_lex;
+   IF token1 = S_LPAREN THEN
+      C:" Gethash";
+      @yy_lex;
+      temp := @yy_expression();
+      @yy_skip_symbol(S_RPAREN, "Missing `)' in `Gethash'");
+      S := @Make(T_Gethash,< >,<e, temp>)
+    ELSE
+      C:" Structure reference ";
+      name := @Make_Name(token2);
+      @yy_lex;
+      S := @Make(T_Struct, < >, <@Make(T_Name, name, < >), e>) FI;
+ ( S ) .;
+
+
+MW_FUNCT @yy_array_ref(e) ==
+ VAR <exps := < >, S := < >,type := < >>:
+   @yy_lex;
+   exps := <@yy_expression()>;
+   IF token1 = S_RBRACKET THEN
+      type := T_Aref;
+	  C:" Remove the next line to change the abstract syntax of";
+	  C:" Aref to be <Expression, Expression>";
+      exps := <@Make(T_Expressions,< >,exps)>
+   ELSIF token1 = S_COMMA THEN
+      type := T_Rel_Seg;
+      @yy_lex;
+      exps  := exps ++ <@yy_expression()>
+   ELSIF token1 = S_DOTDOT THEN
+      @yy_lex;
+      IF token1 = S_RBRACKET THEN
+	 type := T_Final_Seg
+       ELSE  type := T_Sub_Seg;
+	     exps  := exps ++ <@yy_expression()> FI
+    ELSE @Syntax_Error("Malformed array subscript");
+	 type := T_Aref; C:"Try to continue" FI;
+   @yy_skip_symbol(S_RBRACKET, "Missing `]' in array reference");
+   exps := <e> ++ exps;
+ ( @Make(type,< >,exps) ) .;
+
+
+MW_FUNCT @yy_mem_ref() ==
+  VAR <exps := < >, S := < >,type := < >>:
+  @yy_lex;
+  exps := <@yy_expression()>;
+  IF token1 = S_RBRACKET
+    THEN type := T_Mem
+  ELSIF token1 = S_COMMA
+    THEN type := T_Mem_Rel;
+         @yy_lex;
+         exps  := exps ++ <@yy_expression()>
+  ELSIF token1 = S_DOTDOT
+    THEN @yy_lex;
+         IF token1 = S_RBRACKET
+           THEN @Syntax_Error("Malformed memory segment")
+           ELSE type := T_Mem_Seg;
+                exps := exps ++ <@yy_expression()> FI
+   ELSE @Syntax_Error("Malformed array subscript");
+        type := T_Aref; C:"Try to continue" FI;
+  @yy_skip_symbol(S_RBRACKET, "Missing `]' in memory reference");
+( @Make(type,< >,exps) ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Function Call                                                                ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_funct_call() ==
+ VAR <name := @Make_Name(token2), args := < >>:
+@yy_PRINT("Function Call");
+   @yy_lex;
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument list in function call");
+   IF token1 <> S_RPAREN THEN args := @yy_expressions()
+    ELSE args := @Make(T_Expressions,< >,< >) FI;
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+ ( @Make(T_Funct_Call, < >, <@Make(T_Name, name, < >), args>) ) .; 
+
+
+C:"-------------------------------------------------------------------------------";   
+C:"  MW_Funct. Call                                                               ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_mw_funct_call() ==
+  VAR <name := < >, args := < > >:
+  @yy_PRINT("MW_Funct call");
+  name := @Make_Name("@" ++ token2);
+  @yy_lex;
+  IF token1 = S_LPAREN
+    THEN @yy_lex;
+         IF token1 = S_RPAREN
+	   THEN args := @Make(T_Expressions,< >,< >)
+           ELSE args := @yy_expressions() FI;
+         @yy_skip_symbol(S_RPAREN, "Missing `)' in MW_Funct call")
+    ELSE args := @Make(T_Expressions, < >, < >) FI;
+  (@Make(T_MW_Funct_Call, < >, <@Make(T_Name, name, < >), args>)) .; 
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  External Function Call                                                       ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_x_funct_call() ==
+  VAR < name := < >, args := < > >:
+  @yy_PRINT("!XF call");
+  @yy_lex;
+  name := @yy_name("!XF call");
+  @yy_skip_symbol(S_LPAREN, "Missing `(' or argument list");
+  IF token1 <> S_RPAREN
+    THEN args := @yy_expressions()
+    ELSE args := @Make(T_Expressions, < >, < >) FI;
+  @yy_skip_symbol(S_RPAREN, "Missing `)'");
+  S := @Make(T_X_Funct_Call, < >, <name, args>);
+  ( S ) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  IF - expression                                                              ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_if_expression() ==
+ VAR <cond := < >, then := < >, else := < >>:
+@yy_PRINT("IF expression");
+   @yy_lex;
+   cond := @yy_condition();
+   @yy_skip_symbol(S_THEN, "Missing `THEN'");
+   then := @yy_expression();
+   @yy_skip_symbol(S_ELSE,"Missing `ELSE'");
+   else := @yy_expression();
+   @yy_skip_symbol(S_FI, "Missing `FI'");
+ ( @Make(T_If, < >, <cond, then, else>) ) .;       
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"  Generic prefix ops (arith. or set/list valued)                               ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_gen_prefix_op() ==
+ VAR <type := Type_Table.(token1), name := < >, args := < >>:
+@yy_PRINT("Generic prefix-expression operator, type = ",
+	  @Type_Name(type), " token = ", token1, ", ", token2);
+   @yy_lex;
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument(s)");
+   IF type = T_Substr THEN
+      args := <@yy_expressions()>
+   ELSIF type = T_Reduce OR type = T_Map THEN 
+	 IF token1 <> S_STRING THEN
+	    @Syntax_Error("Missing string argument in MAP/REDUCE");
+	    args := <@Name(@Make_Name("_Missing_"))>
+	  ELSE args := <@Name(@Make_Name(token2))>;
+	       @yy_lex;
+	       @yy_skip_symbol(S_COMMA, "Missing `,' or 2nd argument in MAP/REDUCE") FI;
+	 args := args ++ <@yy_s_expression()>
+    ELSE args := <@yy_s_expression()> FI;
+   @yy_skip_symbol(S_RPAREN, "Missing `)'");
+ ( @Make(type, < >, args) ) .;
+
+    
+C:"-------------------------------------------------------------------------------";
+C:"  Expression patterns                                                          ";
+C:"-------------------------------------------------------------------------------";
+
+C:" stype is one of SEVBCGADNX or empty ";
+C:" Next token is either an S_IDENTIFIER or S_LPAREN ";
+
+MW_FUNCT @yy_exp_pattern() ==
+  VAR <type := token1, stype := token2, name := < >, S := < >, comps := < >>:
+  @yy_parse_pattern(type VAR name, comps);
+  S := @Make(pattern_type.(<T_Expression, type>), name, comps)
+  ( S ) .;
+
+
+
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+C:"  Functions for sequences, sets and strings                                    ";
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_s_expression() ==
+   VAR <S := < >, op := < >>:
+@yy_PRINT("Sequence Expression");
+   S := @yy_s_term();
+   WHILE S_Term_Ops[token1] = 1 DO
+      op := Type_Table.(token1);
+      @yy_lex;
+      S := @Make(op, < >,<S, @yy_s_term()>) OD;
+   ( S ).; 
+
+MW_FUNCT @yy_s_term() ==
+ VAR <S := @yy_s_factor(), op := < >>:
+   WHILE S_Factor_Ops[token1] = 1 DO
+      op := Type_Table.(token1);
+      @yy_lex;
+      S := @Make(op, < >,<S, @yy_s_factor()>) OD;
+   ( S ) .;
+
+MW_FUNCT @yy_s_factor() ==
+ VAR <S := @yy_s_atom(), op := < >>:
+   WHILE S_Atom_Ops[token1] = 1 DO
+      op := Type_Table.(token1);
+      @yy_lex;
+      S := @Make(op,< >,<S,@yy_s_atom()>) OD;
+ ( S ) .;
+
+MW_FUNCT @yy_s_atom() ==
+ VAR <S := < >>:
+   IF    token1 = S_LBRACE     THEN S := @yy_set()
+   ELSIF token1 = S_LPAREN     THEN @yy_lex;
+				      S := @yy_s_expression();
+				      IF token1 <> S_RPAREN THEN
+					 @Syntax_Error("Missing `)'")
+				       ELSE @yy_lex FI
+   ELSIF token1 = S_LANGLE     THEN @yy_lex;
+				      IF token1 = S_RANGLE THEN
+					S := @Make(T_Sequence,< >,
+						   <@Make(T_Expressions,< >,< >)>);
+					@yy_lex
+				       ELSE S := @yy_sequence() FI
+   ELSIF token1 =  S_ARRAY THEN C:" Arguments for ARRAY are different to ";
+				  C:" other s_prefix_ops ";
+				  S := @yy_array()
+   ELSIF s_prefix_ops[token1] = 1 THEN S := @yy_gen_prefix_op()
+    ELSE S := @yy_gen_exp_atom()  FI;
+   S := @yy_checkfor_aref(S);
+ ( S ) .;
+
+C:"-------------------------------------------------------------------------------";
+
+
+MW_FUNCT @yy_set() ==
+ VAR <exp := < >, cond := < >>:
+@yy_PRINT("Set");
+   @yy_lex;
+   exp := @yy_expression();
+   @yy_skip_symbol(S_VBAR, "Missing `|' in SET");
+   cond := @yy_condition();
+   @yy_skip_symbol(S_RBRACE, "Missing `}' after SET");
+ ( @Make(T_Set,< >,<exp, cond>) ) .;
+
+MW_FUNCT @yy_sequence() == 
+ VAR <S := @yy_expressions >:
+@yy_PRINT("Sequence");
+   @yy_skip_symbol(S_RANGLE, "Missing `>' at end of sequence");
+( @Make(T_Sequence, < >, <S>) ) .;
+
+MW_FUNCT @yy_array() ==
+ VAR <len := < >, val := < >>:
+@yy_PRINT("Array");
+  @yy_lex;
+  @yy_skip_symbol(S_LPAREN, "Missing `(' in `ARRAY'");
+  len := @yy_a_expression();
+  @yy_skip_symbol(S_COMMA, "Missing `,' or 2nd argument in `ARRAY'");
+  val := @yy_expression();
+  @yy_skip_symbol(S_RPAREN, "Missing `)' or malformaed expression in `ARRAY'");
+ ( @Make(T_Array,< >, <len, val>) ) .;
+
+MW_FUNCT @yy_expressions() ==
+ VAR <S := <@yy_expression> >:
+   WHILE token1 = S_COMMA DO
+      @yy_lex;
+      S := <@yy_expression> ++ S OD;
+ ( @Make(T_Expressions, < >, REVERSE(S)) ) .;
+
+
+C:"-------------------------------------------------------------------------------"; 
+C:"  Functions for the various FILL types                                         ";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_fill() ==
+ VAR <S := < >>:
+   @yy_lex;
+   IF    token1 = S_STATEMENT   THEN S := @yy_fill_s(T_Statement, T_Fill_Stat)
+   ELSIF token1 = S_STATEMENTS  THEN S := @yy_fill_s(T_Statements, T_Fill_Stats)
+   ELSIF token1 = S_EXPRESSION  THEN S := @yy_fill_s(T_Expression, T_Fill_Expn)
+   ELSIF token1 = S_EXPRESSIONS THEN S := @yy_fill_s(T_Expressions, T_Fill_Expns)
+   ELSIF token1 = S_CONDITION   THEN S := @yy_fill_s(T_Condition, T_Fill_Cond)
+   ELSIF token1 = S_DEFINITION  THEN S := @yy_fill_s(T_Definition, T_Fill_Defn)
+   ELSIF token1 = S_DEFINITIONS THEN S := @yy_fill_s(T_Definitions, T_Fill_Defns)
+   ELSIF token1 = S_LVALUE      THEN S := @yy_fill_s(T_Lvalue, T_Fill_Lvalue)
+   ELSIF token1 = S_LVALUES     THEN S := @yy_fill_s(T_Lvalues, T_Fill_Lvalues)
+   ELSIF token1 = S_ASSIGN      THEN S := @yy_fill_s(T_Assign, T_Fill_Assign)
+   ELSIF token1 = S_ASSIGNS     THEN S := @yy_fill_s(T_Assigns, T_Fill_Assigns)
+   ELSIF token1 = S_GUARDED     THEN S := @yy_fill_s(T_Guarded, T_Fill_Guarded)
+   ELSIF token1 = S_ACTION      THEN S := @yy_fill_s(T_Action, T_Fill_Action)
+    ELSE @Syntax_Error("Incorrect type specified for FILL");
+	 WHILE token1 <> S_ENDFILL DO @yy_lex OD;
+	 S := @Make(T_Expn_Place, < >,< >)  FI;
+   @yy_skip_symbol(S_ENDFILL, "Missing `ENDFILL'");
+ ( S ) .;
+
+MW_FUNCT @yy_fill_s(GT, result_type) ==
+ VAR <S := < >>:
+   @yy_lex;
+   S := @yy_parse(GT);
+ ( @Make(result_type, < >, <S>) ) .;
+
+
+
+C:"-------------------------------------------------------------------------------"; 
+C:"   End of expression parser                                                    "; 
+C:"-------------------------------------------------------------------------------"
+
+

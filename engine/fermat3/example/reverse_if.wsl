@@ -1,0 +1,20 @@
+
+MW_PROC @Reverse_If_Test() ==
+  VAR < B := < >, B2 := < >, S1 := < >, S2 := < > >:
+  IF @ST(@I) <> T_Cond
+    THEN @Fail("Not an IF statement")
+    ELSE IFMATCH Statement IF ~?B THEN ~?S1 ELSE ~?S2 FI
+           THEN @Pass
+           ELSE @Fail("Not a simple IF statement") ENDMATCH FI ENDVAR .;
+
+
+MW_PROC @Reverse_If_Code(Data) == 
+  VAR < B := < >, B2 := < >, S1 := < >, S2 := < > >:
+  IFMATCH Statement IF ~?B THEN ~?S1 ELSE ~?S2 FI
+    THEN B2 := @Not(B);
+         @Paste_Over(FILL Statement IF ~?B2 THEN ~?S2 ELSE ~?S1 FI ENDFILL) ENDMATCH ENDVAR .;
+
+SKIP
+
+
+

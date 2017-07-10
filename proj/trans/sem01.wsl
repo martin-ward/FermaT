@@ -1,0 +1,27 @@
+total:= 0;
+i := 0;
+evens := 0;
+noevens := 0;
+odds := 0;
+noodds := 0;
+n := n0;
+WHILE i <= n DO
+  evenflag := A[i] MOD 2;
+  evenflag := 0;
+  IF FALSE
+    THEN evens := evens + A[i];
+         noevens := noevens + 1
+    ELSE odds := odds + A[i];
+         noodds := noodds + 1 FI;
+  total := total + A[i];
+  i := i + 1 OD;
+IF noevens <> 0
+  THEN meaneven := evens/noevens
+  ELSE meaneven := 0 FI;
+IF noodds <> 0
+  THEN meanodd := odds/noodds
+  ELSE meanodd := 0 FI;
+mean := total/(n+1);
+evendifference := ABS(meaneven - mean);
+odddifference := ABS(meanodd-mean)
+

@@ -1,0 +1,97 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2015 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Convert stack operations to a procedure parameter ";
+C:" Find the stack by looking for a POP at the start of the proc body ";
+C:" Check that each call is preceded by a PUSH ";
+C:" Pass the PUSHed value as a val parameter instead of on the stack. ";
+
+MW_PROC @Stack_To_Par_Test() ==
+  IF @ST(@I) <> T_Proc
+    THEN @Fail("Selected item is not a procedure definition")
+    ELSE VAR < posn := @Posn, name := @V(@I^1), OK := 1, stack := < > >:
+         @Down_To(4); @Down; C:" to first statement of body ";
+         DO IF @ST(@I) = T_Pop THEN stack := @I^2; EXIT(1) FI;
+	    IF @ST(@I) = T_Var
+	      THEN @Down_To(2); @Down
+	    ELSIF @Right?
+	      THEN @Right
+	      ELSE EXIT(1) FI OD;
+         IF EMPTY?(stack)
+	   THEN @Fail("No suitable stack in proc body")
+	   ELSE WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+	        ATEACH Statement DO
+		  IF @ST(@I) = T_Proc_Call AND @V(@I^1) = name
+		    THEN C:" Check for a PUSH ";
+		         VAR < posn_n := @Posn_n >:
+			 DO IF @Left? THEN @Left ELSE OK := 0; EXIT(1) FI;
+                            IF @ST(@I) = T_Push AND @Equal?(@I^1, stack)
+			      THEN EXIT(1) FI;
+                            IF @ST(@I) = T_Proc OR @V(stack) IN @Assigned(@I)
+			      THEN OK := 0; EXIT(1) FI OD;
+                         @To(posn_n);
+			 IF OK = 0
+			   THEN @Fail("A proc call has no PUSH") FI ENDVAR FI OD;
+               IF OK = 1 THEN @Pass FI FI;
+         @Goto(posn) ENDVAR FI .;
+
+
+
+MW_PROC @Stack_To_Par_Code (Data) ==
+  VAR < posn := @Posn, name := @V(@I^1), OK := 1, stack := < >, par := < >, i := 1 >:
+  IF Data <> ""
+    THEN par := @Make_Name(Data)
+    ELSE par := @Make_Name("par");
+         WHILE @Make_Name(@N_String(par) ++ @String(i)) IN @Variables(@I) DO
+           i := i + 1 OD;
+         par := @Make_Name(@N_String(par) ++ @String(i)) FI;
+  par := @Make(T_Var_Lvalue, par, < >);
+  @Down_To(4); @Down; C:" to first statement of body ";
+  WHILE @ST(@I) <> T_Pop DO
+    IF @ST(@I) = T_Var
+      THEN @Down_To(2); @Down
+      ELSE @Right FI OD;
+  stack := @I^2;
+  @Paste_Over(FILL Statement ~?(@I^1) := ~?par ENDFILL);
+  WHILE @ST(@I) <> T_Proc DO @Up OD;
+  @Down_To(2); C:" To value pars ";
+  @Paste_Over(@Make(T_Lvalues, < >, @Cs(@I) ++ <par>));
+  WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+  ATEACH Statement DO
+    IF @ST(@I) = T_Proc_Call AND @V(@I^1) = name
+      THEN C:" Check for a PUSH ";
+           VAR < posn_n := @Posn_n, apar := < > >:
+	   WHILE NOT(@ST(@I) = T_Push AND @Equal?(@I^1, stack)) DO @Left OD;
+           apar := @I^2;
+	   @Paste_Over(@Skip);
+           @To(posn_n);
+	   @Down_To(2); C:" To value pars ";
+	   @Paste_Over(@Make(T_Expressions, < >, @Cs(@I) ++ <apar>));
+	   @Up ENDVAR FI OD;
+  @Trans(TR_Delete_All_Skips, "");
+  @Goto(posn) ENDVAR .;
+
+SKIP
+
+
+
+
+
+

@@ -1,0 +1,99 @@
+Converting global variables in procedures to parameters...
+Adding a dummy reference at the end of the program
+Computing Basic Blocks...
+Computing Deletion List...
+SSA Preprocessing... 
+SSA bulding ADT... 
+Constructing Roman Chariots problem... 
+Constructing APT structure... 
+Control Dependence Equivalence Classes... 
+Control Dependence calculation... 
+Computing Proc Summaries... 
+Calculating SSA... 
+Finding redundant assignments...
+
+Generating new WSL...
+Reading deletion list...
+Moving to: (1 1 1 1 2 1) length = 15
+r11 := __r11_init__
+Moving to: (1 1 1 1 2 1) length = 15
+r10 := __r10_init__
+Moving to: (1 1 1 1 2 1) length = 15
+r8 := __r8_init__
+Moving to: (1 1 1 1 2 1) length = 15
+r13 := __r13_init__
+Moving to: (1 1 1 1 2 1) length = 15
+r12 := __r12_init__
+Moving to: (1 1 1 1 2 1) length = 15
+r5 := __r5_init__
+Moving to: (1 1 1 1 2 1) length = 15
+r6 := __r6_init__
+Moving to: (1 1 1 1 2 1) length = 15
+r14 := __r14_init__
+Moving to: (1 1 1 1 2 1) length = 15
+r7 := __r7_init__
+Moving to: (1 1 1 1 2 1) length = 15
+r9 := __r9_init__
+Moving to: (1 1 1 1 2 1) length = 15
+r2 := __r2_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r7 := __r7_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r6 := __r6_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r14 := __r14_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r9 := __r9_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r2 := __r2_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r12 := __r12_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r10 := __r10_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r8 := __r8_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r11 := __r11_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r5 := __r5_init__
+Moving to: (1 1 1 2 2 1) length = 13
+r13 := __r13_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r12 := __r12_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r9 := __r9_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r7 := __r7_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r3 := 30
+Moving to: (1 1 1 3 2 3) length = 16
+r14 := __r14_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r2 := __r2_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r8 := __r8_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r10 := __r10_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r13 := __r13_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r11 := __r11_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r6 := __r6_init__
+Moving to: (1 1 1 3 2 3) length = 16
+r5 := __r5_init__
+Moving to: (1 2 1 3) length = 1
+Moving to: (1 2 1 3) length = 1
+Moving to: (1 2 1 4 1) length = 5
+r3 := 2
+Moving to: (1 2 1) length = 1
+Moving to: (1 2 1) length = 1
+Moving to: (1 2 1) length = 1
+Finished deleting.
+Removing parameters from local procs
+Restoring local vars
+Removing dummy reference
+
+Transformation time: 0
+Transformation Count: 3
+Result is in: FMT001A7.ws5

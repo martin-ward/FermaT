@@ -1,0 +1,148 @@
+
+C:" Implementation of @Invertible?(assigns) and @Invert(x, v, exp) ";
+
+C:" @Invert(x, v, exp), where exp contains one occurrence of v ";
+C:" returns an expression exp2 which inverts the effect of exp, such that: ";
+C:" x := exp; x := exp2 is equivalent to SKIP ";
+C:" In other words, exp with v replaced by exp2 will simplify to x ";
+
+C:" If this is not possible, then @Invert returns < > ";
+
+C:" For example, @Invert(x, v, 2*v - 1) returns (x + 1)/2 ";
+C:" @Invert(x, v, 3 - 2*v) returns (3 - x)/2 ";
+
+
+C:" Note: this only works with simple variables. We can extend it to ";
+C:" more general expressions by first replacing the expression ";
+C:" with a simple variable. ";
+
+C:" x is an item, v is a symbol and exp is an expression. ";
+
+MW_FUNCT @Invert(x, v, exp) ==
+  VAR < R := < >, pos := 0, ST := @ST(exp) >:
+  IF ST = T_Variable
+    THEN IF @V(exp) = v THEN R := x FI
+  ELSIF ST = T_Concat AND @ST(exp^1) = T_Sequence AND @Size(exp) = 2
+    THEN pos := @Invert_Find_Var(v, @Cs(exp));
+         IF pos = 2
+	   THEN VAR < new := x >:
+	        FOR i := 1 TO @Size(exp^1^1) STEP 1 DO
+	          new := @Make(T_Tail, < >, <new>) OD;
+		R := @Invert(new, v, exp^2) ENDVAR FI
+  ELSIF ST NOTIN <T_Plus, T_Minus, T_Times, T_Divide, T_Negate, T_Invert>
+    THEN R := < >
+    ELSE pos := @Invert_Find_Var(v, @Cs(exp));
+	 IF pos > 0
+	   THEN VAR < new  := < >,
+		      rest := @Get_L(exp, 1, pos - 1) ++ @Get_L(exp, pos + 1, @Size(exp)) >:
+		C:" The first component of a T_Minus or T_Divide is special ";
+		IF ST = T_Plus
+		  THEN new := @Make(T_Minus, < >, <x> ++ rest)
+		ELSIF ST = T_Minus AND pos = 1
+		  THEN new := @Make(T_Plus, < >, <x> ++ rest)
+		ELSIF ST = T_Minus AND pos > 1
+		  THEN new := @Make(T_Minus, < >, <HEAD(rest), x> ++ TAIL(rest))
+		ELSIF ST = T_Times
+		  THEN new := @Make(T_Divide, < >, <x> ++ rest)
+		ELSIF ST = T_Divide AND pos = 1
+		  THEN new := @Make(T_Times, < >, <x> ++ rest)
+		ELSIF ST = T_Divide AND pos > 1
+		  THEN new := @Make(T_Divide, < >, <HEAD(rest), x> ++ TAIL(rest))
+		ELSIF ST = T_Negate
+		  THEN new := @Make(T_Negate, < >, <x>)
+		ELSIF ST = T_Invert
+		  THEN new := @Make(T_Invert, < >, <x>) FI;
+		R := @Invert(new, v, exp^pos) ENDVAR FI FI;
+  (R) .;
+
+
+
+C:" Find the component which contains v ";
+C:" If there isn't one, return 0. ";
+C:" If there are more than one, return -1. ";
+C:" otherwise, return the position of the component. ";
+
+MW_FUNCT @Invert_Find_Var(v, comps) ==
+  VAR < pos := 0, comp := < >, i := 0 >:
+  FOR comp IN comps DO
+    i := i + 1;
+    IF v IN @Variables(comp)
+      THEN IF pos = 0
+	     THEN pos := i
+	     ELSE pos := -1 FI FI OD;
+  (pos) .;
+
+
+C:" Check that all assignments to any of the given vars are invertible ";
+
+MW_BFUNCT @Invertible?(vars, assigns) ==
+  VAR < OK := 1, assign := < >, x := @Make(T_Variable, @Make_Name("x"), < >) >:
+  WHILE OK = 1 AND NOT EMPTY?(assigns) DO
+    assign := HEAD(assigns); assigns := TAIL(assigns);
+    IF NOT EMPTY?(@Assigned(assign^1) /\ vars) AND @ST(assign^1) <> T_Var_Lvalue
+      THEN OK := 0
+    ELSIF @V(assign^1) IN vars AND EMPTY?(@Invert(x, @V(assign^1), assign^2))
+      THEN OK := 0 FI OD;
+  (OK = 1) .;
+
+
+C:" Replace each assigned variable in the current item with its inverse expression ";
+
+MW_PROC @Invert_All(vars, assigns) ==
+  FOREACH Global Variable DO
+    IF @ST(@I) = T_Variable AND @V(@I) IN vars
+      THEN FOR assign IN assigns DO
+             IF @ST(assign^1) = T_Var_Lvalue AND @V(assign^1) = @V(@I)
+               THEN new := @Invert(@I, @V(assign^1), assign^2) FI OD;
+           IF EMPTY?(new)
+	     THEN @Print_WSL(@Make(T_Assignment, < >, assigns), "");
+	          @Print_WSL(@I, "");
+	          ERROR("@Invert_All: cannot invert!")
+	     ELSE @Paste_Over(new) FI FI OD .;
+
+
+
+IF FALSE THEN
+
+tests := < FILL Expression v + 1 ENDFILL,
+	   FILL Expression 1 + v ENDFILL,
+	   FILL Expression v - 1 ENDFILL,
+	   FILL Expression 1 - v ENDFILL,
+	   FILL Expression v - a - b - c ENDFILL,
+	   FILL Expression a - b - v - c ENDFILL,
+	   FILL Expression a + b + v + c ENDFILL,
+	   FILL Expression 2 * v ENDFILL,
+	   FILL Expression v * a * b ENDFILL,
+	   FILL Expression v / a / b ENDFILL,
+	   FILL Expression a / v / b / c ENDFILL,
+	   FILL Expression 2 * v + 1 ENDFILL,
+	   FILL Expression a + 2 * (v + b) + c ENDFILL,
+	   FILL Expression a + b ENDFILL,
+	   FILL Expression -v ENDFILL,
+	   FILL Expression 1/v ENDFILL,
+	   FILL Expression 1/(1 - 1/(1 - v)) ENDFILL,
+	   FILL Expression 1/(v * 2 + 1) ENDFILL,
+	   FILL Expression v + 2*v ENDFILL,
+	   FILL Expression v + v ENDFILL,
+	   FILL Expression 1 - (v * 2) ENDFILL,
+	   FILL Expression v ENDFILL>;
+
+FOR exp IN tests DO
+  PRINFLUSH("x := ");
+  @New_Program(exp);
+  @Checkpoint("");
+  exp := @Invert(@Make(T_Variable, @Make_Name("x"), < >), @Make_Name("v"), exp);
+  IF EMPTY?(exp)
+    THEN PRINT("-- not invertible")
+    ELSE @Paste_Over(exp);
+	 PRINFLUSH("v := ");
+	 @Checkpoint("") FI;
+  PRINT("") OD;
+
+SKIP FI;
+
+
+
+
+SKIP
+

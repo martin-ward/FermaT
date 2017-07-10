@@ -1,0 +1,766 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+@Test_Trans(" 1st test of `Syntactic_Slice'",FILL Statements
+ sum := 0;
+ prod := 1;
+ i := 1;
+ WHILE i <= n DO
+   sum := (sum + A[i]);
+   prod := (prod * A[i]);
+   i := (i + 1)
+ OD;
+ PRINT("sum = ",sum);
+ PRINT("prod = ",prod)
+
+ENDFILL,<  >,TR_Syntactic_Slice,"sum",FILL Statements
+ sum := 0;
+ i := 1;
+ WHILE i <= n DO
+   sum := (sum + A[i]);
+   i := (i + 1)
+ OD
+
+ENDFILL);
+@Test_Trans(" 2nd test of `Syntactic_Slice'",FILL Statements
+ sum := 0;
+ prod := 1;
+ i := 1;
+ WHILE i <= n DO
+   sum := (sum + A[i]);
+   prod := (prod * A[i]);
+   i := (i + 1)
+ OD;
+ PRINT("sum = ",sum);
+ PRINT("prod = ",prod)
+
+ENDFILL,<  >,TR_Syntactic_Slice,"i",FILL Statements
+ i := 1;
+ WHILE i <= n DO
+   i := (i + 1)
+ OD
+
+ENDFILL);
+@Test_Trans(" 3rd test of `Syntactic_Slice'",FILL Statements
+ BEGIN
+   sum := sum_0;
+   i := 1;
+   WHILE i <= 10 DO
+      A( VAR sum,i)
+   OD;
+   PRINT("sum = ",sum)
+ WHERE
+ PROC A( VAR x,y) ==
+   Add(y VAR x);
+   Inc( VAR y)
+ END
+ PROC Add(b VAR a) ==
+   a := (a + b)
+ END
+ PROC Inc( VAR z) ==
+   Add(1 VAR z)
+ END
+ END
+
+ENDFILL,<  >,TR_Syntactic_Slice,"i",FILL Statements
+ BEGIN
+   i := 1;
+   WHILE i <= 10 DO
+      A( VAR i)
+   OD
+ WHERE
+ PROC A( VAR y) ==
+   Inc( VAR y)
+ END
+ PROC Add(b VAR a) ==
+   a := (a + b)
+ END
+ PROC Inc( VAR z) ==
+   Add(1 VAR z)
+ END
+ END
+
+ENDFILL);
+@Test_Trans(" 4th test of `Syntactic_Slice'",FILL Statements
+ sum := sum0;
+ prod := 1;
+ i := 1;
+ WHILE i <= n DO
+   sum := (sum + A[i]);
+   prod := (prod * A[i]);
+   i := (i + 1)
+ OD;
+ PRINT("sum = ",sum);
+ PRINT("prod = ",prod)
+
+ENDFILL,<  >,TR_Syntactic_Slice,"-f,n",FILL Statements
+ WHILE i <= n DO
+   sum := (sum + A[i]);
+   prod := (prod * A[i]);
+   i := (i + 1)
+ OD;
+ PRINT("sum = ",sum);
+ PRINT("prod = ",prod)
+
+ENDFILL);
+@Test_Trans(" 5th test of `Syntactic_Slice'",FILL Statements
+ sum := sum0;
+ prod := 1;
+ i := 1;
+ WHILE i <= n DO
+   sum := (sum + A[i]);
+   prod := (prod * A[i]);
+   i := (i + 1)
+ OD;
+ PRINT("sum = ",sum);
+ PRINT("prod = ",prod)
+
+ENDFILL,<  >,TR_Syntactic_Slice,"-f,sum0",FILL Statements
+ sum := sum0;
+ WHILE i <= n DO
+   sum := (sum + A[i])
+ OD;
+ PRINT("sum = ",sum);
+ PRINT("prod = ",prod)
+
+ENDFILL);
+@Test_Trans(" 6th test of `Syntactic_Slice'",FILL Statements
+ ACTIONS S1:
+ S1 ==
+   i := 1;
+   CALL S2
+ END
+ S2 ==
+   sum := 0;
+   CALL L1
+ END
+ L1 ==
+   IF i > 10 THEN
+      CALL L2
+   FI;
+   CALL S4
+ END
+ S4 ==
+   !P read( VAR j,os);
+   CALL P5
+ END
+ P5 ==
+   IF j < 0 THEN
+      CALL L1
+   FI;
+   CALL S6
+ END
+ S6 ==
+   sum := (sum + j);
+   CALL P7
+ END
+ P7 ==
+   IF sum > 100 THEN
+      CALL L2
+   FI;
+   CALL S8
+ END
+ S8 ==
+   i := (i + 1);
+   CALL S9
+ END
+ S9 ==
+   CALL L1
+ END
+ L2 ==
+   !P print(sum VAR os);
+   CALL Z
+ END
+ ENDACTIONS
+
+ENDFILL,<  >,TR_Syntactic_Slice,"i",FILL Statements
+ ACTIONS S1:
+ S1 ==
+   i := 1;
+   CALL S2
+ END
+ S2 ==
+   sum := 0;
+   CALL L1
+ END
+ L1 ==
+   IF i > 10 THEN
+      CALL Z
+   FI;
+   CALL S4
+ END
+ S4 ==
+   !P read( VAR j,os);
+   CALL P5
+ END
+ P5 ==
+   IF j < 0 THEN
+      CALL L1
+   FI;
+   CALL S6
+ END
+ S6 ==
+   sum := (sum + j);
+   CALL P7
+ END
+ P7 ==
+   IF sum > 100 THEN
+      CALL Z
+   FI;
+   CALL S8
+ END
+ S8 ==
+   i := (i + 1);
+   CALL L1
+ END
+ ENDACTIONS
+
+ENDFILL);
+@Test_Trans(" 7th test of `Syntactic_Slice'",FILL Statements
+ ACTIONS A1:
+ A1 ==
+   sum := 0;
+   CALL A2
+ END
+ A2 ==
+   prod := 0;
+   CALL A3
+ END
+ A3 ==
+   i := 1;
+   CALL A4
+ END
+ A4 ==
+   IF i <= n THEN
+      CALL A5
+   ELSE 
+      CALL B1
+   FI
+ END
+ A5 ==
+   sum := (sum + A[i]);
+   CALL A6
+ END
+ A6 ==
+   prod := (prod * A[1]);
+   CALL A7
+ END
+ A7 ==
+   i := (i + 1);
+   CALL A4
+ END
+ B1 ==
+   PRINT("sum = ",sum);
+   CALL B2
+ END
+ B2 ==
+   PRINT("prod = ",prod);
+   CALL Z
+ END
+ ENDACTIONS
+
+ENDFILL,<  >,TR_Syntactic_Slice,"i",FILL Statements
+ ACTIONS A3:
+ A3 ==
+   i := 1;
+   CALL A4
+ END
+ A4 ==
+   IF i <= n THEN
+      CALL A7
+   ELSE 
+      CALL Z
+   FI
+ END
+ A7 ==
+   i := (i + 1);
+   CALL A4
+ END
+ ENDACTIONS
+
+ENDFILL);
+@Test_Trans(" 8th test of `Syntactic_Slice'",FILL Statements
+ ACTIONS A1:
+ A1 ==
+   sum := 0;
+   CALL A2
+ END
+ A2 ==
+   prod := 0;
+   CALL A3
+ END
+ A3 ==
+   i := 1;
+   CALL A4
+ END
+ A4 ==
+   IF i <= n THEN
+      CALL A5
+   ELSE 
+      CALL B1
+   FI
+ END
+ A5 ==
+   sum := (sum + A[i]);
+   CALL A6
+ END
+ A6 ==
+   prod := (prod * A[1]);
+   CALL A7
+ END
+ A7 ==
+   i := (i + 1);
+   CALL A4
+ END
+ B1 ==
+   PRINT("sum = ",sum);
+   CALL B2
+ END
+ B2 ==
+   PRINT("prod = ",prod);
+   CALL Z
+ END
+ ENDACTIONS
+
+ENDFILL,<  >,TR_Syntactic_Slice,"j",FILL Statements
+ SKIP
+
+ENDFILL);
+@Test_Trans(" 9th test of `Syntactic_Slice'",FILL Statements
+ sum := sum0;
+ prod := 1;
+ i := 1;
+ DO
+   IF i > n THEN
+      EXIT(2)
+   FI;
+   sum := (sum + A[i]);
+   prod := (prod * A[i]);
+   i := (i + 1)
+ OD;
+ PRINT("sum  = ",sum);
+ PRINT("prod = ",prod)
+
+ENDFILL,<  >,TR_Syntactic_Slice,"sum",FILL Statements
+ sum := sum0;
+ i := 1;
+ DO
+   IF i > n THEN
+      EXIT(2)
+   FI;
+   sum := (sum + A[i]);
+   i := (i + 1)
+ OD
+
+ENDFILL);
+@Test_Trans("10th test of `Syntactic_Slice'",FILL Statements
+ BEGIN
+   sum := sum_0;
+   i := 1;
+   WHILE i <= 10 DO
+      A( VAR sum,i)
+   OD;
+   PRINT("sum = ",sum)
+ WHERE
+ PROC A( VAR x,y) ==
+   Add(y VAR x);
+   Inc( VAR y)
+ END
+ PROC Add(b VAR a) ==
+   a := (a + b)
+ END
+ PROC Inc( VAR z) ==
+   Add(1 VAR z)
+ END
+ PROC Not_Called( VAR z) ==
+   z := 0
+ END
+ END
+
+ENDFILL,<  >,TR_Syntactic_Slice,"i",FILL Statements
+ BEGIN
+   i := 1;
+   WHILE i <= 10 DO
+      A( VAR i)
+   OD
+ WHERE
+ PROC A( VAR y) ==
+   Inc( VAR y)
+ END
+ PROC Add(b VAR a) ==
+   a := (a + b)
+ END
+ PROC Inc( VAR z) ==
+   Add(1 VAR z)
+ END
+ END
+
+ENDFILL);
+@Test_Trans("11th test of `Syntactic_Slice'",FILL Statements
+ sum := sum0;
+ prod := 1;
+ i := 1;
+ DO
+   DO
+      IF i > n THEN
+          EXIT(2)
+      FI;
+      sum := (sum + A[i]);
+      prod := (prod * A[i]);
+      i := (i + 1)
+   OD;
+   C:" Unreachable code: ";
+   sum0 := 0
+ OD;
+ PRINT("sum  = ",sum);
+ PRINT("prod = ",prod)
+
+ENDFILL,<  >,TR_Syntactic_Slice,"sum",FILL Statements
+ sum := sum0;
+ i := 1;
+ DO
+   IF i > n THEN
+      EXIT(1)
+   FI;
+   sum := (sum + A[i]);
+   i := (i + 1)
+ OD
+
+ENDFILL);
+@Test_Trans("12th test of `Syntactic_Slice'",FILL Statements
+ sum := sum0;
+ prod := 1;
+ i := 1;
+ DO
+   DO
+      IF i > n THEN
+          EXIT(2)
+      FI;
+      sum := (sum + A[i]);
+      prod := (prod * A[i]);
+      i := (i + 1)
+   OD;
+   C:" Unreachable code: ";
+   sum0 := 0
+ OD;
+ PRINT("sum  = ",sum);
+ PRINT("prod = ",prod)
+
+ENDFILL,<  >,TR_Syntactic_Slice,"sum0",FILL Statements
+ SKIP
+
+ENDFILL);
+@Test_Trans("13th test of `Syntactic_Slice'",FILL Statements
+ x := y;
+ VAR < x := x >:
+   b := x;
+   x := z;
+   a := x
+ ENDVAR;
+ c := x
+
+ENDFILL,<  >,TR_Syntactic_Slice,"a",FILL Statements
+ VAR < x := __UNDEF__ >:
+   x := z;
+   a := x
+ ENDVAR
+
+ENDFILL);
+@Test_Trans("14th test of `Syntactic_Slice'",FILL Statements
+ x := y;
+ VAR < x := x >:
+   b := x;
+   x := z;
+   a := x
+ ENDVAR;
+ c := x
+
+ENDFILL,<  >,TR_Syntactic_Slice,"b",FILL Statements
+ x := y;
+ VAR < x := x >:
+   b := x
+ ENDVAR
+
+ENDFILL);
+@Test_Trans("15th test of `Syntactic_Slice'",FILL Statements
+ x := y;
+ VAR < x := x >:
+   b := x;
+   x := z;
+   a := x
+ ENDVAR;
+ c := x
+
+ENDFILL,<  >,TR_Syntactic_Slice,"c",FILL Statements
+ x := y;
+ c := x
+
+ENDFILL);
+@Test_Trans("16th test of `Syntactic_Slice'",FILL Statements
+ x := y;
+ VAR < x := x >:
+   b := x;
+   x := z;
+   a := x
+ ENDVAR;
+ c := x
+
+ENDFILL,<  >,TR_Syntactic_Slice,"c",FILL Statements
+ x := y;
+ c := x
+
+ENDFILL);
+@Test_Trans("17th test of `Syntactic_Slice'",FILL Statements
+ x := y;
+ VAR < x := x >:
+   b := x;
+   x := z;
+   y := (y + 1);
+   a := x
+ ENDVAR;
+ c := x
+
+ENDFILL,<  >,TR_Syntactic_Slice,"y",FILL Statements
+ y := (y + 1)
+
+ENDFILL);
+@Test_Trans("18th test of `Syntactic_Slice'",FILL Statements
+ x := y;
+ VAR < x := x, y := 10 >:
+   b := x;
+   x := z;
+   y := (y + 1);
+   a := x
+ ENDVAR;
+ c := x
+
+ENDFILL,<  >,TR_Syntactic_Slice,"b",FILL Statements
+ x := y;
+ VAR < x := x >:
+   b := x
+ ENDVAR
+
+ENDFILL);
+@Test_Trans("19th test of `Syntactic_Slice'",FILL Statements
+ sum := 0;
+ i := x;
+ FOR i := s1 TO sn STEP ss DO
+   sum := (sum + i)
+ OD;
+ y := i
+
+ENDFILL,<  >,TR_Syntactic_Slice,"i",FILL Statements
+ i := x
+
+ENDFILL);
+@Test_Trans("20th test of `Syntactic_Slice'",FILL Statements
+ sum := 0;
+ i := x;
+ FOR i := s1 TO sn STEP ss DO
+   sum := (sum + i)
+ OD;
+ y := i
+
+ENDFILL,<  >,TR_Syntactic_Slice,"y",FILL Statements
+ i := x;
+ y := i
+
+ENDFILL);
+@Test_Trans("21st test of `Syntactic_Slice'",FILL Statements
+ sum := 0;
+ i := x;
+ FOR i := s1 TO sn STEP ss DO
+   sum := (sum + i)
+ OD;
+ y := i
+
+ENDFILL,<  >,TR_Syntactic_Slice,"sum",FILL Statements
+ sum := 0;
+ FOR i := s1 TO sn STEP ss DO
+   sum := (sum + i)
+ OD
+
+ENDFILL);
+@Test_Trans("22nd test of `Syntactic_Slice'",FILL Statements
+ BEGIN
+   sum := sum_0;
+   i := 1;
+   WHILE i <= 10 DO
+      A( VAR sum,i)
+   OD;
+   PRINT("sum = ",sum)
+ WHERE
+ PROC A( VAR x,y) ==
+   Add(y VAR x);
+   Inc( VAR y)
+ END
+ PROC Add(b VAR a) ==
+   a := (a + b)
+ END
+ PROC Inc( VAR z) ==
+   Add(1 VAR z)
+ END
+ END
+
+ENDFILL,<  >,TR_Syntactic_Slice,"z@(1 2 3 3)",FILL Statements
+ BEGIN
+   i := 1;
+   WHILE i <= 10 DO
+      A( VAR i)
+   OD
+ WHERE
+ PROC A( VAR y) ==
+   Inc( VAR y)
+ END
+ PROC Add(b VAR a) ==
+   a := (a + b)
+ END
+ PROC Inc( VAR z) ==
+   Add(1 VAR z)
+ END
+ END
+
+ENDFILL);
+@Test_Trans("23rd test of `Syntactic_Slice'",FILL Statements
+ IF y = 1 THEN
+   x := 1;
+   DO
+      SKIP
+   OD
+ FI
+
+ENDFILL,<  >,TR_Syntactic_Slice,"x",FILL Statements
+ SKIP
+
+ENDFILL);
+@Test_Trans("24th test of `Syntactic_Slice'",FILL Statements
+ BEGIN
+   x.y := 1;
+   p := 2;
+   A( VAR );
+   z := x.y
+ WHERE
+ PROC A( VAR ) ==
+   x.y := p
+ END
+ END
+
+ENDFILL,<  >,TR_Syntactic_Slice,"z",FILL Statements
+ BEGIN
+   p := 2;
+   A( VAR );
+   z := x.y
+ WHERE
+ PROC A( VAR ) ==
+   x.y := p
+ END
+ END
+
+ENDFILL);
+@Test_Trans("25th test of `Syntactic_Slice'",FILL Statements
+ BEGIN
+   IF t = 1 THEN
+      x := 1;
+      p := 2;
+      A( VAR );
+      z := x
+   ELSE 
+      x := 1;
+      p := 2;
+      A( VAR );
+      z := p
+   FI
+ WHERE
+ PROC A( VAR ) ==
+   x := p
+ END
+ END
+
+ENDFILL,<  >,TR_Syntactic_Slice,"z",FILL Statements
+ BEGIN
+   IF t = 1 THEN
+      p := 2;
+      A( VAR );
+      z := x
+   ELSE 
+      p := 2;
+      z := p
+   FI
+ WHERE
+ PROC A( VAR ) ==
+   x := p
+ END
+ END
+
+ENDFILL);
+@Test_Trans("26th test of `Syntactic_Slice'",FILL Statements
+ total := 0;
+ i := 0;
+ evens := 0;
+ noevens := 0;
+ odds := 0;
+ noodds := 0;
+ n := n0;
+ WHILE i <= n DO
+   evenflag := (A[i] MOD 2);
+   evenflag := 0;
+   IF FALSE THEN
+      evens := (evens + A[i]);
+      noevens := (noevens + 1)
+   ELSE 
+      odds := (odds + A[i]);
+      noodds := (noodds + 1)
+   FI;
+   total := (total + A[i]);
+   i := (i + 1)
+ OD;
+ IF noevens <> 0 THEN
+   meaneven := (evens / noevens)
+ ELSE 
+   meaneven := 0
+ FI;
+ IF noodds <> 0 THEN
+   meanodd := (odds / noodds)
+ ELSE 
+   meanodd := 0
+ FI;
+ mean := (total / (n + 1));
+ evendifference := ABS((meaneven - mean));
+ odddifference := ABS((meanodd - mean))
+
+ENDFILL,<  >,TR_Syntactic_Slice,"evendifference",FILL Statements
+ total := 0;
+ i := 0;
+ evens := 0;
+ noevens := 0;
+ n := n0;
+ WHILE i <= n DO
+   total := (total + A[i]);
+   i := (i + 1)
+ OD;
+ IF noevens <> 0 THEN
+   meaneven := (evens / noevens)
+ ELSE 
+   meaneven := 0
+ FI;
+ mean := (total / (n + 1));
+ evendifference := ABS((meaneven - mean))
+
+ENDFILL);
+SKIP

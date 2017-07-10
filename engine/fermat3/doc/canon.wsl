@@ -1,0 +1,51 @@
+
+C:" Sample WSL program with code extracted from maths.wsl ";
+C:" This prints the `canonical form' of an expression ";
+C:" or condition (before the pattern mathes are applied). ";
+
+I := FILL Condition (x>65) AND (x<32) ENDFILL;
+
+VAR < new := I, old := < >, Orig_Budget := Mth_Default_Budget,
+	Orig_Size := @Total_Size(I), Orig := I >:
+
+@New_Program(I);
+
+IF @GT(@I) = T_Condition AND @Cs?(@I)
+  THEN @Paste_Over(@Mth_De_Morgan(@I)) FI;
+DO @Mth_Flatten;
+   @Mth_Evaluate;
+   @Mth_Sort_Merge;
+   old := @Program;
+   IF @ST(@I) = T_And OR @ST(@I) = T_Or
+     THEN @Mth_Duplicate_Relations FI;
+   IF @ST(@I) = T_And
+     THEN @Mth_Known_Value1(Budget);
+	  @Mth_Known_Value3(Budget) FI;
+   IF @ST(@I) = T_Or
+     THEN @Mth_Known_Value2(Budget);
+	  @Mth_Known_Value4(Budget) FI;
+   @Mth_Expand(Budget);
+   IF @ST(@I) = T_And AND @Size(@I) > 1
+	  AND @ST(@I^1) = T_Or AND @ST(@I^2) = T_Or
+	OR @ST(@I) = T_Or AND @Size(@I) > 1
+	  AND @ST(@I^1) = T_And AND @ST(@I^2) = T_And
+     THEN @Mth_Common_Components(Budget) FI;
+   IF @Total_Size(@Program) > 5 * Orig_Size
+     THEN @Paste_Over(Orig); EXIT(1)
+   ELSIF @Equal?(old, @Program)
+     THEN EXIT(1) FI OD;
+
+@Print_WSL(@I, "");
+@PP_Item(@I, 80, "");
+
+@Trans(TR_Simplify, "");
+
+PRINT("");
+PRINT("Simplified version:");
+
+@Print_WSL(@I, "");
+@PP_Item(@I, 80, "");
+
+
+SKIP ENDVAR
+

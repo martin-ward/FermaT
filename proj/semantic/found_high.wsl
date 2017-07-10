@@ -1,0 +1,8 @@
+i := 1;
+WHILE i <= n DO
+  IF A[i] > high
+    THEN high := A[i]; found_high := 1 FI;
+  IF A[i] < low
+    THEN low := A[i]; found_low := 1 FI;
+  sum := sum + A[i];
+  i := i + 1 OD

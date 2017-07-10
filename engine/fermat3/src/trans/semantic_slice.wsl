@@ -1,0 +1,429 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Semantic_Slice_Test() ==
+  IF @GT(@I) <> T_Statements AND @GT(@I) <> T_Statement
+    THEN @Fail("Can only slice statements.")
+  ELSIF NOT @Is_Proper?
+    THEN @Fail("Current item is not a proper sequence.")
+  ELSIF SUBSET?(@Stat_Types(@I),
+                WP_Types_Set
+		  \/ @Make_Set(<T_While, T_A_Proc_Call, T_Floop, T_Exit, T_For_In>))
+    THEN FOREACH Lvalue DO
+	   IF @ST(@I) <> T_Var_Lvalue
+	     THEN @Fail("All assignments must be to simple variables.") FI OD;
+	 IF NOT @Failed? THEN @Pass FI
+    ELSE @Fail("The current item contains a statement which cannot be sliced.") FI .;
+
+
+MW_PROC @Semantic_Slice_Code(Data) ==
+  VAR < X := < >, R := < >, orig := < > >:
+  C:" Keep the original order of X here for the message ";
+  PRINT("Semantic Slice, initial variables are: ", Data);
+  X := @Make_Set(MAP("@Make_Name", @Split(Data)));
+  FOREACH Statement DO
+    IF @Trans?(TR_Floop_To_While)
+      THEN @Trans(TR_Floop_To_While, "") FI OD;
+  R := @Semantic_Slice_Sub(X, 1);
+  PRINT("Semantic Slice,   final variables are: ",
+        @Join(" ", MAP("@N_String", R[2]))) ENDVAR .;
+
+
+MW_FUNCT @Semantic_Slice_Sub(X, speculative_unroll) ==
+  VAR < R := < >, orig := < >, save := A_Proc_Call_Filter >:
+  FOREACH Statement DO
+    IF @ST(@I) = T_While
+      THEN @Make_And_Use_Assertion FI OD;
+  DO orig := @Program;
+     R := @SSlice(@I, X);
+     @Paste_Over(R[1]);
+PRINT("-------- Abstract version:");
+@Checkpoint("");
+     FOREACH Statement DO
+       IF @Trans?(TR_Refine_Spec)
+         THEN @Trans(TR_Refine_Spec, "") FI OD;
+     C:" Attempt to reduce any WHILE loops: ";
+PRINT("-------- Refined version:");
+@Checkpoint("");
+     FOREACH Statement DO
+       IF @ST(@I) = T_For_In
+         THEN IF @Trans?(TR_For_In_To_Reduce)
+	        THEN @Trans(TR_For_In_To_Reduce, "") FI
+       ELSIF @ST(@I) = T_While
+         THEN @Make_And_Use_Assertion;
+	      IF @Trans?(TR_While_To_Reduce)
+                THEN @Trans(TR_While_To_Reduce, "")
+              ELSIF @Trans?(TR_While_To_For_In)
+	        THEN @Trans(TR_While_To_For_In, "")
+              ELSIF speculative_unroll > 0
+	        THEN speculative_unroll := speculative_unroll - 1;
+		     @Speculative_Unrolling(X, speculative_unroll) FI FI OD;
+     C:" Refine any spec statements in the result: ";
+    FOREACH Statement DO
+       IF @Trans?(TR_Refine_Spec)
+         THEN @Trans(TR_Refine_Spec, "") FI OD;
+     @Trans(TR_Delete_All_Skips, "");
+PRINT("-------- after While_To_Reduce and Refine_Spec");
+@Checkpoint("");
+     A_Proc_Call_Filter := @Variables(@Program);
+     IF @Trans?(TR_Constant_Propagation)
+       THEN @Trans(TR_Constant_Propagation, "") FI;
+     @Paste_Over(@Simplify(@I, 50));
+PRINT("-------- after C_P");
+@Checkpoint("");
+     C:" If the result is smaller, or is the same size but with fewer specifications ";
+     C:" or the same size and number of specifications, but with fewer expressions ";
+     C:" then carry on processing ";
+     IF @Total_Size(@Program) < @Total_Size(orig)
+       THEN SKIP
+     ELSIF @Total_Size(@Program) = @Total_Size(orig)
+             AND @Spec_Type_Count(T_Spec, @Program) < @Spec_Type_Count(T_Spec, orig)
+       THEN SKIP
+     ELSIF @Total_Size(@Program) = @Total_Size(orig)
+             AND @Spec_Type_Count(T_Spec, @Program) = @Spec_Type_Count(T_Spec, orig)
+             AND @Gen_Type_Count(T_Expression, @Program)
+	            < @Gen_Type_Count(T_Expression, orig)
+       THEN SKIP
+       ELSE @Paste_Over(orig); EXIT(1) FI OD;
+  A_Proc_Call_Filter := save;
+  (R) .;
+
+
+
+C:" Slices the given item with the given slicing criterion ";
+C:" (set of final variables required). ";
+C:" Returns the sliced program plus new slicing criterion ";
+C:" (the set of input variables required) ";
+
+MW_FUNCT @SSlice(I, X) ==
+  VAR < R := < >, new := < >, newX := < > >:
+
+  C:" Trim trailing statements which do not assign to variables in X: ";
+  IF @ST(I) = T_Statements
+    THEN VAR < comps := REVERSE(@Cs(I)), keep := < > >:
+         WHILE NOT EMPTY?(comps) AND EMPTY?(X /\ @Assigned(HEAD(comps))) DO
+	   IF @ST(HEAD(comps)) = T_Assert
+	     THEN keep := <HEAD(comps)> ++ keep FI;
+	   comps := TAIL(comps) OD;
+         comps := REVERSE(keep) ++ comps;
+         IF EMPTY?(comps)
+	   THEN I := @Skips
+	   ELSE I := @Make(T_Statements, < >, REVERSE(comps)) FI ENDVAR FI;
+	   
+  C:" Convert to a spec statement, if possible, then slice: ";
+  IF T_While NOTIN @Stat_Types(I) AND T_For_In NOTIN @Stat_Types(I)
+    THEN IF @ST(I) = T_Spec OR @ST(I) = T_Assert
+              OR @ST(I) = T_Skip OR @ST(I) = T_Abort
+           THEN C:" Nothing to do here "
+	 ELSIF @ST(I) = T_Statements AND @Size(I) = 1
+	          AND (@ST(I^1) = T_Spec OR @ST(I^1) = T_Assert
+                         OR @ST(I^1) = T_Skip OR @ST(I^1) = T_Abort)
+           THEN C:" Nothing to do here "
+	   ELSE @Edit;
+	        @New_Program(I);
+		IF @Trans?(TR_Prog_To_Spec)
+	          THEN @Trans(TR_Prog_To_Spec, "") FI;
+		I := @Program;
+		@Undo_Edit FI FI;
+
+  IF @ST(I) = T_Statements
+    THEN FOR S IN REVERSE(@Cs(I)) DO
+	   R := @SSlice(S, X);
+           IF @GT(R[1]) = T_Statement
+	     THEN new := <R[1]> ++ new
+           ELSIF @GT(R[1]) = T_Statements
+	     THEN new := @Cs(R[1]) ++ new
+	     ELSE @Print_WSL(R[1], "");
+	          ERROR("Unexpected type in R") FI;
+	   X := R[2] OD;
+	 R := <@Make(T_Statements, < >, new), X>
+
+  ELSIF @ST(I) = T_Assert OR @ST(I) = T_Comment
+    THEN R := <I, X>
+
+  ELSIF @GT(I) = T_Statement AND EMPTY?(X /\ @Assigned(I))
+    THEN R := <@Skip, X>
+	   
+  ELSIF @ST(I) = T_Assignment
+    THEN VAR < new := < >, newI := < > >:
+         FOR assign IN @Cs(I) DO
+	   IF NOT EMPTY?(@Assigned(assign) /\ X)
+	     THEN new := <assign> ++ new FI OD;
+	 IF EMPTY?(new)
+	   THEN R := <@Skip, X>
+	   ELSE newI := @Make(T_Assignment, < >, REVERSE(new));
+	        R := <newI, (X \ @Assigned(newI)) \/ @Used(newI)> FI ENDVAR
+
+  ELSIF @ST(I) = T_Cond OR @ST(I) = T_D_If
+    THEN FOR guard IN @Cs(I) DO
+	   R := @SSlice(guard^2, X);
+	   new := <@Make(T_Guarded, < >, <guard^1, R[1]>)> ++ new;
+	   newX := newX \/ @Variables(guard^1) \/ R[2] OD;
+	 R := <@Make(@ST(I), < >, REVERSE(new)), newX>
+
+  ELSIF @ST(I) = T_For_In
+    THEN C:" Keep processing the body and adding the original vars ";
+	 C:" plus the vars in the expression, until the result converges ";
+        VAR < v := @V(I^1), E := @Variables(I^2), S := I^3, newX := X >:
+        DO R := @SSlice(S, newX);
+           R[2] := R[2] \/ newX \/ E;
+	   IF v IN X
+	     THEN R[2] := R[2] \/ <v>
+	     ELSE R[2] := R[2] \ <v> FI;
+           IF R[2] = newX THEN EXIT(1) FI;
+           newX := R[2] OD ENDVAR;
+        R := <@Make(T_For_In, < >, <I^1, I^2, R[1]>), R[2]>
+
+  ELSIF @ST(I) = T_While
+    THEN C:" Keep processing the body and adding the original vars ";
+	 C:" plus the vars in the condition, until the result converges ";
+
+         @Edit;
+         @New_Program(@Make(T_Statements, < >, <I>));
+	 @Down;
+         IF @Trans?(TR_While_To_Reduce)
+           THEN @Trans(TR_While_To_Reduce, "")
+         ELSIF speculative_unroll > 0
+           THEN @Speculative_Unrolling(X, speculative_unroll - 1) FI;
+         new := @Program;
+         @Undo_Edit;
+
+        IF FALSE AND speculative_unroll > 0
+          THEN PRINT("======================= orig WHILE, X = ", MAP("@N_String", X));
+               @PP_Item(I, 80, "");
+               PRINT("                    unrolled WHILE:");
+               @PP_Item(new, 80, "") FI;
+
+         IF NOT @Equal?(@Make(T_Statements, < >, <I>), new)
+	   THEN C:" Speculative unrolling must have worked ";
+	        R := @SSlice(new, X)
+           ELSE C:" Original WHILE loop processing ";
+                VAR < B := @Variables(I^1), S := I^2, newX := X >:
+                DO R := @SSlice(S, newX);
+                   R[2] := R[2] \/ newX \/ B;
+                   IF R[2] = newX THEN EXIT(1) FI;
+                   newX := R[2] OD ENDVAR;
+                R := <@Make(T_While, < >, <I^1, R[1]>), R[2]> FI
+
+  ELSIF @ST(I) = T_Var
+    THEN VAR < v := I^1^1^1, e := I^1^1^2, S := I^2, newX := < > >:
+	 R := @SSlice(I^2, X \ <@V(v)>);
+	 S := R[1];
+	 newX := (R[2] \ <@V(v)>) \/ (<@V(v)> /\ X);
+	 IF @V(v) IN R[2]
+	   THEN R := < FILL Statement VAR < ~?v := ~?e >: ~?S ENDVAR ENDFILL,
+		       newX \/ @Used(e) >
+	   ELSE R := < FILL Statement VAR < ~?v := BOTTOM >: ~?S ENDVAR ENDFILL,
+		       newX > FI ENDVAR 
+
+  ELSIF @ST(I) = T_Spec
+    THEN VAR < new := @Assigned(I) /\ X >:
+         IF new = @Assigned(I)
+	   THEN C:" All variables are needed ";
+	        R := <I, (X \ @Assigned(I)) \/ @Used(I)>
+           ELSE VAR < removed := @Assigned(I) \ new, vars := < >,
+	              cond := I^2, newvars := < >, newI := < > >:
+	        C:" Rename the removed variables and enclose in EXISTS ";
+		FOR var IN removed DO
+		  vars := <@Make(T_Var_Lvalue, @Make_Name(@N_String(var) ++ "_1"), < >)>
+		            ++ vars;
+		  cond := @Rename_Primed(var, @V(HEAD(vars)), cond) OD;
+		FOR var IN new DO
+		  newvars := <@Make(T_Var_Lvalue, var, < >)> ++ newvars OD;
+                cond := @Make(T_Exists, < >, <@Make(T_Lvalues, < >, vars), cond>);
+                cond := @Simplify(cond, 50);
+		newI := @Make(T_Spec, < >,
+		              <@Make(T_Lvalues, < >, newvars), cond>);
+		R := <newI, (X \ @Assigned(newI)) \/ @Used(newI)> ENDVAR FI ENDVAR
+
+  ELSIF @ST(I) = T_A_Proc_Call
+    THEN R := <I, X \/ @Variables(I)>
+
+  ELSIF @ST(I) = T_Assert
+    THEN R := <@Skip, X>
+
+  ELSIF @ST(I) = T_Skip
+    THEN R := <I, X>
+
+  ELSIF @ST(I) = T_Abort
+    THEN R := <I, < >>
+
+    ELSE ERROR("Unexpected type: ", @Type_Name(@ST(I))) FI;
+  (R) .;
+	 
+
+
+
+MW_FUNCT @Rename_Primed(old, new, I) ==
+  VAR < R := I >:
+  IF @ST(I) = T_Primed_Var
+    THEN IF @V(I) = old
+           THEN R := @Make(T_Variable, new, < >) FI
+  ELSIF @Cs?(I)
+    THEN VAR < comps := < > >:
+         FOR comp IN @Cs(I) DO
+	   comps := <@Rename_Primed(old, new, comp)> ++ comps OD;
+	 R := @Make(@ST(I), < >, REVERSE(comps)) ENDVAR FI;
+  (R) .;
+
+
+
+C:" If any variable in X is assigned only from a given constant in the loop ";
+C:" then try unrolling the loop. ";
+C:" NB: This assumes that the loop is the only statement in the program ";
+C:" eg we are called in the body of a FOREACH ";
+
+
+MW_PROC @Speculative_Unrolling(X, speculative_unroll) ==
+  VAR < constants := @Used(@I) \ @Assigned(@I),
+        bad_var := HASH_TABLE, var_val := HASH_TABLE,
+	orig := @Program, R := < >, good := < >, Q := < >, posn := < > >:
+
+  C:" First see if there are any good vars in X: ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+      THEN @Down; C:" to first assign ";
+           DO v := @I^1; e := @I^2;
+              IF @ST(v) = T_Var_Lvalue AND @V(v) IN X AND EMPTY?(bad_var.(@V(v)))
+                   AND (@ST(e) = T_Number OR @ST(e) = T_String
+                          OR @ST(e) = T_Variable AND @V(e) IN constants)
+                THEN IF EMPTY?(var_val.(@V(v)))
+                       THEN var_val.(@V(v)) := e
+                     ELSIF NOT @Equal?(var_val.(@V(v)), e)
+                       THEN bad_var.(@V(v)) := 1 FI
+                ELSE FOR var IN @Assigned(@I) DO
+                       bad_var.(var) := 1 OD FI;
+              IF @Right? THEN @Right ELSE EXIT(1) FI OD
+      ELSE IF @ST(@I) IN <T_While, T_Cond, T_D_If, T_D_Do, T_Floop>
+             THEN C:" Check the components ";
+	     ELSE FOR var IN @Assigned(@I) DO
+	            bad_var.(var) := 1 OD FI FI OD;
+  C:" IF so, then see if unrolling will help: ";
+  good := @Make_Set(@Hash_Keys(var_val)) \ @Make_Set(@Hash_Keys(bad_var));
+  IF NOT EMPTY?(good)
+    THEN @Speculative_Entire_Unrolling(good, speculative_unroll VAR Q);
+         C:" If entire loop unrolling succeeded, then Q contains a condition ";
+	 C:" which must be false on the first iteration of the next loop ";
+	 C:" (If B is true, then Q must be false for the first loop to terminate) ";
+         IF NOT EMPTY?(Q) THEN @Right FI;
+         @Trans(TR_Unroll_Loop, "");
+         @Down; @Down_To(2); @Down; C:" to first statement in unrolled body ";
+	 IF NOT EMPTY?(Q)
+	   THEN @UA_Process(@Not(Q)) FI;
+	 IF @ST(@I) = T_Cond AND @Right?
+	   THEN C:" Expand the condition and simplify both arms ";
+	        @Trans(TR_Fully_Absorb_Right, "");
+		IF @Trans?(TR_Insert_Assertion)
+		  THEN @Trans(TR_Insert_Assertion, "");
+		       ATEACH Statement DO
+		         IF @ST(@I) = T_Assert AND @Trans?(TR_Use_Assertion)
+			   THEN posn := @Posn;
+			        @Trans(TR_Use_Assertion, "");
+				@Goto(posn) FI OD FI FI;
+         @Goto(< >);
+         R := @Semantic_Slice_Sub(X, speculative_unroll);
+
+IF FALSE THEN
+PRINT("======================");
+@PP_Item(orig, 80, "");
+PRINT("Stats: ", @Stat_Count(@Program), " ", @Stat_Count(orig));
+PRINT("Expns: ", @Gen_Type_Count(T_Expression, @Program), " ", @Gen_Type_Count(T_Expression, orig));
+PRINT("Conds: ", @Gen_Type_Count(T_Condition, @Program), " ", @Gen_Type_Count(T_Condition, orig));
+@Checkpoint("");
+PRINT("======================");
+SKIP FI;
+
+
+	 IF @Stat_Count(@Program) < @Stat_Count(orig)
+              OR @Stat_Count(@Program) = @Stat_Count(orig)
+	           AND @Gen_Type_Count(T_Expression, @Program)
+		         <= @Gen_Type_Count(T_Expression, orig) 
+	   THEN C:" keep new version "
+	   ELSE @Paste_Over(orig) FI FI;
+  SKIP ENDVAR .;
+
+
+MW_PROC @Speculative_Entire_Unrolling(X, speculative_unroll VAR Q) ==
+  VAR < count := HASH_TABLE, posn := @Posn, name := < > >:
+  FOR var IN X DO
+    count.(var) := 0 OD;
+  @Down_To(2);
+  IF @ST(@I^1) = T_Cond
+       AND EMPTY?(X /\ @Assigned(@Make(T_Statements, < >, TAIL(@Cs(@I)))))
+    THEN C:" Count the number of guards in which X vars are assigned ";
+	 C:" If there is only one, then this is the condition we want ";
+	 C:" Speculatively unroll on loop cond AND NOT(Q) ";
+	 @Down; @Down; C:" to first guarded ";
+         DO FOR var IN X /\ @Assigned(@I) DO
+	      count.(var) := count.(var) + 1 OD;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+         FOR var IN X DO
+	   IF count.(var) = 1
+	     THEN name := var FI OD;
+         IF NOT EMPTY?(name)
+	   THEN C:" Found a suitable variable ";
+	        C:" Compute the condition for this variable ";
+		Q := @Make(T_False, < >, < >);
+		@To(1); C:" back to first guarded ";
+		DO IF name IN X /\ @Assigned(@I)
+		     THEN Q := @Or(Q, @Not(@I^1));
+		          EXIT(1)
+		     ELSE Q := @Or(Q, @I^1) FI;
+                   IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+                @Goto(posn);
+		@Entire_Loop_Unroll(VAR Q) FI FI;
+  @Goto(posn) ENDVAR .;
+
+
+MW_PROC @Entire_Loop_Unroll(VAR Q) ==
+  VAR < B1 := < >, S1 := < > >:
+  IFMATCH Statement WHILE ~?B DO ~*S OD
+    THEN C:" Use Q to simplify the body of the first loop ";
+         @Edit;
+	 @New_Program(@Make(T_Statements, < >, S));
+	 @Down;
+	 @UA_Process(Q);
+	 S1 := @Cs(@Program);
+	 @Undo_Edit;
+         B1 := @And(Q, B);
+	 C:" Don't unroll if S1 cannot make Q true: ";
+	 IF EMPTY?(@Used(Q) /\ @Assigned(@Make(T_Statements, < >, S1)))
+	   THEN Q := < >
+	   ELSE @Paste_Before(FILL Statement WHILE ~?B1 DO ~*S1 OD ENDFILL) FI
+    ELSE @Print_WSL(@I, "");
+         ERROR("@Entire_Loop_Unroll: WHILE loop not found!!!") ENDMATCH ENDVAR .;
+
+
+C:" Insert an assertion into the loop body and use it to simplify the loop: ";
+
+MW_PROC @Make_And_Use_Assertion() ==
+  @Trans(TR_Insert_Assertion, "");
+  IF @Trans?(TR_Use_Assertion)
+    THEN VAR < posn := @Posn >:
+         @Trans(TR_Use_Assertion, "");
+         @Goto(posn);
+	 IF @ST(@I) = T_Assert THEN @Clever_Delete FI ENDVAR FI;
+  @Up; @Up END;
+
+
+
+SKIP
+

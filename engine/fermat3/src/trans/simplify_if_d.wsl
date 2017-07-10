@@ -1,0 +1,37 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+TR_Simplify_If := @New_TR_Number() ;
+
+TRs_Proc_Name[TR_Simplify_If] := "Simplify_If" ;
+TRs_Test[TR_Simplify_If]:=!XF funct(@Simplify_If_Test);
+TRs_Code[TR_Simplify_If]:=!XF funct(@Simplify_If_Code);
+
+TRs_Name[TR_Simplify_If] := "Simplify If";
+
+TRs_Keywords[TR_Simplify_If] := < "Simplify" > ;
+
+TRs_Help[TR_Simplify_If] := "Simplify If will remove false cases from an IF statement, and any cases whose conditions imply earlier conditions. Any repeated statements which can be taken outside the if will be, and the conditions will be simplified if possible.";
+
+TRs_Prompt[TR_Simplify_If] := ""; 
+
+TRs_Data_Gen_Type[TR_Simplify_If] := "" 
+ 

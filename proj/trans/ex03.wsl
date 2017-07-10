@@ -1,0 +1,19 @@
+ACTIONS A1:
+A1 == IF B=10 THEN CALL Z
+      ELSIF B=20 THEN B := B + 1; CALL B1
+      ELSIF B=21 THEN CALL B1
+      ELSIF B=22 THEN CALL C1
+                 ELSE B:=B+X; CALL Z FI.
+B1 == X:=B;
+      X:=X-1;
+      IF X < 10 THEN Y1 := Y1 + 1 ELSE Z1 := Z1 * 3 FI;
+      IF X < 15 THEN Y2 := Y2 + 1 ELSE Z2 := Z2 * 3 FI;
+      IF X < 20 THEN CALL A1;
+                ELSE B1 := B1-4; CALL Z FI.
+C1 == X2:=B;
+      X2:=X2-1;
+      IF X2 < 25 THEN Y3 := Y3 + 1 ELSE Z3 := Z3 * 3 FI;
+      IF X2 < 30 THEN CALL B1;
+                 ELSE B2 := B2-4; CALL Z FI.
+ENDACTIONS
+

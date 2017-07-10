@@ -1,0 +1,29 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2015 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+TR_All_Proc_Stacks_To_Pars:= @New_TR_Number;
+TRs_Name[TR_All_Proc_Stacks_To_Pars] := "All_Proc_Stacks_To_Pars";
+TRs_Proc_Name[TR_All_Proc_Stacks_To_Pars] := "All_Proc_Stacks_To_Pars";
+TRs_Test[TR_All_Proc_Stacks_To_Pars]:=!XF funct(@All_Proc_Stacks_To_Pars_Test);
+TRs_Code[TR_All_Proc_Stacks_To_Pars]:=!XF funct(@All_Proc_Stacks_To_Pars_Code);
+TRs_Keywords[TR_All_Proc_Stacks_To_Pars] := < "Simplify", "L_to_R", "R_to_L" >;
+TRs_Help[TR_All_Proc_Stacks_To_Pars] := "Convert stack references to a procedure parameter for all procedures in a program"; 
+TRs_Prompt[TR_All_Proc_Stacks_To_Pars] := "";
+TRs_Data_Gen_Type[TR_All_Proc_Stacks_To_Pars] := "" 

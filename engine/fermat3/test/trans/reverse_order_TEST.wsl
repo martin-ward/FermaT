@@ -1,0 +1,86 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Reverse Order'",
+	    (FILL Statements IF X = 0 THEN X := 5 ELSE X := 3 FI ENDFILL),
+	    <1>,
+	    TR_Reverse_Order,
+	    < >,
+	    (FILL Statements IF X <> 0 THEN X := 3 ELSE X := 5 FI ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Reverse Order'",
+	    (FILL Statements SKIP;
+			     IF X < 0 THEN X := 5; Y := 1; Z := 4
+				      ELSE X := 3; Y := 2; Z := 0 FI;
+			     ABORT ENDFILL),
+	    <2>,
+	    TR_Reverse_Order,
+	    < >,
+	    (FILL Statements SKIP;
+			     IF X >= 0 THEN X := 3; Y := 2; Z := 0
+				       ELSE X := 5; Y := 1; Z := 4 FI;
+			     ABORT ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Reverse Order'",
+	    (FILL Statements IF X = 0 THEN Y := 0
+			     ELSIF X = 1 THEN Y := 1
+			     ELSIF X = 2 THEN Y := 4 FI ENDFILL),
+	    <1>,
+	    TR_Reverse_Order,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 4th test of `Reverse Order'",
+	    (FILL Statements X := IF A = B THEN 1 ELSE 0 FI ENDFILL),
+	    <1, 1, 2>,
+	    TR_Reverse_Order,
+	    < >,
+	    (FILL Statements X := IF A <> B THEN 0 ELSE 1 FI ENDFILL));
+
+
+@Test_Trans(" 5th test of `Reverse Order'",
+	    (FILL Statements X := (1+A) ENDFILL),
+	    <1, 1, 2>,
+	    TR_Reverse_Order,
+	    < >,
+	    (FILL Statements X := (A+1) ENDFILL));
+
+
+@Test_Trans(" 6th test of `Reverse Order'",
+	    (FILL Statements X := (A+B+C) ENDFILL),
+	    <1, 1, 2>,
+	    TR_Reverse_Order,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 7th test of `Reverse Order'",
+	    (FILL Statements IF A < B THEN X := 0 FI ENDFILL),
+	    <1, 1, 1>,
+	    TR_Reverse_Order,
+	    < >,
+	    (FILL Statements IF B > A THEN X := 0 FI ENDFILL));
+
+SKIP
+
+

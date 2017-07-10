@@ -1,0 +1,111 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+MW_PROC @Use_Assertion_Test () ==
+  IF @ST(@I) <> T_Assert
+    THEN @Fail("The selected item is not an assertion.")
+  ELSIF NOT @Right?
+    THEN @Fail("No statements after the assertion")
+    ELSE @Pass FI .;
+
+
+MW_PROC @Use_Assertion_Code (Data) ==
+  VAR < A := @I^1 >:
+  IF @Right?
+    THEN @Right; @UA_Process(A) FI ENDVAR .;
+
+
+C:" Try to simplify current and subsequent items using given assertion: ";
+
+MW_PROC @UA_Process(A) ==
+  VAR < B := < > >:
+  DO C:" Process the components of the currently selected item: ";
+     IF @ST(@I) = T_Cond OR @ST(@I) = T_D_If
+       THEN @Down; C:" to first guarded ";
+	    DO B := @I^1;
+	       IF @Implies?(A, B)
+		 THEN @Delete_Rest;
+		      @Down_To(2); @Down;
+		      @UA_Process(@And(A, B));
+		      @Up; @Up;
+		      EXIT(1)
+	       ELSIF @ST(@And(A, B)) = T_False
+		 THEN @Delete;
+		      C:" Check if there are further guardeds: ";
+		      IF @Posn_n > @Size(@Parent) THEN EXIT(1) FI
+		 ELSE @Down;
+		      @Paste_Over(@Simplify_Using(@I, A, 20));
+		      @Right; @Down;
+                      VAR < posn := @Posn >:
+		        @UA_Process(@And(A, B));
+		        @Goto(posn) ENDVAR;
+		      @Up; @Up;
+		      IF @Right?
+			THEN @Right
+			ELSE EXIT(1) FI FI OD;
+	    @Up;
+	    IF NOT @Cs?(@I)
+	      THEN @Clever_Delete
+	    ELSIF @Size(@I) = 1
+	      THEN @Splice_Over(@Cs(@I^1^2)) FI
+     ELSIF @ST(@I) = T_While
+       THEN IF @ST(@And(A, @I^1)) = T_False
+	      THEN @Paste_Over(@Skip)
+              ELSE @UA_While(A) FI
+     ELSIF @ST(@I) = T_Assignment
+       THEN @Down;
+            DO IF EMPTY?(@Assigned(@I) /\ @Used(@I))
+	         THEN B := @Make(T_Equal, < >, <@Lvalue_To_Expn(@I^1), @I^2>);
+		      IF @Implies?(A, B)
+		        THEN @Delete FI FI;
+	       IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+            @Up;
+	    IF @Size(@I) = 0 THEN @Paste_Over(@Skip) FI FI;
+     C:" Update assertion with the effect of executing the current item ";
+     IF NOT EMPTY?(@Assigned(@I) /\ @Used(A))
+       THEN EXIT(1)
+     ELSIF @Right?
+       THEN @Right
+       ELSE EXIT(1) FI OD ENDVAR .;
+
+
+C:" See if the assertion can simplify the WHILE loop ";
+C:" If no variables in the assertion are assigned in the loop, ";
+C:" or if the assertion is invariant over the loop, ";
+C:" then use the assertion on the loop body. ";
+
+MW_PROC @UA_While(A) ==
+  IF EMPTY?(@Assigned(@I) /\ @Used(A))
+    THEN C:" Variables in the assertion are not modified in the loop ";
+         @Down;
+	 @Paste_Over(@Simplify_Using(@I, A, 20));
+	 @Right;
+         @Down; C:" to first statement in body ";
+         @UA_Process(A)
+  ELSIF SUBSET?(@Stat_Types(@I^2), WP_Types_Set)
+    THEN IF @Implies?(A, @WP(@I^2, A))
+           THEN @Down_To(2); @Down; C:" to first statement in body ";
+                @UA_Process(A) FI
+    ELSE C:" Loop modifies the assertion, so we cannot process it " FI .;
+
+SKIP
+

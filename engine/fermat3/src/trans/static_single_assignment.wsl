@@ -1,0 +1,96 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" Convert WSL code to Static Single Assignment form by renaming ";
+C:" and adding phi function assignments. ";
+
+C:" Note: this uses !XP perlscript() to call the perl script bbtossa ";
+
+C:" Note: Call Globals_To_Pars and Var_Pars_To_Val_Pars if necessary ";
+C:" before applying this transformation. ";
+
+
+MW_PROC @Static_Single_Assignment_Test() ==
+  VAR < phi := @Make_Name("phi") >:
+  ATEACH Expression DO
+    IF @ST(@I) = T_X_Funct_Call AND @V(@I^1) = phi
+      THEN @Fail("WSL code already contains phi function calls") FI OD;
+  IF (T_Var IN @Stat_Types(@I) OR T_For IN @Stat_Types(@I))
+	AND T_Where IN @Stat_Types(@I)
+    THEN IF @Check_Globals_In_Defns?
+	   THEN @Pass
+	   ELSE @Fail("There may be a reference to a local variable
+in a PROC, FUNCT or BFUNCT body.") FI FI;
+  IF NOT @Failed? THEN @Pass FI ENDVAR .;
+
+
+
+MW_PROC @Static_Single_Assignment_Code (Data) ==
+  VAR < block_file := "tmp_ssa.bb", ssa_file := "tmp_ssa.ssa",
+	SSA_blocks := < >, p := 0, vars := < >, elts := < >,
+	random := @Random(Omega) >:
+  C:" Add a random prefix to filenames to avoid race condition clashes: ";
+  block_file := @String(random) ++ "_" ++ block_file;
+  ssa_file := @String(random) ++ "_" ++ ssa_file;
+  IF STRING?(Data)
+    THEN @Parse_Words(Data VAR p, vars);
+         C:" Convert the list of SSA elements (list of strings) to a set of items ";
+	 FOR elt IN vars DO
+	   elts := <MAP("@SSA_Make_Name", elt)> ++ elts OD;
+         elts := @Make_Set(elts)
+  ELSIF NOT EMPTY?(Data) AND NOT SEQUENCE?(HEAD(Data))
+    THEN FOR var IN Data DO
+           elts := <<var>> ++ elts OD;
+         elts := @Make_Set(elts)
+    ELSE elts := @Make_Set(Data) FI;
+  IF NOT EMPTY?(elts)
+    THEN PRINT("Converting only these global vars:");
+         @Print_Elts(elts) FI;
+  IF T_For IN @Stat_Types(@I)
+    THEN PRINT("Converting FOR loops...");
+	 FOREACH Statement DO
+	   IF @ST(@I) = T_For
+	     THEN @Trans(TR_For_To_While, "") FI OD FI;
+  IF @Trans?(TR_Rename_Local_Vars)
+    THEN PRINT("Renaming local variables...");
+	 @Trans(TR_Rename_Local_Vars, "") FI;
+  PRINT("Computing Basic Blocks...");
+  @Basic_Blocks(@I, block_file);
+  PRINT("Computing SSA form of basic blocks...");
+  IF @File_Exists?(ssa_file) THEN @Delete_File(ssa_file) FI;
+  !XP perlscript("bbtossa", block_file ++ " " ++ ssa_file);
+  IF @File_Exists?(ssa_file)
+    THEN PRINT("Generating new WSL...");
+	 SSA_blocks := @Parse_Basic_Blocks(ssa_file);
+	 @Paste_Over(@WSL_To_SSA(@I, SSA_blocks, elts));
+	 @Delete_File(block_file);
+	 @Delete_File(ssa_file)
+    ELSE PRINT("ERROR: bbtossa failed to create " ++ ssa_file) FI ENDVAR .;
+  
+
+
+SKIP
+
+
+
+
+
+

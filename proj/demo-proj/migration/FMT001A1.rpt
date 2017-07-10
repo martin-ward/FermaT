@@ -1,0 +1,42 @@
+WSL to C Migration Report: FMT001A1
+===================================
+
+
+Dead Code Candidates:
+WCLC1
+
+Memory Overflows:
+
+CSECT:
+
+Function Size, IF nesting depth and largest expression and condition size:
+_enter_ = 87, 2, 9, 24
+GETREC_fmt001a1_P = 85, 2, 7, 6
+
+DSECTs Referenced:
+
+DSECTs Updated:
+
+Variables Referenced:
+
+CSECT:
+DDIN, DDIN_STATUS, NOT_USED, RDSOUT, WLAST, WPRT, WREC, __r10_init__,
+__r11_init__, __r12_init__, __r13_init__, __r14_init__, __r1_init__,
+__r2_init__, __r3_init__, __r4_init__, __r5_init__, __r6_init__, __r7_init__,
+__r8_init__, __r9_init__, a, entry_point, exit_flag, os, r0, r1, r10, r11, r12,
+r13, r14, r2, r3, r4, r5, r6, r7, r8, r9, reg_stack, result_code
+
+Variables Updated:
+
+CSECT:
+WLAST, WPRT, WREC, a, exit_flag, os, r0, r1, r10, r11, r12, r13, r14, r15, r2,
+r3, r4, r5, r6, r7, r8, r9, reg_stack, result_code
+
+EXecute statements and their targets:
+162: 230 230
+169: 231 231
+172: 232 232
+151: 229 229
+
+Dead Code Candidate Line Numbers:
+00000229, 00000230, 00000231, 00000232

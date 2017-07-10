@@ -1,0 +1,397 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Refine_Spec' ",
+	    FILL Statements SPEC <x>: x' = 123 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements x := 123 ENDFILL);
+
+
+@Test_Trans(" 2nd test of `Refine_Spec' ",
+	    FILL Statements SPEC <x>: x' = 2 * x + 1 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements x := 2 * x + 1 ENDFILL);
+
+
+@Test_Trans(" 3rd test of `Refine_Spec' ",
+	    FILL Statements SPEC <x>: x' = 1 AND y = 1
+	                           OR x' = 2 AND y <> 1 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements IF y = 1 THEN x := 1 ELSE x := 2 FI ENDFILL);
+
+
+@Test_Trans(" 4th test of `Refine_Spec' ",
+	    FILL Statements SPEC <y>:
+                            y' = 2 AND p = q OR y' = 17 AND p <> q ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements IF p = q THEN y := 2 ELSE y := 17 FI ENDFILL);
+
+
+
+@Test_Trans(" 5th test of `Refine_Spec' ",
+	    FILL Statements SPEC <tax>:
+                            tax' = 6625 * rate10 + 23655 * rate23
+                              AND age < 75
+                              AND age >= 65 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements {age < 75 AND age >= 65};
+                            tax := 6625 * rate10 + 23655 * rate23 ENDFILL);
+
+
+
+@Test_Trans(" 6th test of `Refine_Spec' ",
+	    (FILL Statements SPEC <personal>:
+                             (personal' = 7100 AND age < 75
+                                     OR personal' = 7360 AND age >= 75)
+                               AND age > 68 ENDSPEC ENDFILL),
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements {age > 68};
+                            IF age >= 75
+                              THEN personal := 7360
+                              ELSE personal := 7100 FI ENDFILL);
+
+
+
+@Test_Trans(" 7th test of `Refine_Spec' ",
+	    FILL Statements SPEC <x, y, z>: TRUE ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements SKIP ENDFILL);
+
+
+@Test_Trans(" 8th test of `Refine_Spec' ",
+	    FILL Statements SPEC <x>:
+                            ((x' = q OR z = 1) AND x' = p OR x' = q AND z <> 1)
+                                   AND (x' = r OR y = 1)
+                              OR x' = r AND y <> 1 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements IF y = 1 AND z = 1
+                              THEN x := p
+                            ELSIF y = 1
+                              THEN x := q
+                              ELSE x := r FI ENDFILL);
+
+
+@Test_Trans(" 9th test of `Refine_Spec' ",
+	    FILL Statements SPEC <y>:
+                            y' = 4 AND x <> 1 AND x <> 2
+                              OR y' = 2 AND x = 1
+                              OR y' = 3 AND x = 2 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements IF x = 2
+                              THEN y := 3
+                            ELSIF x = 1
+                              THEN y := 2
+                              ELSE y := 4 FI ENDFILL);
+
+
+@Test_Trans("10th test of `Refine_Spec' ",
+	    FILL Statements SPEC <personal>:
+                            personal' = 7100 AND age < 75 AND age > 68
+                              OR personal' = 7360 AND age >= 75 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements IF age >= 75
+                              THEN personal := 7360
+                              ELSE {age > 68}; personal := 7100 FI ENDFILL);
+
+
+@Test_Trans("11th test of `Refine_Spec' ",
+	    FILL Statements SPEC <x>:
+                            ((x' = q OR z = 1) AND x' = p OR x' = q AND z <> 1)
+                                   AND (x' = r OR y = 1)
+                              OR x' = r AND y <> 1 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements IF y = 1 AND z = 1
+                              THEN x := p
+                            ELSIF y = 1
+                              THEN x := q
+                              ELSE x := r FI ENDFILL);
+
+
+@Test_Trans("12th test of `Refine_Spec' ",
+	    FILL Statements SPEC <y>:
+                            y' = 2 AND p = q OR y' = 17 AND p <> q ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements IF p = q THEN y := 2 ELSE y := 17 FI ENDFILL);
+
+
+@Test_Trans("13th test of `Refine_Spec' ",
+	    FILL Statements SPEC <tax>:
+                            tax' = 6625 * rate10 + 23655 * rate23
+                              AND age < 75
+                              AND age >= 65 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements {age < 75 AND age >= 65};
+                            tax := 6625 * rate10 + 23655 * rate23 ENDFILL);
+
+
+
+@Test_Trans("14th test of `Refine_Spec' ",
+	    FILL Statements SPEC <y>:
+                            y' = 4 AND x <> 1 AND x <> 2
+                              OR y' = 2 AND x = 1
+                              OR y' = 3 AND x = 2 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements IF x = 2
+                              THEN y := 3
+                            ELSIF x = 1
+                              THEN y := 2
+                              ELSE y := 4 FI ENDFILL);
+
+
+
+@Test_Trans("15th test of `Refine_Spec' ",
+	    FILL Statements SPEC <personal>:
+                            personal' = 7100 AND age < 75 AND age > 68
+                              OR personal' = 7360 AND age >= 75 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements IF age >= 75
+                              THEN personal := 7360
+                              ELSE {age > 68}; personal := 7100 FI ENDFILL);
+
+
+
+@Test_Trans("16th test of `Refine_Spec' ",
+	    FILL Statements SPEC <tax>:
+                            (tax' = small AND income > 30000 OR income > 36075)
+                                   AND tax' = big
+                              OR tax' = small AND income > 30000 AND income <= 36075
+                              OR income > 36075 AND income <= 30000 ENDSPEC ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements IF income <= 36075
+                              THEN {income > 30000}; tax := small
+                              ELSE tax := big FI ENDFILL);
+
+
+
+
+
+@Test_Trans("17th test of `Refine_Spec' ",
+	    FILL Statements 
+
+SPEC <tax>:
+(tax' = (income - 36075) * rate40
+                       + 3740 * rate10
+                       + 28000 * rate23
+             AND income > 36075
+        OR tax' = (income - 8075) * rate23 + 3740 * rate10
+             AND income > 30000
+             AND income <= 36075)
+  AND blind = 0
+  AND married = 1
+  AND age < 75
+  AND age >= 65 ENDSPEC
+
+ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements 
+
+{blind = 0 AND married = 1 AND age < 75 AND age >= 65};
+IF income <= 36075
+  THEN {income > 30000};
+       tax := (income - 8075) * rate23 + 3740 * rate10
+  ELSE tax
+         := (income - 36075) * rate40
+              + 3740 * rate10
+              + 28000 * rate23 FI
+
+ENDFILL);
+
+
+
+
+
+@Test_Trans("18th test of `Refine_Spec' ",
+	    FILL Statements 
+
+SPEC <tax>:
+EXISTS <income_1>:
+(tax'
+                   = (income - 36075) * rate40
+                       + 3740 * rate10
+                       + 28000 * rate23
+             AND income_1 = income - 36075
+             AND income > 36075
+        OR tax' = (income - 8075) * rate23 + 3740 * rate10
+             AND income_1 = income - 8075
+             AND income > 30000
+             AND income <= 36075)
+   END ENDSPEC
+
+ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements 
+
+IF income <= 36075
+  THEN {income > 30000};
+       tax := (income - 8075) * rate23 + 3740 * rate10
+  ELSE tax
+         := (income - 36075) * rate40
+              + 3740 * rate10
+              + 28000 * rate23 FI
+
+ENDFILL);
+
+
+
+
+
+@Test_Trans("19th test of `Refine_Spec' ",
+	    FILL Statements 
+
+  SPEC <i, c, x>:
+  (NOT (q?(c)) AND c' = c AND x' = x
+               OR q?(c) AND c' = g AND x' = f)
+         AND i' = h(i)
+  ENDSPEC
+
+ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements 
+
+IF q?(c) THEN < c := g, x := f > FI; i := h(i)
+
+ENDFILL);
+
+
+
+
+
+
+@Test_Trans("20th test of `Refine_Spec' ",
+	    FILL Statements 
+
+SPEC <x>: x' = A AND (x' = B AND p > q OR r > s) ENDSPEC
+
+ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements 
+
+{A = B AND p > q OR r > s}; x := A
+
+ENDFILL);
+
+
+
+
+@Test_Trans("21st test of `Refine_Spec' ",
+	    FILL Statements 
+
+SPEC <low>:
+         low' = A[i] AND A[i] < low
+           OR low <= A[i] AND low' = low ENDSPEC
+
+ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements 
+
+IF A[i] < low THEN low := A[i] FI
+
+ENDFILL);
+
+
+
+
+
+@Test_Trans("22nd test of `Refine_Spec' ",
+	    FILL Statements 
+
+SPEC <found_high, low, high>:
+(((high' = A[i] AND found_high' = 1 OR A[i] <= high)
+  AND (low' = A[i] OR low <= A[i])
+                        OR high' = A[i]
+  AND low' = A[i]
+  AND A[i] < low
+  AND found_high' = 1)
+                  AND found_high' = found_high
+                  AND low' = low
+             OR low' = A[i]
+                  AND A[i] < low
+                  AND A[i] <= high
+                  AND found_high' = found_high)
+       AND high' = high
+  OR high' = A[i]
+       AND high < A[i]
+       AND found_high' = 1
+       AND low' = low ENDSPEC
+
+
+ENDFILL,
+	    <1>,
+	    TR_Refine_Spec,
+	    < >,
+	    FILL Statements 
+
+IF high < A[i]
+  THEN < high := A[i], found_high := 1 >
+ELSIF A[i] < low
+  THEN low := A[i] FI
+
+
+ENDFILL);
+
+
+
+
+
+
+SKIP
+

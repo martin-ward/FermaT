@@ -1,0 +1,157 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Recursion_To_Loop_Test() ==
+  IF @ST(@Item) = T_Action
+    THEN VAR < N := @V(@Item^1) >:
+         IF NOT @Called?(N, @Item) THEN @Fail("Action is not recursive")
+         ELSIF @In_Reg_System? THEN @Pass 
+         ELSIF @Tail_Recursive?(N) AND LENGTH(@Calls(@I)) = 1 THEN @Pass
+         ELSIF @Tail_Recursive?(N) AND LENGTH(@Calls(@I)) = 2
+	         AND @Regular?(@I)
+		 AND @All_Tail_Recursive?(N, @Calls(@I)) THEN @Pass
+           ELSE @Fail("Cannot remove recursion") FI ENDVAR
+  ELSIF @ST(@Item) = T_Proc AND (@Size(@I^2) > 0 OR @Size(@I^3) > 0)
+    THEN @Fail("Procedure has parameters -- not yet implemented")
+  ELSIF @ST(@Item) = T_Proc
+    THEN VAR < N := @V(@Item^1) >:
+         IF N NOTIN MAP("HEAD", @Proc_Calls(@I))
+           THEN @Fail("Procedure is not recursive")
+         ELSIF NOT @Any_Tail_Recursive?(N)
+           THEN @Fail("Procedure has no tail-recursive calls")
+         ELSIF @Any_Call_In_Var?(N)
+	   THEN @Fail("A call is inside a VAR")
+           ELSE @Pass FI ENDVAR
+    ELSE @Fail("Selected item is not an action or proc") FI.;
+
+
+MW_BFUNCT @Any_Call_In_Var?(N) ==
+  VAR < Valid := @Reachable_Calls(N), found := 0 >:
+  WHILE NOT EMPTY?(Valid) AND found = 0 DO
+    IF @Is_In_Var?(HEAD(Valid)) THEN found := 1 FI;
+    Valid := TAIL(Valid) OD;
+  (found = 1) .;
+
+MW_BFUNCT @Is_In_Var?(posn) ==
+  VAR < orig := @Posn, bad := 0, found := 0 >:
+  WHILE found = 0 AND NOT EMPTY?(posn) DO
+    @Down_To(HEAD(posn));
+    posn := TAIL(posn);
+    IF @ST(@I) = T_Var
+      THEN found := 1 FI OD;
+  @Goto(orig);
+  (found = 1) .;
+
+
+MW_BFUNCT @Any_Tail_Recursive?(N) ==
+  VAR < Valid := @Reachable_Calls(N), OK := 0 >:
+  WHILE NOT EMPTY?(Valid) AND OK = 0 DO
+    IF @Is_Terminal_Posn?(HEAD(Valid)) THEN OK := 1 FI;
+    Valid := TAIL(Valid) OD;
+  (OK = 1) .;
+
+
+MW_BFUNCT @All_Tail_Recursive?(N, L) ==
+  VAR < OK := 1 >:
+  WHILE OK = 1 AND NOT EMPTY?(L) DO
+    IF L[1][1] <> N AND L[1][2] = 1
+      THEN C:" A single extra call in a regular action is OK ";
+           C:" because we can take the whole statement sequence ";
+	   C:" out of the loop ";
+	   L := TAIL(L)
+    ELSIF NOT @Tail_Recursive?(L[1][1])
+      THEN OK := 0
+      ELSE L := TAIL(L) FI OD;
+  (OK = 1) .;
+
+MW_BFUNCT @Tail_Recursive?(N) ==
+  VAR < Valid := @Reachable_Calls(N), OK := 1 >:
+  @Down_Last; C:" to action body ";
+  WHILE NOT EMPTY?(Valid) AND OK = 1 DO
+    IF NOT @Is_Terminal_Posn?(TAIL(HEAD(Valid))) THEN OK := 0 FI;
+    Valid := TAIL(Valid) OD;
+  @Up;
+  (OK = 1) .;
+
+MW_FUNCT @Reachable_Calls(N) ==
+   VAR < Calls := < >, Valid := < >, H := < >, ASType := @AS_Type >:
+   @Edit;
+   ATEACH Statement DO
+     IF @ST(@I) = T_Call AND @V(@I) = N
+          OR @ST(@I) = T_Proc_Call AND @V(@I^1) = N
+       THEN Calls := Calls ++ <@Posn> FI OD;
+   WHILE NOT EMPTY?(Calls) DO
+     H := HEAD(Calls);
+     IF @Gen_Reachable?(@I, H, ASType) THEN Valid := Valid ++ <H> FI;
+     Calls := TAIL(Calls) OD;
+   @Undo_Edit;
+   (Valid) .;
+
+MW_PROC @Recursion_To_Loop_Code(Data) ==
+  VAR < N := @V(@I^1), ASType := @AS_Type, Calls := < >, type := @ST(@I),
+        orig := @I >:
+  @Trans(TR_Delete_Unreachable_Code,"");
+  @Edit;
+  @Down_Last;
+  @Paste_Over(@Increment(@I, ASType, 2, 0));
+  ATEACH Statement DO
+    IF type = T_Action AND @ST(@I) = T_Call AND @V(@I) = N
+          OR type = T_Proc AND @ST(@I) = T_Proc_Call AND @V(@I^1) = N
+      THEN IF @ST(orig) = T_Proc
+             THEN IF @Terminal_Posn?(orig, @Posn)
+                    THEN @Paste_Over(@Make(T_Exit, Depth+1, < >)) FI
+             ELSE @Paste_Over(@Make(T_Exit, Depth+1, < >)) FI FI OD;
+  VAR < S := @Cs(@I) >:
+  IF type = T_Proc OR ASType = "Reg"
+    THEN @Paste_Over(FILL Statements DO DO ~*S OD OD ENDFILL)
+    ELSE @Paste_Over(FILL Statements DO DO ~*S; EXIT(2) OD OD ENDFILL) FI ENDVAR;
+  @Down; C:" to outer loop ";
+  Calls := @Calls(@I);
+  IF LENGTH(Calls) = 1 AND ASType = "Rec"
+    THEN FOREACH Statements DO
+           @Down;
+	   DO IF @ST(@I) = T_Call 
+	       THEN @Cut_Rest;
+	            @Paste_Over(@Make(T_Exit, Depth, < >));
+		    EXIT(1) FI;
+	      IF @Right? THEN @Right ELSE EXIT(1) FI OD OD;
+	 @Paste_After(@Make(T_Call,HEAD(HEAD(Calls)),< >));
+	 @Right;
+	 @Splice_After(@Increment_List(@Buffer, ASType, -2, 0))
+    ELSE FOREACH Statement DO
+	   IF @ST(@I) = T_Call 
+	     THEN @Paste_After(@Make(T_Exit, Depth, < >)) FI OD FI;
+  @End_Edit;
+  @Trans(TR_Delete_All_Skips, "");
+  @Down_Last;
+  @Down;
+  @Trans(TR_Delete_Unreachable_Code, "");
+  IF @Trans?(TR_Double_To_Single_Loop) 
+    THEN @Trans(TR_Double_To_Single_Loop, "") FI;
+  IF @Trans?(TR_Separate_Right) THEN @Trans(TR_Separate_Right, "") FI;
+  IF @Trans?(TR_Remove_Dummy_Loop) 
+    THEN @Trans(TR_Remove_Dummy_Loop, "") FI;
+  @Up; @Up; C:" Back to outer loop ";
+  IF @Trans?(TR_Separate_Right)
+    THEN @Trans(TR_Separate_Right, "") FI;
+  @Trans(TR_Delete_All_Skips, "") ENDVAR .
+
+

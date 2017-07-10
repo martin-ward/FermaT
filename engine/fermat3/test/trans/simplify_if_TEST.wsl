@@ -1,0 +1,210 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Simplify_If'",
+	    (FILL Statements IF FALSE
+				THEN X := 1
+			     ELSIF A = B
+				THEN WHILE X < 10 DO
+					   !XP external ();
+					   {(X = 1)} OD
+			     ELSIF A < A + 1
+				THEN X := (A + 2) - (A - 1); SKIP; SKIP
+			     ELSIF A < B
+				THEN X := 4
+				ELSE X := 5 FI ENDFILL),
+	    <1>,
+	    TR_Simplify_If,
+	    < >,
+	    (FILL Statements IF A = B
+			       THEN WHILE X < 10 DO !XP external(); {X = 1} OD
+			       ELSE X := (A + 2) - (A - 1) FI ENDFILL));
+
+@Test_Trans(" 2nd test of `Simplify_If'",
+	    (FILL Statements IF B=20 THEN x := 1
+			     ELSIF B=20 THEN x := 2
+			     ELSIF B<>20 THEN x := 3
+			     ELSE B:=B+X; x := 4 FI ENDFILL),
+	     <1>,
+	     TR_Simplify_If,
+	     < >,
+	     (FILL Statements IF B = 20 THEN x := 1 ELSE x := 3 FI ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Simplify_If'",
+	    (FILL Statements
+
+IF i <= n
+  THEN DO IF card[name] <> last[name] OR i = 1
+            THEN IF sw1 = 1
+                   THEN !P write(last[name], total VAR os) FI;
+                 sw1 := 1;
+                 total := 0 FI;
+          total := card[number] + total;
+          last := card;
+          i := i + 1;
+          card := cards[i];
+          IF i > n THEN EXIT(1) FI OD FI
+
+            ENDFILL),
+            <1>,
+            TR_Simplify_If,
+            < >,
+            (FILL Statements
+
+WHILE i <= n DO
+  IF card[name] <> last[name] OR i = 1
+    THEN IF sw1 = 1
+           THEN !P write(last[name], total VAR os) FI;
+         sw1 := 1;
+         total := 0 FI;
+  total := card[number] + total;
+  last := card;
+  i := i + 1;
+  card := cards[i] OD
+
+            ENDFILL));
+
+
+
+@Test_Trans(" 3nd test of `Simplify_If'",
+	    (FILL Statements
+
+IF a[r3, r11 + 1] = a[r7, r11 + 1]
+  THEN EQUAL0()
+  ELSE C:"<FermaT> 00000095 HIGH";
+       IF a[r3, r11 + 1] > a[r7, r11 + 1]
+         THEN C:"<FermaT> 00000102 r6";
+              C:"<FermaT> 00000103 OK";
+              IF a[r6] = ">"
+                THEN OK()
+                ELSE C:"<FermaT> 00000104 r6";
+                     C:"<FermaT> 00000105 OK";
+                     IF a[r6] = "N"
+                       THEN OK()
+                       ELSE C:"<FermaT> 00000106 NO:NO0"; NO0() FI
+              FI
+         ELSE C:"<FermaT> 00000096 LOW";
+              IF a[r3, r11 + 1] < a[r7, r11 + 1]
+                THEN C:"<FermaT> 00000108 r6";
+                     C:"<FermaT> 00000109 OK";
+                     IF a[r6] = "<"
+                       THEN OK()
+                       ELSE C:"<FermaT> 00000110 r6";
+ C:"<FermaT> 00000111 OK";
+ IF a[r6] = "N"
+   THEN OK()
+   ELSE C:"<FermaT> 00000112 NO:NO0"; NO0() FI
+                     FI
+                ELSE EQUAL0() FI FI FI
+
+             ENDFILL),
+	     <1>,
+	     TR_Simplify_If,
+	     < >,
+	     (FILL Statements 
+
+IF a[r3, r11 + 1] = a[r7, r11 + 1]
+  THEN EQUAL0()
+  ELSE C:"<FermaT> 00000095 HIGH";
+       IF a[r3, r11 + 1] > a[r7, r11 + 1]
+         THEN C:"<FermaT> 00000102 r6";
+              C:"<FermaT> 00000103 OK";
+              IF a[r6] = ">"
+                THEN OK()
+                ELSE C:"<FermaT> 00000104 r6";
+                     C:"<FermaT> 00000105 OK";
+                     IF a[r6] = "N"
+                       THEN OK()
+                       ELSE C:"<FermaT> 00000106 NO:NO0"; NO0() FI
+              FI
+         ELSE C:"<FermaT> 00000096 LOW";
+              C:"<FermaT> 00000108 r6";
+              C:"<FermaT> 00000109 OK";
+              IF a[r6] = "<"
+                THEN OK()
+                ELSE C:"<FermaT> 00000110 r6";
+                     C:"<FermaT> 00000111 OK";
+                     IF a[r6] = "N"
+                       THEN OK()
+                       ELSE C:"<FermaT> 00000112 NO:NO0"; NO0() FI
+              FI FI FI
+
+              ENDFILL));
+
+
+
+
+@Test_Trans(" 4th test of `Simplify_If'",
+	    (FILL Statements
+
+IF a[r3, r11 + 1] = a[r7, r11 + 1]
+  THEN EQUAL0()
+ELSIF a[r3, r11 + 1] <= a[r7, r11 + 1]
+  THEN IF a[r3, r11 + 1] >= a[r7, r11 + 1]
+         THEN EQUAL0()
+       ELSIF a[r6] = "<"
+         THEN a[r9] := !XF mvi("0")
+       ELSIF a[r6] = "N"
+         THEN a[r9] := !XF mvi("0")
+         ELSE a[r9] := !XF mvi("1") FI
+ELSIF a[r6] = ">"
+  THEN a[r9] := !XF mvi("0")
+ELSIF a[r6] = "N"
+  THEN a[r9] := !XF mvi("0")
+  ELSE a[r9] := !XF mvi("1") FI
+
+             ENDFILL),
+	     <1>,
+	     TR_Simplify_If,
+	     < >,
+	     (FILL Statements 
+
+IF a[r3, r11 + 1] = a[r7, r11 + 1]
+  THEN EQUAL0()
+ELSIF a[r3, r11 + 1] <= a[r7, r11 + 1]
+  THEN IF a[r6] = "<"
+         THEN a[r9] := !XF mvi("0")
+       ELSIF a[r6] = "N"
+         THEN a[r9] := !XF mvi("0")
+         ELSE a[r9] := !XF mvi("1") FI
+ELSIF a[r6] = ">"
+  THEN a[r9] := !XF mvi("0")
+ELSIF a[r6] = "N"
+  THEN a[r9] := !XF mvi("0")
+  ELSE a[r9] := !XF mvi("1") FI
+
+             ENDFILL));
+
+
+
+
+
+
+
+
+SKIP
+
+
+
+
+
+
+

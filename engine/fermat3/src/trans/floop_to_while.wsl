@@ -1,0 +1,422 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Floop_To_While_Test() ==
+  IF @ST(@I) <> T_Floop
+    THEN @Fail("Selected item is not a DO...OD loop.")
+  ELSIF T_Call IN @Stat_Types(@I)
+    THEN @Fail("Loop contains action calls")
+    ELSE @Pass FI .;
+
+
+C:" If flag is empty, then choose an fl_flag. ";
+C:" If flag is - then don't translate the loop if a flag is needed. ";
+C:" Otherwise, use the provided flag. ";
+
+MW_PROC @Floop_To_While_Code(Data) ==
+  VAR < assert := < >, flag := "" >:
+  flag := @String(Data);
+  @Look_For_Assertion(VAR assert);
+  @Floop_To_While_Sub(flag, assert) ENDVAR .;
+
+
+
+MW_PROC @Floop_To_While_Sub(flag, assert) ==
+  VAR < count := 0, posn := < > >:
+  C:" Simplify the case with a single conditional EXIT(1) at the top level: ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Exit THEN count := count + @V(@I) FI OD;
+  IF count = 1
+    THEN WHILE @Trans?(TR_Separate_Right) DO
+           @Trans(TR_Separate_Right, "") OD;
+         posn := @Posn;
+         @Down; @Down; C:" to first statement in body ";
+         DO IF @ST(@I) = T_Cond AND NOT @Gen_Proper?(@I, @AS_Type)
+	      THEN @Down;
+	           DO IF @ST(LAST(@Cs(@I^2))) = T_Exit
+		        THEN WHILE @Trans?(TR_Move_To_Left) DO
+			       @Trans(TR_Move_To_Left, "") OD;
+			     EXIT(1) FI;
+                      IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+                   @Up FI;
+	    IF @ST(@I) = T_Cond AND @Size(@I^1^2) = 1 AND @ST(LAST(@Cs(@I^1^2))) = T_Exit
+	      THEN VAR < B := @I^1^1, S := @Cs(@I^1^2) >:
+	             @Paste_Before(FILL Statement IF ~?B THEN ~*S FI ENDFILL) ENDVAR;
+		   @Right; @Down; @Clever_Delete;
+		   EXIT(1) FI;
+            IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+         @Goto(posn);
+	 IF @ST(@I) <> T_Floop THEN ERROR("Bug in Floop_To_While") FI FI;
+
+  FOREACH Statement DO
+    IFMATCH Statement IF ~?B THEN ~*S1; EXIT(1) ELSE ~*S2 FI
+      THEN IF @ST(HEAD(S2)) <> T_Skip
+             THEN @Splice_Over(@Cs(FILL Statements IF ~?B THEN ~*S1; EXIT(1) FI;
+	                                            ~*S2 ENDFILL)) FI ENDMATCH OD;
+  FOREACH Statement DO
+    IFMATCH Statement IF ~?B THEN ~*S1 ELSE ~*S2; EXIT(1) FI
+      THEN IF @ST(HEAD(S1)) <> T_Skip
+             THEN @Splice_Over(@Cs(FILL Statements IF NOT ~?B THEN ~*S2; EXIT(1) FI;
+	                                            ~*S1 ENDFILL)) FI ENDMATCH OD;
+  C:" First check for simple cases: ";
+  IFMATCH Statement DO IF ~?B THEN ~*S1; EXIT(1) FI; ~*S2 OD
+  THEN IF NOT EMPTY?(S2) AND @Gen_Proper?(@Make(T_Statements, < >, S1 ++ S2), @AS_Type)
+         THEN @Paste_Over(FILL Statement WHILE ~?(@Not(B)) DO ~*S2 OD ENDFILL);
+	      @Splice_After(S1)
+	 ELSE @Floop_To_While_Main1(flag) FI
+
+  ELSE IFMATCH Statement DO ~*S;
+                             IF ~?B THEN ~*S1; EXIT(1) FI;
+			     ~*S2 OD
+  THEN IF NOT EMPTY?(assert) AND EMPTY?(S2) AND @Implies?(assert, @Not(B))
+               AND @Gen_Proper?(@Make(T_Statements, < >, S ++ S1 ++ S2), @AS_Type)
+         THEN B := @Not(B);
+	      @Paste_Over(FILL Statement WHILE ~?B DO ~*S OD ENDFILL);
+              @Splice_After(S1);
+	      IF EMPTY?(S1) AND LENGTH(@Posn) >= 3
+	        THEN VAR < posn := @Posn >:
+		     @Up; @Up; @Up;
+		     IFMATCH Statement IF ~?(B) THEN WHILE ~?(B) DO ~*(S) OD FI
+		       THEN @Paste_Over(FILL Statement WHILE ~?B DO ~*S OD ENDFILL)
+		       ELSE @Goto(posn) ENDMATCH ENDVAR FI
+       ELSIF @Stat_Count_NC(@Make(T_Statements, < >, S)) <= 4
+	    AND @Gen_Proper?(@Make(T_Statements, < >, S ++ S1 ++ S2), @AS_Type)
+         THEN B := @Not(B);
+	      VAR < S3 := S >:
+	        WHILE NOT EMPTY?(S3) AND @ST(HEAD(S3)) = T_Comment
+                  DO S3 := TAIL(S3) OD;
+                IF EMPTY?(S2) AND EMPTY?(S3)
+		  THEN S3 := <@Skip> FI;
+                @Paste_Over(FILL Statement WHILE ~?B DO ~*S2; ~*S3 OD ENDFILL);
+                @Splice_After(S1);
+                @Splice_Before(S);
+                WHILE NOT EMPTY?(S) DO
+                  @Right;
+                  S := TAIL(S) OD ENDVAR
+	 ELSE @Floop_To_While_Main1(flag) FI
+  ELSE @Floop_To_While_Main1(flag) ENDMATCH ENDMATCH ENDVAR .;
+
+
+C:" Check if there is an existing flag which can be used for the loop ";
+C:" (eg due to a prior use of Separate_Exit_Code) ";
+C:" Loop must be a proper statement, body must be reducible, ";
+C:" and every exit from the loop should set the flag to a non-zero value ";
+C:" and the flag must be initially zero. ";
+
+MW_PROC @Floop_To_While_Main1(flag) ==
+  IF NOT @Gen_Proper?(@I, @AS_Type)
+    THEN @Floop_To_While_Main2(flag)
+  ELSIF NOT @Gen_Can_Reduce?(@I^1, @AS_Type)
+    THEN @Floop_To_While_Main2(flag)
+    ELSE IF NOT @Gen_Reducible?(@I^1, @AS_Type)
+           THEN @Down;
+	        IF @Trans?(TR_Make_Reducible)
+		  THEN @Trans(TR_Make_Reducible, "")
+		  ELSE ERROR("@Floop_To_While_Main1: TR_Make_Reducible failed!") FI;
+                @Up FI;
+         C:" After making the loop reducible, it may become a dummy loop ";
+         IF @Trans?(TR_Remove_Dummy_Loop)
+	   THEN PRINT("Loop turns out to be a dummy loop");
+	        @Trans(TR_Remove_Dummy_Loop, "")
+           ELSE @Floop_To_While_Main1a(flag) FI FI .;
+
+
+
+MW_PROC @Floop_To_While_Main1a(flag) ==
+  VAR < var := < >, OK := 1, init := < >, body := < >, e := < > >:
+  ATEACH STS DO
+    IF NOT @Left? OR OK = 0
+      THEN OK := 0
+      ELSE @Left;
+           IFMATCH Statement ~?v := ~?e
+             THEN IF @ST(e) <> T_Number OR @V(e) = 0
+                    THEN OK := 0
+                  ELSIF NOT EMPTY?(var) AND NOT @Equal?(v, var)
+                    THEN OK := 0
+                    ELSE var := v FI
+             ELSE OK := 0 ENDMATCH;
+           @Right FI OD;
+  IF EMPTY?(var) THEN OK := 0 FI;
+  IF OK = 1
+    THEN C:" Found a suitable var: check its initial value ";
+         @Paste_Before(@Skip);
+         init := @Find_Value(@Struct_Elts(var));
+         @Delete;
+         IF EMPTY?(init) OR @ST(init) <> T_Number OR @V(init) <> 0
+           THEN OK := 0 FI FI;
+ IF OK = 1
+   THEN C:" Ensure flag is cleared at the end of each iteration ";
+        @Down;
+        ATEACH STS DO
+          IF @ST(@I) <> T_Exit
+            THEN IFMATCH Statement ~?(var) := 0
+                   THEN SKIP
+                   ELSE e := @Find_Value(@Struct_Elts(var));
+                        IF EMPTY?(e) OR @ST(e) <> T_Number OR @V(e) <> 0
+                          THEN @Paste_After(FILL Statement
+                                            ~?var := 0 ENDFILL) FI ENDMATCH FI OD;
+        @Up;
+        body := @Cs(@Increment(@I^1, @AS_Type, -1, 1));
+        @Paste_Over(FILL Statement WHILE ~?var = 0 DO ~*body OD ENDFILL);
+        @Trans(TR_Delete_All_Skips, "")
+   ELSE @Floop_To_While_Main2(flag) FI ENDVAR .;
+
+
+MW_PROC @Floop_To_While_Main2(flag) ==
+  VAR < Flags := MAP("@Make_Name",
+		     <"fl_flag1",  "fl_flag2", "fl_flag3", "fl_flag4", "fl_flag5",
+		      "fl_flag6", "fl_flag7", "fl_flag8", "fl_flag9", "fl_flagX" >),
+	name := < >, max := 10, done := 0, N := 0 >:
+  C:" Choose a suitable flag variable: ";
+  IF flag = ""
+    THEN WHILE EMPTY?(name) DO
+           IF MEMBER?(HEAD(Flags), @Variables(@I))
+             THEN Flags := TAIL(Flags)
+             ELSE name := HEAD(Flags) FI;
+           IF EMPTY?(Flags)
+             THEN max := max + 1;
+                  name := @Make_Name("fl_flag" ++ @String(max)) FI OD
+  ELSIF flag = "-"
+    THEN name := < >
+    ELSE name := @Make_Name(flag) FI;
+  IF @Trans?(TR_Delete_Unreachable_Code)
+    THEN @Trans(TR_Delete_Unreachable_Code, "") FI;
+  PRINFLUSH("Using absorption to move EXITs...");
+  WHILE done = 0 DO
+    done := 1;
+    FOREACH Statements DO
+      IF Depth = 1
+	THEN C:" NB: Process the statements from left to right so as to avoid ";
+	     C:" absorbing in (and missing) some statements which need processing. ";
+	     @Down_Last;
+	     DO IF @Right? AND NOT @Is_Proper?
+		  THEN N := 0;
+		       ATEACH STS DO
+			 IF Depth IN @Gen_TVs(@I, ASType) THEN N := N + 1 FI OD;
+		       IF N > 1 THEN EXIT(1) FI;
+		       C:" Can use absorption here ";
+		       PRINFLUSH("a"); done := 0;
+		       @Trans(TR_Fully_Absorb_Right, "");
+		       EXIT(1) FI;
+		IF @Left? THEN @Left ELSE EXIT(1) FI OD FI OD OD;
+  PRINT("");
+  FOREACH Statement
+    DO IF @ST(@I) = T_Cond AND @Trans?(TR_Else_If_To_Elsif)
+         THEN @Trans(TR_Else_If_To_Elsif, "") FI OD;
+
+  C:" Check for small loops that can be converted with a little copying ";
+  C:" instead of generating a flag ";
+  IF @Stat_Count(@I) <= 10 AND @Total_Size(@I) <= 100
+    THEN @Floop_To_While_Invert FI;
+  IF @ST(@I) = T_Floop AND flag <> "-"
+    THEN C:" Inversion didn't work or was not tested for ";
+         C:" Check if we need to insert an IF for some of the sequences: ";
+         IF NOT @Exits_Terminal?(@I^1, @AS_Type)
+           THEN @Floop_To_While_Complex(name, flag) FI;
+         @Floop_To_While_Convert(name, flag) FI ENDVAR .;
+
+
+
+MW_PROC @Floop_To_While_Complex(name, flag) ==
+  VAR < done := 0, S := < >, assign0 := < >, assign2 := < > >:
+  name := @Make(T_Variable, name, < >);
+  assign0 := FILL Statement ~?name := 0 ENDFILL;
+  assign2 := FILL Statement ~?name := ~?name ENDFILL;
+  C:" The ~?name := ~?name assignment is a placeholder to tell ";
+  C:" Floop_To_While_Convert to put a SKIP rather than ~?name := 0 ";
+  C:" If the flag was given, then we can assume it is unique ";
+  C:" and called procs cannot clobber it! ";
+  IF flag <> "" THEN assign0 := assign2 FI;
+  assign2 := FILL Statement ~?name := ~?name ENDFILL;
+  S := FILL Statement IF ~?name = 0 THEN SKIP ELSE ~?name := ~?name FI ENDFILL;
+  PRINFLUSH("Inserting IF statements to move EXITs...");
+  WHILE done = 0 DO
+    done := 1;
+    FOREACH Statements DO
+      @Down;
+      DO IF @Right? AND NOT @Is_Proper?
+	   THEN @Right;
+	        C:" Protect this sequence, unless it is already protected ";
+		IF @ST(@I) = T_Cond AND @ST(@I^1^1) = T_Equal
+		     AND @ST(@I^1^1^1) = T_Variable AND @V(@I^1^1^1) = name
+		  THEN IF @Right? THEN @Right ELSE EXIT(1) FI
+                  ELSE @Left; 
+                       PRINFLUSH("i"); done := 1;
+                       C:" Insert assignments ~?name := 0 to terminal posns ";
+                       C:" which don't have assigns (to ensure name is set just before ";
+                       C:" it is tested -- called procs may have clobbered it!) ";
+                       FOREACH STS DO
+                         IF @Equal?(@I, assign2)
+                           THEN @Paste_Over(@Skip)
+                         ELSIF @ST(@I) = T_Exit
+                           THEN IF @V(@I) = Depth
+                                  THEN @Paste_Before(assign0) FI
+                         ELSIF @ST(@I) = T_Skip
+                           THEN @Paste_Over(assign0)
+                           ELSE @Paste_After(assign0) FI OD;
+                       C:" Protect the rest of the sequence with an IF: ";
+                       @Cut_Rest;
+                       @Paste_After(S);
+                       @Right; @Down; @Down_To(2); C:" to statement sequence ";
+                       @Down;
+                       @Splice_Over(@Buffer) FI
+           ELSE IF @Right? THEN @Right ELSE EXIT(1) FI FI OD OD OD;
+  PRINT("") ENDVAR .;
+
+
+MW_PROC @Floop_To_While_Convert(name, flag)==
+  VAR < assign0 := < >, assign1 := < >, body := < >,
+	tv := 0, val := 0, max := 0 >:
+  name := @Make(T_Var_Lvalue, name, < >);
+  assign0 := FILL Statement ~?name := 0 ENDFILL;
+  assign1 := FILL Statement ~?name := 1 ENDFILL;
+  assign2 := FILL Statement ~?name := ~?name ENDFILL;
+  C:" If the flag was given, then we can assume it is unique ";
+  C:" and called procs cannot clobber it! ";
+  IF flag <> "" THEN assign0 := @Skip FI;
+  @Down; C:" to body ";
+  FOREACH STS DO
+    IF @Equal?(@I, assign2)
+      THEN @Paste_Over(@Skip)
+    ELSIF @ST(@I) = T_Skip
+      THEN @Paste_Over(assign0)
+    ELSIF @ST(@I) <> T_Exit
+      THEN @Paste_After(assign0)
+      ELSE val := @V(@I);
+	   tv := val - Depth - 1;
+	   C:" tv is number of additional loops to terminate ";
+	   C:" So if tv < 0 then the main loop will continue: ";
+           IF tv < 0
+	     THEN @Paste_Over(assign0)
+	   ELSIF tv = 0
+	     THEN @Paste_Over(assign1)
+	     ELSE @Paste_Over(assign1);
+	          @Down; @Down_To(2); C:" to the 1 ";
+		  @Paste_Over(@Make(T_Number, tv + 1, < >));
+		  @Up; @Up FI;
+	   IF tv > max THEN max := tv FI;
+	   IF Depth > 0 THEN
+	     @Paste_After(@Make(T_Exit, Depth, < >)) FI FI OD;
+  @Up;
+  @Trans(TR_Delete_All_Skips, "");
+  body := @Cs(@I^1);
+  @Paste_Over(FILL Statement WHILE ~?name = 0 DO ~*body OD ENDFILL);
+  @Paste_Before(FILL Statement ~?name := 0 ENDFILL);
+  @Right;
+  IF max > 0
+    THEN C:" Ensure that any enclosing loops are also terminated as needed: ";
+	 name := @Make(T_Variable, @V(name), < >);
+	 @Paste_After(FILL Statement IF ~?name = 2 THEN EXIT(1) FI ENDFILL);
+	 @Right; @Down; C:" to the guarded ";
+	 n := 3;
+	 WHILE n <= max + 1 DO
+	   @Paste_After(@Make(T_Guarded, < >,
+			      <@Make(T_Equal, < >, <name, @Make(T_Number, n, < >)>),
+			       @Make(T_Statements, < >, <@Make(T_Exit, n - 1, < >)>)>));
+	   @Right;
+	   n := n + 1 OD;
+	 @Up; @Left; C:" back to the loop " FI ENDVAR .;
+
+
+MW_BFUNCT @Exits_Terminal?(I, ASType) ==
+  VAR < R := 1 >:
+  @Edit;
+  @New_Program(I);
+  ATEACH Statement DO
+    IF Depth = 0 AND @Right? AND NOT @Is_Proper?
+      THEN R := 0 FI OD;
+  @Undo_Edit;
+  (R = 1) .;
+
+
+C:" Fix this (small) floop by using loop inversion. ";
+C:" S1 = statements to invert and copy outside loop ";
+C:" S2 = rest of loop body (ELSE clause) ";
+C:" G1 = guardeds for the Cond statement forming the body of the WHILE ";
+C:" G2 = guardeds for the Cond statement which goes after the WHILE ";
+C:" B  = the condition under which the loop terminates ";
+
+MW_PROC @Floop_To_While_Invert() ==
+  VAR < OK := 1, S1 := < >, S2 := < >, G1 := < >, G2 := < >,
+        B := @Make(T_False, < >, < >), AS := @AS_Type >:
+  @Edit;
+  C:" All but the last statement in the body should be proper ";
+  @Down; @Down; C:" to first statement in body ";
+  DO IF @Right? AND NOT @Gen_Proper?(@I, AS)
+       THEN OK := 0; EXIT(1) FI;
+     IF @Right?
+       THEN S1 := <@I> ++ S1; @Right
+       ELSE EXIT(1) FI OD;
+  IF OK = 1 AND @ST(@I) = T_Cond
+    THEN S1 := REVERSE(S1);
+         C:" Could use TR_Move_Right to move non-terminating guardeds forwards here ";
+         @Down; C:" to first guarded ";
+	 DO IF NOT @Gen_Proper?(@I, AS)
+	      THEN IF NOT @Gen_Improper?(@I, AS) OR NOT EMPTY?(G1)
+	             THEN OK := 0; EXIT(1) FI;
+                   C:" If this branch is taken, then the loop terminates ";
+		   B := @Or(B, @I^1);
+		   G2 := <@Increment(@I, AS, -1, 1)> ++ G2
+              ELSE C:" This branch is within the loop body ";
+	           C:" No subsequent branches should terminate the loop ";
+	           G1 := <@I> ++ G1 FI;
+            IF @Right? THEN @Right ELSE EXIT(1) FI OD
+    ELSE OK := 0 FI;
+  IF OK = 1
+    THEN G1 := @Make(T_Cond, < >, REVERSE(G1));
+         G2 := @Make(T_Cond, < >, REVERSE(G2));
+	 B := @Not(B);
+         @New_Program(FILL Statements ~*S1;
+	                               WHILE ~?B DO ~?G1; ~*S1 OD;
+				       ~?G2 ENDFILL);
+         @Trans(TR_Simplify, "");
+	 S1 := @Cs(@Program);
+	 @Undo_Edit;
+	 @Splice_Over(S1)
+    ELSE @Undo_Edit FI;
+         
+  SKIP ENDVAR .;
+
+
+
+MW_PROC @Look_For_Assertion(VAR assert) ==
+  C:" Check for a surrounding Cond which may be useful ";
+  IF LENGTH(@Posn) > 2 AND @ST(@GGParent) = T_Cond AND @Posn_n = 1
+    THEN @Up;
+	 @Up; C:" to the guarded ";
+	 VAR < posn_n := @Posn_n >:
+         assert := @I^1;
+	 WHILE @Left? DO
+	   @Left;
+	   assert := @And(assert, @Not(@I^1)) OD;
+	 @To(posn_n);
+	 @Down_To(2);
+	 @Down ENDVAR
+  ELSIF @Left?
+    THEN @Left;
+         IF @ST(@I) = T_Assert
+           THEN assert := @I^1 FI;
+         @Right FI .;
+
+
+SKIP
+
+

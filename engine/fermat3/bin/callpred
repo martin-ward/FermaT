@@ -1,0 +1,165 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+# calls-to-preds: Calculate predecessors from successors.
+#
+# calls-to-preds reads from standard input or files on the command line
+# a call graph in the form:
+# 	(source: target1 n1 target2 n2 ...)
+# 	(source: target1 n1 target2 n2 ...)
+# 	...
+# where the brackets are optional (but all targets must be on the same line
+# if there are no brackets). The file lists each procedure/basic block name
+# with a list of the procedures/blocks that it calls, and optionally the
+# number of times each target is called. For example:
+# 
+# B1: B2 B3
+# B2: B1 B3
+# B3: B3
+#
+# (where the optional brackets and integers are omitted).
+# It produces a listing of the predecessors of each action
+#
+# Sends result to stdout
+#
+
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [-s text_size -u unit_length -a arrowsize";
+$Usage .= " -D n -l -c -simple] ...\n";
+
+$HOME = $ENV{'HOME'} || $ENV{'LOGDIR'} ||
+		(getpwuid($<))[7] || die "You're homeless!\n";
+$USER = $ENV{'USER'} || getlogin ||
+		(getpwuid($<))[0] || die "Your'e nameless!\n";
+
+
+# Read in the source file, first name is the root of the graph.
+# Input is one line per procedure, unless brackets are used.
+# Brackets are optional.
+# Lines which start with "#" are comments (ignored)
+
+@succs = ();	# list of procs called by each proc
+%calls = ();	# $calls{$from,$to} is number of calls
+@name = ();	# name of each proc
+%no = ();	# proc no. of each name
+
+$n = 1;
+while (<>) {
+  next if (/^#/);
+  next unless (/:/);
+  chop;
+  # If "(" is present, read up to ")":
+  while (/\(/ && !m/\)/) {
+    die "No closing bracket found!\n" if eof();
+    $_ .= " " . <>;
+    chop;
+  }
+  # remove brackets
+  s/\(|\)//g;
+  # Fix LaTeX special characters:
+  # (unless already fixed)
+#  s/(^|[^\\])([\_\#\$\%\^\&])/$1\\$2/g;
+  # fix pairs of specials:
+#  s/(^|[^\\])([\_\#\$\%\^\&])/$1\\$2/g;
+  # delete colour info:
+  s/\*\d//g;
+
+  next unless (s/^\s*(\S*)\s*:\s*//);
+  $from = &number("$1");	# also sets $name[]
+  # If there are no no-of-calls items, add default values (1):
+  s/\b(\S+)\b/$1 1/g unless (/\b\d+\b/);
+  @succslist = split;
+  print STDERR "$from -> @succslist\n" if $debug > 2;
+  # @succslist is a list of name, no-of-calls pairs.
+  # check an even no. of entries:
+  die "Odd number of entries: $_\n" if (($#succslist % 2) == 0);
+  while ($#succslist >= 0) {
+    $to = shift(@succslist);
+    $calls = shift(@succslist);
+    die "Bad number of calls: `$to' `$calls' `$_'\n" unless ($calls =~ /^\d+$/);
+    $to = &number("$to");
+    $succs[$from] .= "$to " unless ($succs[$from] =~ m/\b$to\b/);
+    $calls{$from,$to} += $calls;
+  }
+}
+$nodes = $n - 1;
+
+# The nodes are numbered 1..$nodes
+# $name[], $no{}, $succs[] and $calls{} are set up.
+# Remove trailing space from each @succs item:
+chop(@succs);
+
+&calculate_preds;	# $preds[$n] is the list of nodes which call $n
+
+# print the result:
+foreach $i (1..$nodes) {
+  print $name[$i], ":";
+  foreach $pred (split(/\s+/, $preds[$i])) {
+    print " ", $name[$pred], " ", $calls{$pred,$i};
+  }
+  print "\n";
+}
+
+exit(0);
+  
+
+# Return the number assoc to a given name. Give it number $n
+# if it doesn't have a number (and increment $n):
+sub number {
+  local ($name) = @_;
+  if ($no{$name} == 0) {
+    $no{$name} = $n;
+    $name[$n] = $name;
+    print STDERR "$n = $name\n" if ($debug > 1);
+    $n++;
+  }
+  return ($no{$name});
+}
+
+
+
+# calculate $preds[$n], the list of procs which call $n:
+sub calculate_preds {
+  local ($j, @suclist);
+  @preds = ();
+  for ($i = 1; $i <= $nodes; $i++) {
+    next unless ($succs[$i]);
+    @succlist = split(/ /, $succs[$i]);
+    foreach $j (@succlist) {
+      # have a call $i -> $j so add $i to $j's preds:
+      $preds[$j] .= " " if ($preds[$j]);
+      $preds[$j] .= "$i";
+    }
+  }
+  for ($i = 2; $i <= $nodes; $i++) {
+    # Add $omega as a predecessor if there are none
+    # (an unreachable node):
+    if ((! $preds[$i]) && ($merged[$i] == 0)) {
+      warn "$i ($name[$i]) is unreachable!\n";
+      $preds[$i] = "$omega";
+      $succs[$omega] .= " $i";
+      $calls{$omega,$i} = 1;
+    }
+    print STDERR "preds[$i] = $preds[$i]\n" if ($debug > 2);
+  }    
+}
+
+

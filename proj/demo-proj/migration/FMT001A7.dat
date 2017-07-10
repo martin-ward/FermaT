@@ -1,0 +1,53 @@
+# Written on Sat May 31 01:15:05 2008
+
+Label_Locn fmt502 = 000000
+Op fmt502 = EXPORT
+Orig_Sequence fmt502 = 0
+Repeat fmt502 = 1
+Value fmt502 = 0
+
+Label_Locn fmt501 = 000000
+Op fmt501 = EXPORT
+Orig_Sequence fmt501 = 0
+Repeat fmt501 = 1
+Value fmt501 = 0
+
+Label_Locn FMT001A7_ = 000000
+Op FMT001A7_ = CSECT
+Orig_Sequence FMT001A7_ = 1
+Type FMT001A7_ = CSECT
+Value FMT001A7_ = 0
+
+Init R1 = 1
+Label_Locn R1 = 000000
+Op R1 = EQU
+Orig_Sequence R1 = 2
+Value R1 = 1
+
+Init R3 = 3
+Label_Locn R3 = 000000
+Op R3 = EQU
+Orig_Sequence R3 = 3
+Value R3 = 3
+
+Init R4 = 4
+Label_Locn R4 = 000000
+Op R4 = EQU
+Orig_Sequence R4 = 4
+Value R4 = 4
+
+Init R14 = 14
+Label_Locn R14 = 000000
+Op R14 = EQU
+Orig_Sequence R14 = 5
+Value R14 = E
+
+Full_Length WGLOBAL = 4
+Init WGLOBAL = 0
+Label_Locn WGLOBAL = 000038
+Op WGLOBAL = DC
+Orig_Parent WGLOBAL = FMT001A7_
+Orig_Sequence WGLOBAL = 6
+Repeat WGLOBAL = 1
+Type WGLOBAL = P
+Value WGLOBAL = 38

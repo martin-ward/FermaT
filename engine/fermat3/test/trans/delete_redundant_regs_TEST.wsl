@@ -1,0 +1,524 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+DO dx := dx + 1;
+   exit_flag := exit_flag - 1;
+   IF exit_flag = 1 THEN EXIT(1) FI OD;
+dx := 0
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+DO SKIP;
+   exit_flag := exit_flag - 1;
+   IF exit_flag = 1 THEN EXIT(1) FI OD;
+dx := 0
+
+ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+DO dx := dx + 1;
+   exit_flag := exit_flag - 1;
+   IF exit_flag = 1 THEN EXIT(1) FI OD;
+foo := dx
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+DO dx := dx + 1;
+   exit_flag := exit_flag - 1;
+   IF exit_flag = 1 THEN EXIT(1) FI OD;
+foo := dx
+
+ENDFILL));
+
+
+
+@Test_Trans(" 3rd test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+
+BEGIN
+  DO proc(); IF exit_flag = 1 THEN EXIT(1) FI OD
+WHERE
+  PROC proc() ==
+    exit_flag := exit_flag - 1; dx := pp END
+END; 
+dx := 0
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+
+BEGIN
+  DO proc(); IF exit_flag = 1 THEN EXIT(1) FI OD
+WHERE
+  PROC proc() ==
+    exit_flag := exit_flag - 1; SKIP END
+END; 
+dx := 0
+
+ENDFILL));
+
+
+
+@Test_Trans(" 4th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+
+BEGIN
+  DO proc(); IF exit_flag = 1 THEN EXIT(1) FI OD;
+  foo := dx
+WHERE
+  PROC proc() ==
+    exit_flag := exit_flag - 1; dx := pp END
+END
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+BEGIN
+  DO proc(); IF exit_flag = 1 THEN EXIT(1) FI OD;
+  foo := dx
+WHERE
+  PROC proc() ==
+    exit_flag := exit_flag - 1; dx := pp END
+END
+
+ENDFILL));
+
+
+
+
+@Test_Trans(" 5th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+BEGIN
+p_6(); p_7();
+!P Return( VAR os)
+WHERE
+  PROC p_6() == cf := 0; ax[1] := 0; zf := zf + 1 END
+  PROC p_7() ==
+    a[adtn2].farft := 1;
+    IF zf <> 0
+      THEN a[adtn2].rasft := 1 FI;
+    ax[2] := !XF flags(zf, cf) END
+END;
+cf := 0; ax := 0
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+BEGIN
+  p_6(); p_7(); !P Return( VAR os)
+WHERE
+  PROC p_6() == SKIP; SKIP; zf := zf + 1 END
+  PROC p_7() ==
+    a[adtn2].farft := 1;
+    IF zf <> 0 THEN a[adtn2].rasft := 1 FI;
+    SKIP END
+END;
+cf := 0; ax := 0
+
+
+ENDFILL));
+
+
+
+
+@Test_Trans(" 6th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+BEGIN
+p_6(); p_7();
+!P Return( VAR os)
+WHERE
+  PROC p_6() == cf := 0; ax[1] := 0; zf := zf + 1 END
+  PROC p_7() ==
+    a[adtn2].farft := cf;
+    IF zf <> 0
+      THEN a[adtn2].rasft := 1 FI;
+    ax[2] := !XF flags(zf, cf) END
+END;
+cf := 0; ax := 0
+
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+BEGIN
+  p_6(); p_7(); !P Return( VAR os)
+WHERE
+  PROC p_6() == cf := 0; SKIP; zf := zf + 1 END
+  PROC p_7() ==
+    a[adtn2].farft := cf;
+    IF zf <> 0 THEN a[adtn2].rasft := 1 FI;
+    SKIP END
+END;
+cf := 0; ax := 0
+
+ENDFILL));
+
+
+
+
+@Test_Trans(" 7th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+BEGIN
+  proc(); foo := dx
+WHERE
+  PROC proc() ==
+    exit_flag := exit_flag - 1; dx[2] := 1 END
+END
+
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+BEGIN
+  proc(); foo := dx
+WHERE
+  PROC proc() ==
+    exit_flag := exit_flag - 1; dx[2] := 1 END
+END
+
+ENDFILL));
+
+
+
+@Test_Trans(" 8th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+BEGIN
+  proc(); foo := dx
+WHERE
+  PROC proc() ==
+    exit_flag := exit_flag - 1; dx[2] := 1 END
+END
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+BEGIN
+  proc(); foo := dx
+WHERE
+  PROC proc() == exit_flag := exit_flag - 1; dx[2] := 1 END
+END
+
+ENDFILL));
+
+
+
+@Test_Trans(" 9th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+BEGIN
+  proc(); foo := dx
+WHERE
+  PROC proc() ==
+    exit_flag := exit_flag - 1; dx := 1 END
+END
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+BEGIN
+  proc(); foo := dx
+WHERE
+  PROC proc() == exit_flag := exit_flag - 1; dx := 1 END
+END
+
+ENDFILL));
+
+
+
+@Test_Trans("10th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+BEGIN
+  proc(); foo := dx[2]
+WHERE
+  PROC proc() ==
+    exit_flag := exit_flag - 1; dx := 1 END
+END
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+BEGIN
+  proc(); foo := dx[2]
+WHERE
+  PROC proc() ==
+    exit_flag := exit_flag - 1; dx := 1 END
+END
+
+ENDFILL));
+
+
+IF FALSE THEN
+
+
+
+@Test_Trans("11th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+@Test_Trans("12th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+
+@Test_Trans("13th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+
+@Test_Trans("14th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+
+
+@Test_Trans("15th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+
+
+@Test_Trans("16th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+
+@Test_Trans("17th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+
+@Test_Trans("18th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+
+@Test_Trans("19th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+@Test_Trans("20th test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+
+@Test_Trans("21st test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+
+@Test_Trans("22nd test of `Delete_Redundant_Regs'",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL),
+	    < >,
+	    TR_Delete_Redundant_Regs,
+	    "",
+	    (FILL Statements
+
+SKIP
+
+ENDFILL));
+
+
+
+
+
+
+SKIP FI
+

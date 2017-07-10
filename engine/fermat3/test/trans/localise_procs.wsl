@@ -1,0 +1,499 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Localise_Procs'",
+	    (FILL Statements
+
+BEGIN
+  r2 := a[r1, 4];
+  r3 := a[r1 + 4, 4];
+  r4 := a[r1 + 8, 4];
+  r5 := a[r1 + 12, 4];
+  r6 := a[r1 + 16, 4];
+  ETYPECHG := !XF mvi("N");
+  a[r2, 4] := 0;
+  DO a[r6, 2] := 0;
+     IF a[r5, 2] = 0
+       THEN SAVEA_0_RETURN := __r14_init__;
+            result_code := 0;
+            r15 := 0;
+            EXIT(1)
+     ELSIF a[r5] < "hex 0x80"
+       THEN r8 := a[r5 + 4, 2];
+            r9 := r8;
+            r8 := r3 + r8;
+            r9 := r4 + r9;
+            IF !XF bit_and(a[r5 + 7], "hex 0x03") = 0
+              THEN r1 := a[r5 + 2, 2];
+                   r1 := r1 - 1;
+                   IF !XF bit_and(a[r5 + 7], "hex 0x20") = "hex 0x20"
+                     THEN FWORD_0 := 0;
+                          FWORD_0[4] := r1[4];
+                          r1 := 16 * r1;
+                          r1 := !XF bit_or(r1, FWORD_0);
+                          IF !XC dec_eq(
+    a[r8, r1 DIV 16 + 1], a[r9, r1 MOD 16 + 1])
+ THEN r5 := r5 + 8
+ ELSE p_2() FI
+                   ELSIF a[r8, r1 + 1] = a[r9, r1 + 1]
+                     THEN r5 := r5 + 8
+                     ELSE p_2() FI
+            ELSIF a[r5 + 2, 2] = 1
+              THEN AREA1 := a[r8];
+                   AREA2 := a[r9];
+                   IF !XF bit_and(a[r5 + 7], "hex 0x01") = "hex 0x01"
+                     THEN AREA1 := !XF bit_and(AREA1, "hex 0x0F");
+                          AREA2 := !XF bit_and(AREA2, "hex 0x0F")
+                     ELSE AREA1 := !XF bit_and(AREA1, "hex 0xF0");
+                          AREA2 := !XF bit_and(AREA2, "hex 0xF0") FI;
+                   IF AREA1 = AREA2 THEN r5 := r5 + 8 ELSE p_2() FI
+              ELSE r0 := NOT_USED;
+                   r1 := NOT_USED;
+                   r15 := NOT_USED;
+                   !P ABEND(2001, 0 VAR r0, r1, r15, os);
+                   EXIT(1) FI
+       ELSE r5 := r5 + 8 FI OD
+WHERE
+  PROC p_2() ==
+    a[r6, 2] := a[r5, 2];
+    IF a[r5, 2] = "hex 0x0405"
+      THEN IF a[r8] <= "hex 0xBF" AND a[r8] >= "hex 0xB0"
+             THEN r6 := r6 + 2;
+                  a[r6, 2] := "hex 0x840E";
+                  r6 := r6 + 2;
+                  a[r6, 2] := "hex 0x8640";
+                  ETYPECHG := !XF mvi("Y") FI
+    ELSIF (a[r5, 2] = "hex 0x040E" OR a[r5, 2] = "hex 0x0640")
+            AND ETYPECHG = "Y"
+      THEN r6 := r6 - 2 FI;
+    a[r6 + 2, 2] := 0;
+    a[r2] := !XF mvi("hex 0x01");
+    r6 := r6 + 2;
+    r5 := r5 + 8 END
+END
+
+             ENDFILL),
+	    <1, 1, 8>,
+	    TR_Localise_Procs,
+	    < >,
+	    (FILL Statements
+
+r2 := a[r1, 4];
+r3 := a[r1 + 4, 4];
+r4 := a[r1 + 8, 4];
+r5 := a[r1 + 12, 4];
+r6 := a[r1 + 16, 4];
+ETYPECHG := !XF mvi("N");
+a[r2, 4] := 0;
+BEGIN
+  DO a[r6, 2] := 0;
+     IF a[r5, 2] = 0
+       THEN SAVEA_0_RETURN := __r14_init__;
+            result_code := 0;
+            r15 := 0;
+            EXIT(1)
+     ELSIF a[r5] < "hex 0x80"
+       THEN r8 := a[r5 + 4, 2];
+            r9 := r8;
+            r8 := r3 + r8;
+            r9 := r4 + r9;
+            IF !XF bit_and(a[r5 + 7], "hex 0x03") = 0
+              THEN r1 := a[r5 + 2, 2];
+                   r1 := r1 - 1;
+                   IF !XF bit_and(a[r5 + 7], "hex 0x20") = "hex 0x20"
+                     THEN FWORD_0 := 0;
+                          FWORD_0[4] := r1[4];
+                          r1 := 16 * r1;
+                          r1 := !XF bit_or(r1, FWORD_0);
+                          IF !XC dec_eq(
+    a[r8, r1 DIV 16 + 1], a[r9, r1 MOD 16 + 1])
+ THEN r5 := r5 + 8
+ ELSE p_2() FI
+                   ELSIF a[r8, r1 + 1] = a[r9, r1 + 1]
+                     THEN r5 := r5 + 8
+                     ELSE p_2() FI
+            ELSIF a[r5 + 2, 2] = 1
+              THEN AREA1 := a[r8];
+                   AREA2 := a[r9];
+                   IF !XF bit_and(a[r5 + 7], "hex 0x01") = "hex 0x01"
+                     THEN AREA1 := !XF bit_and(AREA1, "hex 0x0F");
+                          AREA2 := !XF bit_and(AREA2, "hex 0x0F")
+                     ELSE AREA1 := !XF bit_and(AREA1, "hex 0xF0");
+                          AREA2 := !XF bit_and(AREA2, "hex 0xF0") FI;
+                   IF AREA1 = AREA2 THEN r5 := r5 + 8 ELSE p_2() FI
+              ELSE r0 := NOT_USED;
+                   r1 := NOT_USED;
+                   r15 := NOT_USED;
+                   !P ABEND(2001, 0 VAR r0, r1, r15, os);
+                   EXIT(1) FI
+       ELSE r5 := r5 + 8 FI OD
+WHERE
+  PROC p_2() ==
+    a[r6, 2] := a[r5, 2];
+    IF a[r5, 2] = "hex 0x0405"
+      THEN IF a[r8] <= "hex 0xBF" AND a[r8] >= "hex 0xB0"
+             THEN r6 := r6 + 2;
+                  a[r6, 2] := "hex 0x840E";
+                  r6 := r6 + 2;
+                  a[r6, 2] := "hex 0x8640";
+                  ETYPECHG := !XF mvi("Y") FI
+    ELSIF (a[r5, 2] = "hex 0x040E" OR a[r5, 2] = "hex 0x0640")
+            AND ETYPECHG = "Y"
+      THEN r6 := r6 - 2 FI;
+    a[r6 + 2, 2] := 0;
+    a[r2] := !XF mvi("hex 0x01");
+    r6 := r6 + 2;
+    r5 := r5 + 8 END
+END
+
+	    ENDFILL));
+
+
+
+@Test_Trans(" 2nd test of `Localise_Procs'",
+	    (FILL Statements
+
+BEGIN
+  r2 := a[r1, 4];
+  r3 := a[r1 + 4, 4];
+  r4 := a[r1 + 8, 4];
+  r5 := a[r1 + 12, 4];
+  r6 := a[r1 + 16, 4];
+  ETYPECHG := !XF mvi("N");
+  a[r2, 4] := 0;
+  DO a[r6, 2] := 0;
+     IF a[r5, 2] = 0
+       THEN SAVEA_0_RETURN := __r14_init__;
+            result_code := 0;
+            r15 := 0;
+            EXIT(1)
+     ELSIF a[r5] < "hex 0x80"
+       THEN r8 := a[r5 + 4, 2];
+            r9 := r8;
+            r8 := r3 + r8;
+            r9 := r4 + r9;
+            IF !XF bit_and(a[r5 + 7], "hex 0x03") = 0
+              THEN r1 := a[r5 + 2, 2];
+                   r1 := r1 - 1;
+                   IF !XF bit_and(a[r5 + 7], "hex 0x20") = "hex 0x20"
+                     THEN FWORD_0 := 0;
+                          FWORD_0[4] := r1[4];
+                          r1 := 16 * r1;
+                          r1 := !XF bit_or(r1, FWORD_0);
+                          IF !XC dec_eq(
+    a[r8, r1 DIV 16 + 1], a[r9, r1 MOD 16 + 1])
+ THEN r5 := r5 + 8
+ ELSE p_2() FI
+                   ELSIF a[r8, r1 + 1] = a[r9, r1 + 1]
+                     THEN r5 := r5 + 8
+                     ELSE p_2() FI
+            ELSIF a[r5 + 2, 2] = 1
+              THEN AREA1 := a[r8];
+                   AREA2 := a[r9];
+                   IF !XF bit_and(a[r5 + 7], "hex 0x01") = "hex 0x01"
+                     THEN AREA1 := !XF bit_and(AREA1, "hex 0x0F");
+                          AREA2 := !XF bit_and(AREA2, "hex 0x0F")
+                     ELSE AREA1 := !XF bit_and(AREA1, "hex 0xF0");
+                          AREA2 := !XF bit_and(AREA2, "hex 0xF0") FI;
+                   IF AREA1 = AREA2 THEN r5 := r5 + 8 ELSE p_2() FI
+              ELSE r0 := NOT_USED;
+                   r1 := NOT_USED;
+                   r15 := NOT_USED;
+                   !P ABEND(2001, 0 VAR r0, r1, r15, os);
+                   EXIT(1) FI
+       ELSE r5 := r5 + 8 FI OD
+WHERE
+  PROC p_2() ==
+    a[r6, 2] := a[r5, 2];
+    IF a[r5, 2] = "hex 0x0405"
+      THEN IF a[r8] <= "hex 0xBF" AND a[r8] >= "hex 0xB0"
+             THEN r6 := r6 + 2;
+                  a[r6, 2] := "hex 0x840E";
+                  r6 := r6 + 2;
+                  a[r6, 2] := "hex 0x8640";
+                  ETYPECHG := !XF mvi("Y") FI
+    ELSIF (a[r5, 2] = "hex 0x040E" OR a[r5, 2] = "hex 0x0640")
+            AND ETYPECHG = "Y"
+      THEN r6 := r6 - 2 FI;
+    a[r6 + 2, 2] := 0;
+    a[r2] := !XF mvi("hex 0x01");
+    r6 := r6 + 2;
+    r5 := r5 + 8 END
+END
+
+             ENDFILL),
+	    <1, 1, 8, 1, 2>,
+	    TR_Localise_Procs,
+	    < >,
+	    "Fail");
+
+
+
+
+@Test_Trans(" 3rd test of `Localise_Procs'",
+	    (FILL Statements
+
+BEGIN
+  r2 := a[r1, 4];
+  r3 := a[r1 + 4, 4];
+  r4 := a[r1 + 8, 4];
+  r5 := a[r1 + 12, 4];
+  r6 := a[r1 + 16, 4];
+  ETYPECHG := !XF mvi("N");
+  a[r2, 4] := 0;
+  DO a[r6, 2] := 0;
+     IF a[r5, 2] = 0
+       THEN SAVEA_0_RETURN := __r14_init__;
+            result_code := 0;
+            r15 := 0
+     ELSIF a[r5] < "hex 0x80"
+       THEN r8 := a[r5 + 4, 2];
+            r9 := r8;
+            r8 := r3 + r8;
+            r9 := r4 + r9;
+            IF !XF bit_and(a[r5 + 7], "hex 0x03") = 0
+              THEN r1 := a[r5 + 2, 2];
+                   r1 := r1 - 1;
+                   IF !XF bit_and(a[r5 + 7], "hex 0x20") = "hex 0x20"
+                     THEN FWORD_0 := 0;
+                          FWORD_0[4] := r1[4];
+                          r1 := 16 * r1;
+                          r1 := !XF bit_or(r1, FWORD_0);
+                          IF !XC dec_eq(
+    a[r8, r1 DIV 16 + 1], a[r9, r1 MOD 16 + 1])
+ THEN r5 := r5 + 8
+ ELSE p_2() FI
+                   ELSIF a[r8, r1 + 1] = a[r9, r1 + 1]
+                     THEN r5 := r5 + 8
+                     ELSE p_2() FI
+            ELSIF a[r5 + 2, 2] = 1
+              THEN AREA1 := a[r8];
+                   AREA2 := a[r9];
+                   IF !XF bit_and(a[r5 + 7], "hex 0x01") = "hex 0x01"
+                     THEN AREA1 := !XF bit_and(AREA1, "hex 0x0F");
+                          AREA2 := !XF bit_and(AREA2, "hex 0x0F")
+                     ELSE AREA1 := !XF bit_and(AREA1, "hex 0xF0");
+                          AREA2 := !XF bit_and(AREA2, "hex 0xF0") FI;
+                   IF AREA1 = AREA2 THEN r5 := r5 + 8 ELSE p_2() FI
+              ELSE r0 := NOT_USED;
+                   r1 := NOT_USED;
+                   r15 := NOT_USED;
+                   !P ABEND(2001, 0 VAR r0, r1, r15, os) FI
+       ELSE r5 := r5 + 8 FI;
+     IF r15 = 0 THEN EXIT(1) FI OD
+WHERE
+  PROC p_2() ==
+    a[r6, 2] := a[r5, 2];
+    IF a[r5, 2] = "hex 0x0405"
+      THEN IF a[r8] <= "hex 0xBF" AND a[r8] >= "hex 0xB0"
+             THEN r6 := r6 + 2;
+                  a[r6, 2] := "hex 0x840E";
+                  r6 := r6 + 2;
+                  a[r6, 2] := "hex 0x8640";
+                  ETYPECHG := !XF mvi("Y") FI
+    ELSIF (a[r5, 2] = "hex 0x040E" OR a[r5, 2] = "hex 0x0640")
+            AND ETYPECHG = "Y"
+      THEN r6 := r6 - 2 FI;
+    a[r6 + 2, 2] := 0;
+    a[r2] := !XF mvi("hex 0x01");
+    r6 := r6 + 2;
+    r5 := r5 + 8 END
+END
+
+             ENDFILL),
+	    <1, 1, 8, 1, 2>,
+	    TR_Localise_Procs,
+	    < >,
+	    (FILL Statements
+
+r2 := a[r1, 4];
+r3 := a[r1 + 4, 4];
+r4 := a[r1 + 8, 4];
+r5 := a[r1 + 12, 4];
+r6 := a[r1 + 16, 4];
+ETYPECHG := !XF mvi("N");
+a[r2, 4] := 0;
+DO a[r6, 2] := 0;
+   BEGIN
+     IF a[r5, 2] = 0
+       THEN SAVEA_0_RETURN := __r14_init__;
+            result_code := 0;
+            r15 := 0
+     ELSIF a[r5] < "hex 0x80"
+       THEN r8 := a[r5 + 4, 2];
+            r9 := r8;
+            r8 := r3 + r8;
+            r9 := r4 + r9;
+            IF !XF bit_and(a[r5 + 7], "hex 0x03") = 0
+              THEN r1 := a[r5 + 2, 2];
+                   r1 := r1 - 1;
+                   IF !XF bit_and(a[r5 + 7], "hex 0x20") = "hex 0x20"
+                     THEN FWORD_0 := 0;
+                          FWORD_0[4] := r1[4];
+                          r1 := 16 * r1;
+                          r1 := !XF bit_or(r1, FWORD_0);
+                          IF !XC dec_eq(
+    a[r8, r1 DIV 16 + 1], a[r9, r1 MOD 16 + 1])
+ THEN r5 := r5 + 8
+ ELSE p_2() FI
+                   ELSIF a[r8, r1 + 1] = a[r9, r1 + 1]
+                     THEN r5 := r5 + 8
+                     ELSE p_2() FI
+            ELSIF a[r5 + 2, 2] = 1
+              THEN AREA1 := a[r8];
+                   AREA2 := a[r9];
+                   IF !XF bit_and(a[r5 + 7], "hex 0x01") = "hex 0x01"
+                     THEN AREA1 := !XF bit_and(AREA1, "hex 0x0F");
+                          AREA2 := !XF bit_and(AREA2, "hex 0x0F")
+                     ELSE AREA1 := !XF bit_and(AREA1, "hex 0xF0");
+                          AREA2 := !XF bit_and(AREA2, "hex 0xF0") FI;
+                   IF AREA1 = AREA2 THEN r5 := r5 + 8 ELSE p_2() FI
+              ELSE r0 := NOT_USED;
+                   r1 := NOT_USED;
+                   r15 := NOT_USED;
+                   !P ABEND(2001, 0 VAR r0, r1, r15, os) FI
+       ELSE r5 := r5 + 8 FI
+   WHERE
+     PROC p_2() ==
+       a[r6, 2] := a[r5, 2];
+       IF a[r5, 2] = "hex 0x0405"
+         THEN IF a[r8] <= "hex 0xBF" AND a[r8] >= "hex 0xB0"
+                THEN r6 := r6 + 2;
+                     a[r6, 2] := "hex 0x840E";
+                     r6 := r6 + 2;
+                     a[r6, 2] := "hex 0x8640";
+                     ETYPECHG := !XF mvi("Y") FI
+       ELSIF (a[r5, 2] = "hex 0x040E" OR a[r5, 2] = "hex 0x0640")
+               AND ETYPECHG = "Y"
+         THEN r6 := r6 - 2 FI;
+       a[r6 + 2, 2] := 0;
+       a[r2] := !XF mvi("hex 0x01");
+       r6 := r6 + 2;
+       r5 := r5 + 8 END
+   END;
+   IF r15 = 0 THEN EXIT(1) FI OD
+
+	    ENDFILL));
+
+
+
+
+
+@Test_Trans(" 4th test of `Localise_Procs'",
+	    (FILL Statements
+
+BEGIN
+  x := y;
+  BEGIN
+    IF a[r8, r1 + 1] = a[r9, r1 + 1]
+      THEN r5 := r5 + 8
+      ELSE p_2() FI
+  WHERE PROC p_3() ==
+    a[r6, 2] := "hex 0x840E" END
+  END
+WHERE
+  PROC p_2() ==
+    a[r6, 2] := a[r5, 2] END
+END
+
+             ENDFILL),
+	    <1>,
+	    TR_Localise_Procs,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 5th test of `Localise_Procs'",
+	    (FILL Statements
+
+BEGIN
+  x := y;
+  BEGIN
+    IF a[r8, r1 + 1] = a[r9, r1 + 1]
+      THEN r5 := r5 + 8
+      ELSE p_2() FI
+  WHERE PROC p_3() ==
+    a[r6, 2] := "hex 0x840E" END
+  END
+WHERE
+  PROC p_2() ==
+    a[r6, 2] := a[r5, 2] END
+END
+
+             ENDFILL),
+	    <1, 1, 2>,
+	    TR_Localise_Procs,
+	    < >,
+	    (FILL Statements
+
+x := y;
+BEGIN
+  IF a[r8, r1 + 1] = a[r9, r1 + 1]
+    THEN r5 := r5 + 8
+    ELSE p_2() FI
+WHERE
+  PROC p_3() == a[r6, 2] := "hex 0x840E" END
+  PROC p_2() == a[r6, 2] := a[r5, 2] END
+END
+
+	    ENDFILL));
+
+
+
+
+@Test_Trans(" 6th test of `Localise_Procs'",
+	    (FILL Statements
+
+x := y;
+BEGIN
+  IF a[r8, r1 + 1] = a[r9, r1 + 1]
+    THEN r5 := r5 + 8
+    ELSE p_2() FI
+WHERE
+  PROC p_3() == a[r6, 2] := "hex 0x840E" END
+  PROC p_2() == a[r6, 2] := a[r5, 2] END
+END
+
+             ENDFILL),
+	    <2, 1, 1>,
+	    TR_Localise_Procs,
+	    < >,
+	    (FILL Statements
+
+x := y;
+BEGIN
+  BEGIN
+    IF a[r8, r1 + 1] = a[r9, r1 + 1]
+      THEN r5 := r5 + 8
+      ELSE p_2() FI
+  WHERE
+    PROC p_2() == a[r6, 2] := a[r5, 2] END
+  END
+WHERE
+  PROC p_3() == a[r6, 2] := "hex 0x840E" END
+END
+
+	    ENDFILL));
+
+
+
+
+SKIP
+

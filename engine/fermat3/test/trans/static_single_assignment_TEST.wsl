@@ -1,0 +1,803 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+WHILE x > 0 DO
+  x := x - 1 OD; y := x
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+DO x__1 := phi(x__0, x__2);
+   IF x__1 <= 0 THEN EXIT(1) FI;
+   x__2 := x__1 - 1 OD;
+y__1 := x__1
+
+ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+x := 1; y := x + 1; x := x + 2
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+x__1 := 1; y__1 := x__1 + 1; x__2 := x__1 + 2
+
+ENDFILL));
+
+
+
+@Test_Trans(" 3rd test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+IF   EVEN?(x) THEN x := x / 2
+ELSIF ODD?(x) THEN x := x + 1 FI;
+z := x
+
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+IF   EVEN?(x__0) THEN x__2 := x__0 / 2
+ELSIF ODD?(x__0) THEN x__3 := x__0 + 1 FI;
+x__1 := phi(x__0, x__2, x__3);
+z__1 := x__1
+
+ENDFILL));
+
+
+
+@Test_Trans(" 4th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+D_IF EVEN?(x) -> x := x / 2
+  [] ODD?(x)  -> x := x + 1 FI;
+z := x
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+D_IF EVEN?(x__0) -> x__2 := x__0 / 2
+  [] ODD?(x__0)  -> x__3 := x__0 + 1 FI;
+x__1 := phi(x__2, x__3);
+z__1 := x__1
+
+ENDFILL));
+
+
+@Test_Trans(" 5th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+ACTIONS S1:
+S1 == i := 1; CALL S2 END
+S2 == sum := 0; CALL L1 END
+L1 == IF i > 10 THEN CALL L2 FI; CALL S4 END
+S4 == !P read(VAR j, os); CALL P5 END
+P5 == IF j < 0 THEN CALL L1 FI; CALL S6 END
+S6 == sum := sum + j; CALL P7 END
+P7 == IF sum > 100 THEN CALL L2 FI; CALL S8 END
+S8 == i := i + 1; CALL S9 END
+S9 == CALL L1 END
+L2 == !P print(sum VAR os); CALL Z END ENDACTIONS
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+ACTIONS S1:
+  S1 == i__1 := 1; CALL S2 END
+  S2 == sum__1 := 0; CALL L1 END
+  L1 == i__2 := phi(i__1, i__2, i__3);
+    j__1 := phi(j__0, j__2, j__2);
+    os__1 := phi(os__0, os__2, os__2);
+    sum__2 := phi(sum__1, sum__2, sum__3);
+    IF i__2 > 10 THEN CALL L2 FI;
+    CALL S4 END
+  S4 == !P read(j__1, os__1 VAR j__2, os__2); CALL P5 END
+  P5 == IF j__2 < 0 THEN CALL L1 FI; CALL S6 END
+  S6 == sum__3 := sum__2 + j__2; CALL P7 END
+  P7 == IF sum__3 > 100 THEN CALL L2 FI; CALL S8 END
+  S8 == i__3 := i__2 + 1; CALL S9 END
+  S9 == CALL L1 END
+  L2 == j__3 := phi(j__1, j__2);
+    os__3 := phi(os__1, os__2);
+    sum__4 := phi(sum__2, sum__3);
+    !P print(sum__4, os__3 VAR os__4);
+    CALL Z END ENDACTIONS
+
+ENDFILL));
+
+
+@Test_Trans(" 6th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+D_DO EVEN?(x) AND x <> 0 -> x := x / 2
+  [] ODD?(x) -> x := x - 1 OD;
+z := x
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+DO x__1 := phi(x__0, x__2, x__3);
+   D_IF EVEN?(x__1) AND x__1 <> 0  ->  x__2 := x__1 / 2
+     [] ODD?(x__1)  ->  x__3 := x__1 - 1
+     [] x__1 = 0  ->  EXIT(1) FI OD;
+z__1 := x__1
+
+ENDFILL));
+
+
+@Test_Trans(" 7th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+x1 := 1;
+x2 := 2;
+DO DO WHILE x > 1 DO
+	x := x - 1 OD;
+      y := y - 1;
+      IF y = 0 THEN EXIT(2)
+      ELSIF y = 1 THEN EXIT(1) FI OD OD;
+z1 := 1;
+z2 := 2;
+z3 := 3
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+x1__1 := 1;
+x2__1 := 2;
+DO x__1 := phi(x__0, x__3);
+   y__1 := phi(y__0, y__3);
+   DO x__2 := phi(x__1, x__3);
+      y__2 := phi(y__1, y__3);
+      DO x__3 := phi(x__2, x__4);
+	 IF x__3 <= 1 THEN EXIT(1) FI;
+	 x__4 := x__3 - 1 OD;
+      y__3 := y__2 - 1;
+      IF y__3 = 0
+	THEN EXIT(2)
+      ELSIF y__3 = 1
+	THEN EXIT(1) FI OD OD;
+z1__1 := 1;
+z2__1 := 2;
+z3__1 := 3
+
+ENDFILL));
+
+
+@Test_Trans(" 8th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+x1 := 1;
+x2 := 2;
+DO DO D_DO x > 1 ->
+	x := x - 1 OD;
+      y := y - 1;
+      IF y = 0 THEN EXIT(2)
+      ELSIF y = 1 THEN EXIT(1) FI OD OD;
+z1 := 1;
+z2 := 2;
+z3 := 3
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+x1__1 := 1;
+x2__1 := 2;
+DO x__1 := phi(x__0, x__3);
+   y__1 := phi(y__0, y__3);
+   DO x__2 := phi(x__1, x__3);
+      y__2 := phi(y__1, y__3);
+      DO x__3 := phi(x__2, x__4);
+	 D_IF x__3 > 1  ->  x__4 := x__3 - 1
+	   [] x__3 <= 1  ->  EXIT(1) FI OD;
+      y__3 := y__2 - 1;
+      IF y__3 = 0
+	THEN EXIT(2)
+      ELSIF y__3 = 1
+	THEN EXIT(1) FI OD OD;
+z1__1 := 1;
+z2__1 := 2;
+z3__1 := 3
+
+ENDFILL));
+
+
+
+@Test_Trans(" 9th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+i := 1;
+j := 1;
+k := 1;
+l := 1;
+DO IF !XC P(P, i, j, k, l)
+     THEN j := i;
+	  IF !XC Q(Q, i, j, k, l)
+	    THEN l := 2;
+	    ELSE l := 3 FI;
+	  k := k + 1
+     ELSE k := k + 2 FI;
+   PRINT(i, j, k, l);
+   DO IF !XC R(R, i, j, k, l)
+	THEN l := l + 4 FI;
+      IF !XC S(S, i, j, k, l) THEN EXIT(1) FI OD;
+   i := i + 6;
+   IF !XC T(T, i, j, k, l) THEN EXIT(1) FI OD
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+i__1 := 1;
+j__1 := 1;
+k__1 := 1;
+l__1 := 1;
+DO i__2 := phi(i__1, i__3);
+   j__2 := phi(j__1, j__3);
+   k__2 := phi(k__1, k__3);
+   l__2 := phi(l__1, l__5);
+   os__1 := phi(os__0, os__2);
+   IF !XC P(P__0, i__2, j__2, k__2, l__2)
+     THEN j__4 := i__2;
+	  IF !XC Q(Q__0, i__2, j__4, k__2, l__2)
+	    THEN l__8 := 2
+	    ELSE l__9 := 3 FI;
+	  l__7 := phi(l__8, l__9);
+	  k__4 := k__2 + 1
+     ELSE k__5 := k__2 + 2 FI;
+   j__3 := phi(j__4, j__2);
+   k__3 := phi(k__4, k__5);
+   l__3 := phi(l__7, l__2);
+   PRINT(i__2, j__3, k__3, l__3);
+   DO l__4 := phi(l__3, l__5);
+      IF !XC R(R__0, i__2, j__3, k__3, l__4)
+	THEN l__6 := l__4 + 4 FI;
+      l__5 := phi(l__4, l__6);
+      IF !XC S(S__0, i__2, j__3, k__3, l__5)
+	THEN EXIT(1) FI OD;
+   i__3 := i__2 + 6;
+   IF !XC T(T__0, i__3, j__3, k__3, l__5)
+     THEN EXIT(1) FI OD
+
+ENDFILL));
+
+
+@Test_Trans("10th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+DO IF x = 0 THEN EXIT(1) FI;
+   x := x - 1 OD;
+p := x;
+x := z;
+DO IF x = 0 THEN EXIT(1) FI;
+   x := x - 1 OD;
+q := x
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+DO x__1 := phi(x__0, x__5);
+   IF x__1 = 0 THEN EXIT(1) FI;
+   x__5 := x__1 - 1 OD;
+p__1 := x__1;
+x__2 := z__0;
+DO x__3 := phi(x__2, x__4);
+   IF x__3 = 0 THEN EXIT(1) FI;
+   x__4 := x__3 - 1 OD;
+q__1 := x__3
+
+ENDFILL));
+
+
+
+@Test_Trans("11th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+DO DO DO DO DO !P update(VAR a01, a02, a03, a04, a05);
+	       IF a05 = 0 THEN EXIT(1) FI OD;
+	    IF a04 = 0 THEN EXIT(1) FI OD;
+	 IF a03 = 0 THEN EXIT(1) FI OD;
+      IF a02 = 0 THEN EXIT(1) FI OD;
+   IF a01 = 0 THEN EXIT(1) FI OD
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+DO a01__1 := phi(a01__0, a01__6);
+   a02__1 := phi(a02__0, a02__6);
+   a03__1 := phi(a03__0, a03__6);
+   a04__1 := phi(a04__0, a04__6);
+   a05__1 := phi(a05__0, a05__6);
+   DO a01__2 := phi(a01__1, a01__6);
+      a02__2 := phi(a02__1, a02__6);
+      a03__2 := phi(a03__1, a03__6);
+      a04__2 := phi(a04__1, a04__6);
+      a05__2 := phi(a05__1, a05__6);
+      DO a01__3 := phi(a01__2, a01__6);
+	 a02__3 := phi(a02__2, a02__6);
+	 a03__3 := phi(a03__2, a03__6);
+	 a04__3 := phi(a04__2, a04__6);
+	 a05__3 := phi(a05__2, a05__6);
+	 DO a01__4 := phi(a01__3, a01__6);
+	    a02__4 := phi(a02__3, a02__6);
+	    a03__4 := phi(a03__3, a03__6);
+	    a04__4 := phi(a04__3, a04__6);
+	    a05__4 := phi(a05__3, a05__6);
+	    DO a01__5 := phi(a01__4, a01__6);
+	       a02__5 := phi(a02__4, a02__6);
+	       a03__5 := phi(a03__4, a03__6);
+	       a04__5 := phi(a04__4, a04__6);
+	       a05__5 := phi(a05__4, a05__6);
+	       !P update(a01__5, a02__5, a03__5, a04__5, a05__5
+		 VAR a01__6, a02__6, a03__6, a04__6, a05__6);
+	       IF a05__6 = 0 THEN EXIT(1) FI OD;
+	    IF a04__6 = 0 THEN EXIT(1) FI OD;
+	 IF a03__6 = 0 THEN EXIT(1) FI OD;
+      IF a02__6 = 0 THEN EXIT(1) FI OD;
+   IF a01__6 = 0 THEN EXIT(1) FI OD
+
+ENDFILL));
+
+
+
+@Test_Trans("12th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+DO IF x = 0 THEN EXIT(1) FI;
+   x := x - 1 OD;
+z := x + y
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+DO x__1 := phi(x__0, x__2);
+   IF x__1 = 0 THEN EXIT(1) FI;
+   x__2 := x__1 - 1 OD;
+z__1 := x__1 + y__0
+
+ENDFILL));
+
+
+
+@Test_Trans("13th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+FOR i := 10 TO 1 STEP -2 DO
+  x := x + i OD
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+var_1__i__1 := 10;
+DO var_1__i__2 := phi(var_1__i__1, var_1__i__3);
+   x__1 := phi(x__0, x__2);
+   IF var_1__i__2 < 1 THEN EXIT(1) FI;
+   x__2 := x__1 + var_1__i__2;
+   var_1__i__3 := var_1__i__2 - 2 OD
+
+ENDFILL));
+
+
+
+@Test_Trans("14th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+BEGIN
+  VAR < a := 0, z := 1 >:
+  foo(a VAR b) ENDVAR
+WHERE
+  PROC foo(x VAR y) ==
+    y := y + x;
+    z := z + y END
+END
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    "Fail");
+
+
+
+@Test_Trans("15th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+IF foo1 = 0 THEN bar1 := foo1 FI;
+bar1 := bar1
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+IF foo1__0 = 0 THEN bar1__3 := foo1__0 FI;
+bar1__1 := phi(bar1__0, bar1__3);
+bar1__2 := bar1__1
+
+ENDFILL));
+
+
+
+@Test_Trans("16th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+IF x = 0 THEN bar := 0 FI;
+PRINT(bar)
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+IF x__0 = 0 THEN bar__2 := 0 FI;
+bar__1 := phi(bar__0, bar__2);
+PRINT(bar__1)
+
+ENDFILL));
+
+
+
+@Test_Trans("17th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+DO DO DO DO DO DO DO DO DO DO !P update(VAR a01, a02, a03, a04, a05, a06, a07, a08, a09, a10);
+IF a10 = 0 THEN EXIT(1) FI OD;
+IF a09 = 0 THEN EXIT(1) FI OD;
+IF a08 = 0 THEN EXIT(1) FI OD;
+IF a07 = 0 THEN EXIT(1) FI OD;
+IF a06 = 0 THEN EXIT(1) FI OD;
+IF a05 = 0 THEN EXIT(1) FI OD;
+IF a04 = 0 THEN EXIT(1) FI OD;
+IF a03 = 0 THEN EXIT(1) FI OD;
+IF a02 = 0 THEN EXIT(1) FI OD;
+IF a01 = 0 THEN EXIT(1) FI OD
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+DO a01__1 := phi(a01__0, a01__11);
+   a02__1 := phi(a02__0, a02__11);
+   a03__1 := phi(a03__0, a03__11);
+   a04__1 := phi(a04__0, a04__11);
+   a05__1 := phi(a05__0, a05__11);
+   a06__1 := phi(a06__0, a06__11);
+   a07__1 := phi(a07__0, a07__11);
+   a08__1 := phi(a08__0, a08__11);
+   a09__1 := phi(a09__0, a09__11);
+   a10__1 := phi(a10__0, a10__11);
+   DO a01__2 := phi(a01__1, a01__11);
+      a02__2 := phi(a02__1, a02__11);
+      a03__2 := phi(a03__1, a03__11);
+      a04__2 := phi(a04__1, a04__11);
+      a05__2 := phi(a05__1, a05__11);
+      a06__2 := phi(a06__1, a06__11);
+      a07__2 := phi(a07__1, a07__11);
+      a08__2 := phi(a08__1, a08__11);
+      a09__2 := phi(a09__1, a09__11);
+      a10__2 := phi(a10__1, a10__11);
+      DO a01__3 := phi(a01__2, a01__11);
+	 a02__3 := phi(a02__2, a02__11);
+	 a03__3 := phi(a03__2, a03__11);
+	 a04__3 := phi(a04__2, a04__11);
+	 a05__3 := phi(a05__2, a05__11);
+	 a06__3 := phi(a06__2, a06__11);
+	 a07__3 := phi(a07__2, a07__11);
+	 a08__3 := phi(a08__2, a08__11);
+	 a09__3 := phi(a09__2, a09__11);
+	 a10__3 := phi(a10__2, a10__11);
+	 DO a01__4 := phi(a01__3, a01__11);
+	    a02__4 := phi(a02__3, a02__11);
+	    a03__4 := phi(a03__3, a03__11);
+	    a04__4 := phi(a04__3, a04__11);
+	    a05__4 := phi(a05__3, a05__11);
+	    a06__4 := phi(a06__3, a06__11);
+	    a07__4 := phi(a07__3, a07__11);
+	    a08__4 := phi(a08__3, a08__11);
+	    a09__4 := phi(a09__3, a09__11);
+	    a10__4 := phi(a10__3, a10__11);
+	    DO a01__5 := phi(a01__4, a01__11);
+	       a02__5 := phi(a02__4, a02__11);
+	       a03__5 := phi(a03__4, a03__11);
+	       a04__5 := phi(a04__4, a04__11);
+	       a05__5 := phi(a05__4, a05__11);
+	       a06__5 := phi(a06__4, a06__11);
+	       a07__5 := phi(a07__4, a07__11);
+	       a08__5 := phi(a08__4, a08__11);
+	       a09__5 := phi(a09__4, a09__11);
+	       a10__5 := phi(a10__4, a10__11);
+	       DO a01__6 := phi(a01__5, a01__11);
+		  a02__6 := phi(a02__5, a02__11);
+		  a03__6 := phi(a03__5, a03__11);
+		  a04__6 := phi(a04__5, a04__11);
+		  a05__6 := phi(a05__5, a05__11);
+		  a06__6 := phi(a06__5, a06__11);
+		  a07__6 := phi(a07__5, a07__11);
+		  a08__6 := phi(a08__5, a08__11);
+		  a09__6 := phi(a09__5, a09__11);
+		  a10__6 := phi(a10__5, a10__11);
+		  DO a01__7 := phi(a01__6, a01__11);
+		     a02__7 := phi(a02__6, a02__11);
+		     a03__7 := phi(a03__6, a03__11);
+		     a04__7 := phi(a04__6, a04__11);
+		     a05__7 := phi(a05__6, a05__11);
+		     a06__7 := phi(a06__6, a06__11);
+		     a07__7 := phi(a07__6, a07__11);
+		     a08__7 := phi(a08__6, a08__11);
+		     a09__7 := phi(a09__6, a09__11);
+		     a10__7 := phi(a10__6, a10__11);
+		     DO a01__8 := phi(a01__7, a01__11);
+			a02__8 := phi(a02__7, a02__11);
+			a03__8 := phi(a03__7, a03__11);
+			a04__8 := phi(a04__7, a04__11);
+			a05__8 := phi(a05__7, a05__11);
+			a06__8 := phi(a06__7, a06__11);
+			a07__8 := phi(a07__7, a07__11);
+			a08__8 := phi(a08__7, a08__11);
+			a09__8 := phi(a09__7, a09__11);
+			a10__8 := phi(a10__7, a10__11);
+			DO a01__9 := phi(a01__8, a01__11);
+a02__9 := phi(a02__8, a02__11);
+a03__9 := phi(a03__8, a03__11);
+a04__9 := phi(a04__8, a04__11);
+a05__9 := phi(a05__8, a05__11);
+a06__9 := phi(a06__8, a06__11);
+a07__9 := phi(a07__8, a07__11);
+a08__9 := phi(a08__8, a08__11);
+a09__9 := phi(a09__8, a09__11);
+a10__9 := phi(a10__8, a10__11);
+DO a01__10 := phi(a01__9, a01__11);
+   a02__10 := phi(a02__9, a02__11);
+   a03__10 := phi(a03__9, a03__11);
+   a04__10 := phi(a04__9, a04__11);
+   a05__10 := phi(a05__9, a05__11);
+   a06__10 := phi(a06__9, a06__11);
+   a07__10 := phi(a07__9, a07__11);
+   a08__10 := phi(a08__9, a08__11);
+   a09__10 := phi(a09__9, a09__11);
+   a10__10 := phi(a10__9, a10__11);
+   !P update(a01__10,
+	      a02__10,
+	      a03__10,
+	      a04__10,
+	      a05__10,
+	      a06__10,
+	      a07__10,
+	      a08__10,
+	      a09__10,
+	      a10__10
+     VAR a01__11,
+       a02__11,
+       a03__11,
+       a04__11,
+       a05__11,
+       a06__11,
+       a07__11,
+       a08__11,
+       a09__11,
+       a10__11);
+   IF a10__11 = 0 THEN EXIT(1) FI OD;
+IF a09__11 = 0 THEN EXIT(1) FI OD;
+			IF a08__11 = 0 THEN EXIT(1) FI OD;
+		     IF a07__11 = 0 THEN EXIT(1) FI OD;
+		  IF a06__11 = 0 THEN EXIT(1) FI OD;
+	       IF a05__11 = 0 THEN EXIT(1) FI OD;
+	    IF a04__11 = 0 THEN EXIT(1) FI OD;
+	 IF a03__11 = 0 THEN EXIT(1) FI OD;
+      IF a02__11 = 0 THEN EXIT(1) FI OD;
+   IF a01__11 = 0 THEN EXIT(1) FI OD
+
+ENDFILL));
+
+
+
+@Test_Trans("18th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+  IF !XC B1(x, y, z)
+    THEN <w := !XF f1(x),
+	  x := !XF f2(y),
+	  y := !XF f3(z),
+	  z := !XF f4(w)> FI;
+  IF !XC B2(w, x, y, z)
+    THEN foo(w, x, y, z VAR w, x, y, z) FI;
+  PRINT(w, x, y, z)
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+IF !XC B1(x__0, y__0, z__0)
+  THEN < w__4 := !XF f1(x__0),
+	 x__4 := !XF f2(y__0),
+	 y__4 := !XF f3(z__0),
+	 z__4 := !XF f4(w__0) > FI;
+w__1 := phi(w__0, w__4);
+x__1 := phi(x__0, x__4);
+y__1 := phi(y__0, y__4);
+z__1 := phi(z__0, z__4);
+IF !XC B2(w__1, x__1, y__1, z__1)
+  THEN foo(w__1, x__1, y__1, z__1
+	 VAR w__3, x__3, y__3, z__3) FI;
+w__2 := phi(w__1, w__3);
+x__2 := phi(x__1, x__3);
+y__2 := phi(y__1, y__3);
+z__2 := phi(z__1, z__3);
+PRINT(w__2, x__2, y__2, z__2)
+
+ENDFILL));
+
+
+C:" Recursive Procedures: ";
+
+
+@Test_Trans("19th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+BEGIN
+  foo(10, a, b, c, d, e, f VAR a, b, c, d, e, f);
+WHERE
+  PROC foo(n, u, v, w, x, y, z VAR u, v, w, x, y, z) ==
+  IF EVEN?(n)
+    THEN <u := !XF f1(v),
+	  v := !XF f2(w),
+	  w := !XF f3(x),
+	  x := !XF f4(y),
+	  y := !XF f5(z),
+	  z := !XF f6(u)> FI;
+  IF n > 1
+    THEN foo(n - 1, u, v, w, x, y, z VAR u, v, w, x, y, z) FI END
+END
+
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  foo(10, a__0, b__0, c__0, d__0, e__0, f__0
+    VAR a__1, b__1, c__1, d__1, e__1, f__1)
+WHERE
+  PROC foo(n__1, u__1, v__1, w__1, x__1, y__1, z__1
+	   VAR u__3, v__3, w__3, x__3, y__3, z__3) ==
+    IF EVEN?(n__1)
+      THEN < u__6 := !XF f1(v__1),
+	     v__6 := !XF f2(w__1),
+	     w__6 := !XF f3(x__1),
+	     x__6 := !XF f4(y__1),
+	     y__6 := !XF f5(z__1),
+	     z__6 := !XF f6(u__1) > FI;
+    u__2 := phi(u__1, u__6);
+    v__2 := phi(v__1, v__6);
+    w__2 := phi(w__1, w__6);
+    x__2 := phi(x__1, x__6);
+    y__2 := phi(y__1, y__6);
+    z__2 := phi(z__1, z__6);
+    IF n__1 > 1
+      THEN foo(n__1 - 1, u__2, v__2, w__2, x__2, y__2, z__2
+	     VAR u__5, v__5, w__5, x__5, y__5, z__5) FI;
+    u__3 := phi(u__2, u__5);
+    v__3 := phi(v__2, v__5);
+    w__3 := phi(w__2, w__5);
+    x__3 := phi(x__2, x__5);
+    y__3 := phi(y__2, y__5);
+    z__3 := phi(z__2, z__5) END
+END
+
+ENDFILL));
+
+
+
+C:" Example from the Horwitz paper: ";
+
+@Test_Trans("20th test of `Static_Single_Assignment'",
+	    (FILL Statements
+
+BEGIN
+  sum := 0;
+  i := 1;
+  WHILE i <= 10 DO A(sum, i VAR sum, i) OD;
+  PRINT("sum = ", sum)
+WHERE
+  PROC A(x, y VAR x, y) ==
+    Add(y, x VAR x); Inc(y VAR y) END
+  PROC Add(b, a VAR a) == a := a + b END
+  PROC Inc(z VAR z) == Add(1, z VAR z) END
+END
+
+ENDFILL),
+	    < >,
+	    TR_Static_Single_Assignment,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  sum__1 := 0;
+  i__1 := 1;
+  DO i__2 := phi(i__1, i__3);
+     sum__2 := phi(sum__1, sum__3);
+     IF i__2 > 10 THEN EXIT(1) FI;
+     A(sum__2, i__2 VAR sum__3, i__3) OD;
+  PRINT("sum = ", sum__2)
+WHERE
+  PROC A(x__1, y__1 VAR x__2, y__2) ==
+    Add(y__1, x__1 VAR x__2); Inc(y__1 VAR y__2) END
+  PROC Add(b__1, a__1 VAR a__2) ==
+    a__2 := a__1 + b__1 END
+  PROC Inc(z__1 VAR z__2) == Add(1, z__1 VAR z__2) END
+END
+
+ENDFILL));
+
+
+
+SKIP
+

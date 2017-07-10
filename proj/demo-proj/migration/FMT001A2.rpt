@@ -1,0 +1,34 @@
+WSL to C Migration Report: FMT001A2
+===================================
+
+
+Dead Code Candidates:
+
+Memory Overflows:
+
+CSECT:
+
+Function Size, IF nesting depth and largest expression and condition size:
+
+DSECTs Referenced:
+
+DSECTs Updated:
+
+Variables Referenced:
+
+CSECT:
+NOT_USED, PRINT1, WCT, WNUM, WPRT, WTOTAL, __r10_init__, __r11_init__,
+__r12_init__, __r13_init__, __r14_init__, __r1_init__, __r2_init__,
+__r3_init__, __r4_init__, __r5_init__, __r6_init__, __r7_init__, __r8_init__,
+__r9_init__, os, r0, r1, r10, r11, r12, r13, r14, r2, r3, r4, r5, r6, r7, r8,
+r9, reg_stack, result_code
+
+Variables Updated:
+
+CSECT:
+WCT, WNUM, WPRT, WTOTAL, os, r1, r10, r11, r12, r13, r14, r15, r2, r3, r4, r5,
+r6, r7, r8, r9, reg_stack, result_code
+
+EXecute statements and their targets:
+
+Dead Code Candidate Line Numbers:

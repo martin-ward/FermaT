@@ -1,0 +1,435 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:"-------------------------------------------------------------------------------  ";
+C:"-------------------------------------------------------------------------------  ";
+C:"  Parser for conditions.                                                         ";
+C:"  Uses recursive-descent but switches to shift-reduce when parentheses           ";
+C:"  are encountered, to dis-ambiguate bracketed conditions and expressions.        ";
+C:"                                                                                 ";
+C:"  Parses according to the following grammar:                                     ";
+C:"                                                                                 ";
+C:"  condition   ::=  b_term [`OR' b_term]*                                         ";
+C:"                                                                                 ";
+C:"  b_term      ::=  b_factor [`AND' b_factor]*                                    ";
+C:"                                                                                 ";
+C:"  b_factor    ::=  `NOT' b_factor | b_atom                                       ";
+C:"                                                                                 ";
+C:"  b_atom      ::=  `('condition `)' | `TRUE' | `FALSE' | `$Condition$'           ";
+C:"                   expression rel_op expression | cond_pat | cond_prefix |       ";
+C:"                   bfunct_call | mw_bfunct_call | x_bfunct_call                  ";
+C:"                                                                                 ";
+C:"                                                                                 ";
+C:"  cond_pat    ::=  `~?' IDENTIFIER | `~+' IDENTIFIER | `~*' IDENTIFIER           ";
+C:"                                                                                 ";
+C:"  rel_op      ::=  `=' | `<>' | `<' | `<=' | `>' | `>=' |                        ";
+C:"                   `IN' | `NOTIN'                                                ";
+C:"                                                                                 ";
+C:"                                                                                 ";
+C:"  cond_prefix ::=  `EVEN?' `(' expression `)' | `ODD?' `(' expression `)' |      ";
+C:"                   `EMPTY?' `(' s_expression `)' |                               ";
+C:"                   `SUBSET?' `(' s_expression `,' s_expression `)' |             ";
+C:"                   `MEMBER?' `(' expression `,' s_expression `)' |               ";
+C:"                   `FORALL' lvalues `:' condition `END' |                        ";
+C:"                   `EXISTS' lvalues `:' condition `END'                          ";
+C:"                                                                                 ";
+C:"  bfunct_call ::=  IDENTIFIER`?' [`(' [expression] {`,' expression}* `)']        ";
+C:"                                                                                 ";
+C:"  mw_bfunct_call ::= `@' IDENTIFIER`?' [`(' [expression {`,' expression}* ] `)'] ";
+C:"                                                                                 ";
+C:"  x_bfunct_call  ::= `!XC' IDENTIFIER`?' `(' [expression {`,' expression}*] `)'  ";
+C:"                                                                                 ";
+C:"-------------------------------------------------------------------------------  ";
+C:"-------------------------------------------------------------------------------  "; 
+
+ 
+
+MW_FUNCT @yy_condition() ==
+ VAR <L := <@yy_b_term()>, C := < >>:
+@yy_PRINT("Condition");
+   WHILE token1 = S_OR DO
+      @yy_lex;
+      L := <@yy_b_term()> ++ L OD;
+   IF LENGTH(L) = 1 THEN C := HEAD(L)
+     ELSE C := @Make(T_Or, < >,REVERSE(L)) FI;
+ ( C ) .;
+
+MW_FUNCT @yy_b_term() ==
+ VAR <L := <@yy_b_factor()>, C := < >>:
+   WHILE token1 = S_AND DO
+      @yy_lex;
+      L := <@yy_b_factor()> ++ L OD;
+   IF LENGTH(L) = 1 THEN C := HEAD(L) 
+     ELSE C := @Make(T_And, < >,REVERSE(L)) FI;
+ ( C ) .;
+
+MW_FUNCT @yy_b_factor() ==
+  VAR <C := < >>:
+     IF token1 = S_NOT THEN
+	@yy_lex;
+	C := @Make(T_Not, < >,<@yy_b_factor>)
+      ELSE C := @yy_b_atom() FI;
+ ( C ) .;
+
+MW_FUNCT @yy_b_atom() ==
+ VAR <C := < >, Temp := < >, op := 0>:
+   IF token1 IN <S_TRUE, S_FALSE, S_COND_PLACE> THEN
+      op := Type_Table.(token1);
+      C := @Make(op,< >,< >);
+      @yy_lex
+   ELSIF Prefix_Conds[token1] = 1 THEN C := @yy_prefix_cond()
+   ELSIF token1 = S_PLINK_XC THEN C := @yy_x_bfunct_call()
+   ELSIF Patterns[token1] = 1 THEN
+     C:" Could be a cond pattern or expn pattern ";
+      C := @yy_cond_pattern()
+   ELSIF token1 = S_AT THEN 
+     C:" Could be a MW_Funct or MW_BFunct call: ";
+     C:" call the SR parser to disambiguate.    ";
+      C := @yy_SR_parse_cond()
+    ELSIF token1 <> S_LPAREN THEN
+      IF token1 = S_IDENTIFIER AND HEAD(@yy_look()) = S_QUERY THEN
+	 C := @yy_bfunct_call()
+       ELSE 
+      C:" Must be a relation";
+	 Temp := @yy_expression();
+	 IF Rel_Ops[token1] = 0 THEN
+	    @Syntax_Error("Missing relational operator");
+	    C := @Make(T_Cond_Place,< >,< >)
+	 ELSE op := Type_Table.(token1);
+	      @yy_lex;
+	      C := @Make(op, < >,<Temp, @yy_expression()>) FI FI
+   ELSE C:" Got a bracket: could contain an expression OR condition";
+       C := @yy_SR_parse_cond()  FI;
+
+ ( C ) .;
+
+
+C:"-------------------------------------------------------------------------------"; 
+C:"  Functions for conditional prefix operators                                   ";
+C:"-------------------------------------------------------------------------------"; 
+
+MW_FUNCT @yy_prefix_cond() ==
+ VAR <S := < >>:
+   IF token1 IN <S_EVEN, S_ODD, S_EMPTY, S_STRINGBF, S_NUMBERQ, S_SEQUENCE> THEN 
+      S := @yy_pc_unary()
+   ELSIF token1 IN <S_SUBSET, S_MEMBER> THEN
+      S := @yy_pc_binary()
+    ELSE S := @yy_pc_forall() FI;
+ ( S ) .; 
+
+MW_FUNCT @yy_pc_unary() ==
+ VAR <type := Type_Table.(token1),
+       arg := < >, S := < >>:
+   @yy_lex;
+   @yy_skip_symbol(S_QUERY, "Missing `?' after conditional function name");
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument");
+   IF token1 = S_RPAREN THEN 
+      @Syntax_Error("Missing argument");
+      S := @Make(T_Cond_Place, < >,< >)
+    ELSE IF type = T_Empty THEN arg := @yy_s_expression
+	   ELSE arg := @yy_expression() FI;
+	 @yy_skip_symbol(S_RPAREN, "Missing `)'");
+	 S := @Make(type,< >,<arg>) FI;
+ ( S ) .;
+
+MW_FUNCT @yy_pc_binary() ==
+ VAR <type := Type_Table.(token1),
+      args := < >, S := < >>:
+   @yy_lex;
+   @yy_skip_symbol(S_QUERY, "Missing `?' after conditional function name");
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument");
+   IF token1 = S_RPAREN THEN 
+      @Syntax_Error("Missing arguments");
+      S := @Make(T_Cond_Place, < >,< >)
+    ELSE args := <@yy_expression()>;
+	 @yy_skip_symbol(S_COMMA, "Missing `,' or 2nd argument");
+	 IF token1 = S_RPAREN THEN 
+	    @Syntax_Error("Missing 2nd argument");
+	    S := @Make(T_Cond_Place, < >,< >)
+	  ELSE args := <@yy_s_expression()> ++ args;
+	       @yy_skip_symbol(S_RPAREN, "Missing `)'");
+	       S := @Make(type, < >,REVERSE(args)) FI FI;
+ ( S ) .;
+
+
+MW_FUNCT @yy_pc_forall() ==
+  VAR <type := Type_Table.(token1), vars := < >, cond := < > >:
+  @yy_lex;
+  @yy_skip_symbol(S_LANGLE, "Missing `<' in " ++ Syntax_Name[type]);
+  vars := @yy_lvalues();
+  @yy_skip_symbol(S_RANGLE, "Missing `>' in " ++ Syntax_Name[type]);
+  @yy_skip_symbol(S_COLON, "Missing `:' in " ++ Syntax_Name[type]);
+  cond := @yy_condition();
+  @yy_skip_symbol(S_END, "Missing `END' in " ++ Syntax_Name[type]);
+
+  (@Make(type, < >, <vars, cond>) ) .;
+
+
+
+C:"-------------------------------------------------------------------------------"; 
+C:"  BFuncts of various types                                                     ";
+C:"-------------------------------------------------------------------------------"; 
+
+MW_FUNCT @yy_bfunct_call() ==
+  VAR <name := < >, args := < >>:
+  @yy_PRINT("BFunct call: " ++ @String(name));
+  name := @yy_name("BFUNCT");
+  IF token1 = S_QUERY
+    THEN IF @ST(name) = T_Name
+           THEN name := @Name(@Make_Name(@N_String(@V(name)) ++ "?")) FI;
+         @yy_lex FI;
+  @yy_skip_symbol(S_LPAREN, "Missing `('");
+  args := @yy_expressions();
+  @yy_skip_symbol(S_RPAREN, "Missing `)' ");
+  ( @Make(T_BFunct_Call, < >, <name, args>) ) .;
+
+MW_FUNCT @yy_mw_bfunct_call() == 
+ VAR <name := < >, args := < >>:
+@yy_PRINT("MW_Bfunct call");
+   name := @Make_Name("@"++@String(token2)++"?");
+   @yy_lex;
+   @yy_skip_symbol(S_QUERY, "Missing `?' in bfunct call");
+   @yy_skip_symbol(S_LPAREN, "Missing `(' or argument list");
+   args := @yy_expressions();
+   @yy_skip_symbol(S_RPAREN, "Missing `)' ");
+ ( @Make(T_MW_BFunct_Call, < >, <@Make(T_Name, name, < >), args>) ) .;
+
+
+MW_FUNCT @yy_x_bfunct_call() ==
+  VAR < name := < >, args := < >, S := < >>:
+  @yy_PRINT("X_BFunct call");
+  @yy_lex;
+  name := @yy_name("!XC call");
+  IF token1 = S_QUERY
+    THEN IF @ST(name) = T_Name
+           THEN name := @Name(@Make_Name(@N_String(@V(name)) ++ "?")) FI;
+         @yy_lex FI;
+  @yy_skip_symbol(S_LPAREN,"Missing `(' or argument list");
+  args := @yy_expressions();
+  @yy_skip_symbol(S_RPAREN, "Missing `)' ");
+  ( @Make(T_X_BFunct_Call, < >, <name, args>) ) .;
+
+
+C:"-------------------------------------------------------------------------------"; 
+C:"  Condition which begins with a pattern of some sort                           ";
+C:"  (could be cond pattern or expn pattern)                                      ";
+C:"-------------------------------------------------------------------------------"; 
+
+MW_FUNCT @yy_cond_pattern() ==
+  VAR <type := token1, name := < >, S := < >, comps := < >, cond := < >>:
+  @yy_parse_pattern(type VAR name, comps);
+  C:" Look at what follows the pattern to decide if it's a condition ";
+  C:" pattern or expression pattern. In this context, an expression  ";
+  C:" pattern must be followed by an arithmetic, sequence  or        ";
+  C:" relational operator. If anything else, we assume it's a        ";
+  C:" condition pattern.                                             ";
+  IF token1 = S_EXPONENT OR Term_Ops[token1] = 1 OR Factor_Ops[token1] = 1
+      OR S_Term_Ops[token1] = 1 OR S_Factor_Ops[token1] = 1
+      OR S_Atom_Ops[token1] = 1 OR Rel_Ops[token1] = 1
+    THEN C:" It's an expression pattern. ";
+         @yy_PRINT("Expression Pattern");
+         type := pattern_type.(<T_Expression, type>);
+         S := @yy_SR_cond_engine(<@Make(type, name, comps)>)
+    ELSE C:" Assume it's a condition pattern ";
+         @yy_PRINT("Condition pattern");
+         type := pattern_type.(<T_Condition, type>);
+         S := @Make(type, name, comps) FI;
+ ( S ) .;
+
+
+C:" Pass the given condition item on the stack to the SR parser ";
+C:" then check for subsequent AND and OR tokens to parse the remainder ";
+C:" of the condition (if any) ";
+
+MW_FUNCT @yy_rest_of_cond(S) == :
+  S := @yy_SR_cond_engine(<S>);
+  WHILE token1 = S_AND DO
+    @yy_lex;
+    S := @Make(T_And, < >, <S, @yy_b_factor()>) OD;
+  WHILE token1 = S_OR DO
+    @yy_lex;
+    S := @Make(T_Or, < >, <S, @yy_b_term()>) OD;
+  (S) .;
+
+
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+C:"    Shift-reduce parser for condition-atoms                                    ";
+C:"                                                                               ";
+C:"    This deals with 2 ambiguous cases which the top-down LA parser             ";
+C:"    can't cope with: opening bracket, which could contain either a             ";
+C:"                     condition or an expression                                ";
+C:"                and: `@IDENTIFIER', which could be a MW_Funct call             ";
+C:"                      (expression) or MW_BFunct call (condition).              ";
+C:"                                                                               ";
+C:"    !!!!!!! Warning: monolith ahead !!!!!!                                     ";
+C:"                                                                               ";
+C:"-------------------------------------------------------------------------------";
+C:"-------------------------------------------------------------------------------";
+
+MW_FUNCT @yy_SR_parse_cond() == 
+ VAR <Temp := < >, stack := < >, op := 0>:
+
+C:" Tell the viewers what's happening";
+ @yy_PRINT("Switching to shift-reduce parsing");
+
+C:" Eat up any leading `('s ";
+   WHILE token1 = S_LPAREN DO 
+      stack := <token1> ++ stack;
+      @yy_lex OD;
+
+C:" The first term may be a negation, a const. condition, ";
+C:" a bfunct or mw_bfunct, a prefix operator              ";
+C:" or an expression: the parentheses may contain only    ";
+C:" the first term, or more ...                           ";
+
+   IF token1 = S_NOT THEN 
+     @yy_lex;
+     Temp := @Make(T_Not, < >,<@yy_b_factor()>)
+   ELSIF token1 IN <S_TRUE, S_FALSE, S_COND_PLACE> THEN
+      op := Type_Table.(token1);
+      @yy_lex;
+      Temp := @Make(op, < >,< >)
+   ELSIF token1 = S_AT THEN 
+      C:" More complications! Is this a MW_BFunct call (a condition) ";
+      C:" or a MW_Funct call ((part of) an expression) ?             ";
+      Temp := @yy_mw_call()
+   ELSIF token1 = S_PLINK_XC THEN Temp := @yy_x_bfunct_call()
+   ELSIF Prefix_Conds[token1] = 1 THEN Temp := @yy_prefix_cond()
+   ELSIF Patterns[token1] = 1 THEN
+      Temp := @yy_cond_pattern()
+   ELSIF token1 = S_IDENTIFIER AND (HEAD(@yy_look()) = S_QUERY) THEN
+      Temp := @yy_bfunct_call()
+    ELSE Temp := @yy_expression() FI;
+   stack := <Temp> ++ stack;
+ ( @yy_SR_cond_engine(stack) ) .;
+
+
+C:" The main shift-reduce engine - separated out ";
+C:" so that it can be called independently.      ";
+MW_FUNCT @yy_SR_cond_engine(stack) == 
+  VAR <C := < >, Temp := < >, op := < >>:
+  IF EMPTY?(stack) THEN stack := << >> FI; C:" MPW hack!!! ";
+  Temp := HEAD(stack);
+   DO C:" First deal with any closing `)'s ";
+      DO IF token1 <> S_RPAREN THEN EXIT(1) FI;
+         IF EMPTY?(stack) THEN stack := << >> FI; C:" MPW hack!!! ";
+	 Temp := HEAD(stack); stack := TAIL(stack);
+         IF EMPTY?(stack) THEN stack := << >> FI; C:" MPW hack!!! ";
+	 IF HEAD(stack) <> S_LPAREN THEN
+	  C:" Unmatched ``)'' - must be returned to caller";
+	    stack := <Temp>++stack;
+	    EXIT(2) FI;
+	 stack := <Temp> ++ TAIL(stack);
+	 @yy_lex OD;
+
+      IF EMPTY?(stack) THEN stack := << >> FI; C:" MPW hack!!! ";
+      IF @Gen_Type(HEAD(stack)) = T_Expression THEN
+       C:" An expression on the stack may be part of a larger expression";
+       C:" (as the result of bracketing), or of a relation.             ";
+	 IF Rel_Ops[token1] = 0 AND Term_Ops[token1] = 0 AND Factor_Ops[token1] = 0
+	      AND S_Term_Ops[token1] = 0 AND S_Factor_Ops[token1] = 0
+	      AND token1 <> S_EXPONENT THEN
+	    @Syntax_Error("Missing operator");
+	    EXIT(1)
+	  ELSE C:" Reduce using the operator and following term ";
+	       Temp := HEAD(stack); stack := TAIL(stack);
+	       op := Type_Table.(token1);
+	       @yy_lex;
+	       C:" Precedence rules for operators ";
+	       IF op IN <T_Times,T_Divide> THEN 
+		  C := @Make(op, < >, <Temp, @yy_factor>)
+	       ELSIF op IN <T_Plus, T_Minus> THEN
+		  C := @Make(op, < >, <Temp, @yy_term()>)
+	       ELSIF op = T_Exponent THEN
+		  C := @Make(op, < >, <Temp, @yy_factor()>)
+	       ELSIF op IN <T_Set_Diff> THEN 
+		  C := @Make(op, < >,<Temp, @yy_s_term()>)
+	       ELSIF op IN <T_Concat, T_Union> THEN
+		  C := @Make(op,< >, <Temp, @yy_s_factor()>)
+	       ELSIF op IN <T_Intersection> THEN 
+		  C := @Make(op, < >, <Temp, @yy_s_atom()>)
+		 ELSE C:" Must be a relation";
+		      C := @Make(op, < >,<Temp, @yy_expression()>) FI;
+	       stack := <C> ++ stack FI
+
+      ELSIF @Gen_Type(HEAD(stack)) = T_Condition THEN
+	C:" As soon as we've built an atomic condition we're done,     ";
+	C:" unless we are still inside brackets. If we are, the length ";
+	C:" of the stack will be >1 (condition + a number of `('s   ). ";
+	 IF LENGTH(stack) = 1 THEN EXIT(1)
+	 ELSIF token1 = S_RPAREN THEN SKIP; 
+					C:" Gets dealt with on next iteration"          
+	 ELSIF Bool_Ops[token1] = 1 THEN
+	  C:" Reduce using this operator, using ";
+	  C:" precedence rules for boolean op's ";
+	    Temp := <HEAD(stack)>; stack := TAIL(stack);
+	    WHILE token1 = S_AND DO
+	       @yy_lex;
+	       Temp := <@yy_b_factor()> ++ Temp OD;
+	    IF LENGTH(Temp) = 1 THEN SKIP
+	       ELSE Temp := <@Make(T_And,< >,REVERSE(Temp))> FI;
+	    WHILE token1 = S_OR DO
+	       @yy_lex;
+	       Temp := <@yy_b_term()> ++ Temp OD;
+	    IF LENGTH(Temp) = 1 THEN C := HEAD(Temp)
+	     ELSE C := @Make(T_Or, < >, REVERSE(Temp)) FI;
+	    stack := <C> ++ stack
+	  ELSE @Syntax_Error("Malformed condition -  maybe missing ``)''?");
+	       EXIT(1) FI FI OD;
+
+   IF EMPTY?(stack) THEN stack := << >> FI; C:" MPW hack!!! ";
+   C := HEAD(stack);
+   IF @Gen_Type(C) <> T_Condition THEN
+      @Syntax_Error("Malformed condition");
+      C := @Make(T_Cond_Place,< >,< >)  FI;
+
+  ( C ) .;
+
+
+C:" This function parses an MW_Funct or MW_BFunct call and returns ";
+C:" the resulting node. Called by the condition SR parser only ";
+MW_FUNCT @yy_mw_call() ==
+ VAR <type := < >, name := < >, args := < >>:
+   name := "@"++token2;
+   @yy_lex;
+   IF token1  = S_QUERY THEN
+     type := T_MW_BFunct_Call;
+     name := name ++"?";
+     @yy_lex
+    ELSE type := T_MW_Funct_Call FI;
+   name := @Make_Name(name);
+   IF token1 = S_LPAREN THEN
+      @yy_lex;
+      IF token1 <> S_RPAREN THEN
+	 args := @yy_expressions()
+       ELSE args := @Make(T_Expressions,< >,< >) FI;
+      @yy_skip_symbol(S_RPAREN, "Missing `)'")
+    ELSE args := @Make(T_Expressions,< >,< >) FI;
+ ( @Make(type, < >, <@Make(T_Name, name, < >), args>) ) .;  
+   
+
+
+C:"-------------------------------------------------------------------------------";
+C:"   End of condition parser                                                     ";
+C:"-------------------------------------------------------------------------------"
+

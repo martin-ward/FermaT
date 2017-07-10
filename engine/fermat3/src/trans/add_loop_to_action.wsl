@@ -1,0 +1,98 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+C:" Look for an action which is only called by one other action. ";
+C:" Insert a loop in the calling action and replace the calls by EXITs ";
+C:" plus a single call at the end. We can assume that Simplify_Action_System ";
+C:" has already been tried ";
+ 
+MW_PROC @Add_Loop_To_Action_Test() ==
+  IF @ST(@I) <> T_A_S
+    THEN @Fail("Not an action system")
+  ELSIF @System_Type(@I) <> "Reg"
+    THEN @Fail("Action system is not regular")
+    ELSE @Pass FI .;
+
+
+MW_PROC @Add_Loop_To_Action_Code(Data) ==
+  @Edit;
+  VAR < Old_Size := 0, Size := @Size(@I^2),
+	Leave_Alone_Names := @Parse_String(Data),
+	AS_Type := @System_Type(@I), N := @Size(@I^2) >:
+  VAR < AS_Name := @V(@I^1),
+        AS_Type := < >,
+	Starting_Action := 0,
+	dispatch := 0,
+	Bodies := ARRAY(N, < >), Names := ARRAY(N+1, < >),
+	Succs := ARRAY(N+1, < >), Preds := ARRAY(N+1, < >),
+	Name2Num := HASH_TABLE, Num_Calls := HASH_TABLE, Leave_Alone := < >,
+	n := 0, m := 0, S := < > >:
+ 
+  AS_Type := @System_Type(@I);
+  PRINT("Looking for an action to add a loop to");
+  PRINT("Leave_Alone_Names = ", @Join(", ", MAP("@N_String", Leave_Alone_Names)));
+  C:" Calculate Bodies, Names, Name2Num ";
+  C:" Hash table Name2Num maps action names (keys) to action numbers   ";
+  @FD_Init(N VAR Bodies, Names, Name2Num);
+  Leave_Alone := < >;
+  FOR name IN Leave_Alone_Names DO
+    Leave_Alone := <Name2Num.(name)> ++ Leave_Alone OD;
+
+  C:" Find the starting action: ";
+  Starting_Action := Name2Num.(AS_Name);
+  dispatch := Name2Num.(@Make_Name("dispatch"));
+
+  @SAS_Succs_And_Preds(N, Bodies, Starting_Action VAR Succs, Preds, Num_Calls);
+
+  C:" Look for an action which is only called by one other action: ";
+  n := 1;
+  DO IF n <> Starting_Action AND LENGTH(Preds[n]) = 1 AND HEAD(Preds[n]) <> n
+          AND NOT (T_D_If IN @Stat_Types(Bodies[HEAD(Preds[n])])
+	            AND @Make_Name("entry_point") IN @Variables(Bodies[HEAD(Preds[n])]))
+          AND HEAD(Preds[n]) <> dispatch
+	  AND n <> dispatch
+       THEN EXIT(1) FI;
+     n := n + 1;
+     IF n > N THEN EXIT(1) FI OD;
+  IF n <= N
+    THEN m := HEAD(Preds[n]);
+         PRINT("Unfolding ", @N_String(Names[n]), " into ", @N_String(Names[m]));
+	 @New_Program(Bodies[m]);
+	 FOREACH Statement DO
+	   IF @ST(@I) = T_Call AND @V(@I) = -n
+	     THEN @Paste_Over(@Make(T_Exit, Depth + 1, < >)) FI OD;
+         S := @Cs(@Program);
+	 @Paste_Over(FILL Statements DO ~*S OD ENDFILL);
+	 @Down; C:" to the Floop ";
+	 @Splice_After(@Cs(Bodies[n]));
+	 Bodies[m] := @Program;
+	 Bodies[n] := < > FI;
+
+  @FD_Rebuild_AS(N, Bodies, Names, AS_Name, < >);
+  IF @Syntax_OK?(@Program) THEN PRINT("Syntax is OK.")
+			   ELSE PRINT("Syntax NOT OK!") FI ENDVAR ENDVAR;
+
+  @End_Edit;
+  PRINT("Done") .;
+
+
+
+SKIP
+

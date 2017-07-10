@@ -1,0 +1,55 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Remove_Dummy_Loop_Test()==
+  VAR < AS := @AS_Type >:
+  IF @Spec_Type(@Item) <> T_Floop
+    THEN @Fail("Not a do-loop")
+  ELSIF NOT @Gen_Improper?(@I^1, AS)
+    THEN @Fail("Loop body is not improper")
+  ELSIF @Gen_Can_Reduce?(@I^1, AS)
+    THEN @Pass
+    ELSE @Fail("Body cannot be easily reduced") FI ENDVAR .;
+
+
+MW_PROC @Remove_Dummy_Loop_Code(Data)==
+  IF NOT @Is_Dummy?
+    THEN C:" Need to do some absorbing first ";
+	 PRINFLUSH(" Using absorption to reduce loop body...");
+	 FOREACH Statements DO
+	   C:" NB: Process the statements from left to right so as to avoid ";
+	   C:" absorbing in (and missing) some statements which need processing. ";
+	   @Down_Last;
+	   DO IF Depth = 1 AND 1 IN @TVs AND @Trans?(TR_Fully_Absorb_Right)
+		THEN PRINFLUSH("a");
+		     IF @ST(@I) = T_Cond THEN @GCR_Cond_Fix FI;
+		     @Trans(TR_Fully_Absorb_Right, "") FI;
+	      IF @Left? THEN @Left ELSE EXIT(1) FI OD OD;
+	 PRINT("") FI;
+  FOREACH Statements DO
+    @Down;
+    DO IF @Gen_Improper?(@I, AS_Type)
+	 THEN IF @Right? THEN @Delete_Rest FI;
+	      EXIT(1) FI;
+       IF @Right? THEN @Right ELSE EXIT(1) FI OD OD;
+  @Splice_Over(@Cs(@Increment(@I^1, @AS_Type, -1, 1))) .;
+
+SKIP

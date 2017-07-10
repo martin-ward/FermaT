@@ -1,0 +1,73 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+##########
+##########   metrics file.wsl [output.txt]
+##########
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/\"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+
+&parse_args();
+
+if ($output =~ /\.wsl$/) {
+  $output = "";
+} else {
+  @files = ($input);
+}
+
+my $cmds = "";
+foreach my $file (@files) {
+  $cmds .= <<END_OF_INPUT;
+  (\@New_Program (\@Parse_File "$file" //T_/Statements))
+  (display-list "Program Metrics for $file")
+  (display-list " ")
+  (display-list "Statements     " (\@Stat_Count (\@Program) ))
+  (display-list "Expressions    " (\@Gen_Type_Count //T_/Expression (\@Program)))
+; (display-list "Effective Size " (\@Effective_Size (\@Program)))
+  (display-list "McCabe         " (\@McCabe (\@Program) ))
+  (display-list "Essential      " (\@Essential (\@Program) ))
+  (display-list "CFDF           " (\@CFDF_Metric (\@Program)))
+  (display-list "Branch-Loop    " (\@BL_Metric (\@Program)))
+  (display-list "Structural     " (\@Struct_Metric (\@Program)))
+END_OF_INPUT
+}
+
+
+if (($output ne "") && ($output !~ /\.out$/) && ($output !~ /-\d+\.wsl$/)) {
+  # Assume that an output file was given on command line:
+  open(OUT, ">$output") or die "Can't write to `$output': $!\n";
+  close(STDERR);
+  close(STDOUT);
+  open(STDOUT, ">&OUT");
+  open(STDERR, ">&OUT");
+}
+
+&fermat($cmds);
+
+exit(0);
+

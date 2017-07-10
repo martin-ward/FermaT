@@ -1,0 +1,1233 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+C:" Algorithm for Fix_Dispatch: search for simple procedures, ";
+C:" Convert to PROCs, unfold all calls, and simplify dispatch calls ";
+
+C:" A simple procedure is a collection of actions, with a single ";
+C:" entry point and multiple exit points. The exit points are either ";
+C:" procedure returns (ie dispatch calls) or calls to Z. ";
+C:" The procedure must not call other procedures (except WSL procedures). ";
+C:" The collection of actions forming this procedure can be converted ";
+C:" to a nested action system, with a single exit point (set a flag and ";
+C:" CALL Z within the nested action system to exit). This nested action system ";
+C:" can be folded into a PROC, with an IF statement to test the flag ";
+C:" when the PROC_CALL returns (test the flag to see whether to call ";
+C:" Z or dispatch). ";
+C:" The entry point action can then be unfolded everywhere, and the ";
+C:" calls to dispatch simplified via Constant_Propagation ";
+
+C:" After converting all the simple procedures to PROCS, some other ";
+C:" procedures may become simple (since they only called simple procedures). ";
+C:" So the process can be repeated, `working up' the call graph ";
+
+C:" The technique will be defeated by (a) Mutually recursive procedures; ";
+C:" or (b) A procedure with a second entry point, inside a loop. ";
+C:" These will have to be dealt with manually, but hopefully should not ";
+C:" occur too often! ";
+
+C:" After finding all simple procedures, the main body and the procedure ";
+C:" bodies can be dealt with separately using Simplify_Action_System and ";
+C:" Collapse_Action_System as appropriate ";
+
+C:" It is possible that Simplify_Action_System may cause some problems for ";
+C:" Fix_Dispatch, for example, unfolding and removing entry actions ";
+C:" (But in this case, the procedure is only called once and therefore ";
+C:" has a single return point. So the CALL dispatch can be unfolded and simplified). ";
+
+C:" The Algorithm: ";
+
+C:" Search for rx:=dest_code; ...; CALL foo ";
+C:"   to find possible entry points of simple procedures ";
+C:" Do a breadth first search from an entry point: ";
+C:"   Stop at CALL dispatch (ie normal return) or CALL Z ";
+C:"     or a CALL to another entry point which uses the same register ";
+C:"     where the register is not set first (ie a tail-recursive call) ";
+C:"   Form the transitive closure ";
+C:"   Fail if any action in the closure is called from outside the closure ";
+C:"   (apart from the single entry point) ";
+C:" Form a nested action system from these actions ";
+C:" Turn it into a procedure ";
+C:" Check that the procedure preserves the destination register. ";
+C:" Unfold the entry point action everywhere. ";
+
+C:" Return_Regs: maps each action index number to the set of variables ";
+C:"              which are assigned a dispatch code just before the call. ";
+C:" Dispatch_Regs: maps each action index number to the set of variables ";
+
+C:"                which are copied to destination just before a call to dispatch ";
+C:"                in the body of this action (should be no more than one) ";
+
+
+MW_PROC @Fix_Dispatch_Test () ==
+  IF @ST(@I) <> T_A_S
+    THEN @Fail("Not an action system")
+    ELSE C:" Check for a dispatch action as the last action ";
+	 IF @V(@I^2^(@Size(@I^2))^1) <> @Make_Name("dispatch")
+	   THEN @Fail("No dispatch action")
+	   ELSE @Pass FI FI .;
+
+
+MW_PROC @Fix_Dispatch_Code(Data) ==
+  VAR < Dispatch := @Make_Name("dispatch"),
+	Code_List := < >, code := < >, Code_Hash := HASH_TABLE, rest := < >,
+	effort := 0, budget := 25600, pair := < >, rename := HASH_TABLE,
+	orig := < >, new_actions := < > >:
+  Assume_A_S_Regular := 1;
+  C:" If Data contains a space, then it is two numbers: effort plus budget. ";
+  C:" Otherwise, Data is the budget for @Preserves_Destination ";
+  C:" effort = 1 - check for vars which are only assigned a known dispatch code ";
+  C:" effort = 1 - check for tail-recursive calls with the same return register ";
+  C:" effort = 1 - convert external calls to returns, provided dispatch is also called ";
+  C:"              and the return code ends up in destination for these dispatch calls ";
+  C:" effort = 2 - take out more external calls: include indirect branches ";
+  C:"              which lead to another subroutine call ";
+  IF INDEX(" ", @String(Data)) >= 0
+    THEN pair := MAP("@String_To_Num", @Split(Data));
+	 effort := pair[1];
+	 IF pair[2] > 0 THEN budget := pair[2] FI
+  ELSIF @String_To_Num(@String(Data)) > 0
+    THEN budget := @String_To_Num(@String(Data)) FI;
+  C:" First we absorb calls into a preceeding COND, if possible: ";
+  FOREACH Statements DO
+    @Down;
+    DO IF NOT @Right? THEN EXIT(1) FI;
+       IF @ST(@I) = T_Cond
+	 THEN @Right;
+	      IF @ST(@I) = T_Call
+		THEN @Left; @Trans(TR_Absorb_Right, "") FI
+	 ELSE @Right FI OD OD;
+  orig := @Program;
+  C:" It appears to work better if we do tail-recursive calls at the same time ";
+  C:" as other external calls: ";
+  C:" If effort > 0, check that the effort is actually needed! ";
+  IF effort > 0
+    THEN @Fix_Dispatch_Code(@String(budget)) FI;
+  PRINT("Fix_Dispatch effort = ", effort, " budget = ", budget);
+  Code_List := @Find_Dispatch_Codes(Dispatch);
+  FOR code IN Code_List DO
+   IF code > 0 THEN Code_Hash.(code) := 1 FI OD;
+  IF effort > 0
+    THEN @FD_Once_Called_Subroutines(Code_Hash, budget) FI;
+  C:" First we check the format of dispatch ";
+  C:" This is not done in the test because it is an expensive test! ";
+  IF effort > 0 AND NOT @Equal?(orig, @Program)
+    THEN PRINT("Effort of ", effort, " was not used.")
+  ELSIF EMPTY?(Code_List)
+    THEN PRINT("No dispatch codes found!")
+    ELSE @FD_Bit_Or_Code_Check(Code_Hash);
+	 C:" Must do at least one constant propagation before we do this ";
+	 C:" (otherwise HANDLE CONDITION processing creates huge jump tables): ";
+	 IF effort >= 1 THEN @FD_Jump_Table_Fix(Code_Hash) FI;
+         IF TRUE
+	   THEN C:" Look for registers which are saved and restored in DSECTs ";
+	        C:" and convert to a simple variable to aid in constant propagation ";
+		VAR < posn := @Posn >:
+		@Goto(< >);
+	        @FD_Rename_DSECT_Code_Stores(Code_Hash VAR rename);
+		@Goto(posn) ENDVAR FI;
+	 IF effort >= 1 THEN @FD_Separate_Dispatch_Calls(VAR new_actions) FI;
+         C:" Search for enclosing WHERE clauses and collect together ";
+	 C:" the definitions of any procedures into Proc_Summaries: ";
+	 VAR < posn := @Posn, posns := < >, pops := 0 >:
+	 DO WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+	    IF @ST(@I) <> T_Where THEN EXIT(1) FI;
+	    posns := <@Posn> ++ posns;
+	    IF @Up? THEN @Up ELSE EXIT(1) FI OD;
+	 C:" Number of times to pop Proc_Summaries: ";
+	 pops := LENGTH(posns);
+	 WHILE NOT EMPTY?(posns) DO
+	   @Goto(HEAD(posns)); posns := TAIL(posns);
+	   Proc_Summaries := <HASH_TABLE> ++ Proc_Summaries;
+	   @Summarise_Where_Defns(@Cs(@I^2)) OD;
+	 @Goto(posn);
+	 @Edit;
+	 @FD_Main(Code_Hash, Dispatch_Regs );
+	 @End_Edit;
+	 @Goto(< >); @FD_Restore_DSECT_Code_Stores(rename); @Goto(posn);
+	 WHILE pops > 0 DO
+	   pops := pops - 1;
+	   Proc_Summaries := TAIL(Proc_Summaries) OD;
+	 IF @Syntax_OK?(@Program) THEN PRINT("Syntax is OK")
+				  ELSE PRINT("Syntax NOT OK!") FI;
+	 IF @Trans?(TR_Combine_Wheres) THEN @Trans(TR_Combine_Wheres, "") FI;
+	 IF @ST(@I) <> T_A_S
+	   THEN @Find_Type(T_A_S) FI;
+         IF NOT EMPTY?(new_actions)
+           THEN C:" Unfold any created new actions ";
+                VAR < unfold := HASH_TABLE >:
+                FOR action IN new_actions DO
+                  unfold.(@V(action^1)) := 1 OD;
+                @Down_To(2); @Down; C:" to first action ";
+                PRINT("unfold = ", MAP("@N_String", @Hash_Keys(unfold)));
+                DO IF NOT EMPTY?(unfold.(@V(@I^1)))
+                     THEN IF @Trans?(TR_Substitute_And_Delete)
+                            THEN @Trans(TR_Substitute_And_Delete, "");
+                                 @Left FI FI;
+                   IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+                @Up; @Up; C:" back to A_S " ENDVAR FI ENDVAR FI ENDVAR .;
+
+
+
+
+MW_PROC @FD_Main(Codes, Dispatch_Regs) ==
+  VAR < N := @Size(@I^2) >:
+  VAR < AS_Name := @V(@I^1), Starting_Action := 0,
+	Bodies := ARRAY(N, < >), Names := ARRAY(N+1, < >),
+	Name2Num := HASH_TABLE,
+	Return_Regs := HASH_TABLE, Dispatch_Regs := HASH_TABLE,
+	Succs := ARRAY(N+1, < >), Preds := ARRAY(N+1, < >),
+	Entry_Actions := < >, list := < >, posn := < >, Proc_Defns := < >,
+	a := < >, b := < >, body := < >, fringe := < >,
+	tmpl := < >, ok := 0, dn := 0, reg := < >, call := 0,
+	destination := @Make_Name("destination"),
+	Found := 0 >:
+
+  C:" Calculate Bodies, Names, Name2Num ";
+  @FD_Init(N VAR Bodies, Names, Name2Num);
+  C:" Find the starting action and dispatch action number ";
+  Starting_Action := Name2Num.(AS_Name);
+  dn := Name2Num.(@Make_Name("dispatch"));
+  @FD_Succs_And_Preds(N, Bodies, Starting_Action VAR Succs, Preds);
+
+  C:" Repeat this loop while procs have been found: ";
+  DO Found := 0;
+
+     C:" Calculate Entry_Actions list and Return_Regs table from the Codes table ";
+
+     PRINT("Looking for entry actions...");
+     C:" An entry action is an action whose CALL is preceded by rx := dest_code ";
+     FOR i := 1 TO N STEP 1 DO
+       IF NOT EMPTY?(Bodies[i]) 
+         THEN @New_Program(Bodies[i]);
+              ATEACH Statement DO
+                IF @ST(@I) = T_Assignment
+                  THEN @Down; C:" to first assign ";
+                       DO IF @ST(@I^1) = T_Var_Lvalue
+                               AND @FD_Is_Code?(@I^2, Codes)
+			       AND NOT @Starts_With?(@V(@I^1), "HANDLE_")
+                            THEN reg := @V(@I^1);
+                                 call := @FD_Find_Call(4, Codes);
+                                 IF NUMBER?(call) AND call < 0
+                                   THEN IF -call <> dn AND -call <> Starting_Action
+                                             AND -call <> N+1
+                                          THEN Return_Regs.(-call) := Return_Regs.(-call)
+                                                                        \/ <reg>;
+                                               IF -call NOTIN Entry_Actions
+                                                 THEN PRINFLUSH(@N_String(Names[-call]));
+                                                      PRINFLUSH(" ");
+                                                      Entry_Actions := <-call>
+                                                        \/ Entry_Actions FI FI FI FI;
+                          IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+                       @Up FI OD FI OD;
+            PRINT("");
+
+     C:" A valid entry action must have exactly one Return_Regs entry: ";
+     VAR < deletes := < > >:
+     FOR a IN Entry_Actions DO
+       IF LENGTH(Return_Regs.(a)) <> 1
+         THEN PRINT("Return_Regs for ", @N_String(Names[a]), " = ",
+                    MAP("@N_String", Return_Regs.(a)), " ... ignoring this action.");
+              deletes := <a> ++ deletes FI OD;
+     IF effort > 0
+       THEN C:" Compute Dispatch_Regs for each action which calls dispatch ";
+            C:" Calculate the return register or variable copied to destination ";
+            C:" before each dispatch call in each action. ";
+	    C:" Also, check for a variable in which Return_Regs is saved ";
+	    C:" and add it to Return_Regs ";
+	    FOR i := 1 TO N STEP 1 DO
+              IF NOT EMPTY?(Bodies[i]) 
+                THEN @New_Program(Bodies[i]);
+                     ATEACH Statement DO
+		       IF @ST(@I) = T_Call AND @V(@I) = -dn
+		         THEN VAR < posn := @Posn >:
+			      @FD_Move_To_Assignment;
+			      IFMATCH Statement destination := ~?v
+			        THEN IF @ST(v) = T_Variable
+				       THEN Dispatch_Regs.(i) := Dispatch_Regs.(i) \/
+				                                    <@V(v)> FI ENDMATCH;
+                              @Goto(posn) ENDVAR FI OD;
+                    C:" Check for saved return register (other than destination!) ";
+		    IF LENGTH(Return_Regs.(i)) = 1
+		      THEN VAR < reg := HEAD(Return_Regs.(i)) >:
+		           FOR S IN @Cs(@I) DO
+			     IF @ST(S) = T_Assignment AND @ST(S^1^2) = T_Variable
+			          AND @V(S^1^2) = reg AND @ST(S^1^1) = T_Var_Lvalue
+				  AND @V(S^1^1) <> destination
+			       THEN Return_Regs.(i) := Return_Regs.(i) 
+                                                         \/ <@V(S^1^1)> FI OD ENDVAR FI;
+                    C:" Return_Regs and Dispatch_Regs are complete " FI OD FI;
+     IF effort = 0
+       THEN C:" Remove A_xxx actions from consideration, at least until ";
+            C:" the first constant propagation. Consider the sequence ";
+	    C:" L Rx,=A(code_label) / BR Rx ";
+	    FOR a IN Entry_Actions DO
+	      IF @Starts_With?(@N_String(Names[a]), "A_")
+	        THEN deletes := <a> ++ deletes FI OD FI;	    
+     IF NOT EMPTY?(deletes)
+       THEN Entry_Actions := @Make_Set(Entry_Actions) \ @Make_Set(deletes) FI ENDVAR;
+
+     PRINT("Checking which entry actions are simple procedures...");
+
+     C:" Process entry actions in reverse order ";
+     FOR a IN REVERSE(Entry_Actions) DO
+       IF NOT EMPTY?(Bodies[a])
+         THEN PRINFLUSH("Checking entry: ", @N_String(Names[a]), ":");
+              C:" Find body of action by constructing the transitive closure ";
+              body := <a>; fringe := Succs[a] \ @Make_Set(<a, N+1, dn>);
+              WHILE NOT EMPTY?(fringe) DO
+                b := HEAD(fringe); fringe := TAIL(fringe);
+                C:" Don't include a call to another entry action ";
+                C:" with the same return register: ";
+                IF b <> N+1 AND b <> dn
+                     AND NOT (effort > 0 AND b IN Entry_Actions
+                                AND Return_Regs.(b) = Return_Regs.(a))
+                  THEN C:" Add b to body and sucessors of b to fringe ";
+                       C:" NB b's body might be empty because it has ";
+                       C:" been turned into a PROC ";
+                       IF NOT EMPTY?(Bodies[b])
+                         THEN body := <b> \/ body;
+                              PRINFLUSH(" ", @N_String(Names[b]));
+                              fringe := fringe \/ ((Succs[b] \ @Make_Set(<N+1, dn>))
+                                                     \ body) FI FI OD;
+              PRINT("");
+
+              C:" If effort >= 1 then convert all `external' actions ";
+              C:" into tail-recursive calls ";
+              C:" but make sure that dispatch is still called from the remaining body ";
+              IF effort >= 1
+                THEN @FD_Remove_Ext_Calls(a, dn, N, Succs, Preds, Names VAR body) FI;
+
+              C:" Check that no action outside the body calls an action in the body ";
+              C:" other than the entry action, ie predecessors of all actions in ";
+              C:" the body are also in body ";
+              ok := 1;
+              tmpl := body \ <a>;
+              WHILE NOT EMPTY?(tmpl) AND ok = 1 DO
+                b := HEAD(tmpl); tmpl := TAIL(tmpl);
+                IF b = Starting_Action
+                  THEN PRINT("Procedure body includes the starting action ",
+                             @N_String(Names[b]));
+                       ok := 0
+                ELSIF NOT SUBSET?(Preds[b], @Make_Set(<dn, N+1>++body))
+                  THEN PRINT("  ", @N_String(Names[b]), " is called by ",
+                             @N_String(Names[HEAD(Preds[b]
+			                           \ @Make_Set(<dn, N+1>++body))]));
+                       ok := 0 FI OD;
+              IF ok = 1
+                THEN ok := 0;
+                     @FD_Process_Simple_Proc(a, body, dn, N, Names, Return_Regs
+                                             VAR Bodies, Proc_Defns, ok);
+                     IF ok = 1
+                       THEN @FD_Succs_And_Preds(N, Bodies, Starting_Action
+                                                VAR Succs, Preds);
+                            Found := 1 FI FI FI OD;
+
+    IF Found = 0 THEN EXIT(1) FI OD;
+   
+  @FD_Rebuild_AS(N, Bodies, Names, AS_Name, Proc_Defns) ENDVAR ENDVAR .;
+
+
+MW_PROC @FD_Remove_Ext_Calls(start, dn, N, Succs, Preds, Names VAR body) ==
+  VAR < new := @Make_Set(body), fringe := < >, done := < >,
+        tmpl := < >, c := < >, ok := 1 >:
+  tmpl := @Make_Set(body) \ <start> \ <dn>;
+
+  C:" Start with direct calls: ";
+  tmpl := (Succs[start] \ <dn>) ++ @Make_Set(body \ <start> \ <dn> \ Succs[start]);
+
+  PRINT("@FD_Remove_Ext_Calls on ", @N_String(Names[start]), " ok = ", ok);
+  PRINFLUSH("tmpl = ");
+  FOR x IN tmpl DO PRINFLUSH(@N_String(Names[x]), " ") OD; PRINT("");
+  WHILE NOT EMPTY?(tmpl) AND ok = 1 DO
+    b := HEAD(tmpl); tmpl := TAIL(tmpl);
+    PRINT("...checking body action ", @N_String(Names[b]));
+    C:" If b is called elsewhere, then remove it and all its successors ";
+    C:" Or if b calls dispatch in a code which comes from some variable ";
+    C:" other than the return register or a variable it is saved in: ";
+    IF b IN done
+      THEN SKIP
+    ELSIF NOT SUBSET?(Preds[b] \ <dn>, @Make_Set(<N+1>++body))
+           OR NOT EMPTY?(Return_Regs.(start))
+	            AND NOT SUBSET?(Dispatch_Regs.(b), Return_Regs.(start))
+      THEN PRINT("  Found external call ", @N_String(Names[b]),
+                 " in action ", @N_String(Names[start]));
+           IF b IN Entry_Actions
+             THEN PRINT("Not taking out entry action ", @N_String(Names[b]));
+	          ok := 0 FI;
+	   fringe := <b>;
+	   done := @Make_Set(<start, dn, N+1>);
+	   WHILE NOT EMPTY?(fringe) AND ok = 1 DO
+	     c := HEAD(fringe); fringe := TAIL(fringe);
+             PRINT("  ...removing ", @N_String(Names[c]));
+	     IF c IN Entry_Actions AND effort < 2
+	       THEN PRINT("Not taking out entry action ", @N_String(Names[c]));
+	          ok := 0 FI;
+	     new := new \ <c>;
+	     done := <c> \/ done;
+	     fringe := fringe \/ (Succs[c] \ done) OD FI OD;
+  PRINT("  ... ok = ", ok, " new body = ", new);
+  IF LENGTH(new) < LENGTH(body) AND ok = 1
+    THEN C:" We removed an external call, so check that dispatch is called: ";
+	 ok := 0;
+	 FOR b IN new DO
+	   IF dn IN Succs[b] THEN ok := 1 FI OD;
+	 IF ok = 0
+	   THEN PRINT("  dispatch not called after deleting external calls.")
+	   ELSE body := <start> ++ (new \ <start>);
+		PRINT("   new body is: ", body) FI FI ENDVAR .;
+     
+
+
+
+MW_PROC @FD_Init(N VAR Bodies, Names, Name2Num) ==
+  VAR < J := 0, ASType := @AS_Type >:
+    C:" Calculate Bodies, Names, Name2Num ";
+    C:" Hash table Name2Num maps action names (keys) to action numbers ";
+    Name2Num.(@Make_Name("Z")) := N+1;
+    PRINT(N, " actions");
+    @Down_Last; @Down;
+    ASType := @AS_Type;
+
+    C:" Put bodies of actions into array Bodies, ";
+    C:" and their names into the hash table Name2Num. ";
+    J := 1;
+    DO Names[J] := @V(@I^1);
+       IF NOT EMPTY?(Name2Num.(Names[J]))
+         THEN ERROR("@FD_Init: Duplicate name " ++ @N_String(@V(@I^1))
+	               ++ " found in action system!!!") FI;
+       Name2Num.(Names[J]) := J;
+       Bodies[J] := @I^2;
+       IF @Right? THEN J := J+1; @Right ELSE EXIT(1) FI OD;
+    Names[N+1] := @Make_Name("Z");
+
+    C:" Convert all the calls to numbers using Name2Num ";
+    FOR i:=1 TO N STEP 1 DO
+      @New_Program(Bodies[i]);
+      FOREACH NAS DO
+	IF @ST(@I) = T_Call
+	  THEN J := Name2Num.(@V(@I));
+	       IF EMPTY?(J) THEN J := N+1 FI;
+	       @Paste_Over(@Make(T_Call, -J, < >)) FI OD;
+      Bodies[i] := @Program OD ENDVAR .;
+
+
+C:" Calculate Succs and Preds arrays. ";
+C:" NB: the calls in Bodies have numbers instead of names ";
+MW_PROC @FD_Succs_And_Preds(N, Bodies, Starting_Action VAR Succs, Preds) ==
+  PRINFLUSH ("Calculating Succs and Preds... ");
+  VAR < calls := < >, call := 0 >:
+    FOR i:=1 TO N STEP 1 DO
+      Preds[i] := < > OD;
+    FOR i:=1 TO N STEP 1 DO
+      Succs[i] := < >;
+      IF NOT EMPTY?(Bodies[i])
+	THEN calls := @Calls(Bodies[i]);
+	     C:" Returns a list of <call, number> pairs ";
+	     WHILE NOT EMPTY?(calls) DO
+	       call := -HEAD(HEAD(calls)); calls := TAIL(calls);
+	       IF NOT NUMBER?(call)
+		 THEN PRINT("Check me: ", call); call := N+1 FI;
+	       Succs[i] := <call> \/ Succs[i];
+	       Preds[call] := Preds[call] \/ <i> OD FI OD ENDVAR;
+  PRINT ("Done.") .;
+
+
+MW_PROC @FD_Rebuild_AS(N, Bodies, Names, AS_Name, Proc_Defns) ==
+  C:" Rebuild the action system from Bodies, surrounding it with the Proc_Defns ";
+  PRINT("Rebuilding the action system.");
+  VAR < Dispatch := @Make_Name("dispatch"),
+	actions := < >, i := 0 >:
+    C:" NB change the calls back to names ";
+    FOR i := N TO 1 STEP -1 DO
+      IF NOT EMPTY?(Bodies[i])
+	THEN @New_Program(Bodies[i]);
+	     FOREACH NAS DO
+	       IF @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND @V(@I) < 0
+		 THEN @Paste_Over(@Make(T_Call, Names[-@V(@I)], < >)) FI OD;
+	     actions := <@Make(T_Action, < >, <@Name(Names[i]), @Program>)>
+	                  ++ actions FI OD;
+    PRINFLUSH ("There are ", LENGTH(actions), " actions in the main system");
+    IF EMPTY?(Proc_Defns)
+      THEN PRINT(".")
+      ELSE PRINT (" and ", LENGTH(Proc_Defns), " procedure(s).") FI;
+    C:" Build the action system ";
+    @New_Program(@Make(T_A_S, < >, <@Name(AS_Name), @Make(T_Actions, < >, actions)>));
+    IF NOT EMPTY?(Proc_Defns)
+      THEN C:" Put the action system in a WHERE clause ";
+	   VAR < body := @Make(T_Statements, < >, <@Program>) >:
+	      @New_Program(@Make(T_Where, < >,
+		<body, @Make(T_Definitions, < >, Proc_Defns)>)) ENDVAR FI ENDVAR .;
+
+
+MW_PROC @FD_Process_Simple_Proc(start, body, dn, N, Names, Return_Regs
+				VAR Bodies, Proc_Defns, OK) ==
+  C:" Convert the list of actions in body to a nested action system which replaces ";
+  C:" action start. Convert the nested action system to a PROC. ";
+  C:" Check that the resulting action preserves its return register(s). ";
+  C:" Unfold start action everywhere and attempt to simplify any calls to dispatch ";
+  VAR < sub_AS := < >, new_sub_AS := < >,
+	proc_name := Names[start],
+	i := 0, n := 0,
+	call_Z := @Make(T_Call, @Make_Name("Z"), < >),
+	call_zn := @Make(T_Call, -(N+1), < >),
+	call_dn := @Make(T_Call, -dn, < >),
+	call := < >, R := 0,
+	reg := HEAD(Return_Regs.(start)),
+	reg_var := < >,
+	flag := @Make(T_Variable, @Make_Name("exit_flag"), < >),
+	flag_n := 1, flag_val := < >,
+	name2flag := HASH_TABLE, flag2name := HASH_TABLE,
+	Z_called := 0, dispatch_called := 0, guardeds := < >,
+	v := 0, rr := 0 >:
+
+    reg_var := @Make(T_Variable, reg, < >);
+
+    C:" Build sub_AS action list from the list of action numbers in body: ";
+    FOR i IN body DO
+      IF EMPTY?(Bodies[i]) 
+	THEN PRINT("Warning: action ", @N_String(Names[i]), " already has no body!")
+	ELSE sub_AS := <@Make(T_Action, < >, <@Name(Names[i]), Bodies[i]>)>
+	                 ++ sub_AS FI OD;
+    C:" Replace external calls in sub_AS by an assignment to a flag followed by CALL Z ";
+    C:" Restore internal calls (ie replace the number by the name) ";
+    new_sub_AS := < >;
+    WHILE NOT EMPTY?(sub_AS) DO
+      @New_Program(HEAD(sub_AS)); sub_AS := TAIL(sub_AS);
+      @Down_Last; C:" To the statement sequence ";
+      FOREACH NAS DO
+	IF @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND @V(@I) < 0
+	  THEN v := -@V(@I);
+	       IF v IN body
+		 THEN C:" Internal call, change number to name ";
+		      @Paste_Over(@Make(T_Call, Names[v], < >))
+	       ELSIF v = dn
+		 THEN C:" normal return: ";
+		      dispatch_called := 1;
+		      @Paste_Over(FILL Statement ~?flag := 0 ENDFILL);
+		      @Paste_After(call_Z)
+	       ELSIF v = N+1
+		 THEN C:" error return: ";
+		      Z_called := 1;
+		      @Paste_Over(FILL Statement ~?flag := 1 ENDFILL);
+		      @Paste_After(call_Z)
+		 ELSE C:" Assume this is a tail recursive call, ";
+		      C:" Copy register to destination and set a flag: ";
+		      IF EMPTY?(name2flag.(v))
+			THEN flag_n := flag_n + 1;
+			     name2flag.(v) := flag_n;
+			     flag2name.(flag_n) := v FI;
+		      flag_val := @Make(T_Number, name2flag.(v), < >);
+		      IF Return_Regs.(v) = reg
+			THEN @Paste_Over(FILL Statement ~?flag := ~?flag_val ENDFILL);
+			     @Paste_After(FILL Statement
+			                  destination := ~?reg_var ENDFILL);
+			     @Right
+			ELSE @Paste_Over(FILL Statement
+			                 ~?flag := ~?flag_val ENDFILL) FI;
+		      @Paste_After(call_Z) FI FI OD;
+      new_sub_AS := <@Program> ++ new_sub_AS OD;
+    sub_AS := @Make(T_A_S, < >,
+                    <@Name(Names[start]), @Make(T_Actions, < >, new_sub_AS)>);
+
+    C:" Check that sub_AS sends its return register to destination ";
+    IF dispatch_called = 0 AND flag_n = 1
+      THEN R := 1
+      ELSE R := @Preserves_Destination(proc_name, sub_AS, reg, effort,
+                                       budget, flag_n) FI;
+
+    IF R = 0 AND effort > 0 AND @Size(sub_AS^2) = 1 AND @Stat_Count_NC(sub_AS) <= 7
+      THEN C:" Unfold the start action everywhere: ";
+	   VAR < body := Bodies[start] >:
+	   Bodies[start] := < >;
+           PRINT("Unfolding small action ", @N_String(Names[start]));
+	   FOR i:=1 TO N STEP 1 DO
+             IF NOT EMPTY?(Bodies[i])
+               THEN @New_Program(Bodies[i]);
+                    FOREACH NAS DO
+                      IF @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND -@V(@I) = start
+                        THEN @Splice_Over(@Cs(body)) FI OD;
+                    Bodies[i] := @Program FI OD ENDVAR FI;
+
+    IF R > 0
+      THEN C:" Success! ";
+	   C:" Clear the bodies of the removed actions: ";
+	   PRINT("Found a simple procedure: ", @N_String(Names[start]));
+	   OK := 1;
+	   PRINFLUSH("Body consists of ", LENGTH(body), " actions: ");
+	   FOR i:=1 TO LENGTH(body) STEP 1 DO
+	     PRINFLUSH(@N_String(Names[body[i]]), " ") OD;
+	   PRINT("");
+	   FOR i IN body DO
+	     Bodies[i] := < > OD;
+	   C:" The new version of the start action calls PROC proc_name and then ";
+	   C:" tests flag to decide whether to call Z or dispatch: ";
+	   @New_Program(FILL Statements SKIP ENDFILL);
+	   @Down;
+	   VAR < expns := @Make(T_Expressions, < >, < >),
+		 lvalues := @Make(T_Lvalues, < >, < >) >:
+	     @Paste_Over(@Make(T_Proc_Call, < >,
+	                       <@Name(proc_name), expns, lvalues>)) ENDVAR;
+	   IF Z_called = 1 AND dispatch_called = 0
+	     THEN @Paste_After(call_zn)
+	   ELSIF Z_called = 1
+	     THEN @Paste_After(FILL Statement
+			       IF ~?flag = 1 THEN ~?call_zn ELSE ~?call_dn FI ENDFILL)
+	     ELSE @Paste_After(call_dn) FI;
+	   i := flag_n;
+	   WHILE i > 1 DO
+	     flag_val := @Make(T_Number, i, < >);
+	     call := @Make(T_Call, -flag2name.(i), < >);
+	     @Paste_After(FILL Statement IF ~?flag = ~?flag_val THEN ~?call FI ENDFILL);
+	     i := i - 1 OD;
+	   Bodies[start] := @Program;
+	   C:" Unfold the start action everywhere: ";
+	   @FD_Unfold_Start_Action(start, reg, R - 1, flag_n, call_dn, call_zn
+	                           VAR rr, Bodies);
+	   C:" Create the proc defn, components are <lvalues, lvalues, statements> ";
+	   VAR <lvalues := @Make(T_Lvalues, < >, < >),
+		body := @Make(T_Statements, < >, <sub_AS>) >:
+	     @New_Program(body);
+	     IF rr = 0
+	       THEN C:" All dispatch calls directly after each subroutine call ";
+	            C:" have been accounted for an unfolded. ";
+		    C:" So we can delete any assignments to destination in the body ";
+		    FOREACH Statement DO
+		      IFMATCH Statement destination := ~?e
+		        THEN @Delete ENDMATCH OD FI;
+	     @Down; C:" to action system ";
+	     IF @Trans?(TR_Merge_Calls_In_System)
+	       THEN @Trans(TR_Merge_Calls_In_System, "") FI;
+	     IF @Trans?(TR_Simplify_Action_System)
+	       THEN @Trans(TR_Simplify_Action_System, "") FI;
+	     IF @ST(@I) = T_A_S AND @Size(@I^2) = 1
+	       THEN PRINT("Removing action system: ", @N_String(@V(@I^1)));
+		    @Trans(TR_Simplify_Item, "") FI;
+	     body := @Program;
+	     Proc_Defns := <@Make(T_Proc, < >,
+	                          <@Name(proc_name), lvalues, lvalues, body>)>
+			     ++ Proc_Defns;
+	     C:" Add a summary of the new body to Proc_Summaries: ";
+	     @S_Summarise_Body_Sub(HEAD(Proc_Defns)) ENDVAR;
+	   SKIP FI ENDVAR .;
+
+
+C:" If inc = 1 then the return code may have been incremented: ";
+
+MW_PROC @FD_Unfold_Start_Action(start, reg, inc, flag_n, call_dn, call_zn
+                                VAR rr, Bodies) ==
+  C:" Unfold start everywhere: its new body consists of a PROC call ";
+  C:" (whose body is the action system sub_AS) followed by a COND which contains ";
+  C:" a call to dispatch. ";
+  VAR < body := Bodies[start], posn := < >, return := < >, up := 0 >:
+  Bodies[start] := < >;
+  PRINT("Unfolding ", @N_String(Names[start]), " inc = ", inc);
+  FOR i:=1 TO N STEP 1 DO
+    IF NOT EMPTY?(Bodies[i])
+      THEN @New_Program(Bodies[i]);
+           @Trans(TR_Simplify, "");
+           C:" Check for a Floop followed by a CALL and absorb it into the loop. ";
+	   C:" (This helps to move the CALL closer to the return code) ";
+	   ATEACH Statement DO
+	     IF @ST(@I) = T_Floop AND @Right?
+	       THEN @Right;
+	            IF @ST(@I) = T_Call
+		      THEN @Left; @Trans(TR_Absorb_Right, "")
+		      ELSE @Left FI FI OD;
+	   ATEACH NAS DO
+	     IF @ST(@I) = T_Call AND NUMBER?(@V(@I)) AND -@V(@I) = start
+	       THEN @Splice_Over(@Cs(body));
+		    C:" Search backwards for the return code, if found, ";
+		    C:" insert an assignment to destination after the proc call: ";
+		    posn := @Posn; return := < >;
+
+		    DO IF NOT @Left?
+		         THEN IF @Up?
+			        THEN @Up; @Up_To_Statement; up := 1;
+                                     IF NOT @Left? THEN EXIT(1) FI
+                                ELSE EXIT(1) FI FI;
+		       @Left;
+		       IF @ST(@I) NOTIN <T_Assignment, T_Comment, T_A_Proc_Call>
+		         THEN EXIT(1) FI;
+                       IF @ST(@I) = T_Assignment AND @ST(@I^1^1) = T_Var_Lvalue
+			    AND @V(@I^1^1) = reg
+			 THEN IF @ST(@I^1^2) = T_Number
+				THEN return := @I^1^2;
+				     @Down; @Down_To(2);
+				     C:" We keep the original dispatch value so that ";
+				     C:" C_P can propagate it: at the risk of ";
+				     C:" not being able to prune it from dispatch: ";
+				     IF inc = 0
+				       THEN IF flag_n <= 1 AND up = 0
+				              THEN @FD_Clobber_Value FI
+                                     ELSIF TRUE THEN SKIP
+				       ELSE @Paste_Over(@Make(T_Number, 0, < >)) FI;
+				     @Up; @Up
+                              ELSIF @ST(@I^1^2) = T_Variable AND @V(@I^1^2) IN reg_inits
+                                THEN return := @Make(T_Number, 0, < >)
+                              ELSIF @ST(@I^1^2) = T_X_Funct_Call
+			              AND @V(@I^1^2^1) = inline_par
+                                THEN PRINT("Found inline_par");
+				     C:" Ignore increments on return address ";
+				     inc := 0;
+				     @Down; @Down_To(2); C:" to funct call ";
+				     return := @I^2^1;
+				     @Paste_Over(@I^2^2); C:" the data pointer ";
+				     @Up; @Up; C:" back to statement " FI;
+			      EXIT(1) FI OD;
+		    @Goto(posn);
+		    IF NOT EMPTY?(return)
+		      THEN PRINT("...return code = ", @V(return), " at ", @Posn);
+			   IF inc = 0
+			     THEN @Right;
+			          @FD_Unfold_Dispatch(return, call_dn, Bodies)
+			     ELSE rr := 1;
+			          @FD_Inc_Return_Code(return, call_dn, call_zn) FI;
+		      ELSE PRINT("...can't find return code at ", @Posn);
+                           @FD_Check_Return_Code_Inc(VAR rr) FI;
+                    @Goto(posn) FI OD;
+	  Bodies[i] := @Program FI OD;
+
+  PRINT("") ENDVAR .;
+
+
+C:" Check if the return code is incremented by a known value (4, 8, 12, etc) ";
+C:" If so, then save and restore return register. ";
+C:" In not, then set rr := 1 so that we keep assingments to destination ";
+C:" in the extracted proc body. ";
+
+MW_PROC @FD_Check_Return_Code_Inc(VAR rr) ==
+  IF LENGTH(CP_Return_Code_Inc) = 1 AND HEAD(CP_Return_Code_Inc) <> 1
+       AND @ST(@I) = T_Proc_Call AND CP_Return_Code_Normal = 0
+    THEN VAR < save := @Make(T_Variable, 
+                             @Make_Name(@N_String(@V(@I^1)) ++ "_RETURN"),
+			     < >),
+               r := @Make(T_Variable, reg, < > ),
+	       i := @Make(T_Number, HEAD(CP_Return_Code_Inc), < >),
+	       call := @I >:
+         @Splice_Over(@Cs(FILL Statements ~?save := ~?r;
+	                                  ~?call;
+					  destination := ~?save + ~?i ENDFILL)) ENDVAR
+    ELSE rr := 1 FI .;
+
+
+C:" Create an IF statement which tests dispatch against the possible return codes: ";
+
+MW_PROC @FD_Inc_Return_Code(code, call_dn, call_zn) ==
+  VAR < offset := @Make(T_Number, @V(code), < >) >:
+  C:" First move to the CALL dispatch (may be inside an IF flag test) ";
+  @Right;
+  C:" Skip exit_flag > 1 tests ";
+  WHILE @ST(@I) = T_Cond AND @ST(@I^1^1) = T_Equal
+           AND @Equal?(@I^1^1^1, flag) 
+	   AND @ST(@I^1^1^2) = T_Number AND @V(@I^1^1^2) > 1
+	   AND @Right? DO
+    @Right OD;
+  IF @ST(@I) = T_Cond THEN @Down_Last; @Down_Last; @Down_Last FI;
+  @Find_Type(T_Call);
+  IF @ST(@I) <> T_Call 
+    THEN PRINT("Couldn't find the dispatch call!");
+         !XP prit(); PRINT("Whole program:");
+	 !XP prpr(); ERROR("@FD_Inc_Return_Code") FI;
+  @Paste_Over(FILL Statement IF TRUE THEN ~?call_zn FI ENDFILL);
+  @Down; C:" to the first guarded ";
+  DO IF EMPTY?(Code_Hash.(@V(code))) THEN EXIT(1) FI;
+     @Paste_Before(FILL Guarded destination = ~?offset
+                                   -> destination := ~?code; ~?call_dn ENDFILL);
+     @Right;
+     code := @Make(T_Number, @V(code) + 4, < >);
+     offset := @Make(T_Number, @V(offset) + 4, < >) OD;
+  C:" Change the last test to TRUE: ";
+  IF @Left?
+    THEN @Left;
+         @Down; @Paste_Over(FILL Condition TRUE ENDFILL); @Up;
+         @Delete_Rest FI ENDVAR .;
+
+
+
+C:" Search forwards up to n steps for a CALL and return it if found ";
+C:" Don't step over an assignment of a return code! ";
+MW_FUNCT @FD_Find_Call(n, Codes) ==
+  VAR < posn := @Posn, R := < > >:
+  WHILE @Up? AND @GT(@I) <> T_Statement DO @Up OD;
+  IF @GT(@I) = T_Statement
+    THEN DO IF NOT @Right? THEN EXIT(1) FI;
+	    @Right;
+	    IFMATCH Statement ~?v := ~?e
+	      THEN IF @ST(e) = T_Number AND NOT EMPTY?(Codes.(@V(e)))
+	                OR @ST(e) = T_X_Funct_Call AND @V(e^1) = inline_par 
+	             THEN C:" Look no further for a CALL: ";
+		          n := 0 FI ENDMATCH;
+	    IF n = 0 THEN EXIT(1) FI;
+	    IF @ST(@I) = T_Call
+	      THEN R := @V(@I); EXIT(1) FI;
+	    IF @ST(@I) <> T_Comment THEN n := n - 1 FI;
+	    IF @ST(@I) = T_Cond OR @ST(@I) = T_Proc_Call THEN EXIT(1) FI OD FI;
+  @Goto(posn);
+  (R) .;
+
+C:" Overwrite the with a NOTUSED_ variable: ";
+MW_PROC @FD_Clobber_Value() ==
+  VAR < val := @V(@I), notused := < > >:
+  IF val < 0
+    THEN notused := @Make(T_Variable, @Make_Name("NOTUSED__" ++ @String(-val)), < >)
+    ELSE notused := @Make(T_Variable, @Make_Name("NOTUSED_"  ++ @String( val)), < >) FI;
+  @Paste_Over(notused) ENDVAR .;
+
+
+
+C:" Look for !XF bit_or(code, AMODE) and convert to code ";
+C:" (assume this is merely setting the mode) ";
+
+MW_PROC @FD_Bit_Or_Code_Check(Codes) ==
+  FOREACH Expression DO
+    IFMATCH Expression !XF bit_or(~?code, ~?v)
+      THEN IF @ST(code) = T_Number AND @V(code) > 4 AND NOT EMPTY?(Codes.(@V(code)))
+             THEN @Paste_Over(code) FI ENDMATCH OD .;
+             
+
+
+C:" Look for a[FOO].BAR[n..m] := reg or code plus ";
+C:" destination or register := a[FOO].BAR[n..m] ";
+C:" If both are found then rename to a_FOO_BAR_n ";
+C:" to assist with constant propagation. ";
+
+MW_PROC @FD_Rename_DSECT_Code_Stores(Codes VAR rename) ==
+  VAR < L1 := < >, L2 := < >, name := < >,
+        DSECTs := HASH_TABLE, DSECT_regs := HASH_TABLE,
+        registers := @Make_Set(MAP("@Make_Name", < "a0", "a1", "a2", "a3",
+                                                   "a4", "a5", "a6", "a7",
+                                                   "a8", "a9", "a10","a11",
+                                                   "a12","a13","a14","a15",
+                                                   "x0", "x1", "x2", "x3",
+                                                   "x4", "x5", "x6", "x7",
+                                                   "x8", "x9", "x10","x11",
+                                                   "x12","x13","x14","x15",  
+                                                   "r0", "r1", "r2", "r3",
+                                                   "r4", "r5", "r6", "r7",
+                                                   "r8", "r9", "r10","r11",
+                                                   "r12","r13","r14","r15",
+                                                   "destination" >)), 
+        new := HASH_TABLE >:
+
+  @CP_Find_DSECTs(VAR DSECTs);
+  FOREACH Statement DO
+    IFMATCH Statement ~?v := ~?e
+      THEN IF @ST(e) = T_Variable AND @ST(v) = T_Var_Lvalue
+                AND NOT EMPTY?(DSECTs.(@V(v)))
+		AND @V(e) IN registers
+             THEN DSECT_regs.(@V(v)) := DSECT_regs.(@V(v)) \/ <@V(e)> FI ENDMATCH OD;
+
+  FOR v IN @Hash_Keys(DSECT_regs) DO
+    PRINT("Regs for ", @N_String(v), " = ", MAP("@N_String", DSECT_regs.(v))) OD;
+
+  FOREACH Statement DO
+    IFMATCH Statement ~?v := ~?e
+      THEN IF @ST(e) = T_Number AND @V(e) > 4 AND NOT EMPTY?(Codes.(@V(e)))
+                AND (@ST(v) = T_Struct_Lvalue OR @ST(v) = T_Sub_Seg_Lvalue)
+	     THEN L1 := <HEAD(@Elements(v))> \/ L1
+           ELSIF EMPTY?(@Elements(e))
+	     THEN SKIP
+	   ELSIF @ST(e) = T_Variable AND @V(e) IN registers
+                AND (@ST(v) = T_Struct_Lvalue OR @ST(v) = T_Sub_Seg_Lvalue)
+             THEN L1 := <HEAD(@Elements(v))> \/ L1
+	   ELSIF @ST(v) = T_Var_Lvalue AND @V(v) IN registers
+	           AND (@ST(e) = T_Struct OR @ST(e) = T_Sub_Seg)
+             THEN L2 := <HEAD(@Elements(e))> \/ L2 FI ENDMATCH OD;
+
+  FOR elts IN L1 /\ L2 DO
+    name := "";
+    IF LENGTH(elts) > 1 AND LENGTH(DSECT_regs.(elts[2])) <= 1
+      THEN FOR elt IN elts DO
+             IF name <> "" THEN name := name ++ "_" FI;
+             IF elt > 0
+               THEN name := name ++ @N_String(elt)
+               ELSE name := name ++ @String(-elt) FI OD;
+           name := @Make_Name(name);
+           new.(elts) := name FI OD;
+  FOREACH Expression DO
+    IF @ST(@I) = T_Struct
+         OR (@ST(@I) = T_Sub_Seg AND @ST(@I^2) = T_Number AND @ST(@I^3) = T_Number
+	      AND @V(@I^3) - @V(@I^2) = 3)
+      THEN name := new.(HEAD(@Elements(@I)));
+           IF NOT EMPTY?(name)
+             THEN rename.(name) := @I;
+                  @Paste_Over(@Make(T_Variable, name, < >)) FI FI OD;
+  FOREACH Lvalue DO
+    IF @ST(@I) = T_Struct_Lvalue
+         OR @ST(@I) = T_Sub_Seg_Lvalue AND @ST(@I^2) = T_Number AND @ST(@I^3) = T_Number
+      THEN name := new.(HEAD(@Elements(@I)));
+           IF NOT EMPTY?(name)
+	     THEN rename.(name) := @Lvalue_To_Expn(@I);
+                  @Paste_Over(@Make(T_Var_Lvalue, name, < >)) FI FI OD;
+
+  SKIP ENDVAR .;
+
+
+MW_PROC @FD_Restore_DSECT_Code_Stores(rename) ==
+  FOREACH Expression DO
+    IF @ST(@I) = T_Variable AND NOT EMPTY?(rename.(@V(@I)))
+      THEN @Paste_Over(rename.(@V(@I))) FI OD;
+  FOREACH Lvalue DO
+    IF @ST(@I) = T_Var_Lvalue AND NOT EMPTY?(rename.(@V(@I)))
+      THEN @Paste_Over(@Expn_To_Lvalue(rename.(@V(@I)))) FI OD .;
+
+
+
+C:" Find the destination values ";
+MW_FUNCT @Find_Dispatch_Codes(dispatch) ==
+  VAR < codes := < >, destination := @Make_Name("destination"),
+	largest := 0, regs := < >, tmp := < > >:
+  @Edit;
+  @Down_Last; @Down_Last; C:" to the last action ";
+  WHILE @Left? AND @V(@I^1) <> dispatch DO @Left OD;
+  IF @V(@I^1) = dispatch
+    THEN @Down_Last; C:" to dispatch body ";
+	 @Down;
+	 WHILE @ST(@I) <> T_Cond AND @Right? DO @Right OD;
+	 IF @ST(@I) = T_Cond
+	   THEN @Down; C:" to first guard ";
+		DO @Down; C:" to cond ";
+		   IF @ST(@I) = T_Equal
+		     THEN IF @ST(@I^1) = T_Variable
+			       AND @V(@I^1) = destination
+			       AND @ST(@I^2) = T_Number
+			    THEN codes := <@V(@I^2)> ++ codes
+			  ELSIF @ST(@I^2) = T_Variable
+			       AND @V(@I^2) = destination
+			       AND @ST(@I^1) = T_Number
+			    THEN codes := <@V(@I^1)> ++ codes FI FI;
+		   @Up; C:" back to the guard ";
+		   IF @Right? THEN @Right ELSE EXIT(1) FI OD FI FI;
+  codes := REVERSE(codes);
+  @Undo_Edit;
+  (codes) .;
+
+
+
+MW_PROC @FD_Unfold_Dispatch(code, call_dn, Bodies) ==
+  VAR < body := @Cs(Bodies[-@V(call_dn)]), destination := @Make_Name("destination") >:
+  DO FOREACH Statement DO
+       IF @Equal?(@I, call_dn)
+         THEN @Paste_Over(FILL Statement IF TRUE THEN ~*body FI ENDFILL);
+              FOREACH Expression DO
+                IF @ST(@I) = T_Variable AND @V(@I) = destination
+                  THEN @Paste_Over(code) FI OD FI OD;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up;
+  @Trans(TR_Simplify, "") ENDVAR .;
+
+
+
+C:" Look for a variable which is only assigned either zero ";
+C:" or two or more different dispatch codes ";
+C:" Replace a dispatch on this variable (maybe indirectly via a register) ";
+C:" by a jump table on small integers. ";
+C:" Replace the dispatch codes by integers so that dispatch can be pruned. ";
+
+MW_PROC @FD_Jump_Table_Fix(Code_Hash) ==
+  VAR < addr_vars := HASH_TABLE,
+        Registers := MAP("@Make_Name",
+                         <"r0", "r1", "r2",  "r3",  "r4",  "r5",  "r6",  "r7", 
+                          "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15">),
+        destination := @Make_Name("destination"),
+	dispatch := @Make_Name("dispatch"),
+	posn := @Posn >:
+  @Goto(< >);
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+      THEN @FD_Update_Addr_Vars(@I, Code_Hash, Registers VAR addr_vars)
+    ELSIF @ST(@I) = T_Var
+      THEN @FD_Update_Addr_Vars(@I^1, Code_Hash, Registers VAR addr_vars) FI OD; 
+  C:" Remove bad vars (which are assigned other values) ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment AND @ST(@I^1^1) = T_Var_Lvalue
+         AND NOT EMPTY?(addr_vars.(@V(@I^1^1)))
+	 AND (@ST(@I^1^2) <> T_Number
+	       OR (@V(@I^1^2) <> 0 AND EMPTY?(Code_Hash.(@V(@I^1^2)))))
+      THEN addr_vars.(@V(@I^1^1)) := < > FI OD;
+  @Goto(posn);
+
+  PRINFLUSH("Jump Table Variables are:");
+  FOR var IN @Hash_Keys(addr_vars) DO
+    IF LENGTH(addr_vars.(var)) > 1
+      THEN PRINFLUSH(" ", @N_String(var)) FI OD;
+  PRINT("");
+
+  C:" Search for dispatches on addr_vars ";
+
+  ATEACH Statement DO
+    IF @ST(@I) = T_Call AND @V(@I) = dispatch
+      THEN posn := @Posn;
+           WHILE @Left? AND @ST(@I) <> T_Assignment DO
+             @Left OD;
+	   IFMATCH Statement destination := ~?v
+	     THEN IF @ST(v) = T_Variable AND NOT EMPTY?(addr_vars.(@V(v)))
+	            THEN @FD_Jump_Table_Fix2(@V(v), @V(v), posn, addr_vars)
+                  ELSIF @ST(v) = T_Variable AND @V(v) IN Registers
+		    THEN @FD_Move_To_Assignment;
+		         IFMATCH Statement ~?(v) := ~?e
+			   THEN IF @ST(e) = T_Variable AND NOT EMPTY?(addr_vars.(@V(e)))
+	                          THEN @FD_Jump_Table_Fix2(@V(e), @V(v), posn, addr_vars)
+                                  ELSE @Goto(posn) FI
+			   ELSE @Goto(posn) ENDMATCH 
+                    ELSE @Goto(posn) FI
+             ELSE @Goto(posn) ENDMATCH FI OD ENDVAR .;
+  
+
+C:" Move left and up past comments and cc assignments to the previous statement ";
+C:" Skip assignments of the form var := 0 ";
+
+MW_PROC @FD_Move_To_Assignment() ==
+  VAR < cc_name := @Make_Name("cc"), done := 0 >:
+  DO IF NOT @Left? AND @Up?
+       THEN @Up;
+            WHILE @Up? AND @GT(@I) <> T_Statement DO
+	      @Up OD FI;
+     IF NOT @Left? THEN EXIT(1) FI;
+     @Left;
+     IFMATCH Statement ~?var := 0
+       THEN SKIP
+       ELSE IF @ST(@I) = T_Comment
+              THEN SKIP
+	    ELSIF NOT @Gen_Proper?(@I, "Reg")
+	      THEN done := 1
+	    ELSIF NOT EMPTY?(Call_Types_Set /\ @Stat_Types(@I))
+	      THEN done := 1
+	    ELSIF @Assigned(@I) = <cc_name>
+	      THEN SKIP
+	      ELSE done := 1 FI ENDMATCH;
+     IF done = 1 THEN EXIT(1) FI OD ENDVAR .;
+
+
+
+C:" Replace assignments e := code by small integers ";
+C:" Replace the CALL dispatch at posn by a jump table on v ";
+
+MW_PROC @FD_Jump_Table_Fix2(e, v, posn, addr_vars) ==
+  VAR < codes := addr_vars.(e), new := HASH_TABLE, n := 1,
+        var := @Make(T_Var_Lvalue, e, < >), dest := < > >:
+  FOR code IN codes DO
+    new.(code) := n;
+    n := n + 1 OD;
+  @Goto(< >);
+  FOREACH Statement DO
+    IFMATCH Statement ~?(var) := ~?exp
+      THEN IF @ST(exp) = T_Number AND NOT EMPTY?(new.(@V(exp)))
+             THEN exp := @Make(T_Number, new.(@V(exp)), < >);
+	          @Paste_Over(FILL Statement ~?var := ~?exp ENDFILL) FI ENDMATCH OD;
+  @Goto(posn);
+  var := @Make(T_Variable, v, < >);
+  @Paste_Over(FILL Statement IF FALSE THEN SKIP ELSE CALL Z FI ENDFILL);
+  @Down;
+  FOR code IN REVERSE(codes) DO
+    exp := @Make(T_Number, new.(code), < >);
+    dest := @Make(T_Number, code, < >);
+    @Paste_After(FILL Guarded ~?var = ~?exp THEN destination := ~?dest; CALL dispatch
+                 ENDFILL) OD;
+  @Delete;
+  @Up;
+  PRINT("Fixed jump table: ", @N_String(e), " ", @N_String(v), " at ", posn);
+  @Goto(posn) ENDVAR .;
+
+
+MW_PROC @FD_Update_Addr_Vars(I, Code_Hash, Registers VAR addr_vars) ==
+  FOR assign IN @Cs(I) DO
+    IF @ST(assign^2) = T_Number
+         AND NOT EMPTY?(Code_Hash.(@V(assign^2)))
+	 AND @ST(assign^1) = T_Var_Lvalue
+	 AND @V(assign^1) NOTIN Registers
+      THEN addr_vars.(@V(assign^1)) := addr_vars.(@V(assign^1))
+                                          \/ <@V(assign^2)> FI OD .;
+
+
+C:" Check for subroutines which are only called once: ";
+C:" If a variable is only assigned once with a known dispatch code, ";
+C:" then replace all references by the dispatch code. ";
+
+MW_PROC @FD_Once_Called_Subroutines(Code_Hash, budget) ==
+  VAR < bad := HASH_TABLE, value := HASH_TABLE, code := HASH_TABLE,
+        elt := < >, found := 0, posn := @Posn, name := < >,
+	count1 := HASH_TABLE, count2 := HASH_TABLE, notused := HASH_TABLE >:
+  @Goto(< >);
+  FOREACH Statement DO
+    IF @ST(@I) = T_A_Proc_Call
+      THEN FOR elt IN @Elts_Assigned(@I)
+             DO bad.(elt) := 1 OD
+    ELSIF @ST(@I) = T_Assignment
+      THEN IF @ST(@I^1^2) = T_Number AND NOT EMPTY?(Code_Hash.(@V(@I^1^2)))
+                AND (@ST(@I^1^1) = T_Var_Lvalue OR @ST(@I^1^1) = T_Struct_Lvalue
+		       OR @ST(@I^1^1) = T_Sub_Seg_Lvalue)
+		AND NOT (@ST(@I^1^1) = T_Var_Lvalue 
+                            AND @Starts_With?(@V(@I^1^1), "HANDLE_"))
+             THEN elt := @Struct_Elts(@I^1^1);
+	          IF @ST(@I^1^1) = T_Sub_Seg_Lvalue
+		       AND @ST(@I^1^1^2) = T_Number
+                    THEN elt := elt ++ <@V(@I^1^1^2)> FI;
+	          IF EMPTY?(value.(elt))
+	            THEN value.(elt) := @V(@I^1^2)
+                  ELSIF value.(elt) = @V(@I^1^2)
+		    THEN SKIP
+		    ELSE bad.(elt) := 1 FI FI FI OD;
+
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+         AND (@ST(@I^1^1) = T_Var_Lvalue OR @ST(@I^1^1) = T_Struct_Lvalue
+	        OR @ST(@I^1^1) = T_Sub_Seg_Lvalue)
+      THEN elt := @Struct_Elts(@I^1^1);
+           IF @ST(@I^1^1) = T_Sub_Seg_Lvalue
+                AND @ST(@I^1^1^2) = T_Number
+             THEN elt := elt ++ <@V(@I^1^1^2)> FI;
+           IF EMPTY?(bad.(elt)) AND NOT EMPTY?(value.(elt))
+	     THEN IF @ST(@I^1^2) <> T_Number OR @V(@I^1^2) <> value.(elt)
+	            THEN bad.(elt) := 1 FI FI FI OD;
+
+  FOR elt IN @Hash_Keys(value) DO
+    IF EMPTY?(bad.(elt))
+      THEN PRINT("Found a once called proc, var = ", MAP("@N_String", elt))
+      ELSE value.(elt) := < > FI OD;
+
+  FOR elt IN @Hash_Keys(value) DO
+    code.(value.(elt)) := 1 OD;
+
+  FOR c IN @Hash_Keys(code) DO
+    count1.(c) := 0;
+    count2.(c) := 0;
+    notused.(@Make_Name("NOTUSED_" ++ @String(c))) := c OD;
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+         AND @ST(@I^1^2) = T_Number AND NOT EMPTY?(code.(@V(@I^1^2)))
+      THEN count1.(@V(@I^1^2)) := count1.(@V(@I^1^2)) + 1 FI;
+    IF @ST(@I) = T_Assignment
+         AND @ST(@I^1^2) = T_Variable AND NOT EMPTY?(notused.(@V(@I^1^2)))
+      THEN count2.(notused.(@V(@I^1^2))) := count2.(notused.(@V(@I^1^2))) + 1 FI OD;
+
+  ATEACH Expression DO
+    IF @ST(@I) = T_Variable OR @ST(@I) = T_Struct OR @ST(@I) = T_Sub_Seg
+      THEN elt := @Struct_Elts(@I);
+           IF @ST(@I) = T_Sub_Seg
+                AND @ST(@I^2) = T_Number
+             THEN elt := elt ++ <@V(@I^2)> FI;
+           IF NOT EMPTY?(value.(elt))
+	        AND NOT (@ST(@Parent) = T_Sub_Seg AND @Posn_n = 1)
+	        AND NOT (@ST(@Parent) = T_Rel_Seg AND @Posn_n = 1)
+	     THEN @Paste_Over(@Make(T_Number, value.(elt), < >));
+	          found := 1 FI FI OD;
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+         AND (@ST(@I^1^1) = T_Var_Lvalue OR @ST(@I^1^1) = T_Struct_Lvalue
+		       OR @ST(@I^1^1) = T_Sub_Seg_Lvalue)
+      THEN elt := @Struct_Elts(@I^1^1);
+           IF @ST(@I^1^1) = T_Sub_Seg_Lvalue
+                AND @ST(@I^1^1^2) = T_Number
+             THEN elt := elt ++ <@V(@I^1^1^2)> FI;
+           IF NOT EMPTY?(value.(elt))
+             THEN @Down; @Down_To(2);
+	          name := @Make_Name("NOTUSED_" ++ @String(value.(elt)));
+                  @Paste_Over(@Make(T_Variable, name, < >));
+		  @Up; @Up FI FI OD;
+
+  C:" There could be more than one assignment of the code: ";
+  C:" C_P gets rid of the one we are currently processing, ";
+  C:" but another one elsewhere is still needed ";
+  C:" and could get clobbered by this code. ";
+
+  IF found = 1
+    THEN @Trans(TR_Constant_Propagation, budget) FI;
+  FOREACH Statement DO
+    IF @ST(@I) = T_Assignment
+         AND @ST(@I^1^2) = T_Number AND NOT EMPTY?(code.(@V(@I^1^2)))
+	 AND count2.(@V(@I^1^2)) < 4
+      THEN @Down; @Down_To(2);
+	   name := @Make_Name("NOTUSED_" ++ @String(@V(@I)));
+           @Paste_Over(@Make(T_Variable, name, < >));
+           @Up; @Up FI OD;
+  @Goto(posn) ENDVAR .;
+
+
+C:" Check if the given item is either a dispatch code number ";
+C:" or a function call of the form: !XF inline_par(code, par) ";
+
+inline_par := @Make_Name("inline_par");
+
+MW_BFUNCT @FD_Is_Code?(I, Codes) ==
+  VAR < OK := 0 >:
+  IF @ST(I) = T_Number
+    THEN IF NOT EMPTY?(Codes.(@V(I)))
+           THEN OK := 1 FI
+  ELSIF @ST(I) = T_X_Funct_Call
+    THEN IF @V(I^1) = inline_par AND @Size(I^2) = 2 AND @ST(I^2^1) = T_Number
+              AND NOT EMPTY?(Codes.(@V(I^2^1)))
+           THEN OK := 1 FI FI;
+  (OK = 1) .;
+
+
+C:" Look for actions which call dispatch more than once. ";
+C:" Put the statement sequence containing each dispatch call into ";
+C:" its own action. This is in preparation for checking for exits ";
+C:" from the subroutine which dispatch to a different return register/variable ";
+C:" First: absorb a call into a preceedig DO...OD loop. ";
+
+MW_PROC @FD_Separate_Dispatch_Calls(VAR new_actions) ==
+  VAR < pair := < >, new := < >, count := 0, name := < >, names := < > >:
+  C:" Absorb calls: ";
+  ATEACH Statement DO
+    IF @ST(@I) = T_Floop AND @Right? AND @Up?
+      THEN IF @ST(@Parent^(@Posn_n + 1)) = T_Call
+             THEN IF @Trans?(TR_Absorb_Right)
+	            THEN @Trans(TR_Absorb_Right, "") FI FI FI OD; 
+  FOR action IN @Cs(@I^2) DO
+    names := <@V(action^1)> ++ names OD;
+  @Down_To(2); @Down; C:" to first action ";
+  DO IF @V(@I^1) <> Dispatch
+       THEN pair := @Assoc(Dispatch, @Calls(@I));
+            IF NOT EMPTY?(pair) AND pair[2] > 1
+              THEN VAR < name := @V(@I^1) >:
+	           FOREACH Statements DO
+		     IF @ST(@I^@Size(@I)) = T_Call AND @V(@I^@Size(@I)) = Dispatch
+		       THEN @FD_Action(name VAR names, count, new) FI OD ENDVAR FI FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  IF NOT EMPTY?(new)
+    THEN @Splice_Before(REVERSE(new));
+         new_actions := new_actions ++ new FI;
+  @Up; @Up ENDVAR .;
+
+
+C:" Put the dispatch call into a new action: ";
+MW_PROC @FD_Action(name VAR names, count, new) ==
+  VAR < new_n := < >, L := < > >:
+  @Down_Last;
+  DO IF @Left? THEN @Left ELSE EXIT(1) FI;
+     IF NOT EMPTY?(@Calls(@I))
+       THEN @Right; EXIT(1) FI OD;
+  L := @Cs(@Parent);
+  L := L[@Posn_n..@Size(@Parent)];
+  DO count := count + 1;
+     new_n := @Make_Name(@N_String(name) ++ "_" ++ @String(count));
+     IF new_n NOTIN names THEN EXIT(1) FI OD;
+  names := <new_n> ++ names;
+  new := <@Make(T_Action, < >, <@Name(new_n), @Make(T_Statements, < > , L)>)> ++ new;
+  @Paste_Over(@Make(T_Call, new_n, < >));
+  @Delete_Rest ENDVAR .;
+
+
+SKIP
+

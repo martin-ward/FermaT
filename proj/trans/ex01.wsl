@@ -1,0 +1,5 @@
+ACTIONS A1:
+                                A1 == IF B=20 THEN CALL Z
+                                      ELSIF B=20 THEN CALL Z
+                                        ELSE B:=B+X; CALL A1 FI.
+                              ENDACTIONS

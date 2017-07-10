@@ -1,0 +1,39 @@
+#ifdef USE_VPP
+@@ $::SYSECT = uc("FMT001A0"); ""; @@
+#endif
+#include "FMT001A0.h"
+
+
+
+
+
+/* End of declarations */
+
+#include "FMT001A0_init.h"
+
+int fmt001a0(regs_t *p_regs)
+{
+  regs = *p_regs;
+exit_flag = 0;
+  /*  <ENTRY POINT>  */
+  /*  <NAME=FMT001A0>  */
+  /* ********************************************************************* */
+  /* * */
+  zap(wtotal, 4, p_dec("\x0C", 0), 1);
+  ap(wct, 4, p_dec("\x1C", 1), 1);
+  ap(wnum, 4, p_dec("\x1C", 1), 1);
+  /* * */
+  result_code = fmt001a1 (&CALL_MACRO);
+  result_code = fmt001a2 (&CALL_MACRO);
+  result_code = fmt001a3 (&CALL_MACRO);
+  /* * */
+  regs.r15 = 0;
+exit_flag = 0;
+  return(regs.r15);
+}
+
+
+
+/* ************************************************************ */
+
+

@@ -1,0 +1,67 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @Stack_To_Var_Test() ==
+  IF @GT(@I) = T_Statements THEN @Down FI;
+  IF @ST(@I) <> T_Push
+    THEN @Fail("Selected item is not a PUSH")
+  ELSIF @ST(@I^2) <> T_Variable
+    THEN @Fail("Saved value is not a variable")
+  ELSIF NOT @Right?
+    THEN @Fail("Nothing to the right of the PUSH")
+    ELSE VAR < var := @I^1, val := @I^2 >:
+         @Right;
+         DO IF @ST(@I) = T_Pop AND @Equal?(@I^2, var) AND @LR_Equal?(@I^1, val)
+	      THEN @Pass; EXIT(1) FI;
+            IF @V(var) IN @Assigned(@I)
+              THEN @Fail("Stack is modified after the PUSH");
+	           EXIT(1) FI;
+            IF @Right?
+	      THEN @Right
+	      ELSE @Fail("No suitable POP for this PUSH");
+	           EXIT(1) FI OD ENDVAR FI .;
+
+
+
+MW_PROC @Stack_To_Var_Code (Data) ==
+  IF @GT(@I) = T_Statements THEN @Down FI;
+  VAR < p1 := @Posn_n, p2 := 0, var := @I^1, val := @I^2, body := < > >:
+  WHILE NOT (@ST(@I) = T_Pop AND @Equal?(@I^2, var)
+          AND @LR_Equal?(@I^1, val)) DO @Right OD;
+  p2 := @Posn_n;
+  body := @Cs(@Parent)[p1+1..p2-1];
+  IF EMPTY?(body) THEN body := <@Skip> FI;
+  @Up;
+  @Paste_Over(@Make(T_Statements, < >,
+                    @Cs(@I)[1..p1-1] 
+                      ++ <FILL Statement VAR < ~?val := ~?val >:
+                                         ~*body ENDVAR ENDFILL>
+                      ++ @Cs(@I)[p2+1..]));
+  @Down_To(p1) ENDVAR .;
+
+
+SKIP
+
+
+
+
+
+

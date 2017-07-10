@@ -1,0 +1,56 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+MW_PROC @Insert_Assertion_Test () ==
+  IF @ST(@I) IN <T_Cond, T_D_If, T_D_Do, T_While, T_Guarded>
+    THEN @Pass
+    ELSE @Fail("The selected item is not of a valid type.") FI .;
+
+
+MW_PROC @Insert_Assertion_Code (Data) ==
+  VAR < A := < >, Else_Cond := @Make(T_False, < >, < >) >:
+  IF @ST(@I) = T_Cond
+    THEN @Down;
+	 DO IF @Right?   
+	      THEN @Down; A := @I;
+		   @Right; @Down;
+		   @Paste_Before(FILL Statement {~?A} ENDFILL);
+		   Else_Cond := @Or(Else_Cond, A);
+		   @Up; @Up; @Right
+	      ELSE @Down_Last; @Down;
+		   Else_Cond := @Not(Else_Cond);
+		   @Paste_Before(FILL Statement {~?Else_Cond} ENDFILL);
+		   @Up; @Up; EXIT(1) FI OD;
+	       @Up
+  ELSIF @ST(@I) IN <T_D_If, T_D_Do>
+    THEN @Down;
+	 DO @Down; A := @I;
+	    @Right; @Down;
+	    @Paste_Before(FILL Statement {~?A} ENDFILL);
+	    @Up; @Up; 
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD
+    ELSE @Down; A := @I;
+	 @Right; @Down;
+	 @Paste_Before(FILL Statement {~?A} ENDFILL) FI ENDVAR .;
+
+SKIP
+

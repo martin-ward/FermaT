@@ -1,0 +1,67 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Sort_Procs ";
+
+MW_PROC @Sort_Procs_Test() ==
+  IF @ST(@I) <> T_Where
+    THEN @Fail("Selected item is not a WHERE clause")
+    ELSE @Pass FI .;
+
+
+
+MW_PROC @Sort_Procs_Code(Data)==
+  VAR < bodies := HASH_TABLE, nodes := < >,
+        succs := HASH_TABLE, preds := HASH_TABLE, dfs := HASH_TABLE,
+	topsort := < >, new := < > >:
+  FOR defn IN @Cs(@I^2) DO
+    IF @ST(defn) = T_Proc
+      THEN nodes := <@V(defn^1)> ++ nodes;
+           bodies.(@V(defn^1)) := defn;
+           FOR pair IN @Proc_Calls(defn) DO
+	     succs.(@V(defn^1)) := <pair[1]> ++ succs.(@V(defn^1));
+             preds.(pair[1]) := <@V(defn^1)> ++ preds.(pair[1]) OD 
+      ELSE new := <defn> ++ new FI OD;
+  C:" Compute the DFS order number for each proc, starting with the main body ";
+  @SP_DFS_Calls(@I^1, bodies, 1 VAR dfs);
+  topsort := @Topological_Sort(nodes, succs, preds, dfs);
+  FOR name IN topsort DO
+    new := <bodies.(name)> ++ new OD;
+  @Down_To(2);
+  @Paste_Over(@Make(T_Definitions, < >, REVERSE(new)));
+  @Up ENDVAR .;
+
+
+C:" Compute a depth first search ordering for the proc calls ";
+C:" starting with the calls in the given item ";
+
+MW_PROC @SP_DFS_Calls(I, bodies, n VAR dfs) ==
+  @Edit;
+  @New_Program(I);
+  FOREACH Statement DO
+    IF @ST(@I) = T_Proc_Call AND EMPTY?(dfs.(@V(@I^1)))
+      THEN dfs.(@V(@I^1)) := n;
+           n := n + 1;
+	   IF NOT EMPTY?(bodies.(@V(@I^1)))
+	     THEN @SP_DFS_Calls(bodies.(@V(@I^1)), bodies, n VAR dfs) FI FI OD;
+  @Undo_Edit .;
+
+
+C:" ----------------------------------------------------------------------- "

@@ -1,0 +1,133 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" See docs2/IFMATCH-implementation.txt for details ";
+
+MW_PROC @Ifmatch_Processing_Test() ==
+  IF @Ifmatch_Type?(@ST(@I))
+    THEN @Pass
+    ELSE @Fail("Current item is not an IFMATCH") FI .;
+
+
+C:" index.(name) is the index in __Match_array for the given variable. ";
+C:" This is used for ~?=name and ~*=name and also ensures that the variable ";
+C:" has already been seen before any backreference ";
+
+MW_PROC @Ifmatch_Processing_Code(Data) ==
+  VAR < index := HASH_TABLE, name := ARRAY(1999, 0),
+        saves := < >, expns := < >, inits := < >, restores := < >,
+        i := 0, S1 := @Cs(@I^2), S2 := @Cs(@I^3) >:
+
+  C:" Walk over the pattern in depth-first order replacing variables ";
+  C:" and interpolation expressions and setting up the lists of assigns as follows: ";
+  C:" saves: save values of global variables ";
+  C:" expns: copy interpolated expression values in __Match_array ";
+  C:" inits: initialise matched variables from __Match_array ";
+  C:" restores: restore saved global variable values ";
+
+  @Down; C:" to pattern ";
+  @IP_Walk(VAR i, saves, expns, inits, restores, index);
+  @Up;
+
+  IF EMPTY?(saves)
+    THEN @Paste_Over(FILL Statement
+
+           VAR < __OK := 1 >:
+           ~*(expns);
+           @New_Match(~?(@Match_To_Fill(@I)), @I VAR __OK);
+           IF __OK = 1
+             THEN ~*(S1)
+             ELSE ~*(S2) FI ENDVAR
+
+         ENDFILL)
+
+    ELSE @Paste_Over(FILL Statement
+
+           VAR < __OK := 1 >:
+           ~*(expns);
+           @New_Match(~?(@Match_To_Fill(@I)), @I VAR __OK);
+           IF __OK = 1
+             THEN VAR < ~*(saves) >:
+                    ~*(inits);
+                    ~*(S1);
+                    ~*(restores) ENDVAR
+           ELSE ~*(S2) FI ENDVAR
+
+         ENDFILL) FI ENDVAR .;
+
+MW_PROC @IP_Walk(VAR i, saves, expns, inits, restores, index) ==
+  VAR < ST := @ST(@I), v := < >, v_save := < > >:
+  C:" Process components first (i.e. depth-first walk) ";
+  IF @Down?
+    THEN @Down;
+         DO @IP_Walk(VAR i, saves, expns, inits, restores, index);
+            IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+         @Up FI;
+  C:" Process current item ";
+  IF @One_Pattern_Type?(ST) OR @Many_Pattern_Type?(ST) OR @Any_Pattern_Type?(ST)
+    THEN i := i + 1;
+         name := @V(@I);
+         IF NOT EMPTY?(index.(name))
+	   THEN ERROR("Variable " ++ @N_String(name) ++ " appears twice in IFMATCH!") FI;
+         index.(name) := i;
+	 v := @Make(T_Variable, name, < >);
+	 v_save := @Make(T_Variable,
+	                 @Make_Name("__" ++ @N_String(name) ++ "_save"), < >);
+         saves := <FILL Assign ~?(v_save) := ~?(v) ENDFILL> ++ saves;
+	 inits := <FILL Statement
+	                   ~?(v) := __Match_array[~?(@Make(T_Number, i, < >))] ENDFILL>
+                    ++ inits;
+         restores := <FILL Statement ~?(v) := ~?(v_save) ENDFILL> ++ restores;
+         @Paste_Over(@Make(@ST(@I), -i, < >))
+  ELSIF @One_Var_Type?(ST) OR @Any_Var_Type?(ST)
+    THEN name := @V(@I);
+         IF EMPTY?(index.(name))
+	   THEN ERROR("Backreference " ++ @N_String(name) ++ " not previously used!") FI;
+         @Paste_Over(@Make(@ST(@I), -index.(name), < >))
+  ELSIF @One_Int_Type?(ST) OR @Any_Int_Type?(ST)
+    THEN i := i + 1;
+         expns := <FILL Statement __Match_array[~?(@Make(T_Number, i, < >))]
+	                              := ~?(@I^1) ENDFILL> ++ expns;
+         @Down; @Paste_Over(@Make(T_Number, i, < >)); @Up FI ENDVAR .;
+
+
+C:" Convert an IFMATCH pattern to a suitable FILL expression: ";
+
+MW_FUNCT @Match_To_Fill(I) ==
+  VAR < ST := @ST(I), type := < > >:
+  IF    ST = T_Ifmatch_Stat    THEN type := T_Fill_Stat
+  ELSIF ST = T_Ifmatch_Expn    THEN type := T_Fill_Expn
+  ELSIF ST = T_Ifmatch_Cond    THEN type := T_Fill_Cond
+  ELSIF ST = T_Ifmatch_Defn    THEN type := T_Fill_Defn
+  ELSIF ST = T_Ifmatch_Lvalue  THEN type := T_Fill_Lvalue
+  ELSIF ST = T_Ifmatch_Assign  THEN type := T_Fill_Assign
+  ELSIF ST = T_Ifmatch_Guarded THEN type := T_Fill_Guarded
+  ELSIF ST = T_Ifmatch_Action  THEN type := T_Fill_Action
+  ELSIF ST = T_Ifmatch_Stats   THEN type := T_Fill_Stats
+  ELSIF ST = T_Ifmatch_Expns   THEN type := T_Fill_Expns
+  ELSIF ST = T_Ifmatch_Lvalues THEN type := T_Fill_Lvalues
+  ELSIF ST = T_Ifmatch_Assigns THEN type := T_Fill_Assigns
+  ELSIF ST = T_Ifmatch_Defns   THEN type := T_Fill_Defns
+    ELSE ERROR("Unknown type in IFMATCH: ", @Type_Name(ST)) FI;
+  (@Make(type, < >, <I^1>)) .;
+
+
+SKIP
+

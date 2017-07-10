@@ -1,0 +1,68 @@
+#!/usr/bin/perl
+# RCS $Id: expand-macros,v 1.10 2004/09/15 13:02:07 dcs0mpw Exp $
+# Expand macros in a Scheme file
+# Usage: expand-macros input output macro ...
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/\"//g;
+  unshift(@INC, "$FermaT/config");
+}
+
+use fermat;
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname input output macro ... \n";
+# Check two or more arguments:
+die $Usage if ($#ARGV < 1);
+
+$scm = qq["$FermaT${ds}$arch${ds}scmlit" -p1];
+
+$SIG{'PIPE'} = 'IGNORE';
+
+$input = shift;
+$output = shift;
+@macros = @ARGV;
+
+$load_macros = "";
+die "Can't read input file $input\n" unless (-f $input);
+foreach $macro (@macros) {
+  die "Can't read macro file $macro\n" unless (-f $macro);
+  $macro =~ s/\\/\\\\/g; # Fix backslashes for scheme string
+  $load_macros .= qq[(load "$macro")\n];
+}
+
+my $data = <<EOF;
+
+(define (user-interrupt . args) (exit 1)) ; Cause ^C to force an exit
+$load_macros
+(require 'defmacroexpand)
+(require 'pretty-print)
+(define in (open-input-file "$input"))
+(define out (open-output-file "$output"))
+(define x '())
+(call-with-current-continuation
+  (lambda (exit1)
+    (do () (#f #t)
+      (set! x (read in))
+      (if (eof-object? x)
+	  (exit1 #t))
+      (pretty-print (defmacro:expand* x) out)
+      (newline out))))
+(close-input-port in)
+(close-output-port out)
+
+(exit)
+
+EOF
+# '
+
+$data =~ s/\\/\\\\/g;
+my $tmpfile = tmpfile($data);
+# Throw away STDOUT and STDERR (unless the command fails)
+$stdout = "";
+mysystem "$scm -f $tmpfile", \$stdout;
+
+exit(0);
+

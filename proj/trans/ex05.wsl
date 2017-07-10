@@ -1,0 +1,12 @@
+ACTIONS A:
+  A == IF A=1 THEN X:=X-1 FI;
+       IF X=0 THEN  Z := A*B; Y:=Y+1; CALL E
+       ELSIF X=2 THEN Y := 3; Y:=Y+1; CALL Z
+                 ELSE Y := Y+1; CALL D FI;
+       CALL Z.
+  D == IF (X+1)=(Y+1)
+         THEN A := 3; CALL E
+         ELSE A := 907; CALL Z FI;
+       J := J + 1 .
+  E == IF A=B THEN CALL Z ELSE CALL D FI. ENDACTIONS
+

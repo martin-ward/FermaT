@@ -1,0 +1,160 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+# ssa_slice [-f][-b][-N] [data=file.dat] input.ssa output.ssa var[@posn] ...
+#
+# Read a list of basic blocks in SSA form
+# Slice on the given slicing criterion
+# Output a sliced basic blocks file in SSA form
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+use Blocks;
+use Control_Dep;
+use Slice;
+use warnings;
+use strict;
+
+$| = 1;
+
+read_options();
+
+my ($myname, $Usage);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [-v][-f][-b][-N] [data=file.dat] input output var[\@posn] ...\n";
+
+my $V = 0;	   # Verbose output?
+my $backwards = 0; # Slice backwards? (default)
+my $forwards  = 0; # Slice forwards?
+my $depth = 0;     # Depth of slice (0 = as far as possible)
+my $data = "";
+my @files = ();
+
+@ARGV = map { split(/,/, $_) } @ARGV;
+
+# Check for options
+for (@ARGV) {
+  if (/^-[fb]+$/) {
+    $backwards = 1 if (/b/);
+    $forwards  = 1 if (/f/);
+  } elsif (/^-(\d+)$/) {
+    $depth = $1;
+  } elsif (/^-v$/) {
+    $V++;
+  } elsif (/^data=(.*)$/) {
+    $data = $1;
+  } else {
+    push(@files, $_);
+  }
+}
+
+$backwards = 1 if (!$backwards && !$forwards);
+
+die $Usage if (@files < 3);
+my $input = shift(@files);
+my $output = shift(@files);
+my @vars = @files;
+
+my ($bb, $start, $end);
+
+($bb, $start, $end) = bb_read($input);
+
+# We need the preds and idom:
+calculate_idom_fast2($bb, $start, "succs", "preds", "idom");
+
+# Also need control dependency information:
+my ($A, $E, $edge_index) = construct_roman_chariots($bb, $end);
+conds_preprocessing($bb, $end, $A, 1);
+cdequiv_preprocessing($bb, $end, $A);
+compute_conds($bb, $A, $E);
+
+if ($output ne "-") {
+  open(OUT, ">$output") or die "Can't write to `$output': $!\n";
+  select(OUT);
+}
+
+print STDERR "Backwards " if ($V && $backwards);
+print STDERR "Forwards " if ($V && $forwards);
+print STDERR "slicing on @vars...\n" if $V;
+
+my %posn_node = ();
+foreach my $n (@$bb) {
+  $posn_node{$n->{posn}} = $n if defined($n->{posn});
+}
+
+my ($assign, $refs) = find_assign_refs($bb);
+
+# Convert positions in @vars to node numbers and set up @todo
+# The call_stack entries in the @todo stack are initially
+# empty lists. These are used to record which proc bodies we have
+# entered (after tracking accross a proc call)
+# and therefore we must not leave when we reach the end of the body.
+
+my @todo = ();	# var, node, call_stack triples to track
+for (@vars) {
+  if (s/\@(.*)$//) {
+    my $posn = $1;
+    my $orig = $posn;
+    my $n = undef;
+    for (;;) {
+      $n = $posn_node{$posn};
+      last if defined($n);
+      # Try decrementing the last component of $posn
+      # in order to find the node (which may include several statements)
+      $posn =~ s/(\d+)\)$/($1 - 1) . ")"/e or last;
+      last if $posn =~ /\b0\)$/;
+    }
+    die "Position $orig not found in blocks file!\n" unless defined($n);
+    push(@todo, find_nodes($_, $posn_node{$posn}, $start, $end, $refs, $V));
+  } else {
+    push(@todo, find_nodes($_, $start, $start, $end, $refs, $V)) if ($forwards);
+    push(@todo, find_nodes($_, $end, $start, $end, $refs, $V)) if ($backwards);
+  }
+}
+
+my $done = slice(\@todo, $bb, $refs, $assign, $forwards, $backwards, $V);
+
+
+print STDERR "Deleting unwanted code from blocks file.\n" if $V;
+
+my $num;
+foreach my $n (@$bb) {
+  next if $n eq $start;
+  next if $n eq $end;
+  $n->{control} = [grep { $$done{$_,$n} } @{$n->{control}} ];
+  foreach my $type ("phi", "assigns") {
+    foreach my $v (keys %{$n->{$type}}) {
+      delete $n->{$type}{$v} unless $$done{$v,$n};
+    }
+  }
+}
+
+print STDERR "Writing $output\n" if $V;
+bb_write($bb, $output);
+
+

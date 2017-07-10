@@ -1,0 +1,953 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Semantic_Slice'",
+	    (FILL Statements
+
+sum := 0;
+prod := 1;
+i := 1;
+WHILE i <= n DO
+  sum := sum + A[i];
+  prod := prod * A[i];
+  i := i + 1 OD;
+PRINT("sum = ", sum);
+PRINT("prod = ", prod)
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "sum",
+	    (FILL Statements
+
+sum := REDUCE("+", A[1..n])
+
+ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Semantic_Slice'",
+	    (FILL Statements
+
+sum := 0;
+prod := 1;
+i := 1;
+WHILE i <= n DO
+  sum := sum + A[i];
+  prod := prod * A[i];
+  i := i + 1 OD;
+PRINT("sum = ", sum);
+PRINT("prod = ", prod)
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "i",
+	    (FILL Statements
+
+i := 1; WHILE i <= n DO i := i + 1 OD
+
+ENDFILL));
+
+
+
+
+
+
+
+
+
+@Test_Trans(" 3rd test of `Semantic_Slice'",
+	    (FILL Statements
+
+x := y;
+VAR < x := x >:
+  b := x;
+  x := z;
+  a := x ENDVAR;
+c := x
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "a",
+	    (FILL Statements
+
+a := z
+
+ENDFILL));
+
+
+
+@Test_Trans(" 4th test of `Semantic_Slice'",
+	    (FILL Statements
+
+x := y;
+VAR < x := x >:
+  b := x;
+  x := z;
+  a := x ENDVAR;
+c := x
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "b",
+	    (FILL Statements
+
+b := y
+
+ENDFILL));
+
+
+
+
+@Test_Trans(" 5th test of `Semantic_Slice'",
+	    (FILL Statements
+
+x := y;
+VAR < x := x >:
+  b := x;
+  x := z;
+  a := x ENDVAR;
+c := x
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "c",
+	    (FILL Statements
+
+c := y
+
+ENDFILL));
+
+
+
+
+@Test_Trans(" 6th test of `Semantic_Slice'",
+	    (FILL Statements
+
+x := y;
+VAR < x := x >:
+  b := x;
+  x := z;
+  a := x ENDVAR;
+c := x
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "c",
+	    (FILL Statements
+
+c := y
+
+ENDFILL));
+
+
+
+@Test_Trans(" 7th test of `Semantic_Slice'",
+	    (FILL Statements
+
+x := y;
+VAR < x := x >:
+  b := x;
+  x := z;
+  y := y + 1;
+  a := x ENDVAR;
+c := x
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "y",
+	    (FILL Statements
+
+y := y + 1
+
+ENDFILL));
+
+
+
+@Test_Trans(" 8th test of `Semantic_Slice'",
+	    (FILL Statements
+
+x := y;
+VAR < x := x, y := 10 >:
+  b := x;
+  x := z;
+  y := y + 1;
+  a := x ENDVAR;
+c := x
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "b",
+	    (FILL Statements
+
+b := y
+
+ENDFILL));
+
+
+
+
+
+@Test_Trans(" 9th test of `Semantic_Slice'",
+	    (FILL Statements
+
+total:= 0;
+i := 0;
+evens := 0;
+noevens := 0;
+odds := 0;
+noodds := 0;
+n := n0;
+WHILE i <= n DO
+  evenflag := A[i] MOD 2;
+  evenflag := 0;
+  IF FALSE
+    THEN evens := evens + A[i];
+         noevens := noevens + 1
+    ELSE odds := odds + A[i];
+         noodds := noodds + 1 FI;
+  total := total + A[i];
+  i := i + 1 OD;
+IF noevens <> 0
+  THEN meaneven := evens/noevens
+  ELSE meaneven := 0 FI;
+IF noodds <> 0
+  THEN meanodd := odds/noodds
+  ELSE meanodd := 0 FI;
+mean := total/(n+1);
+evendifference := ABS(meaneven - mean);
+odddifference := ABS(meanodd-mean)
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "evendifference",
+	    (FILL Statements
+
+evendifference
+  := ABS(REDUCE("+", A[0..n0]) / (n0 + 1))
+
+ENDFILL));
+
+
+
+
+
+@Test_Trans("10th test of `Semantic_Slice'",
+	    (FILL Statements
+
+C:" Example from [.Tip thesis 1995.] slicing on y ";
+VAR < x := x >:
+IF p = q
+  THEN x := 18
+  ELSE x := 17 FI;
+IF p <> q
+  THEN y := x
+  ELSE  y := 2 FI ENDVAR
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "y",
+	    (FILL Statements
+
+IF p = q THEN y := 2 ELSE y := 17 FI
+
+ENDFILL));
+
+
+
+
+
+@Test_Trans("11th test of `Semantic_Slice'",
+	    (FILL Statements
+
+i := 1;
+posprod := 1;
+negprod := 1;
+possum := 0;
+negsum := 0;
+WHILE i <= n DO
+  a := input[i];
+  {a > 0};
+  IF a > 0
+    THEN possum := possum + a;
+         posprod := posprod * a
+  ELSIF a < 0
+    THEN negsum := negsum - a;
+         negprod := negprod * (-a)
+  ELSIF test0 = 1
+    THEN IF possum >= negsum
+           THEN possum := 0;
+           ELSE negsum := 0 FI;
+         IF posprod >= negprod
+           THEN posprod := 1
+           ELSE negprod := 1 FI FI;
+  i := i + 1 OD;
+IF possum >= negsum
+  THEN sum := possum
+  ELSE sum := negsum FI;
+IF posprod >= negprod
+  THEN prod := posprod
+  ELSE prod := negprod FI
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "sum",
+	    (FILL Statements
+
+{input[1..n] > 0};
+sum := REDUCE("+", input[1..n])
+
+ENDFILL));
+
+
+
+
+@Test_Trans("12th test of `Semantic_Slice'",
+	    (FILL Statements
+
+i := 1;
+{REDUCE("+", input[1..n]) > 0};
+possum := REDUCE("+", input[1..n]);
+i := n + 1;
+IF possum < 0 
+  THEN sum := 0
+  ELSE sum := possum FI
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "sum",
+	    (FILL Statements
+
+{REDUCE("+", input[1..n]) > 0};
+sum := REDUCE("+", input[1..n])
+
+ENDFILL));
+
+
+
+
+
+@Test_Trans("13th test of `Semantic_Slice'",
+	    (FILL Statements
+
+y := x0;
+WHILE i <> 0 DO
+  y := x1;
+  x1 := x2;
+  x2 := x3;
+  i := i-1 OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "y",
+	    (FILL Statements
+
+y := x0;
+WHILE i <> 0 DO
+  < i := i - 1, x1 := x2, x2 := x3, y := x1 > OD
+
+ENDFILL));
+
+
+
+
+
+@Test_Trans("14th test of `Semantic_Slice'",
+	    (FILL Statements
+
+x := 3;
+v := v + x;
+VAR < x := y >:
+x := x + 1;
+z1 := x;
+x := z2 + x;
+v := v + x;
+y := 0 ENDVAR;
+q := v
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "q",
+	    (FILL Statements
+
+q := v + y + z2 + 4
+
+ENDFILL));
+
+
+
+
+
+
+@Test_Trans("15th test of `Semantic_Slice'",
+	    (FILL Statements
+
+{age >= 65 AND age < 75};
+{income > 30000};
+{blind = 0};
+{married = 1};
+
+personal := 5980;
+VAR < t := personal - ((income-16800)/2) >:
+  IF t > 4335
+    THEN personal := t
+    ELSE personal := 4335 FI ENDVAR;
+pc10 := 6625;
+IF married = 1 AND age >= 65 AND income > 16800
+  THEN VAR < t := pc10 - ((income-16800)/2) >:
+       IF t > 3740
+         THEN pc10 := t
+         ELSE pc10 := 3740 FI ENDVAR FI;
+income := income - personal;
+tax := pc10 * rate10;
+income := income - pc10;
+IF income <= 28000
+  THEN tax := tax + income * rate23
+  ELSE tax := tax + 28000 * rate23;
+       income := income - 28000;
+       tax := tax + income * rate40 FI
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "tax",
+	    (FILL Statements
+
+{blind = 0 AND married = 1 AND age < 75 AND age >= 65};
+IF income <= 36075
+  THEN {income > 30000};
+       tax := (income - 8075) * rate23 + 3740 * rate10
+  ELSE tax
+         := (income - 36075) * rate40
+              + 3740 * rate10
+              + 28000 * rate23 FI
+
+ENDFILL));
+
+
+
+
+
+
+@Test_Trans("16th test of `Semantic_Slice'",
+	    (FILL Statements
+
+{blind = 1};
+{married = 0};
+{widow = 1};
+{age > 68};
+
+IF age >= 75 
+  THEN personal := 5980
+  ELSE IF age >= 65
+         THEN personal := 5720
+         ELSE personal := 4335 FI FI;
+IF age >= 65 AND income > 16800
+    THEN VAR < t := personal - ((income-16800)/2) >:
+         IF t > 4335
+           THEN personal := t
+           ELSE personal := 4335 FI ENDVAR FI;
+IF blind = 1 THEN personal := personal + 1380 FI;
+VAR < pc10 := 0 >:
+IF married = 1 AND age >= 75
+  THEN pc10 := 6692
+  ELSE IF married = 1 AND age >= 65
+         THEN pc10 := 6625
+         ELSE IF married = 1 OR widow = 1
+                THEN pc10 := 3470
+                ELSE pc10 := 1500 FI FI FI;
+IF married = 1 AND age >= 65 AND income > 16800
+  THEN VAR < t := pc10 - ((income-16800)/2) >:
+       IF t > 3740
+         THEN pc10 := t
+         ELSE pc10 := 3740 FI ENDVAR FI;
+IF income <= personal
+  THEN tax := 0
+  ELSE income := income - personal;
+       IF income <= pc10
+         THEN tax := income * rate10
+         ELSE tax := pc10 * rate10;
+              income := income - pc10;
+              IF income <= 28000
+                THEN tax := tax + income * rate23
+                ELSE tax := tax + 28000 * rate23;
+                     income := income - 28000;
+                     tax := tax + income * rate40 FI FI FI ENDVAR
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "personal",
+	    (FILL Statements
+
+{blind = 1 AND married = 0 AND widow = 1 AND age > 68};
+IF age >= 75 AND income >= 20090
+  THEN personal := 5715
+ELSIF income <= 16800 AND age >= 75
+  THEN personal := 7360
+ELSIF age >= 75
+  THEN personal := (16800 - income) / 2 + 7360
+ELSIF income >= 19570
+  THEN personal := 5715
+ELSIF income <= 16800
+  THEN personal := 7100
+  ELSE personal := (16800 - income) / 2 + 7100 FI
+
+ENDFILL));
+
+
+
+
+
+
+@Test_Trans("17th test of `Semantic_Slice'",
+	    (FILL Statements
+
+{income < 16000};
+
+IF age >= 75 
+  THEN personal := 5980
+  ELSE IF age >= 65
+         THEN personal := 5720
+         ELSE personal := 4335 FI FI;
+IF age >= 65 AND income > 16800
+    THEN VAR < t := personal - ((income-16800)/2) >:
+         IF t > 4335
+           THEN personal := t
+           ELSE personal := 4335 FI ENDVAR FI;
+IF blind = 1 THEN personal := personal + 1380 FI;
+IF married = 1 AND age >= 75
+  THEN pc10 := 6692
+  ELSE IF married = 1 AND age >= 65
+         THEN pc10 := 6625
+         ELSE IF married = 1 OR widow = 1
+                THEN pc10 := 3470
+                ELSE pc10 := 1500 FI FI FI;
+IF married = 1 AND age >= 65 AND income > 16800
+  THEN VAR < t := pc10 - ((income-16800)/2) >:
+       IF t > 3740
+         THEN pc10 := t
+         ELSE pc10 := 3740 FI ENDVAR FI;
+IF income <= personal
+  THEN tax := 0
+  ELSE income := income - personal;
+       IF income <= pc10
+         THEN tax := income * rate10
+         ELSE tax := pc10 * rate10;
+              income := income - pc10;
+              IF income <= 28000
+                THEN tax := tax + income * rate23
+                ELSE tax := tax + 28000 * rate23;
+                     income := income - 28000;
+                     tax := tax + income * rate40 FI FI FI;
+
+{personal = 7100}
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "personal",
+	    (FILL Statements
+
+{blind = 1
+   AND age < 75
+   AND income < 16000
+   AND age >= 65};
+personal := 7100
+
+
+ENDFILL));
+
+
+
+
+
+
+@Test_Trans("18th test of `Semantic_Slice'",
+	    (FILL Statements
+
+SPEC <personal>:
+personal' = 7100 AND age < 75 AND age > 68
+  OR personal' = 7360 AND age >= 75 ENDSPEC
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "personal",
+	    (FILL Statements
+
+IF age >= 75
+  THEN personal := 7360
+  ELSE {age > 68}; personal := 7100 FI
+
+ENDFILL));
+
+
+
+
+@Test_Trans("19th test of `Semantic_Slice'",
+	    (FILL Statements
+
+WHILE p?(i) DO
+  IF q?(c)
+    THEN x := f; c := g FI;
+  i := h(i) OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "x",
+	    (FILL Statements
+
+IF p?(i) AND q?(c) THEN x := f FI
+
+ENDFILL));
+
+
+
+
+@Test_Trans("20th test of `Semantic_Slice'",
+	    (FILL Statements
+
+WHILE p?(i) DO
+  IF q?(c, i)
+    THEN x := f; c := g(i) FI;
+  i := h(i) OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "x",
+	    (FILL Statements
+
+WHILE NOT (q?(c, i)) AND p?(i) DO i := h(i) OD;
+IF p?(i) THEN x := f FI
+
+ENDFILL));
+
+
+
+@Test_Trans("21st test of `Semantic_Slice'",
+	    (FILL Statements
+
+i := 1;
+WHILE i <= n DO
+  IF A[i] > high
+    THEN high := A[i]; found_high := 1 FI;
+  IF A[i] < low
+    THEN low := A[i]; found_low := 1 FI;
+  sum := sum + A[i];
+  i := i + 1 OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "found_high",
+	    (FILL Statements
+i := 1;
+WHILE A[i] <= high AND i <= n DO i := i + 1 OD;
+IF i <= n THEN found_high := 1 FI
+
+ENDFILL));
+
+
+
+@Test_Trans("22nd test of `Semantic_Slice'",
+	    (FILL Statements
+
+i := 1;
+WHILE i <= n DO
+  IF A[i] > high
+    THEN high := A[i]; found_high := 1 FI;
+  IF A[i] < low
+    THEN low := A[i]; found_low := 1 FI;
+  sum := sum + A[i];
+  i := i + 1 OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "found_low",
+	    (FILL Statements
+
+i := 1;
+WHILE low <= A[i] AND i <= n DO i := i + 1 OD;
+IF i <= n THEN found_low := 1 FI
+
+ENDFILL));
+
+
+
+
+@Test_Trans("23rd test of `Semantic_Slice'",
+	    (FILL Statements
+
+i := 1;
+WHILE i <= n DO
+  IF A[i] > high
+    THEN high := A[i]; found_high := 1 FI;
+  IF A[i] < low
+    THEN low := A[i]; found_low := 1 FI;
+  sum := sum + A[i];
+  i := i + 1 OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "sum",
+	    (FILL Statements
+
+sum := REDUCE("+", A[1..n]) + sum
+
+ENDFILL));
+
+
+
+
+@Test_Trans("24th test of `Semantic_Slice'",
+	    (FILL Statements
+
+i := 1;
+WHILE i <= n DO
+  IF A[i] > high
+    THEN high := A[i]; found_high := 1 FI;
+  IF A[i] < low
+    THEN low := A[i]; found_low := 1 FI;
+  sum := sum + A[i];
+  i := i + 1 OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "i",
+	    (FILL Statements
+
+i := 1; WHILE i <= n DO i := i + 1 OD
+
+ENDFILL));
+
+
+
+
+
+@Test_Trans("25th test of `Semantic_Slice'",
+	    (FILL Statements
+
+i := 1;
+WHILE i <= n DO
+  IF A[i] > high
+    THEN high := A[i]; found_high := 1 FI;
+  IF A[i] < low
+    THEN low := A[i]; found_low := 1 FI;
+  sum := sum + A[i];
+  i := i + 1 OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "high",
+	    (FILL Statements
+
+i := 1;
+WHILE i <= n DO
+  IF high < A[i] THEN high := A[i] FI; i := i + 1 OD
+
+ENDFILL));
+
+
+
+
+@Test_Trans("26th test of `Semantic_Slice'",
+	    (FILL Statements
+
+i := 1;
+WHILE i <= n DO
+  IF A[i] > high
+    THEN high := A[i]; found_high := 1 FI;
+  IF A[i] < low
+    THEN low := A[i]; found_low := 1 FI;
+  sum := sum + A[i];
+  i := i + 1 OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "low",
+	    (FILL Statements
+
+i := 1;
+WHILE i <= n DO
+  IF A[i] < low THEN low := A[i] FI; i := i + 1 OD
+
+ENDFILL));
+
+
+@Test_Trans("27th test of `Semantic_Slice'",
+	    (FILL Statements
+
+nc := 0;
+nw := 0;
+nl := 0;
+flag := 0;
+WHILE NOT EMPTY?(file) DO
+  c := HEAD(file);
+  file := TAIL(file);
+  nc := nc + 1;
+  IF c = newline THEN nl := nl + 1 FI;
+  IF whitespace?(c)
+    THEN flag := 0
+  ELSIF flag = 0
+    THEN flag := 1;
+         nw := nw + 1 FI OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "nc",
+	    (FILL Statements
+
+nc := LENGTH(file)
+
+ENDFILL));
+
+
+
+
+@Test_Trans("28th test of `Semantic_Slice'",
+	    (FILL Statements
+
+nc := 0;
+nw := 0;
+nl := 0;
+flag := 0;
+WHILE NOT EMPTY?(file) DO
+  c := HEAD(file);
+  file := TAIL(file);
+  nc := nc + 1;
+  IF c = newline THEN nl := nl + 1 FI;
+  IF whitespace?(c)
+    THEN flag := 0
+  ELSIF flag = 0
+    THEN flag := 1;
+         nw := nw + 1 FI OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "nw",
+	    (FILL Statements
+
+nw := 0;
+flag := 0;
+FOR elt IN file DO
+  IF whitespace?(elt)
+    THEN flag := 0
+  ELSIF flag = 0
+    THEN < nw := nw + 1, flag := 1 > FI OD
+
+ENDFILL));
+
+
+
+@Test_Trans("29th test of `Semantic_Slice'",
+	    (FILL Statements
+
+nc := 0;
+nw := 0;
+nl := 0;
+flag := 0;
+WHILE NOT EMPTY?(file) DO
+  c := HEAD(file);
+  file := TAIL(file);
+  nc := nc + 1;
+  IF c = newline THEN nl := nl + 1 FI;
+  IF whitespace?(c)
+    THEN flag := 0
+  ELSIF flag = 0
+    THEN flag := 1;
+         nw := nw + 1 FI OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "nl",
+	    (FILL Statements
+
+nl := 0;
+FOR elt IN file DO
+  IF elt = newline THEN nl := nl + 1 FI OD
+
+ENDFILL));
+
+
+
+@Test_Trans("30th test of `Semantic_Slice'",
+	    (FILL Statements
+
+nc := 0;
+nw := 0;
+nl := 0;
+flag := 0;
+WHILE NOT EMPTY?(file) DO
+  c := HEAD(file);
+  file := TAIL(file);
+  nc := nc + 1;
+  IF c = newline THEN nl := nl + 1 FI;
+  IF whitespace?(c)
+    THEN flag := 0
+  ELSIF flag = 0
+    THEN flag := 1;
+         nw := nw + 1 FI OD
+
+ENDFILL),
+	    < >,
+	    TR_Semantic_Slice,
+	    "flag",
+	    (FILL Statements
+
+flag := 0;
+FOR elt IN file DO
+  IF whitespace?(elt)
+    THEN flag := 0
+  ELSIF flag = 0
+    THEN flag := 1 FI OD
+
+ENDFILL));
+
+
+
+
+
+
+
+SKIP
+

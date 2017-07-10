@@ -1,0 +1,142 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Routines for handling names: variable, proc, function etc. ";
+C:" Instead of using Lisp atoms we use small integers: ";
+C:" these are just as easy to compare and take up no more room, ";
+C:" but can be efficiently stored as *sorted* lists ";
+C:" (efficient for union and intersection operations), ";
+C:" With the aid of an array (giving the string value for each name) ";
+C:" and a hash table (giving the index number for each string) ";
+C:" we can avoid all symbol->string calls. ";
+
+N_Symbol_Table := ARRAY(1000, "");
+N_Symbol_Table_Length := ARRAY(1000, 0);
+N_Symbol_Table_Next := 1;
+N_Symbol_Table_Size := 1000;
+C:" This is a hash table really: ";
+N_String_To_Symbol := ARRAY(1000, < >);
+
+
+MW_FUNCT @Make_Name(str) ==
+  VAR < R := N_String_To_Symbol.(str) >:
+  IF EMPTY?(R)
+    THEN R := N_Symbol_Table_Next;
+	 N_Symbol_Table[N_Symbol_Table_Next] := str;
+	 N_Symbol_Table_Length[N_Symbol_Table_Next] := SLENGTH(str);
+	 N_String_To_Symbol.(str) := R;
+	 N_Symbol_Table_Next := N_Symbol_Table_Next + 1;
+	 IF N_Symbol_Table_Next > N_Symbol_Table_Size
+	   THEN @Grow_Symbol_Table FI FI;
+  (R) .;
+
+
+C:" Return the string corresponding to the given name (if any): ";
+
+MW_FUNCT @N_String(name) == : SKIP;
+  (IF EMPTY?(name)
+     THEN ""
+     ELSE N_Symbol_Table[name] FI) .;
+
+
+C:" Return the length the given name (if any): ";
+
+MW_FUNCT @N_Length(name) == : SKIP;
+  (IF EMPTY?(name)
+     THEN 0
+     ELSE N_Symbol_Table_Length[name] FI) .;
+
+
+MW_PROC @Grow_Symbol_Table() ==
+  VAR < new1 := ARRAY(N_Symbol_Table_Size * 2, ""),
+	new2 := ARRAY(N_Symbol_Table_Size * 2, "") >:
+  FOR i := 1 TO N_Symbol_Table_Size STEP 1 DO
+    new1[i] := N_Symbol_Table[i];
+    new2[i] := N_Symbol_Table_Length[i] OD;
+  N_Symbol_Table := new1;
+  N_Symbol_Table_Length := new2;
+  N_Symbol_Table_Size := N_Symbol_Table_Size * 2 ENDVAR .;
+
+
+
+C:" If the item has a name as first component, then return its value as a string, ";
+C:" otherwise return the empty string. ";
+C:" For a T_Name_Int_One we assume that the expression is a simple variable. ";
+
+MW_FUNCT @Name_Value(I) ==
+  VAR < ST := < >, R := "" >:
+  IF @Cs?(I)
+    THEN ST := @ST(I^1);
+         IF ST = T_Name
+           THEN R := @N_String(@V(I^1))
+         ELSIF ST = T_Name_Pat_One
+           THEN R := "~?" ++ @N_String(@V(I^1))
+         ELSIF ST = T_Name_Var_One
+           THEN R := "~?=" ++ @N_String(@V(I^1))
+         ELSIF ST = T_Name_Int_One
+	    THEN R := "~?(" ++ @Value_String(I^1^1) ++ ")" FI FI;
+  (R) .;
+
+
+MW_FUNCT @Name_Length(I) == 
+  VAR < ST := < >, R := 0 >:
+  IF @Cs?(I)
+    THEN ST := @ST(I^1);
+         IF ST = T_Name
+           THEN R := @N_Length(@V(I^1))
+         ELSIF ST = T_Name_Pat_One
+           THEN R := @N_Length(@V(I^1)) + 2
+         ELSIF ST = T_Name_Var_One
+           THEN R := @N_Length(@V(I^1)) + 3
+         ELSIF ST = T_Name_Int_One
+	    THEN R := @Value_Length(I^1^1) + 4 FI FI;
+  (R) .;
+
+
+MW_FUNCT @Value_String(I) ==
+  VAR < R := "" >:
+  IF @Has_Value_Type?(@ST(I))
+    THEN IF @ST(I) = T_Number OR @ST(I) = T_Exit
+	   THEN R := @String(@V(I))
+	 ELSIF @ST(I) = T_String OR @ST(I) = T_Comment
+	   THEN R := @V(I)
+	 ELSIF NUMBER?(@V(I)) AND @V(I) < 0
+	   THEN R := @String(-@V(I))
+	   ELSE R := @N_String(@V(I)) FI FI;
+  (R) .;
+
+
+MW_FUNCT @Value_Length(I) ==
+  VAR < R := 0 >:
+  IF @Has_Value_Type?(@ST(I))
+    THEN IF @ST(I) = T_Number OR @ST(I) = T_Exit
+	   THEN R := SLENGTH(@String(@V(I)))
+	 ELSIF @ST(I) = T_String OR @ST(I) = T_Comment
+	   THEN R := SLENGTH(@V(I))
+         ELSIF NUMBER?(@V(I)) AND @V(I) < 0
+	   THEN R := SLENGTH(@String(@V(I)))
+	   ELSE R := @N_Length(@V(I)) FI FI;
+  (R) .;
+
+
+
+
+
+C: " ----------------------------------------------------------------------- "

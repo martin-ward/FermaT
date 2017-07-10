@@ -1,0 +1,355 @@
+#!/usr/bin/perl
+# Build FermaT using bigloo
+#
+# Usage: make-fermat-bigloo [-big]
+#
+# -big  compile everything as a single Scheme file
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g; #"
+  unshift(@INC, "$FermaT/config");
+}
+
+use fermat;
+use warnings;
+
+sub read_dir($);
+sub read_file($);
+sub diff($$);
+
+chdir "$FermaT/src" or die "Cannot chdir to $FermaT/src: $!\n";
+
+$ENV{SCM_IMPL} = "bigloo";
+$big = 0;
+$big = 1 if grep { $_ eq "-big" } @ARGV;
+$bigfile = "ALL.scm";
+
+# bigloo options: (-O3 triggers a bug in gcc-3.3.3, -Obench is best)
+#$opts = "-O2 -farithmetic -unsafeatrsvl";
+ $opts = "-Obench -farithmetic -unsafeatrsvl -fno-dataflow-types";
+#$opts = "";
+
+# bigloo directory:
+$bdir = "$FermaT/bigloo/$arch";
+mkdir "$FermaT/bigloo" unless -d "$FermaT/bigloo";
+mkdir $bdir unless -d $bdir;
+
+@dirs = ("scheme", "adt", "trans", "wslib");
+
+$extra_defs = <<'EOF';
+
+(define (force-output) #t)
+
+(define myerror error)
+
+(define integer-expt expt)
+
+(define perl "")
+(define ds "")
+(define fermat "")
+
+(define MAX max)
+(define MIN min)
+
+EOF
+
+$extra_macros = <<'EOF';
+
+(define-macro (defmacro name . forms)
+  `(define-macro (,name . ,(car forms)) ,@(cdr forms)))
+
+(defmacro error (arg1 . rest)
+  (if (null? rest)
+      `(myerror ,arg1 "" "")
+      (if (null? (cdr rest))
+          `(myerror ,arg1 ,(car rest) "")
+          `(myerror ,arg1 ,(car rest) ,(car (cdr rest))))))
+
+(defmacro / (arg1 . rest)
+  `(/fx ,arg1 ,@rest))
+
+(defmacro current-time ()
+  `(current-microseconds))
+
+(defmacro get-internal-run-time ()
+  `(current-microseconds))
+
+(define myquit quit)
+
+(defmacro quit (code)
+  `(myquit))
+
+EOF
+#` xemacs hack
+
+$start = <<'EOF';
+
+(module ALL
+  (eval   (export-all))
+  (main start))
+
+(define (start argv)
+  (if (null? (cdr argv))
+      (repl)
+      (load (car (reverse argv)))))
+
+EOF
+
+
+# Every module:
+#   (a) Exports *all* the symbols it defines; and
+#   (b) Imports from every *other* module.
+# Top level module (bigloo.scm)
+#   (a) Imports from every module
+#   (b) Defines the main function including (repl).
+#   (c) Has the directive (eval (export-all)) to make everything
+#       available to the repl.
+#
+# The list of "import" directives must be in *reverse* order.
+
+# Compute the bigloo version of each module:
+
+# First compute the @files list [base, filename, module]
+# and the set of global variables used:
+
+print "Compute file list and globals...\n";
+@files = ();
+%globals = ();
+foreach $dir (@dirs) {
+  foreach $file (grep { /\.scm$/ && !/-mac\.scm$/ } read_dir($dir)) {
+    ($base = $file) =~ s/\.scm$//;
+    next if $base eq "defs2";
+    push(@files, [$base, "$FermaT/src/$dir/$file", "$dir-$base"]);
+    open(IN, "$dir/$file") or die "Can't open file `$dir/$file': $!\n";
+    while (<IN>) {
+      $globals{$1}++ while (s/([^,() \"]+)\-save //);
+      $globals{$1}++ while (s/\(set\! ([^,() \"]+) //);
+      $globals{$2}++ while (s/\(cons \(([^,()]+)\) ([^() \"]+)\)//);
+      $globals{$1}++ while (s/\(for-in ([^,() \"]+) //);
+      $globals{$1}++ while (s/\(for ([^,() \"]+) //); #"
+    }
+    close(IN);
+  }
+}
+@defs = sort keys %globals;
+
+chdir $bdir or die "Can't chdir $bdir: $!\n";
+
+if ($big) {
+  # Build and compile a single Scheme file:
+  open(OUT, ">$bigfile") or die "Can't write $bigfile: $!\n";
+  print OUT $start;
+  print OUT $extra_macros;
+  print OUT read_file("$FermaT/config/macros.scm");
+  print OUT $extra_defs;
+  print OUT map { "(define $_ \'())\n" } @defs;
+  foreach $f (@files) {
+    ($base, $file, $module) = @$f;
+    print OUT read_file($file);
+  }
+  close(OUT);
+  print "Compiling $bigfile...\n";
+  unlink "scmfmt";
+  mysystem "bigloo -o scmfmt $opts $bigfile";
+  if (-f "scmfmt") {
+    print "\nExecutable is in:\n$bdir/scmfmt\n";
+  } else {
+    print "\nCompilation failed.\n";
+  }
+  exit(0);
+}
+
+# Separate Compilation:
+
+$init = "0-init.scm";
+# Create the file of definitions:
+@init = qw(force-output myerror integer-expt perl ds fermat MAX MIN);
+
+print "Computing $init...\n";
+open(OUT, ">$init.tmp") or die "Can't write $init.tmp: $!\n";
+print OUT "(module init\n";
+print OUT map { "  (export $_)\n" } @init, @defs;
+print OUT ")\n";
+print OUT $extra_defs;
+print OUT map { "(define $_ \'())\n" } @defs;
+close(OUT);
+
+if (!-f $init || diff($init, "$init.tmp")) {
+  rename "$init.tmp", $init;
+} else {
+  unlink "$init.tmp";
+}
+
+@macros = read_file("$FermaT/config/macros.scm");
+@comps = ($init);
+foreach $f (@files) {
+  ($base, $file, $module) = @$f;
+  push(@comps, "$module.scm");
+  next if newer("$module.scm", $file);
+  print "Creating $module.scm...\n";
+  # Symbols defined in $file which will be exported:
+  %defs = ();
+  open(IN, $file) or die "Can't read $file: $!\n";
+  while (<IN>) {
+    $defs{$1} = 1 if /^\(define (\([^\(\)]*?\))/;
+    $defs{$1} = 1 if /^\(define ([^\(\) ]+)/;
+  }
+  close(IN);
+  open(OUT, ">$module.scm") or die "Can't write to $module.scm: $!\n";
+  print OUT "(module $module\n";
+  print OUT "  (import (init \"$init\"))\n";
+  print OUT map { "  (import ($_->[2] \"$_->[2].scm\"))\n" }
+            grep { $_->[0] ne $base } reverse @files;
+  foreach my $symbol (sort keys %defs) {
+    chomp($symbol);
+    print OUT "  (export $symbol)\n";
+  }
+  print OUT ")\n";
+  # Each file needs access to the macros:
+  print OUT $extra_macros;
+  print OUT @macros;
+  print OUT "\n";
+  print OUT read_file($file);
+  close(OUT);
+}
+
+# Create main program if necessary:
+
+$main = "zzz.scm";
+if (-f $main) {
+  rename($main, "$main.old");
+}
+open(OUT, ">$main") or die "Can't write $main: $!\n";
+print OUT "(module zzz\n";
+print OUT "  (import (init \"$init\"))\n";
+print OUT map { "  (import ($_->[2] \"$_->[2].scm\"))\n" } reverse @files;
+print OUT "  (eval   (export-all))\n";
+print OUT "  (main start))\n";
+print OUT <<'EOF';
+
+(define (start argv)
+  (if (null? (cdr argv))
+      (repl)
+      (load (car (reverse argv)))))
+
+(define-macro (defmacro name . forms)
+  `(define-macro (,name . ,(car forms)) ,@(cdr forms)))
+
+(defmacro error (arg1 . rest)
+  (if (null? rest)
+      `(myerror ,arg1 "" "")
+      (if (null? (cdr rest))
+          `(myerror ,arg1 ,(car rest) "")
+          `(myerror ,arg1 ,(car rest) ,(car (cdr rest))))))
+
+EOF
+close(OUT);
+
+if (-f "$main.old") {
+  open(IN, $main);
+  my $new = join("", <IN>);
+  close(IN);
+  open(IN, "$main.old");
+  my $old = join("", <IN>);
+  close(IN);
+  if ($new eq $old) {
+    rename("$main.old", $main);
+  } else {
+    unlink("$main.old");
+  }
+}
+
+
+my $objs = "";
+my @links = ();
+foreach $f (@comps, $main) {
+  $f =~ s/\.scm$//;
+  $objs .= " $f.o";
+  push(@links, "$f.o");
+  next if newer("$f.o", "$f.scm");
+  # If any file has changed, recompile zzz.scm:
+  unlink "zzz.o";
+  print "Compiling $f.scm...\n";
+  if (0 && ($f =~ /adt-poly/)) {
+    mysystem "bigloo -c $opts -call/cc  $f.scm";
+  } else {
+    mysystem "bigloo -c $opts $f.scm";
+  }
+}
+
+# Linking:
+
+my $link = 0;
+$link = 1 unless -f "scmfmt";
+if (!$link) {
+  foreach my $obj (@links) {
+    if (!newer("scmfmt", $obj)) {
+      $link = 1;
+      last;
+    }
+  }
+}
+
+if ($link) {
+  print "Linking...\n";
+  mysystem "bigloo -o scmfmt $objs";
+  print "\nExecutable is in:\n$bdir/scmfmt\n";
+}
+
+exit(0);
+
+
+
+sub read_dir($) {
+  my ($dir) = @_;
+  my @files = ();
+  local(*DIR);
+  opendir(DIR, $dir) or die "Can't read directory `$dir': $!\n";
+  @files = sort grep { !/^\./ && !/^,/ } readdir(DIR);
+  closedir(DIR);
+  return(@files);
+}
+
+
+sub diff($$) {
+  my ($file1, $file2) = @_;
+  my ($buf1, $buf2, $n1, $n2);
+  die "Can't read `$file1': $!\n" unless (-r $file1);
+  $n1 = -s _;
+  die "Can't read `$file2': $!\n" unless (-r $file2);
+  $n2 = -s _;
+  # Compare sizes first:
+  return(1) unless ($n1 == $n2);
+  local (*F1, *F2);
+  open(F1, $file1);
+  open(F2, $file2);
+  my $blksize = (stat F1)[11] || 8192;
+  for (;;) {
+    $n1 = sysread(F1, $buf1, $blksize);
+    $n2 = sysread(F2, $buf2, $blksize);
+    last if (($n1 < $blksize) || ($n2 < $blksize));
+    last if ($buf1 ne $buf2);
+  }
+  close(F1);
+  close(F2);
+  return($buf1 ne $buf2);
+}
+
+
+
+sub read_file($) {
+  my ($file) = @_;
+  my $fh;
+  open($fh, $file) or die "Can't read $file: $!\n";
+  my @data = <$fh>;
+  close($fh);
+  return wantarray ? @data : join("", @data);
+}
+
+
+sub quit() {
+  exit(0);
+}
+

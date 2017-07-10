@@ -1,0 +1,1049 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+# makepict: a perl script for drawing call graphs.
+# Copyright 1991 Martin Ward
+# Email: martin@gkc.org.uk
+#    or: Martin.Ward%DURHAM.AC.UK@CUNYVM.CUNY.EDU
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+# 
+# makepict [-s text_size -u unit_length -a arrowsize  -D n -l -c -simple -ps] ...
+# (-l option means landscape mode)
+# (-D n means debug level n)
+# (-c produces colour PostScript!)
+# (-simple uses a simple but faster algorithm)
+# (-ps generate raw PostScript instead of TeX)
+#
+# makepict reads from standard input or files on the command line
+# a call graph in the form:
+# 	(source: target1 n1 target2 n2 ...)
+# 	(source: target1 n1 target2 n2 ...)
+# 	...
+# where the brackets are optional (but all targets must be on the same line
+# if there are no brackets). The file lists each procedure/basic block name
+# with a list of the procedures/blocks that it calls, and optionally the
+# number of times each target is called. For example:
+# 
+# B1: B2 B3
+# B2: B1 B3
+# B3: B3
+#
+# (where the optional brackets and integers are omitted).
+# It produces a LaTeX file on standard output which uses PSTricks to
+# plot a pretty diagram of the call graph. By default it tries to minimise
+# the number of upward arrows in the diagram, so that (especially with the
+# colour option -c), it is easy to see where the loops are in the call graph.
+#
+# Defaults for unit length and arrow size are calculated from
+# text_size, so changing this option should suffice.
+# Also text_size can be "auto", when the largest size is selected
+# for which the diagram still fits on the page. (This is the default).
+#
+# The LaTeX file uses the commands:
+# \ROW{...}		set a row of nodes
+# \N{name}{stuff}	set one node (separate nodes with one space)
+# \LINE{from}{to}{n}	set a streight arrow
+# \ARC{from}{to}{n}	set a curved arrow (used for mutual recursion)
+# \LR{from}{to}{space}{n}	set a horizontal arrow with given "indent"
+# \REC{name}{n}		set a self-recursion arrow
+# where n is the numbers of calls (empty if no calls)
+#
+# Sends result to stdout
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [-s text_size -u unit_length -a arrowsize";
+$Usage .= " -D n -l -c -simple -ps -r] ...\n";
+
+$HOME = $ENV{'HOME'} || $ENV{'LOGDIR'} ||
+		(getpwuid($<))[7] || die "You're homeless!\n";
+$USER = $ENV{'USER'} || getlogin ||
+		(getpwuid($<))[0] || die "Your'e nameless!\n";
+
+@text_sizes = ("auto", "tiny", "scriptsize", "small", "normalsize", 
+	       "large", "Large", "LARGE", "Huge");
+@ex_heights = (-1, 2.15225, 3.01315, 3.87405,  4.3045,
+		   5.1654, 6.19847, 7.43707, 10.70938);
+@em_widths  = (-1, 6.8039, 7.97028, 9.24774, 9.99756,
+		   11.74713, 14.09654, 16.23491, 23.37827);
+# Set defaults:
+$psprologue = "$FermaT${ds}config${ds}callgr.pro";
+$pagelength = 696;	# points
+$pagewidth = 469;	# points
+$x0 = 62;		# X and Y coords of origin (lower left corner)
+$y0 = 75;
+$text_size = "auto";
+$size = 0;
+$arrowsize = 5;
+$unit_length = "1ex";
+$landscape = 0;
+$colour = 0;
+$simple = 0;
+$ps = 0;
+$rounded = 0;
+$debug = 0;
+
+# read options:
+while ($ARGV[0] =~ /^-/) {
+  $opt = shift;
+  if ($opt eq "-s") {
+    $text_size = shift;
+    for ($size = 0; $size <= 9; $size++) {
+      last if ($text_size eq $text_sizes[$size]);
+    }
+    die $Usage unless ($size <= 8);
+  } elsif ($opt eq "-u") {
+    $unit_length = shift;
+    die $Usage unless ($unit_length);
+  } elsif ($opt eq "-a") {
+    $arrowsize = shift;
+    die $Usage unless ($arrowsize =~ /^\d+$/);
+  } elsif ($opt eq "-D") {
+    $debug = shift;
+    die $Usage unless ($debug =~ /^\d+$/);
+  } elsif ($opt eq "-l") {
+    $landscape = 1;
+  } elsif ($opt eq "-c") {
+    $colour = 1;
+  } elsif ($opt eq "-simple") {
+    $simple = 1;
+  } elsif ($opt eq "-ps") {
+    $ps = 1;
+  } elsif ($opt eq "-r") {
+    $rounded = 1;
+  } else {
+    die $Usage;
+  }
+}
+
+($pagelength, $pagewidth) = ($pagewidth, $pagelength) if ($landscape);
+
+if ($colour && $ps) {
+  $upcol = "1 0 0 setrgbcolor";
+  $downcol = "0 1 0 setrgbcolor";
+  $reccol = "1 0 1 setrgbcolor";
+  $lrcol = "0 0 1 setrgbcolor";
+} elsif ($colour && !$ps) {
+  $upcol = "{red}";
+  $downcol = "{green}";
+  $reccol = "{magenta}";
+  $lrcol = "{blue}";
+} else {
+  $upcol = "";
+  $downcol = "";
+  $reccol = "";
+  $lrcol = "";
+}
+
+# Read in the source file, first name is the root of the graph.
+# Input is one line per procedure, unless brackets are used.
+# Brackets are optional.
+# Lines which start with "#" are comments (ignored)
+
+@succs = ();	# list of procs called by each proc
+%calls = ();	# $calls{$from,$to} is number of calls
+@name = ();	# name of each proc
+%no = ();	# proc no. of each name
+
+print STDERR "Reading cross reference file...\n";
+
+$n = 1;
+while (<>) {
+  next if (/^#/);
+  next unless (/:/);
+  chop;
+  # If "(" is present, read up to ")":
+  while (/\(/ && !m/\)/) {
+    die "No closing bracket found!\n" if eof();
+    $_ .= " " . <>;
+    chop;
+  }
+  # remove brackets
+  s/\(|\)//g;
+  # Fix LaTeX special characters:
+  # (unless already fixed)
+  s/(^|[^\\])([\_\#\$\%\^\&])/$1\\$2/g unless ($ps);
+  # fix pairs of specials:
+  s/(^|[^\\])([\_\#\$\%\^\&])/$1\\$2/g unless ($ps);
+
+  next unless (s/^\s*(\S*)\s*:\s*//);
+  $from = &number("$1");	# also sets $name[]
+  # If there are no no-of-calls items, add default values (1):
+  s/\b(\S+)\b/$1 1/g unless (/\b\d+\b/);
+  @succslist = split;
+  print STDERR "$from -> @succslist\n" if $debug > 2;
+  # @succslist is a list of name, no-of-calls pairs.
+  # check an even no. of entries:
+  die "Odd number of entries: $_\n" if (($#succslist % 2) == 0);
+  while ($#succslist >= 0) {
+    $to = shift(@succslist);
+    $calls = shift(@succslist);
+    die "Bad number of calls: `$to' `$calls' `$_'\n" unless ($calls =~ /^\d+$/);
+    $to = &number("$to");
+    $succs[$from] .= "$to " unless ($succs[$from] =~ m/\b$to\b/);
+    $calls{$from,$to} += $calls;
+  }
+}
+$nodes = $n - 1;
+
+# The nodes are numbered 1..$nodes
+# $name[], $no{}, $succs[] and $calls{} are set up.
+# Remove trailing space from each @succs item:
+chop(@succs);
+
+# If there are >50 nodes, then delete trivial ones:
+@merged = ();	# record which nodes are merged so we don't complain
+		# if they are now unreachable
+$merges = 0;
+if ($nodes > 50) {
+  &calculate_preds;	# $preds[$n] is the list of nodes which call $n
+  print STDERR "Deleting trivial nodes";
+  # Don't merge with node 1:
+  $i = 2; $j = 0;
+  while ($i <= $nodes) {
+    while (($succs[$i] !~ / /) && $succs[$i]) {
+      # Don't merge a node with >1 predecessor:
+      last if ($preds[$succs[$i]] =~ / /);
+      $j++;
+      print STDERR ".";
+      # node $i has exactly one successor, so merge the successor with $i:
+      $isucc = $succs[$i];
+      $merged[$isucc] = 1;
+      $merges++;
+      $name[$i] .= "; $name[$isucc]";
+      $succs[$i] = $succs[$isucc];
+      $succs[$isucc] = "";
+      $calls{$i,$isucc} = 0;
+      foreach $isucc2 (split(/ /, $succs[$i])) {
+	$calls{$i,$isucc2} = $calls{$isucc,$isucc2};
+	$calls{$isucc,$isucc2} = 0;
+      }
+    }
+    $i++; $j = 0;
+  }
+  print STDERR "\n";
+  # Trim extra long names:
+  foreach $name (@name) {
+    if (length($name) > 30) {
+      $name = substr($name,0,18) . "..." . substr($name,-9);
+    }
+  }
+}
+
+if ($merges > 0) {
+  # Recompute $nodes, $name[], $no{}, $succs[] and $calls{}
+  # so that all the arrays are smaller:
+  # $i is old number, $j is new number
+  @new_name = ();
+  %new_no = ();
+  @new_succs = ();
+  %new_calls = ();
+  $i = 1; $j = 1;
+  while ($i <= $nodes) {
+    $index[$i] = $j;
+    $new_succs[$j] = $succs[$i];
+    $new_name[$j] = $name[$i];
+    $i++; $j++;
+    while (($i <= $nodes) && $merged[$i]) {
+      $i++;
+    }
+  }
+  $new_nodes = $j - 1;
+  
+  print STDERR "$nodes nodes merged down to $new_nodes nodes.\n";
+  
+  # Use $index to compute new $succs[] and $calls{}
+  foreach $i (1..$nodes) {
+    ($new_succs[$index[$i]] = $succs[$i]) =~ s/\d+/$index[$&]/ge unless ($merged[$i]);
+  }
+  foreach $name (keys(%no)) {
+    $new_no{$name} = $index[$no{$name}];
+  }
+  foreach $pair (keys(%calls)) {
+    ($new_pair = $pair) =~ s/\d+/$index[$&]/ge;
+    $new_calls{$new_pair} = $calls{$pair} if ($calls{$pair} > 0);
+  }
+  @name = @new_name; @new_name = ();
+  %calls = %new_calls; %new_calls = ();
+  @succs = @new_succs; @new_succs = ();
+  %no = %new_no; %new_no = ();
+  @merged = ();
+}
+
+$nodes = $new_nodes;
+
+if ($debug > 2) {
+  for ($n = 1; $n <= $nodes; $n++) {
+    print STDERR "succs[$n] = $succs[$n]\n";
+  }
+}
+
+if (!$simple && ($nodes > 1000)) {
+  print STDERR "Too many nodes ($nodes) for complex algorithm, switching to simple.\n";
+  $simple = 1;
+}
+if ($simple) {
+  &simple_algorithm;
+} else {
+  #  &add_omega;	# add unique exit node and increment $nodes
+  print STDERR "Calculating preds array...\n";
+  &calculate_preds;	# $preds[$n] is the list of nodes which call $n
+  print STDERR "Calculating BFS node list...\n";
+  &calculate_BFS_node_list;	# Breadth-first-search order list of nodes
+  print STDERR "Calculating dominator sets...\n";
+  &calculate_D;		# $D[$n] is the list of nodes dominated by $n
+			# ie $m is in $D[$n] iff $n appears on every path
+			# from 1 to $m
+  print STDERR "Removing back edges...\n";
+  &remove_back_edges;	# Back edges are edges where $m calls $n and
+			# $m is in $D[$n]. Remove $m from $preds[$n]
+  print STDERR "Doing topological sort...\n";
+  &topological_sort;	# Produce topologically sorted list @L from @preds
+  print STDERR "Assigning row numbers...\n";
+  &calculate_rows;	# Produce @rows array from @L
+  &re_arrange_rows;	# Re-arrange elements on each row
+			# to reduce total arrow length.
+}
+
+&select_size;
+
+&calculate_arrow_commands;
+
+if ($ps) {
+  &postscript_output;
+} else {
+  &latex_output;
+}
+
+exit(0);
+
+sub postscript_output {
+  # Compute the position of each node
+  # NB we need to compute the arrow commands _before_ we can
+  # compute the positions -- record the commands in a "generic" format:
+  # [command, from, to, label, colour, indent]
+  # (indent is required for the LR command)
+  # Convert to latex or calculate positions and convert to postscript
+  # Protect () in @name
+
+  # print prologue:
+  open(PRO, "$psprologue") || die "Can't open prologue file $psprologue: $!\n";
+  while (<PRO>) {
+    print;
+  }
+  close(PRO);
+
+  if ($landscape) {
+    print <<'END_OF_LANDSCAPE';
+gsave clippath pathbbox grestore
+4 dict begin
+/ury exch def /urx exch def /lly exch def /llx exch def
+%90 rotate  llx neg               ury neg              translate  % llx,ury
+90 rotate  llx neg               llx urx sub lly sub  translate  % llx,lly
+%90 rotate  ury lly sub urx sub   ury neg              translate  % urx,ury
+%90 rotate  ury lly sub urx sub   llx urx sub lly sub  translate  % urx,lly
+%-90 rotate urx neg               lly neg              translate  % urx,lly
+%-90 rotate urx neg               urx llx sub ury sub  translate  % urx,ury
+%-90 rotate llx lly add ury sub   urx llx sub ury sub  translate  % llx,ury
+%-90 rotate llx lly add ury sub   lly neg              translate  % llx,lly
+end
+END_OF_LANDSCAPE
+  }
+  print "\n/frame_arc $rounded def\n";
+  print "/Times-Roman $ps_size set_text_size\n\n";
+
+  # Use @rows and @sp to compute the xy coordinates of each node
+  @x = ();
+  @y = ();
+  # $total_height is 8 units per row plus 1 per extra separation:
+  $dy = $pagelength / ($total_height + 8);
+  $y = $y0 + $pagelength - (8 * $dy); # y coord of top row
+  foreach $r (0..$#rows) {
+    @n = split(/ /, $rows[$r]);	# list of nodes on current row
+    # compute the total size of the nodes on this row:
+    $node_size = 0;
+    foreach $node (@n) {
+      $node_size += &width($node);
+    }
+    # Remaining space is distributed equally:
+    $dx = ($pagewidth - $node_size) / (@n + 1);
+    # x coordinate of the left edge of first node in row:
+    $x = $x0 + $dx;
+    foreach $node (@n) {
+      $x[$node] = $x + &width($node)/2;
+      $y[$node] = $y;
+      $x = $x + &width($node) + $dx;
+    }
+    $y = $y - (8 * $dy) - $extra[$r];
+  }
+
+  # print rows:
+  $r = 0;
+  foreach $row (@rows) {
+    foreach $node (split(/ /, $row)) {
+      print &node($node), " N\n";
+    }
+    print "\n";
+  }
+  print "% ARROWS:\n\n";
+  
+  # print arrows:
+  # Record current colour and label:
+  $curcol = "";
+  $curlabel = "";
+  foreach $ar (@ar) {
+    ($cmd, $from, $to, $calls, $col, $sp) = @$ar;
+    if ($col ne $curcol) {
+      $curcol = $col;
+      print "$col\n";
+    }
+    $calls = "" if ($calls == 1);
+    if ($calls ne $curlabel) {
+      $curlabel = $calls;
+      print "/label ", &ps($calls), " def\n";
+    }
+    if ($cmd eq REC) {
+      print &node($from), " $cmd\n";
+    } elsif (($cmd eq ARC) || ($cmd eq LINE)) {
+      print &node($from), " ", &node($to), " $cmd\n";
+    } elsif ($cmd eq LR) {
+      print &node($from), " ", &node($to), " $sp $cmd\n";
+    }
+  }
+
+  # finish off:
+  print "\nshowpage\n";
+}
+
+# width of a node:
+sub width {
+  my ($node) = @_;
+  return(length($name[$node]) * $x_unit + 1);
+}
+
+
+# Return a string in PostScript form:
+sub ps {
+  my ($str) = @_;
+  $str =~ s/[\(\)]/\\$&/g;
+  return("($str)");
+}
+
+# Return a PostScript node (contents plus coordinates):
+sub node {
+  my ($n) = @_;
+  return(&ps($name[$n]) . sprintf(" %.3f %.3f", $x[$n], $y[$n]));
+}
+
+
+
+# Calculate commands for the arrows
+# and amount of extra space required for each row.
+sub calculate_arrow_commands {
+  @ar = ();       # list of arrow commands: [cmd, from, to, label, col, indent]
+  @sp = ();       # extra space for each row
+  $r = 0;
+  foreach $row (@rows) {
+    # used space below each proc on this row (for LR calls):
+    %indents = ();
+    $maxsp = 0;
+    foreach $from (split(/ /, $row)) {
+      foreach $to (split(/ /, $succs[$from])) {
+	next unless ($calls{$from,$to} > 0);
+	$calls = $calls{$from,$to};
+	$col = ($rowno[$to] < $rowno[$from]) ? $upcol : $downcol;
+	if ($from == $to) {
+	  # Simple recursion:
+	  push(@ar, [REC, $from, "", $calls, $reccol, 0]);
+	} elsif (($rowno[$to] != $rowno[$from]) && ($calls{$to,$from} > 0)) {
+	  # Mutual recursion:
+	  push (@ar, [ARC, $from, $to, $calls, $col, 0]);
+	} elsif ($rowno[$to] != $rowno[$from]) {
+	  # up/down call, no recursion:
+	  push(@ar, [LINE, $from, $to, $calls, $col, 0]);
+	} else {
+	  # Horizontal call:
+	  # If not simple, then use \LINE for left-to-right to the next col:
+	  if (!$simple && ($colno[$to] == $colno[$from] + 1)) {
+	    push(@ar, [LINE, $from, $to, $calls, $lrcol, 0]);
+	  } else {
+	    $sp = &getindent($colno[$from], $colno[$to]);
+	    push(@ar, [LR, $from, $to, $calls, $lrcol, $sp]);
+	    $maxsp = $sp if ($sp > $maxsp);
+	  }
+	}
+      }
+    }
+    $extra[$r++] = $maxsp;
+  }	# next row  
+}
+
+
+sub latex_output {
+  &print_header();        # does a \begingroup
+
+  # print rows:
+  $r = 0;
+  foreach $row (@rows) {
+    print '\ROW{',
+	 join(" ", grep($_ = "\\N\{n$_\}\{$name[$_]\}", split(/ /, $row))),
+	 "}";
+    $e = $extra[$r++];
+    if ($e > 0) {
+      print "\\vspace\{$e\\X\}\n";
+    } else {
+      print "\n";
+    }
+  }
+  print "\\endgroup\n";
+  
+  # print LaTeX commands for arrows:
+  foreach $ar (@ar) {
+    ($cmd, $from, $to, $calls, $col, $sp) = @$ar;
+    $name = "\\$cmd";
+    if ($calls > 1) {
+      $name .= "l"; $col = "{$calls}$col";
+    }
+    $from = "{n$from}"; $to = "{n$to}"; $sp = "{$sp}";
+    if ($cmd eq REC) {
+      print $name, $from, $col, "\n";
+    } elsif (($cmd eq ARC) || ($cmd = LINE)) {
+      print $name, $from, $to, $col, "\n";
+    } elsif ($cmd eq LR) {
+      print $name, $from, $to, $sp, $col, "\n";
+    }
+  }
+
+  # finish off:
+  print "\\end\{document\}\n";
+}
+
+
+# Return the number assoc to a given name. Give it number $n
+# if it doesn't have a number (and increment $n):
+sub number {
+  local ($name) = @_;
+  if ($no{$name} == 0) {
+    $no{$name} = $n;
+    $name[$n] = $name;
+    print STDERR "$n = $name\n" if ($debug > 1);
+    $n++;
+  }
+  return ($no{$name});
+}
+
+
+# Version from makegraph:
+# find and return smallest indent value which is unused over whole
+# range from..to. Record it's destination in the %indents table
+# Update $maxsp with the largest result returned so far
+sub getindent {
+  local ($from, $to) = @_;
+  $from++; $to++;
+  local ($res, $i);
+  local ($source, $dest);
+  $source = $from;
+  $dest = $to;
+  # if $from > $to then swap them:
+  ($from, $to) = ($to, $from) if ($from > $to);
+  $res = 2;	# smallest indent.
+resloop:
+  for (;;) {
+    # $indents{$res,$i} refers to the space between $i and $i+1:
+    for $i ($from..$to-1) {
+      if (($indents{$res,$i} > 0) && ($indents{$res,$i} != $dest)) {
+	$res += 1;
+	next resloop;
+      }
+    }
+    last resloop;
+  }
+  # record the result ($res):
+  for ($i = $from; $i < $to; $i++) {
+    $indents{$res,$i} = $dest;
+  }
+  # Use 2\X space between LR lines:
+  $res = ($res - 1) * 2;
+  $maxsp = $res if ($res > $maxsp);
+  return ($res);
+}
+
+
+sub print_header {
+  print '\documentstyle[a4';
+  print 'land' if ($landscape);
+  print ',sober]{article}', "\n";
+  print <<'END';
+\makeatletter
+\input{pstricks}\input{pst-node}\input{pst-beta}
+\makeatother
+\setlength{\parskip}{0pt}
+\setlength{\parindent}{0pt}
+% The basic unit length:
+\newlength{\X}
+
+% Set a row of nodes separated by spaces:
+% Make space=\hss within body of \ROW:
+{%
+\makeatletter\catcode`\ \active%
+\gdef\ROW{\begingroup\obeyspaces\let =\hss\ROW@}%
+\gdef\ROW@#1{\makebox[\textwidth]{#1}\endgroup}%
+}
+
+% Set a node in a box:
+\def\N#1#2{\rnode{#1}{\psframebox{\strut#2}}}
+%\def\N#1#2{\rnode{#1}{\psframebox{#2}}}
+
+% l forms have a label on the line:
+
+END
+  if ($colour) {
+    print <<'END';
+% Colour Version:
+% An up or down straight line:
+\def\LINE#1#2#3{\ncline[linecolor=#3]{#1}{#2}}
+\def\LINEl#1#2#3#4{\ncline[linecolor=#4]{#1}{#2}\ncput*{#3}}
+
+% An up or down curved line (mutual recursion):
+\def\ARC#1#2#3{\ncarc[linecolor=#3]{#1}{#2}}
+\def\ARCl#1#2#3#4{\ncarc[linecolor=#4]{#1}{#2}\ncput*{#3}}
+
+% A left or right arrow (arrow head in middle of line):
+\def\LR#1#2#3#4{\ncangle[linecolor=#4, arrows=-, arm=#3\X, angleA=-90, angleB=-90]%
+    {#1}{#2}\lput{:D}%
+      {\psline[linestyle=none, arrows=<-](-3\X,0)(1,0)}}
+\def\LRl#1#2#3#4#5{\ncangle[linecolor=#5, arrows=-, arm=#3\X, angleA=-90, angleB=-90]%
+    {#1}{#2}\ncput*{#4}\lput{:D}%
+      {\psline[linestyle=none, arrows=<-](-3\X,0)(1,0)}}
+
+% A recursion arrow:
+\def\REC#1#2{\ncangles[linecolor=#2, angleA=0, %
+		armA=2\X, armB=2\X, angleB=90]{#1}{#1}}
+\def\RECl#1#2#3{\ncangles[linecolor=#3, angleA=0, %
+		armA=2\X, armB=2\X, angleB=90]{#1}{#1}\ncput*{#2}}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%% Customise for size: %%%%%%%%%%%%%%%%%%%%%%%
+END
+
+  } else {
+    print <<'END';
+% Monochrome version:
+% An up or down straight line:
+\def\LINE#1#2{\ncline{#1}{#2}}
+\def\LINEl#1#2#3{\ncline{#1}{#2}\ncput*{#3}}
+
+% An up or down curved line (mutual recursion):
+\def\ARC#1#2{\ncarc{#1}{#2}}
+\def\ARCl#1#2#3{\ncarc{#1}{#2}\ncput*{#3}}
+
+% A left or right arrow (arrow head in middle of line):
+\def\LR#1#2#3{\ncangle[arrows=-, arm=#3\X, angleA=-90, angleB=-90]%
+    {#1}{#2}\lput{:D}%
+      {\psline[linestyle=none, arrows=<-](-3\X,0)(1,0)}}
+\def\LRl#1#2#3#4{\ncangle[arrows=-, arm=#3\X, angleA=-90, angleB=-90]%
+    {#1}{#2}\ncput*{#4}\lput{:D}%
+      {\psline[linestyle=none, arrows=<-](-3\X,0)(1,0)}}
+
+% A recursion arrow:
+\def\REC#1{\ncangles[angleA=0, %
+		armA=2\X, armB=2\X, angleB=90]{#1}{#1}}
+\def\RECl#1#2{\ncangles[angleA=0, %
+		armA=2\X, armB=2\X, angleB=90]{#1}{#1}\ncput*{#2}}
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%% Customise for size: %%%%%%%%%%%%%%%%%%%%%%%
+END
+
+  }
+
+  print "\\$text_size\n";
+  print "\\setlength{\\X}{$unit_length}\n";
+  #print '\psset{nodesep=0.5\X}', "\n";
+  print '\psset{framesep=0.5\X}', "\n";
+  print '\psset{arrows=->, linearc=\X, linewidth=0.2\X}', "\n";
+  print "\\psset{arrowsize=2pt $arrowsize}\n";
+
+  print <<'END_OF_HEADER';
+\pagestyle{empty}
+\vspace*{0pt}
+\begingroup
+\obeylines\def^^M{\vfill}
+%%%%%%%%%%%%%%%%%% Newlines and spaces are significant! %%%%%%%%%%%%%%%
+END_OF_HEADER
+}
+
+
+# Do a breadth-first search from node 1 to produce the layout,
+# set up array $rows[] with the data,
+sub simple_algorithm {
+  @rows = ();	# list of procs for each row
+  @rowno = ();	# row no of each proc
+  @colno = ();	# col no of each proc
+  $row = 0;	# row number
+  $col = 0;	# col no for this row
+  $colwidth = 0;# width of this col
+  $widest = 0;	# width of widest col
+  
+  @todo = (1);	# Add things calld by these to next row
+  @next = ();	# build up next row here
+  @done = ();	# Mark each proc when done
+  while (1) {
+    if ($#todo < 0) {
+      # start a new line:
+      last if ($#next < 0);
+      $row++; @todo = @next; @next = (); $col = 0;
+      $colwidth = 0;
+    }
+    $x = shift(@todo);
+    next if ($done[$x]);
+    $rows[$row] .= "$x ";
+    $rowno[$x] = $row;
+    $colno[$x] = $col;
+    $col++;
+    # push the numbers called by $x$ onto @next:
+    $done[$x]++;
+    push (@next, split(/ /, $succs[$x]));
+    $colwidth += length($name[$x]) + 1; # allow one extra char for the box.
+    $widest = $colwidth if ($colwidth > $widest);
+  }
+  # Remove extra space on each row:
+  chop(@rows);
+}
+
+
+# Breadth-first-search order list of nodes in @BFS_node_list
+sub calculate_BFS_node_list {
+  local (@todo) = (1);
+  local (@done) = ();
+  $done[$nodes] = 0;	# pre-allocate @done;
+  local ($x);
+  @BFS_node_list = ();
+  while ($#todo >= 0) {
+    $x = shift(@todo);
+    next if ($done[$x]);
+    $done[$x] = 1;
+    push(@BFS_node_list, $x);
+    # push the procs called by $x onto @todo:
+    push(@todo, split(/ /, $succs[$x]));
+  }
+  $BFS_node_list = join(" ", @BFS_node_list);
+  @node_list = (1..$nodes);
+  $node_list = join(" ", @node_list);
+  print STDERR "BFS Order: @BFS_node_list\n" if ($debug > 1);
+}
+
+
+# Add unique exit node $nodes+1 called by every "leaf" node (no succs):
+sub add_omega {
+  local ($i);
+  $omega = $nodes + 1;
+  $succs[$omega] = "";
+  $name[$omega] = "*EXIT*";
+  $no{"*EXIT*"} = $omega;
+  for ($i = 1; $i <= $nodes; $i++) {
+    if ($succs[$i] eq "") {
+      $succs[$i] = $omega;
+      $calls{$i,$omega} = 1;
+    }
+  }
+  $nodes++;
+}
+
+
+# calculate $preds[$n], the list of procs which call $n:
+sub calculate_preds {
+  local ($j, @suclist);
+  @preds = ();
+  for ($i = 1; $i <= $nodes; $i++) {
+    next unless ($succs[$i]);
+    @succlist = split(/ /, $succs[$i]);
+    foreach $j (@succlist) {
+      # have a call $i -> $j so add $i to $j's preds:
+      $preds[$j] .= " " if ($preds[$j]);
+      $preds[$j] .= "$i";
+    }
+  }
+  for ($i = 2; $i <= $nodes; $i++) {
+    # Add $omega as a predecessor if there are none
+    # (an unreachable node):
+    if ((! $preds[$i]) && ($merged[$i] == 0)) {
+      warn "$i ($name[$i]) is unreachable!\n";
+      $preds[$i] = "$omega";
+      $succs[$omega] .= " $i";
+      $calls{$omega,$i} = 1;
+    }
+    print STDERR "preds[$i] = $preds[$i]\n" if ($debug > 2);
+  }    
+}
+
+
+# Calculate the (sorted) list of dominators $D[n] for each node, ie the nodes
+# which dominate n (appear on every path from 1 to n).
+sub calculate_D {
+  local ($n, $change, $newD, $p);
+  local (@preds_n, @newD, @Dp, @new);
+  local ($i, $j);
+  @D = ();
+  $D[1] = "1";
+  for ($n = 2; $n <= $nodes; $n++) {
+    $D[$n] = $node_list;
+  }
+  $change = 1;
+  while ($change) {
+    $change = 0;
+    foreach $n (@BFS_node_list) {
+      # skip node 1:
+      next if ($n == 1);
+      # add the nodes in $D[$p] (for every pred $p of $n) to $newD:
+      @preds_n = split(/ /, $preds[$n]);
+      @newD = split(/ /, $D[shift(@preds_n)]);
+      foreach $p (@preds_n) {
+	# remove from @newD the elements not in $D[$p]
+	@Dp = split(/ /, $D[$p]);
+	# intersect @newD with @Dp, result to @newD:
+	@new = ();
+	while (($#Dp >= 0) && ($#newD >= 0)) {
+	  if ($Dp[0] == $newD[0]) {
+	    push(@new, shift(@newD)); shift(@Dp);
+	  } elsif ($Dp[0] < $newD[0]) {
+	    shift(@Dp);
+	  } else {
+	    shift(@newD);
+	  }
+	}
+	@newD = @new;
+      }
+      $newD = join(" ", sort { $a <=> $b } ($n, @newD));
+      if ($newD ne $D[$n]) {
+	$D[$n] = $newD;
+	$change = 1;
+      }
+    } # next $n in BFS order
+  } # next while($change) loop
+  # Finally, calculate %D from @D
+  # where $D{$n,$m} = 1 iff $m is in $D[$m]:
+  %D = ();
+  for ($n = 1; $n <= $nodes; $n++) {
+    print STDERR "D[$n] = $D[$n]\n" if ($debug > 2);
+    grep($D{$n,$_} = 1, split(/ /, $D[$n]));
+  }
+}
+
+
+# Back edges are edges where $m calls $n and $m is in $D[$n].
+# Remove $m from $preds[$n] if $n is in $D[$m]
+sub remove_back_edges {
+  @orig_preds = @preds;
+  for $n (@node_list) {
+    if ($debug > 0) {
+      for $m (split(/ /, $preds[$n])) {
+	print STDERR "Back edge: $name[$m] -> $name[$n]\n" if ($D{$m,$n});
+      }
+    }
+    # Remove preds $m of $n where $n dominates $m:
+    $preds[$n] = join(" ", grep(!$D{$_,$n}, split(/ /, $preds[$n])));
+  }
+}
+
+
+# Produce topologically sorted list @L from @preds
+sub topological_sort {
+  local ($p);
+  local (@todo);	# Remaining elements
+  local (@mins);	# list of minimal elements in @todo
+  local (@numpreds);	# Number of predecessors of each @todo element
+  @L = ();
+  @todo = @BFS_node_list;
+  foreach $elt (@todo) {
+    $numpreds[$elt] = split(/ /, $preds[$elt]);
+    push(@mins, $elt) if ($numpreds[$elt] == 0);
+  }
+  while ($#todo >= 0) {
+    # Pick an element with the smallest number of predecessors
+    # and remove it from preds. The edges to this element are
+    # "retreating" edges
+    # First check for an element with no preds (fast):
+    if (@mins) {
+      $minelt = min(@mins);
+      @mins = grep { $_ != $minelt } @mins;
+      $minpreds = 0;
+    } else {
+      # there must be a retreating edge, all elements have predecessors.
+      # Find an element with the smallest number of predecessors
+      $minpreds = $nodes;	# larger than any number of predecessors
+      foreach $elt (@todo) {
+	if ($numpreds[$elt] < $minpreds) {
+	  $minpreds = $numpreds[$elt]; $minelt = $elt;
+	  # There won't be any elts with fewer than one predecessor:
+	  last if ($minpreds == 1);
+	}
+      }
+      # Treat $minelt as if it were a real minimal element:
+      $numpreds[$minelt] = 0;
+    }
+    # decrement $numpreds for each successor of $minelt
+    # and update @mins if any element now has no predecessors:
+    foreach $succ (split(/ /, $succs[$minelt])) {
+      $numpreds[$succ]--;
+      push(@mins, $succ) if ($numpreds[$succ] == 0);
+    }
+    print STDERR "Retreating Edge(s): @{$preds[$minelt]} -> $minelt\n"
+	if (($debug > 0) && ($minpreds > 0));
+    push (@L, $minelt);
+    @todo = grep(($_ ne $minelt), @todo);
+  } # next @todo
+  print STDERR "Sorted order: @L\n" if ($debug > 2);
+}
+
+
+# Return the smallest element in the given list:
+sub min {
+  my (@l) = @_;
+  my ($min) = shift(@l);
+  foreach $i (@l) {
+    $min = $i if ($i < $min);
+  }
+  return ($min);
+}
+
+
+# Produce @rows array from @L
+# Put elements on each row as long as there are no LR arrows
+# of more than one step and the width is less than $maxcol
+# Uses %calls
+sub calculate_rows {
+  @rowno = ();
+  @colno = ();
+  $totalwidth = 0;
+  $rowno[$L[0]] = 0; $colno[$L[0]] = 0; 
+  $rowno[$L[1]] = 1; $colno[$L[1]] = 0;
+  $col = 0; $colwidth = 0;
+  @rows = (shift(@L), shift(@L));
+  $i = 1;
+  grep ($totalwidth += length($_)+1, @name);
+  $t = int($totalwidth / 20);
+  $maxcol = 100;
+  $maxcol = $t if ($t < $maxcol);	# max chars per line
+  $maxcol = 30 if ($maxcol < 30);
+  $maxcol *= 1.4 if ($landscape);
+  $widest = 0;	# no of characters in widest line
+  foreach $x (@L) {
+    # current row must be non-empty here.
+    # if any calls to/from $x on $rows[$i] then increment $i
+    # check for an LR call to/from $x to a previous element on
+    # this row (other than from immediately previous element):
+    $LR = 0;
+    @row = split(/ /, $rows[$i]);
+    foreach $y (@row) {
+      if (($calls{$x,$y} > 0)
+	  || (($calls{$y,$x} > 0) && ($y != $row[$#row]))) {
+	$LR = 1; last;
+      }
+    }
+    # Decide whether to start a new row:
+    if ($LR || (($colwidth + length($name[$x]) + 1) >= $maxcol)) {
+      # start a new row:
+      $i++; $col = 0; $colwidth = 0;
+      $rows[$i] = $x;
+    } else {
+      # Add to current row:
+      $col++;
+      $rows[$i] .= " $x";
+    }
+    $rowno[$x] = $i; $colno[$x] = $col;
+    $colwidth += length($name[$x]) + 1; # allow one extra char for the box.
+    $widest = $colwidth if ($colwidth > $widest);
+  } # next element
+  if ($debug > 1) {
+    print STDERR "Rows:\n";
+    foreach (@rows) {
+      print STDERR "$_\n";
+    }
+  }
+}
+
+
+sub select_size {
+  # If $size == 0 (auto) then pick largest size which fits
+  # and set $text_size accordingly.
+  if ($size == 0) {
+    $total_height = ($#rows + 1) * 8; # allow 8ex per row
+    grep($total_height += $_, @extra);
+    for ($i = 8; $i > 0; $i--) {
+      if (($ex_heights[$i] * $total_height <= $pagelength)
+	  && ($widest * $em_widths[$i] / 1.4 <= $pagewidth)) {
+	$size = $i;
+	last;
+      }
+    }
+    if ($size == 0) {
+      warn "Diagram may not fit on page!\n" unless ($ps);
+      $size = 1;
+    }
+    $text_size = $text_sizes[$size];
+    # text size for postscript output:
+    $ps_size = 3 * $pagelength / $total_height;   
+    $x_unit = $ps_size/2;	# approx width of a character
+    if ($x_unit * $widest > $pagewidth) {
+      # Recalculate ps size for wide lines
+      warn "Landscape mode may be better...\n" unless ($landscape);
+      $x_unit = $pagewidth / $widest;
+      $ps_size = $x_unit * 1.4;
+    }
+    $ps_size = 24 if ($ps_size > 24);
+    if ($ps) {
+      print STDERR "Size selected=$ps_size, ";
+    } else {
+      print STDERR "Size selected=$text_size, ";
+    }
+    print STDERR "(h=$total_height, w=$widest, m=$maxcol, tot=$totalwidth)\n";
+  }
+}
+
+# Re-arrange elements on each row to reduce total arrow length:
+sub re_arrange_rows {
+
+}

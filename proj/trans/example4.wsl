@@ -1,0 +1,15 @@
+ VAR < sw1 := 0, sw2 := 0 >: 
+      !P heading(VAR os); 
+      !P read(VAR stf, os); 
+       WHILE NOT eof?(stf) DO 
+                IF !XC first_in_group?(os)
+                THEN IF sw1 = 1 THEN !P end_group(VAR os) FI; 
+                     sw1 := 1; 
+                     !P start_group(VAR os); 
+                     !P process_record(VAR os); 
+                     sw2 := 1
+                ELSE !P process_record(VAR os); 
+                   sw2 := 1 FI; 
+               !P read(VAR stf, os) OD; 
+       IF sw2 = 1 THEN !P end_group(VAR os) FI; 
+      !P summary(VAR os) ENDVAR

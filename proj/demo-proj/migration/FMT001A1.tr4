@@ -1,0 +1,57 @@
+Converting global variables in procedures to parameters...
+Adding a dummy reference at the end of the program
+Computing Basic Blocks...
+Computing Deletion List...
+SSA Preprocessing... 
+SSA bulding ADT... 
+Constructing Roman Chariots problem... 
+Constructing APT structure... 
+Control Dependence Equivalence Classes... 
+Control Dependence calculation... 
+Computing Proc Summaries... 
+Calculating SSA... 
+Finding redundant assignments...
+
+Generating new WSL...
+Reading deletion list...
+Moving to: (1 1 1 1 2 44 1 2 2 1 24) length = 4
+r15 := RDSOUT_STATUS
+Moving to: (1 1 1 1 2 44 1 2 2 1 13 1 19) length = 1
+r10 := NOTUSED_58
+Moving to: (1 1 1 1 2 42) length = 1
+r10 := NOTUSED_50
+Moving to: (1 1 1 1 2 39) length = 3
+r15 := result_code
+Moving to: (1 1 1 1 2 21) length = 14
+r3 := r15
+Moving to: (1 1 1 1 2 21) length = 14
+r14 := !XF address_of(WSAVE)
+Moving to: (1 1 1 1 2 21) length = 14
+r13 := !XF address_of(WSAVE)
+Moving to: (1 1 1 1 2 20) length = 1
+Moving to: (1 2 1 3) length = 1
+Moving to: (1 2 1 3) length = 1
+Moving to: (1 2 1 3) length = 1
+Moving to: (1 2 1 4 19 1 2 16) length = 12
+r14 := __r14_init__
+Moving to: (1 2 1 4 19 1 2 16) length = 12
+r13 := WSAVE[5..8]
+Moving to: (1 2 1 4 19 1 2 16) length = 12
+r15 := 0
+Moving to: (1 2 1 4 17) length = 2
+Moving to: (1 2 1) length = 1
+Moving to: (1 2 1) length = 1
+Moving to: (1 2 1) length = 1
+Moving to: (1 2 1) length = 1
+Moving to: (1 2 1) length = 1
+Moving to: (1 2 1) length = 1
+Moving to: (1 2 1) length = 1
+Moving to: (1 2 1) length = 1
+Finished deleting.
+Removing parameters from local procs
+Restoring local vars
+Removing dummy reference
+
+Transformation time: 1
+Transformation Count: 3
+Result is in: FMT001A1.ws5

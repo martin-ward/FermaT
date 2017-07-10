@@ -1,0 +1,176 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Flag_Removal'",
+	    (FILL Statements 
+
+VAR < sw1 := 0, sw2 := 0, i := 0, last := "", card := "" >:
+  PRINT(heading);
+  DO i := i + 1;
+     card := cards[i];
+     IF i >= n THEN EXIT(1) FI;
+     IF i = 1 OR card[name] <> last
+       THEN IF sw1 = 1
+              THEN PRINT(last[name], total) FI;
+            sw1 := 1;
+            last := card[name];
+            total := 0 FI;
+     total := total + card[number];
+     sw2 := 1 OD;
+  IF sw2 = 1
+    THEN PRINT(last[name], total) FI;
+  PRINT(summary)
+ENDVAR
+
+            ENDFILL),
+	    <1>,
+	    TR_Flag_Removal,
+	    < >,
+	    (FILL Statements 
+
+VAR < i := 0, last := "", card := "" >:
+PRINT(heading);
+i := 1;
+card := cards[1];
+IF n > 1
+  THEN last := card[name];
+       total := 0;
+       DO total := card[number] + total;
+          i := i + 1;
+          card := cards[i];
+          IF i >= n THEN EXIT(1) FI;
+          IF last <> card[name] OR i = 1
+            THEN PRINT(last[name], total);
+                 last := card[name];
+                 total := 0 FI OD;
+       PRINT(last[name], total) FI ENDVAR;
+PRINT(summary)
+
+            ENDFILL));
+
+
+
+@Test_Trans(" 2nd test of `Flag_Removal'",
+	    (FILL Statements 
+
+VAR < flag := 0 >:
+IF x = 0 THEN flag := 0 ELSE flag := 1 FI;
+y := y + 1;
+IF flag = 0 THEN z := 0 FI ENDVAR
+
+            ENDFILL),
+	    <1>,
+	    TR_Flag_Removal,
+	    < >,
+	    (FILL Statements 
+
+IF x = 0 THEN y := y + 1; z := 0 ELSE y := y + 1 FI
+
+            ENDFILL));
+
+
+
+
+
+@Test_Trans(" 3rd test of `Flag_Removal'",
+	    (FILL Statements 
+
+VAR < F_BUBR := 0 >:
+BEGIN
+  DO !P GET(IHISTORY_DDNAME
+       VAR r0, r1, INAR, result_code, os);
+     IF !XC end_of_file(IHISTORY_DDNAME)
+       THEN EXIT(1)
+     ELSIF F_BUBR = 1
+       THEN SETBKU()
+     ELSIF INAR[5..14] = "PRINT LINE"
+       THEN PRBR[2] := !XF SET_ZONED_UNSIGNED(PRBR[2]);
+            F_EOJ := 1;
+            !P ap("hex 0x1C" VAR PAGE_0);
+            !P unpk(PAGE_0 VAR PGPRT);
+            PGPRT[5] := !XF SET_ZONED_UNSIGNED(PGPRT[5]);
+            !P PUT(OPRINT_DDNAME, HEAD1 VAR result_code, os);
+            !P PUT(OPRINT_DDNAME, HEAD2 VAR result_code, os);
+            !P PUT(OPRINT_DDNAME, HEAD3 VAR result_code, os);
+            DETAIL_0[1] := "0";
+            LINCNT := "hex 0x0C";
+            !P ap("hex 0x7C" VAR LINCNT)
+       ELSE F_BUBR := 1;
+            !P PUT(OHISTBKU_DDNAME, X00RCD VAR result_code, os);
+            SETBKU() FI OD
+WHERE
+  PROC SETBKU() ==
+    !P ap("hex 0x1C" VAR RCDIN);
+    RECDDATE[1..2] := INAR[29..30];
+    RECDDATE[3..5] := INAR[7..9];
+    IF JDATE <= RECDDATE
+      THEN !P PUT(OHISTORY_DDNAME, INAR VAR result_code, os);
+      ELSE !P PUT(OHISTBKU_DDNAME, INAR VAR result_code, os);
+           !P ap("hex 0x1C" VAR RCDDEL) FI END
+END ENDVAR
+
+            ENDFILL),
+	    <1>,
+	    TR_Flag_Removal,
+	    < >,
+	    (FILL Statements 
+
+BEGIN
+  DO !P GET(IHISTORY_DDNAME
+       VAR r0, r1, INAR, result_code, os);
+     IF INAR[5..14] <> "PRINT LINE"
+          OR !XC end_of_file(IHISTORY_DDNAME)
+       THEN EXIT(1) FI;
+     IF INAR[5..14] = "PRINT LINE"
+       THEN PRBR[2] := !XF SET_ZONED_UNSIGNED(PRBR[2]);
+            F_EOJ := 1;
+            !P ap("hex 0x1C" VAR PAGE_0);
+            !P unpk(PAGE_0 VAR PGPRT);
+            PGPRT[5] := !XF SET_ZONED_UNSIGNED(PGPRT[5]);
+            !P PUT(OPRINT_DDNAME, HEAD1 VAR result_code, os);
+            !P PUT(OPRINT_DDNAME, HEAD2 VAR result_code, os);
+            !P PUT(OPRINT_DDNAME, HEAD3 VAR result_code, os);
+            DETAIL_0[1] := "0";
+            LINCNT := "hex 0x0C";
+            !P ap("hex 0x7C" VAR LINCNT) FI OD;
+  IF NOT (!XC end_of_file(IHISTORY_DDNAME))
+    THEN !P PUT(OHISTBKU_DDNAME, X00RCD VAR result_code, os);
+         DO SETBKU();
+            !P GET(IHISTORY_DDNAME
+              VAR r0, r1, INAR, result_code, os);
+            IF !XC end_of_file(IHISTORY_DDNAME)
+              THEN EXIT(1) FI OD FI
+WHERE
+  PROC SETBKU() ==
+    !P ap("hex 0x1C" VAR RCDIN);
+    RECDDATE[1..2] := INAR[29..30];
+    RECDDATE[3..5] := INAR[7..9];
+    IF JDATE <= RECDDATE
+      THEN !P PUT(OHISTORY_DDNAME, INAR VAR result_code, os)
+      ELSE !P PUT(OHISTBKU_DDNAME, INAR VAR result_code, os);
+           !P ap("hex 0x1C" VAR RCDDEL) FI END
+END
+
+            ENDFILL));
+
+
+
+SKIP
+

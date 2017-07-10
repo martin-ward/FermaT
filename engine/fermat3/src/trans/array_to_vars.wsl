@@ -1,0 +1,144 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2015 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Convert a local variable array to a set of local variables ";
+C:" VAR < ar := ARRAY(n, e) >: ...ar[n]... ENDVAR . ";
+
+MW_PROC @Array_To_Vars_Test() ==
+  IF @ST(@I) <> T_Var
+    THEN @Fail("Current item is not a local variable statement")
+    ELSE VAR < ar := < > >:
+         FOR assign IN @Cs(@I^1) DO
+	   IF @ST(assign^1) = T_Var_Lvalue AND @ST(assign^2) = T_Array
+	        AND @ST(assign^2^1) = T_Number
+             THEN ar := assign^1 FI OD;
+         IF EMPTY?(ar)
+	   THEN @Fail("No array assignment in the VAR")
+	   ELSE C:" Check that all references are of the form ar[n] ";
+	        @Down_To(2);
+		@AV_Test_Statements(ar);
+	        IF NOT @Failed? AND T_Proc_Call IN @Stat_Types(@I)
+                  THEN C:" Check bodies of called procedures: ";
+		       VAR < posn := @Posn, procs := @AV_Find_Called >:
+		       FOR proc IN procs DO
+		         @Goto(proc);
+			 IF ar IN @Variables(@I^2) OR ar IN @Variables(@I^3)
+			   THEN @Fail("The array appears as a parameter")
+			   ELSE @Down_To(4);
+			        @AV_Test_Statements(ar) FI OD ENDVAR FI;
+                IF NOT @Failed? THEN @Pass FI FI ENDVAR FI .;
+
+
+MW_PROC @Array_To_Vars_Code(Data) ==
+  VAR < ar := < >, str := "", vars := < >, val := < >, new := < >,
+        all := @All_Variables(@I), i := 1, v := < > >:
+  FOR assign IN @Cs(@I^1) DO
+    IF @ST(assign^1) = T_Var_Lvalue AND @ST(assign^2) = T_Array
+         AND @ST(assign^2^1) = T_Number
+      THEN ar := assign^1;
+           val := assign^2^2;
+           str := @N_String(@V(ar)) ++ "_";
+	   vars := < >;
+	   i := 1;
+	   DO v := @Make_Name(str ++ @String(i));
+	      IF v NOTIN all THEN EXIT(1) FI;
+	      i := i + 1 OD;
+           FOR j := i TO @V(assign^2^1) + i - 1 STEP 1 DO
+	     vars := <@Make_Name(str ++ @String(j))> ++ vars OD FI OD;
+  FOR var IN vars DO
+    new := <@Make(T_Assign, < >, <@Make(T_Var_Lvalue, var, < >), val>)> ++ new OD;
+  vars := REVERSE(vars);
+  @Down_To(2);
+  @AV_Process_Statements(ar, vars);
+  VAR < posn := @Posn >:
+  FOR pos IN @AV_Find_Called DO
+    @Goto(pos);
+    @AV_Process_Statements(ar, vars) OD;
+  @Goto(posn) ENDVAR;
+  @Left; @Down; C:" to first assign ";
+  DO IF @Equal?(@I^1, ar)
+       THEN @Splice_Over(new); EXIT(1) FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Up;
+  @Up;
+  C:" Check if there are no variables left: ";
+  IF @Size(@I^1) = 0
+    THEN @Splice_Over(@Cs(@I^2)) FI ENDVAR .;  
+
+
+
+C:" Find the set of procedures called directly or indirectly ";
+C:" and return a list of posns of the proc bodies. ";
+
+MW_FUNCT @AV_Find_Called() ==
+  VAR < posn := @Posn, todo := MAP("HEAD", @Proc_Calls(@I)), done := HASH_TABLE,
+        name := < >, body := HASH_TABLE, proc_posn := HASH_TABLE, posns := < > >:
+  WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+  IF @ST(@I) <> T_Where
+    THEN todo := < >; C:" No definitions to find "
+    ELSE @Down_To(2);
+         @Down; C:" to first defn ";
+	 DO IF @ST(@I) = T_Proc
+	      THEN name := @V(@I^1);
+                   body.(name) := @I^4;
+                   proc_posn.(name) := @Posn FI;
+            IF @Right? THEN @Right ELSE EXIT(1) FI OD FI;
+  WHILE NOT EMPTY?(todo) DO
+    name := HEAD(todo); todo := TAIL(todo);
+    IF EMPTY?(done.(name))
+      THEN done.(name) := 1;
+           posns := <proc_posn.(name)> ++ posns;
+           FOR pair IN @Proc_Calls(body.(name)) DO
+	     IF EMPTY?(done.(HEAD(pair)))
+	       THEN todo := <HEAD(pair)> ++ todo FI OD FI OD;
+  @Goto(posn);
+  (posns) .;
+
+
+MW_PROC @AV_Test_Statements(ar VAR) ==
+  ATEACH Expression DO
+    IF @ST(@I) = T_Variable AND @V(@I) = @V(ar)
+      THEN IF @ST(@Parent) <> T_Aref OR @ST(@Parent^2^1) <> T_Number
+             THEN @Fail("Bad reference found to the array variable") FI FI OD;
+  ATEACH Lvalue DO
+    IF @ST(@I) = T_Var_Lvalue AND @V(@I) = @V(ar)
+      THEN IF @ST(@Parent) <> T_Aref_Lvalue OR @ST(@Parent^2^1) <> T_Number
+             THEN @Fail("Bad reference found to the array variable") FI FI OD .;
+
+
+MW_PROC @AV_Process_Statements(ar, vars) ==
+  FOREACH Expression DO
+    IF @ST(@I) = T_Aref AND @ST(@I^1) = T_Variable AND @V(@I^1) = @V(ar)
+      THEN C:" the array index must be an integer ";
+           @Paste_Over(@Make(T_Variable, vars[@V(@I^2^1)], < >)) FI OD;
+  FOREACH Lvalue DO
+    IF @ST(@I) = T_Aref_Lvalue AND @ST(@I^1) = T_Var_Lvalue AND @V(@I^1) = @V(ar)
+      THEN C:" the array index must be an integer ";
+           @Paste_Over(@Make(T_Var_Lvalue, vars[@V(@I^2^1)], < >)) FI OD .;
+
+
+
+SKIP
+
+
+
+
+
+

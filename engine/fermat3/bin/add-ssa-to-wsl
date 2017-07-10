@@ -1,0 +1,78 @@
+#!/usr/bin/perl
+# RCS $Id: add-ssa-to-wsl,v 1.3 2002/03/08 12:25:36 dcs0mpw Exp $
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+##########
+##########   add-ssa-to-wsl file.ssa file.wsl [file.out]
+##########
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+
+($myname = $0) =~ s|(.*/)*||;   # strip path component from name
+$Usage = "Usage: $myname file.ssa file.wsl [file.out]\n";
+
+# Check one to five arguments:
+die $Usage if (($#ARGV < 0) || ($#ARGV > 4));
+
+&parse_args();
+$options = &find_file("options");
+$options = "$FermaT${ds}config${ds}options"
+  if (!$options && -f "$FermaT${ds}config${ds}options");
+
+shift while (@ARGV && ($ARGV[0] =~ /^-/));
+die $Usage unless ((@ARGV == 2) || (@ARGV == 3));
+$ssa = $ARGV[0];
+$input = $ARGV[1];
+if (@ARGV == 3) {
+  $output = $ARGV[2];
+} else {
+  $output = $input;
+  if ($output !~ s/-(\d)\.wsl$/"-" . ($1 + 1) . ".wsl"/e) {
+    $output =~ s/\.wsl$//;
+    $output .= ".out";
+  }
+}
+
+$cmds = <<END_OF_INPUT;
+  (\@New_Program (\@Parse_File "$input" //T_/Statements))
+  (if (file-exists? "patch.scm")
+      (load "patch.scm")
+      (if (file-exists? "patch.tr")
+	  (load "patch.tr")))
+  (define tr-runtime (get-internal-run-time))
+  $extra
+  (set! //Options_/File "$options")
+  (let ((/blocks (\@Parse_Basic_Blocks "$ssa")))
+     (\@PP_Item (\@WSL_To_SSA (\@Program) /blocks) 80 "$output"))
+  (newline)
+  (display-list "Result is in: $output")
+END_OF_INPUT
+
+&fermat($cmds);
+
+exit(0);

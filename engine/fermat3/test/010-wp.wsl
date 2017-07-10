@@ -1,0 +1,211 @@
+
+VAR < file := "010-wp: ", fail := < >, n := "", a := < >, b := < > >:
+
+PRINT("Testing ...");
+
+C:" Weakest Preconditions @WP ";
+
+
+
+n := "001";
+a := @WP(FILL Statements
+
+	VAR < x := y >:
+	tax := x ENDVAR
+
+ENDFILL, FILL Condition
+
+	tax <> tax_p
+
+ENDFILL);
+
+b := FILL Condition
+
+	y <> tax_p
+
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "002";
+a := @Simplify(@WP(FILL Statements
+
+	{income = 100};
+	IF income <= 28000
+	  THEN tax := tax + income * rate23
+	  ELSE tax := tax + 28000 * rate23;
+	       income := income - 28000;
+	       tax := tax + income * rate40 FI
+
+ENDFILL, FILL Condition
+
+	tax_p <> tax
+
+ENDFILL), 20);
+
+b := FILL Condition
+
+	tax_p <> 100 * rate23 + tax AND income = 100
+
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "003";
+a := @WP(FILL Statements
+
+	{x < 100};
+	y := x - 1
+
+ENDFILL, FILL Condition
+
+	y > 100
+
+ENDFILL);
+
+b := FILL Condition
+
+	FALSE
+
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "004";
+a := @WP(FILL Statements
+
+	D_IF TRUE -> z := 1
+	  [] TRUE -> z := 2 FI
+
+ENDFILL, FILL Condition
+
+	z <> z_p
+
+ENDFILL);
+
+b := FILL Condition
+
+	z_p <> 1 AND z_p <> 2
+
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "005";
+a := @Simplify(@WP(FILL Statements
+
+	D_IF x = 1 -> z := 1
+	  [] x = 2 -> z := 2 FI
+
+ENDFILL, FILL Condition
+
+	z <> z_p
+
+ENDFILL), 20);
+
+b := FILL Condition
+
+	x = 1 AND z_p <> 1 OR x = 2 AND z_p <> 2
+
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "006";
+a := @WP(FILL Statements
+
+	D_IF x = 1  -> z := 1
+	  [] x <> 1 -> z := 1 FI
+
+ENDFILL, FILL Condition
+
+	z <> z_p
+
+ENDFILL);
+
+b := FILL Condition
+
+	z_p <> 1
+
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "007";
+a := @WP(FILL Statements
+
+IF income > 36075
+  THEN tax := big
+  ELSE {x = y}; tax := small FI
+
+ENDFILL, FILL Condition
+
+TRUE
+
+ENDFILL);
+
+b := FILL Condition
+
+x = y OR income > 36075
+
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "008";
+a := @WP(FILL Statements
+
+SKIP
+
+ENDFILL, FILL Condition
+
+TRUE
+
+ENDFILL);
+
+b := FILL Condition
+
+TRUE
+
+ENDFILL;
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+
+
+
+
+
+
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+

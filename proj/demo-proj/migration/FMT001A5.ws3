@@ -1,0 +1,175 @@
+VAR < cc := 0, len_1 := 0, len_2 := 0, destination := 0 >:
+ACTIONS _enter_:
+  _start_ == CALL Z END
+  FMT001A5 == CALL A_000000 END
+  A_000000 ==
+    C:"* SAMPLE PROGRAM TO LOAD A SERIES OF PROGRAMS";
+    C:"* ADDRESSES STORED IN A REFERENCE TABLE";
+    C:"<FermaT> 00000020 r0 r3";
+    destination := r0;
+    r3 := 2;
+    CALL A_000002 END
+  A_000002 ==
+    C:"<FermaT> 00000022 r11 r1";
+    r11 := a[r1, 4];
+    CALL A_000006 END
+  A_000006 ==
+    C:"<FermaT> 00000024 r0 r1 r15";
+    r0 := NOT_USED;
+    r1 := NOT_USED;
+    result_code := NOT_USED;
+    !P LOAD("FMT113 EP=FMT113"
+      VAR r0, r1, result_code, os);
+    r0 := v_fmt113;
+    r15 := result_code;
+    CALL A_000014 END
+  A_000014 ==
+    MODSTORE := r11;
+    C:"<FermaT> 00000028 AMOD113 r0";
+    a[MODSTORE].AMOD113 := r0;
+    CALL A_000018 END
+  A_000018 ==
+    C:"<FermaT> 00000029 r0 r1 r15";
+    r0 := NOT_USED;
+    r1 := NOT_USED;
+    result_code := NOT_USED;
+    !P LOAD("FMT114 EP=FMT114"
+      VAR r0, r1, result_code, os);
+    r0 := v_fmt114;
+    r15 := result_code;
+    CALL A_000026 END
+  A_000026 ==
+    MODSTORE := r11;
+    C:"<FermaT> 00000033 AMOD114 r0";
+    a[MODSTORE].AMOD114 := r0;
+    CALL A_00002A END
+  A_00002A ==
+    C:"<FermaT> 00000034 r0 r1 r15";
+    r0 := NOT_USED;
+    r1 := NOT_USED;
+    result_code := NOT_USED;
+    !P LOAD("FMT115 EP=FMT115"
+      VAR r0, r1, result_code, os);
+    r0 := v_fmt115;
+    r15 := result_code;
+    CALL A_000038 END
+  A_000038 ==
+    MODSTORE := r11;
+    C:"<FermaT> 00000038 AMOD115 r0";
+    a[MODSTORE].AMOD115 := r0;
+    CALL A_00003C END
+  A_00003C ==
+    C:"*        USER CALL. DEPENDENCY SATISFIED BY FMT200P9 USING VERSION.TAB";
+    C:"<FermaT> 00000040 WTAB1 r5 r3";
+    r5 := !XF address_of(WTAB1);
+    CALL A_000040 END
+  A_000040 ==
+    C:"<FermaT> 00000042 WREC2 r6 r3";
+    r6 := !XF address_of(WREC2);
+    CALL LABA END
+  LABA ==
+    WDS1 := r5;
+    C:"<FermaT> 00000044 WDS1F1 WDS1F1[1] LABA";
+    IF a[WDS1].WDS1F1[1] = "hex 0xFF"
+      THEN cc := 0
+    ELSIF a[WDS1].WDS1F1[1] < "hex 0xFF"
+      THEN cc := 1
+      ELSE cc := 2 FI;
+    CALL A_000048 END
+  A_000048 ==
+    C:"<FermaT> 00000045 LABZ";
+    IF cc = 0 THEN CALL LABZ FI;
+    C:"* <FERMAT ANN><S><1>";
+    C:"<FermaT> 00000045 r5 r6";
+    a[r6, 4] := a[r5, 4];
+    CALL A_00004C END
+  A_00004C ==
+    WDS1 := r5;
+    WDS2 := r6;
+    C:"<FermaT> 00000046 WDS2F1 WDS1F1";
+    a[WDS2].WDS2F1 := a[WDS1].WDS1F1;
+    CALL A_000052 END
+  A_000052 ==
+    WDS1 := r5;
+    WDS2 := r6;
+    C:"<FermaT> 00000047 WDS2F2 WDS1F2";
+    a[WDS2].WDS2F2 := a[WDS1].WDS1F2;
+    CALL A_000058 END
+  A_000058 ==
+    WDS1 := r5;
+    WDS2 := r6;
+    C:"<FermaT> 00000048 WDS2F3 WDS1F3";
+    a[WDS2].WDS2F3 := a[WDS1].WDS1F3;
+    CALL A_00005E END
+  A_00005E ==
+    WDS1 := r5;
+    WDS2 := r6;
+    C:"<FermaT> 00000049 WDS2F4 WDS1F4";
+    a[WDS2].WDS2F4 := a[WDS1].WDS1F4;
+    CALL A_000064 END
+  A_000064 ==
+    C:"* <FERMAT ANN><E><1>";
+    C:"<FermaT> 00000051 WREC2 A0007";
+    CALL A0007 END
+  A0007 == CALL A_000070 END
+  A_000070 ==
+    C:"<FermaT> 00000055 MFI0008 r1 r3";
+    r1 := !XF address_of(MFI0008);
+    CALL A_000074 END
+  A_000074 ==
+    C:" DATA MACRO: CNOP 0,4 ";
+    C:"<FermaT> 00000057 ";
+    CALL A_00007C END
+  A_00007C ==
+    C:"<FermaT> 00000060 r0"; r0 := 1; CALL A_000080
+  END
+  A_000080 ==
+    C:" DATA MACRO: CNOP 0,4 ";
+    C:"<FermaT> 00000062 r15";
+    r15 := 136;
+    CALL A_000088 END
+  A_000088 ==
+    C:"<FermaT> 00000067 r15";
+    r15 := a[r15, 4];
+    CALL A_00008C END
+  A_00008C ==
+    C:"<FermaT> 00000068 r15 r14";
+    destination := r15;
+    r14 := 142;
+    CALL dispatch END
+  A_00008E == C:"<FermaT> 00000069 LABA"; CALL LABA END
+  LABZ ==
+    C:"<FermaT> 00000070 LABZ r14";
+    destination := r14;
+    CALL dispatch END
+  _enter_ ==
+    C:" <ENTRY POINT> ";
+    C:" <NAME=FMT001A5> ";
+    r1 := __r1_init__;
+    r2 := __r2_init__;
+    r3 := __r3_init__;
+    r4 := __r4_init__;
+    r5 := __r5_init__;
+    r6 := __r6_init__;
+    r7 := __r7_init__;
+    r8 := __r8_init__;
+    r9 := __r9_init__;
+    r10 := __r10_init__;
+    r11 := __r11_init__;
+    r12 := __r12_init__;
+    r13 := __r13_init__;
+    r14 := __r14_init__;
+    CALL FMT001A5 END
+  dispatch ==
+    IF destination = 0
+      THEN CALL Z
+    ELSIF destination = 124
+      THEN CALL A_00007C
+    ELSIF destination = 136
+      THEN CALL A_000088
+    ELSIF destination = 142
+      THEN CALL A_00008E
+    ELSIF destination = 146
+      THEN CALL LABZ
+      ELSE C:"FIXME: Unknown destination "; CALL Z FI
+  END ENDACTIONS ENDVAR

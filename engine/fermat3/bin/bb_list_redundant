@@ -1,0 +1,242 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+# bb_list_redundant [input] [output]
+#
+# Read a list of basic blocks
+# Compute SSA form
+# Determine which register assignments are redundant
+# (directly or indirectly)
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g; #"
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+use Blocks;
+use Control_Dep;
+use VCG;
+use SSA;
+use Slice;
+use warnings;
+use strict;
+
+my $V = 0;	   # Verbose output?
+
+# Structures with more than this many fields will not be expanded
+# (This is to reduce the size of df files):
+$::S_Max_Fields_Expanded = 10;
+
+read_options();
+
+# Register and flag variables, ie all local variables:
+
+my @flags = qw(cc zf cf);
+my @registers = qw(r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15
+		   ax bx cx dx sp bp si di cs ds ss es __junk __tmp);
+for my $i (1..15) {
+  push(@registers, "__tmp$i", "__cpar$i");
+}
+
+my %regs = ();
+for (@registers) { $regs{$_}++ };
+
+my @local = (@flags, @registers);
+push(@local, $_ . "[1]", $_ . "[2]", $_ . "[3]") for (@registers);
+
+my $local = join("|", @local);
+$local =~ s/(\W)/\\$1/g;
+$local =~ s/\\\|/\|/g;
+# A regular expression which matches a local var in SSA form:
+my $localre = qr/^($local|var_\d+__\w+)__\d+$/;
+
+$| = 1;
+
+read_options();
+
+my ($myname, $Usage);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [input] [output]\n";
+
+my ($input, $output);
+
+# Check zero to two arguments plus optional data argument:
+shift while (@ARGV && ($ARGV[0] =~ /^-/));
+
+my $data = "";
+my @files = ();
+for (@ARGV) {
+  if (/^data=(.*)$/) {
+    $data = $1; # Currently not used!
+  } else {
+    push(@files, $_);
+  }
+}
+
+if (@files == 2) {
+  ($input, $output) = @files;
+} elsif (@files == 1) {
+  $input = $files[0];
+  $output = $input;
+  $output .= ".del" unless ($output =~ s/\.bb/\.del/);
+} elsif (@files == 0) {
+  ($input, $output) = ("-", "-");
+} else {
+  die $Usage;
+}
+
+my ($bb, $start, $end);
+
+($bb, $start, $end) = bb_read($input);
+
+#bb_write($bb, "zz0.bb");
+
+if ($output ne "-") {
+  open(OUT, ">$output") or die "Can't write to `$output': $!\n";
+  select(OUT);
+}
+
+print STDERR "SSA Preprocessing... ";
+byte_preprocess($bb);
+# Replace bx.foo by bx:
+register_preprocess($bb, \%regs);
+# This will expand ax into ax[1], ax[2] and ax[3] etc.:
+# NOTE: Currently no .dat file is being passed here:
+struct_preprocess($bb, "", $::S_Max_Fields_Expanded);
+print STDERR "\n";
+
+#bb_write($bb, "zz1.bb");
+
+#my $base;
+#($base = $input) =~ s/\.bb$//;
+#bb_callgraph($bb, {edges => "succs", output => "$base.cfg"});
+
+delete_unreachable($bb, $start, "succs");
+calculate_reverse($bb, "succs", "preds");
+delete_unreachable($bb, $end,   "preds");
+
+print STDERR "SSA bulding ADT... ";
+build_adt($bb, $start, 1);
+print STDERR "\n";
+
+# We use the cdequiv processing to reduce the size of the output.
+# If $n->{cdequiv_header} is not $n, then simply output
+# a control dependence to the cdequiv header node.
+
+print STDERR "Constructing Roman Chariots problem... ";
+my ($A, $E, $edge_index) = construct_roman_chariots($bb, $end);
+print STDERR "\n";
+
+print STDERR "Constructing APT structure... ";
+conds_preprocessing($bb, $end, $A, 1);
+print STDERR "\n";
+
+# Set up cdequiv_header and cdequiv_next keys for all nodes:
+print STDERR "Control Dependence Equivalence Classes... ";
+cdequiv_preprocessing($bb, $end, $A);
+print STDERR "\n";
+
+print STDERR "Control Dependence calculation... ";
+compute_conds($bb, $A, $E);
+print STDERR "\n";
+
+# This uses control dependencies to compute proc summaries by slicing:
+print STDERR "Computing Proc Summaries... ";
+calculate_proc_summaries($bb, $start, $end, 1);
+print STDERR "\n";
+
+print STDERR "Calculating SSA... ";
+calculate_SSA($bb, $start);
+print STDERR "\n";
+
+
+#bb_write($bb, "zz2.bb");
+
+
+print STDERR "Finding redundant assignments...\n";
+
+# Do a backwards slice on *every* assignment to a non-local variable.
+# Assignments which are not in the slice are redundant.
+
+
+# Do a backwards reachability on node/var pairs from
+# the starting points.
+# When we reach a proc call we track across the proc summary and into
+# the proc body. We never need to track out of a proc body.
+
+# Backward slices follow return nodes
+# -- from the PROC CALL 3 node to the Proc Return node
+
+my ($assign, $refs) = find_assign_refs($bb);
+
+# Set up @todo triples with all the assignments to non-local variables.
+# The call_stack entries in the @todo stack are initially
+# empty lists. These are used to record which proc bodies we have
+# entered (after tracking accross a proc call)
+# and therefore we must not leave when we reach the end of the body.
+
+my @todo = ();	# var, node, call_stack triples to track
+foreach my $n (@$bb) {
+  # Skip assignments in proc call nodes:
+  next if $n->{type} =~ /^PROC CALL /;
+  foreach my $type (qw(assigns phi)) {
+    foreach my $var (keys %{$n->{$type}}) {
+      next if $var =~ /$localre/;
+      push(@todo, $var, $n, []); ### if $var =~ /DETVAREA\[0\]__26/;
+    }
+  }
+}
+
+# Slice backwards from @todo assignments:
+my $done = slice(\@todo, $bb, $refs, $assign, 0, 1, $V);
+
+# Find all the var/node assignments which are *not* in the %done table.
+# (These will be assignments to local variables!)
+
+my $base;
+my %base_done = ();
+foreach my $n (@$bb) {
+  next if $n->{type} =~ /^PROC CALL /;
+  foreach my $var (keys %{$n->{assigns}}) {
+    next unless $$done{$var,$n};
+    ($base = $var) =~ s/(\[\d+\])?__\d+$//;
+    $base_done{$base,$n}++;
+  }
+}
+
+foreach my $n (@$bb) {
+  next if $n->{type} =~ /^PROC CALL /;
+  foreach my $var (keys %{$n->{assigns}}) {
+    ($base = $var) =~ s/(\[\d+\])?__\d+$//;
+    # Print each $base, $posn pair at most once:
+    next if $base_done{$base,$n}++;
+    print "$base $$assign{$var}{posn} $$assign{$var}{len}\n"
+      if defined($$assign{$var}{posn});
+  }
+}
+
+
+print STDERR "\n";
+

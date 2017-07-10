@@ -1,0 +1,75 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @While_To_For_In_Test() ==
+  IF @ST(@I) <> T_While
+    THEN @Fail("Current item is not a While loop")
+    ELSE @Edit;
+	 @WF_Fix;
+         IFMATCH Statement
+                  WHILE NOT EMPTY?(~?v) DO
+                    ~*S;
+                    ~?=v := TAIL(~?=v) OD
+           THEN IF @Elt_Clash?(@Elts_Assigned(@Make(T_Statements, < >, S)), @Elements(v))
+	          THEN @Fail("The variable is altered in the loop body")
+		  ELSE @Pass FI
+           ELSE @Fail("While loop is not in a suitable form") ENDMATCH;
+	 @Undo_Edit FI .;
+
+
+MW_PROC @While_To_For_In_Code(Data) ==
+  VAR < elt := @Make_Name("elt"), n := 0, v1 := < >, e := < > >:
+  @WF_Fix;
+  WHILE elt IN @Variables(@I) DO
+    n := n + 1;
+    elt := @Make_Name("elt_" ++ @String(n)) OD;
+  IFMATCH Statement
+           WHILE NOT EMPTY?(~?v) DO
+             ~*S;
+	     ~?=v := TAIL(~?=v) OD
+    THEN v1 := @Make(T_Var_Lvalue, elt, < >);
+	 e := @Make(T_Variable, elt, < >);
+	 @Paste_Over(FILL Statement FOR ~?v1 IN ~?v DO ~*S OD ENDFILL);
+         v := @Lvalue_To_Expn(v);
+         @Paste_Over(@Replace(@I, e, FILL Expression HEAD(~?v) ENDFILL));
+    ELSE ERROR("Bug in While_To_For_In!") ENDMATCH ENDVAR .;
+
+
+MW_PROC @WF_Fix() ==
+  IFMATCH Statement
+           WHILE NOT EMPTY?(~?v) DO
+             ~*S;
+             < ~*a, ~?=v := TAIL(~?=v) > OD
+    THEN IF NOT EMPTY?(a)
+           THEN S := S ++ <@Make(T_Assignment, < >, a)>;
+                @Paste_Over(FILL Statement
+                              WHILE NOT EMPTY?(~?v) DO
+                                ~*S;
+                                ~?v := TAIL(~?v) OD ENDFILL) FI ENDMATCH .;
+
+
+SKIP
+
+
+
+
+
+

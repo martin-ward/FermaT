@@ -1,0 +1,140 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+MW_PROC @Fully_Absorb_Right_Test() ==
+  IF (@GT(@I) = T_Assign) AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF @GT(@I) <> T_Statement
+    THEN @Fail("The selected item is not a Statement.")
+  ELSIF NOT @Right?
+    THEN @Fail("There is no statement to the right of this one.")
+  ELSIF @ST(@I) = T_Assignment
+    THEN @Right;
+	 IF @ST(@I) = T_Assignment AND @Trans?(TR_Absorb_Left)
+	    THEN @Pass 
+	    ELSE @Fail("An assignment can only 'absorb' another assignment") FI;
+	 @Left   
+  ELSIF @ST(@I) = T_For
+    THEN VAR < L := @Cs(@Parent), I := < > >:
+         @Right;
+         I := @Make(T_Statements, < >, L[@Posn_n .. @Size(@Parent)]);
+	 IF NOT EMPTY?(@Assigned(I) /\ @Used(I))
+	      OR NOT EMPTY?(@Stat_Types(I) /\ Call_Types_Set)
+	   THEN @Fail("A statement cannot be absorbed into a `For' if it could assign to variables it uses.")
+	   ELSE C: "The thing being assigned is OK, but is it compatible with the loop?";
+		C: "Before we go on, we need to note what variables are used in it.";
+		VAR < V := @Variables(I) >:
+		@Left;
+		VAR < L := @V(@I^1), E1 := @I^2, E2 := @I^3, E3 := @I^4, S := @Cs(@I^5) >:
+	        C: "Check that the loop doesn't use the same variables as the other statement...";
+                C: "...and check that the loop will be executed at least once.";
+                IF NOT EMPTY?(V /\ @Variables(@I^5)) OR L IN V
+                  THEN @Fail("The loop used the same variables as the other statement.")
+                ELSIF NOT ((@True?((FILL Condition ~?E3 > 0 ENDFILL)) AND
+                            @True?((FILL Condition ~?E2 >= ~?E1 ENDFILL))) OR
+                           (@True?((FILL Condition ~?E3 < 0 ENDFILL)) AND
+                            @True?((FILL Condition ~?E2 <= ~?E1 ENDFILL))))
+                  THEN @Fail("The loop won't definitely execute.")
+                  ELSE @Pass FI ENDVAR ENDVAR FI ENDVAR
+  ELSIF @ST(@I) = T_Var
+    THEN C: "Check that the statement to be absorbed doesn't use any of the local variables.";
+	 VAR < L := @Cs(@Parent), I := < >, V := @Assigned(@I^1) >:
+	 @Right;
+         I := @Make(T_Statements, < >, L[@Posn_n .. @Size(@Parent)]);
+	 IF NOT @Gen_Proper?(I, @AS_Type)
+	   THEN @Fail("Cannot absorb a non-proper statement into a simple statement")
+	 ELSIF NOT EMPTY?(V /\ @Variables(I)) OR
+	      NOT EMPTY?(@Stat_Types(I) /\ Call_Types_Set)
+	   THEN @Fail("The statement being absorbed could use some of the local variables.")
+	   ELSE @Pass FI ENDVAR
+  ELSIF @ST(@I) = T_Where
+    THEN C: "Check that the statement to be absorbed doesn't use any of the definitions.";
+	 VAR < L := @Cs(@Parent), I := < >, D := @Make_Set(MAP("@V1", @Cs(@I^2))) >:
+	 @Right;
+	 I := @Make(T_Statements, < >, L[@Posn_n .. @Size(@Parent)]);
+	 IF NOT EMPTY?(D /\ @Make_Set(MAP("HEAD", @Proc_Calls(I))
+					   ++ MAP("HEAD", @Funct_Calls(I))))
+	   THEN @Fail("The statement being absorbed uses some of the definitions.")
+	   ELSE @Pass FI ENDVAR
+  ELSIF @ST(@I) = T_While
+    THEN VAR < L := @Cs(@Parent), I := < >, V := @Assigned(@I^1) >:
+	 @Right;
+         I := @Make(T_Statements, < >, L[@Posn_n .. @Size(@Parent)]);
+	 IF NOT @Gen_Proper?(I, @AS_Type)
+	   THEN @Fail("Cannot absorb a non-proper statement into a simple statement")
+	 ELSIF NOT EMPTY?(@Assigned(I) /\ @Used(I))
+	      OR NOT EMPTY?(@Stat_Types(I) /\ Call_Types_Set)
+	   THEN @Fail("A statement cannot be absorbed into a `While' if it could assign to variables it uses.")
+	   ELSE C: "The thing being assigned is OK, but is it compatible with the loop?";
+		C: "Before we go on, we need to note what variables are used in it.";
+		VAR < V := @Variables(I), B := < > >:
+		@Left;
+		B := @I^1;
+		C: "Check that the loop doesn't use the same variables as the other statement.";
+		C: "Now check that the loop will be executed at least once.";
+		C: "This is done by looking for an assertion before the loop.";
+		IF NOT EMPTY?(V /\ @Variables(@I))
+		  THEN @Fail("The loop used the same variables as the other statement.")
+		ELSIF NOT @Left? OR @ST(@Parent^(@Posn_n - 1)) <> T_Assert
+		  THEN @Fail("There is no assertion before the loop.")
+		  ELSE @Left;
+		       C: "The assertion my imply that the loop executes at least once.";
+		       IF NOT @Implies?(@I^1, B)
+			 THEN @Fail("The assertion does not imply that the loop executes.")
+			 ELSE @Pass FI FI ENDVAR FI ENDVAR
+  ELSIF @Simple?(@I) AND @ST(@I) <> T_Exit
+    THEN @Fail("The selected statement must be non-simple, or an `EXIT' statement.")
+    ELSE @Pass FI .;
+
+
+
+MW_PROC @Fully_Absorb_Right_Code(Data) ==
+  IF (@Gen_Type(@Item) = T_Assign) AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  VAR < AS := @AS_Type >:
+  @Cut_Rest;
+  IF @ST(@I) IN  <T_For, T_Var, T_While>
+    THEN @Down_Last; @Down_Last; @Splice_After(@Buffer); @Up; @Up
+  ELSIF @Spec_Type(@Item) = T_Where
+     THEN @Down; @Down_Last; @Splice_After(@Buffer); @Up; @Up
+     ELSE FOREACH STS DO
+	    IF Depth = 0 OR (@Spec_Type(@Item) = T_Exit AND @Value(@Item) = Depth)
+	       THEN IF @Spec_Type(@Item) = T_Exit AND Depth > 0
+		       THEN @Splice_Over(@Cs(@Increment(@Make(T_Statements, < >, @Buffer),
+							AS_Type, Depth, 0)))
+		    ELSIF @Spec_Type(@Item) = T_Skip
+		       THEN @Splice_Over(@Buffer)
+		    ELSIF (@Spec_Type(@Item) = T_Exit AND Depth = 0) OR @Gen_Improper?(@Item, AS)
+		       THEN SKIP
+		    ELSIF (@Spec_Type(@Item) = T_Call AND @Value(@Item) = @Make_Name("Z"))
+		       THEN SKIP
+		       ELSE @Splice_After(@Buffer) FI FI OD;
+	  C:" If we have been merging into an `IF' statement, then we may be able to ";
+	  C:" simplify the result by aligning any nested `IF' statements. ";
+	  C:" BUT: this messes up Remove_Dummy_Loop and Double_To_Single_Loop ";
+	  C:" where we use multiple calls of Fully_Absorb_Right to make the loop ";
+	  C:" body reducible. Align_Nested_Statements can cause a later Absorb ";
+	  C:" to create multiple copies instead of just one! ";
+	  IF FALSE AND @Spec_Type(@Item) = T_Cond
+	     THEN @Down_Last;
+		  IF @Trans?(TR_Align_Nested_Statements)
+		     THEN @Trans(TR_Align_Nested_Statements, "") FI;
+		  @Up FI FI ENDVAR .
+

@@ -1,0 +1,73 @@
+#!/usr/bin/perl
+# RCS $Id: test-fermat,v 1.6 2004/03/09 10:45:30 dcs0mpw Exp $
+# Compile and run the fermat2 test scripts
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/\"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+
+sub max(@);
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [-scm|-gambit]\n";
+
+$| = 1; # Unbuffered output
+
+# Directory where the scripts are stored:
+$dir = "$FermaT${ds}test";
+chdir $dir or die "Can't chdir to $dir: $!\n";
+# Lines of log to print on failure:
+$tail = 5;
+$opt = "@ARGV";
+
+opendir(DIR, $dir) or die "Can't open test directory: $dir: $!\n";
+@files = sort(grep(/^\d\d\d.*\.wsl$/, readdir(DIR)));
+closedir(DIR);
+
+$len = max(map(length, @files)) + 3;
+
+@fail = ();
+for $file (@files) {
+  print "$file" . "." x ($len - length($file));
+  $result = run_wsl($opt, $dir, $file);
+  if ($result =~ /All tests passed/) {
+    print "ok\n";
+  } else {
+    print "FAILED! ---\n";
+    push(@fail, $file);
+    # Check if the file terminated, if so then print the last line
+    # (listing which tests failed), otherwise print the last $tail lines:
+    @result = split(/\n/, $result);
+    if ($result[-1] =~ /The following tests failed:/) {
+      print $result[-1], "\n";
+    } else {
+      print join("\n", @result[max(-$tail,-@result)..-1]), "\n";
+    }
+  }
+}
+if (@fail) {
+  print "The following files failed: ", join(" ", @fail), "\n";
+} else {
+  print "All files passed!\n";
+}
+
+exit (0);
+
+
+
+sub max(@) {
+  my(@args) = @_;
+  my($res);
+  die "max requires at least one argument!" if ($#args < 0);
+  $res = $args[0];
+  for (@args) {
+    $res = $_ if ($_ > $res);
+  }
+  return($res);
+}

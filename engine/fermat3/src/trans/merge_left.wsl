@@ -1,0 +1,61 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+MW_PROC @Merge_Left_Test () ==
+   IF (@Gen_Type(@Item) = T_Assign) AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+   IF @Gen_Type(@Item) <> T_Statement
+      THEN @Fail("The selected item is not a Statement.")
+   ELSIF NOT @Left?
+      THEN @Fail("There is no statement to the left of this one.")
+      ELSE @Left;
+	   IF @Trans?(TR_Absorb_Right)
+	      THEN @Pass
+	   ELSIF @Spec_Type(@Item) = T_Assignment
+	      THEN C: "Can we merge two assignment?";
+		   VAR <A := @Assigned(@Item), U := @Used(@Item)> :
+		       @Right;
+		       IF ((@Spec_Type(@Item) = T_Assignment) AND
+			   EMPTY?(A /\ @Variables(@Item)) AND
+			   EMPTY?(U /\ @Assigned(@Item)))
+			  THEN @Pass
+			  ELSE @Fail("The assignments were too complex (for this version).") FI ENDVAR
+	      ELSE @Fail("It was not possible to `Absorb Right' on the previous statement.") FI FI .;
+
+
+MW_PROC @Merge_Left_Code (Data) ==
+   VAR <P := < >, Span := @Span, C := < >>:
+       IF (@Gen_Type(@Item) = T_Assign) AND @Up? AND NOT @Left? AND NOT @Right?
+         THEN @Up FI;
+       @Left;
+       IF @Trans?(TR_Absorb_Right)
+	  THEN P := @Posn;
+	       DO @Trans(TR_Absorb_Right, "");
+		  @Goto(P);
+		  Span := Span - 1;
+		  IF (Span < 0) OR NOT @Trans?(TR_Absorb_Right) THEN EXIT(1) FI OD
+	  ELSE C: "We must be merging two assignments.";
+	       C := @Components(@Item);
+	       @Delete;
+	       @Down;
+	       @Splice_Before(C);
+	       @Up FI ENDVAR .
+

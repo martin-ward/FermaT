@@ -1,0 +1,5 @@
+WHILE p?(i) DO
+  IF q?(c, i)
+    THEN x := f; c := g(i) FI;
+  i := h(i) OD
+

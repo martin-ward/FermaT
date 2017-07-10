@@ -1,0 +1,41 @@
+VAR < cc := 0, len_1 := 0, len_2 := 0, destination := 0 >:
+ACTIONS _enter_:
+  _start_ == CALL Z END
+  FMT200 ==
+    C:"*         XLEVEL VL=P9"; CALL A_000000 END
+  A_000000 ==
+    C:"<FermaT> 00000012 r0 r3";
+    destination := r0;
+    r3 := 2;
+    CALL A_000002 END
+  A_000002 ==
+    C:"<FermaT> 00000014 WFIELD r3";
+    WFIELD := a[255];
+    CALL A_000008 END
+  A_000008 ==
+    C:"<FermaT> 00000015 r14";
+    destination := r14;
+    CALL dispatch END
+  _enter_ ==
+    C:" <ENTRY POINT> ";
+    C:" <NAME=FMT200> ";
+    r1 := __r1_init__;
+    r2 := __r2_init__;
+    r3 := __r3_init__;
+    r4 := __r4_init__;
+    r5 := __r5_init__;
+    r6 := __r6_init__;
+    r7 := __r7_init__;
+    r8 := __r8_init__;
+    r9 := __r9_init__;
+    r10 := __r10_init__;
+    r11 := __r11_init__;
+    r12 := __r12_init__;
+    r13 := __r13_init__;
+    r14 := __r14_init__;
+    CALL FMT200 END
+  dispatch ==
+    IF destination = 0
+      THEN CALL Z
+      ELSE C:"FIXME: Unknown destination "; CALL Z FI
+  END ENDACTIONS ENDVAR

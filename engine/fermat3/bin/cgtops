@@ -1,0 +1,87 @@
+#!/usr/bin/perl -w
+# Convert a call graph to PostScript using xvcg
+# (cf makepict)
+#
+# Usage: cgtops [-landscape|-portrait] [input] [output]
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+
+($myname = $0) =~ s|(.*/)*||;	# strip path component from name
+$Usage = "Usage: $myname [-landscape|-portrait] [input] [output]\n";
+
+@goners = ();	# Handled by fermat.pm code
+@options = ();
+$proc_num = ($$ % 32768);
+$tmp1 = "${tmpdir}v1$proc_num.vcg";
+$tmp2 = "${tmpdir}v2$proc_num.ps";
+$tmp3 = "${tmpdir}v3$proc_num.vcg";
+
+# Options processing:
+while (@ARGV && ($ARGV[0] =~ /^-/)) {
+  push(@options, shift);
+}
+if (@options) {
+  $options = join(" ", @options);
+}
+
+# Add landscape option unless portrait was specified:
+$options .= " -landscape" unless (grep { $_ eq "-portrait" } @options);
+
+# Check zero to two arguments:
+die $Usage if ($#ARGV > 1);
+
+if (@ARGV) {
+  $file = shift;
+} else {
+  # Copy stdin to a temp file:
+  open(OUT, ">$tmp1") or die "Can't write to temp file $tmp1: $!\n";
+  while(<>) {
+    print OUT;
+  }
+  close(OUT);
+  $file = $tmp1;
+  push(@goners, $file);
+}
+
+die "Can't read input file $file: $!\n" unless (-f $file);
+if (@ARGV) {
+  $output = shift;
+  $pipeout = 0;
+} else {
+  $output = $tmp2;
+  $pipeout = 1;
+  push(@goners, $output);
+}
+
+# Check if input file is already a vcg file:
+open(FILE, $file) or die "Can't read input file: $file: $!\n";
+read(FILE, $_, 8192);
+if (/graph:\s*{\s*title:\s*/) {
+  # OK, we have a vcg file
+} else {
+  # Assume it is a FermaT style call graph:
+  $vcg = $tmp3;
+  mysystem qq[cgtovcg -lr "$file" "$vcg"];
+  die "cgtovcg failed to create $vcg from $file!\n" unless (-f $vcg);
+  $file = $vcg;
+  push(@goners, $vcg);
+}
+
+unlink($output) if (-f $output);
+mysystem qq[xvcg -silent -nocolors $options -psoutput "$output" "$file"];
+die "No output file created!\n" unless (-f $output);
+if ($pipeout) {
+  open(IN, $output) or die "Can't read $output: $!\n";
+  print <IN>;
+  close(IN);
+}
+
+exit(0);

@@ -1,0 +1,315 @@
+
+VAR < file := "006-summary: ", fail := < >, n := "", a := < >, b := < > >:
+
+PRINT("Testing ...");
+
+
+n := "001";
+a := @Summarise(FILL Statements
+
+BEGIN
+  y := 1;
+  inc(2 VAR y);
+  VAR < a_save := a, b_save := b >:
+    a := b_save; b := a_save ENDVAR
+WHERE
+  PROC inc(a VAR b) ==
+    b := a END
+END
+
+ENDFILL);
+
+b := FILL Statements
+
+VAR < save__b := b >:
+y := 2; b := a; a := save__b
+ENDVAR
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE @PP_Item(@Program, 80, "");
+       PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "002";
+a := @Summarise(FILL Statements
+
+BEGIN
+  y := 1;
+  a := b;
+  b := 0;
+  b := a;
+  c := c;
+  d := dd;
+  d := d + 4;
+  inc(2 VAR y)
+WHERE
+  PROC inc(a VAR b) ==
+    b := a END
+END
+
+ENDFILL);
+b := FILL Statements
+
+a := b;
+d := dd;
+y := 2;
+WHILE !XC incr(d) DO d := d + 4 OD
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE @PP_Item(@Program, 80, "");
+       PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "003";
+a := @Summarise(FILL Statements
+
+BEGIN
+  y := 1;
+  a := b;
+  b := 0;
+  b := a;
+  c := c;
+  d := dd + 1;
+  d := d + 4;
+  dd := d;
+  d := 66 * 99;
+  inc(2 VAR y)
+WHERE
+  PROC inc(a VAR b) ==
+    b := a END
+END
+
+ENDFILL);
+b := FILL Statements
+
+!P update(d, dd VAR y, d, dd);
+a := b; y := 2
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "004";
+a := @Summarise(FILL Statements
+
+dd := d; WHILE !XC incr(d) DO d := d + 4 OD
+
+ENDFILL);
+b := FILL Statements
+
+dd := d; WHILE !XC incr(d) DO d := d + 4 OD
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "005";
+a := @Summarise(FILL Statements
+
+  dd := d;
+  d := clobber + 1;
+  d := dd;
+  d := d + 4
+
+ENDFILL);
+b := FILL Statements
+
+dd := d;
+WHILE !XC incr(d) DO d := d + 4 OD
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "006";
+a := @Summarise(FILL Statements
+
+d := dd;
+d := d + 4;
+dd := d;
+d := 66 * 99
+
+ENDFILL);
+b := FILL Statements
+
+!P update(d VAR d);
+WHILE !XC incr(dd) DO dd := dd + 4 OD
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "007";
+a := @Summarise(FILL Statements
+
+DO x := x - 1;
+   IF x = 0 THEN EXIT(1) FI OD
+
+ENDFILL);
+b := FILL Statements
+
+x := 0
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "008";
+a := @Summarise(FILL Statements
+
+DO x := x - 1; y := y - 1;
+   z := x * y;
+   IF x = 0 THEN EXIT(1) FI;
+   IF y = 0 THEN z := "foo"; EXIT(2) FI OD
+
+ENDFILL);
+b := FILL Statements
+
+IF !XC test1(y, x)
+  THEN !P update(y, x VAR y, x, z); x := 0
+  ELSE !P update(y, x VAR y, x, z);
+       z := "foo";
+       y := 0;
+       EXIT(1) FI
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!");
+       @PP_Item(@Program, 80, ""); PRINT(""); @PP_Item(b, 80, "");
+       fail := fail ++ <n> FI;
+
+
+n := "009";
+a := @Summarise(FILL Statements
+
+DO IF y = 0 THEN z := "foo"; EXIT(2) FI OD
+
+ENDFILL);
+b := FILL Statements
+
+z := "foo"; y := 0; EXIT(1)
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "010";
+a := @Summarise(FILL Statements
+
+!P foo(VAR x);
+IF exit_flag = 0 THEN x := 0 ELSE exit_flag := 1 FI
+
+ENDFILL);
+b := FILL Statements
+
+exit_flag := 0;
+x := 0
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "011";
+a := @Summarise(FILL Statements
+
+    DO AENT := r1;
+       IF r1 = a[RTCTLDS].LSTPTR
+         THEN C:"*" FI;
+       EXIT(1) OD
+
+ENDFILL);
+b := FILL Statements
+
+VAR < save__r1 := r1 >:
+!P update(a[RTCTLDS].LSTPTR, r1 VAR r1);
+AENT := save__r1 ENDVAR
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE @PP_Item(@Program, 80, "");
+       PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "012";
+a := @Summarise(FILL Statements
+
+    DO AENT := r1;
+       IF r1 = a[RTCTLDS].LSTPTR
+         THEN C:"*" FI;
+       IF x = 0 THEN EXIT(1) FI OD
+
+ENDFILL);
+b := FILL Statements
+
+!P update(a[RTCTLDS].LSTPTR, r1, x VAR r1, AENT);
+x := 0
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+
+n := "013";
+a := @Summarise(FILL Statements
+
+SKIP
+
+ENDFILL);
+b := FILL Statements
+
+SKIP
+
+ENDFILL;
+@New_Program(@Summ_To_WSL(a));
+IF @Equal?(@Program, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+

@@ -1,0 +1,334 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+MW_PROC @Move_To_Right_Test() ==
+  VAR < Bad_Types := @Make_Set(<T_MW_Proc_Call, T_X_Proc_Call, T_Proc_Call, T_Call>),
+	S1 := < >, S2 := < > >:
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF NOT @Right?
+    THEN @Fail("There is no statement to the right of this one.")
+  ELSIF @GT(@I) IN <T_Definition, T_Assign, T_Action, T_Guarded>
+    THEN @Pass
+  ELSIF @GT(@I) IN <T_Expression, T_Condition> AND @ST(@Parent) IN Comm_Ops
+    THEN C: "An expression which forms part of a commutative operation.";
+	 @Pass
+  ELSIF @GT(@I) = T_Statement 
+    THEN S1 := @I;
+	 @Right;
+	 S2 := @I;
+	 IF @ST(S1) = T_Skip OR @ST(S1) = T_Comment
+	   THEN @Pass
+         ELSIF @ST(S1) = T_Push AND @ST(S2) = T_Proc_Call
+	   THEN @MR_Push_Call_Test;
+	 ELSIF NOT EMPTY?(@Stat_Types(S1) /\ Bad_Types)
+	   THEN @Fail("Cannot move statements which have unknown side effects")
+	 ELSIF (@ST(S2) = T_Proc_Call OR @ST(S2) = T_MW_Proc_Call)
+                 AND @ST(S1) = T_Assignment AND EMPTY?(@Assigned(S1) /\ @Used(S1))
+	         AND @Size(S1) = 1
+                 AND SUBSET?(@Assigned(S1), @Used(S2))
+                 AND EMPTY?(@Assigned(S1) /\ @Assigned(S2))
+	   THEN @Pass
+         ELSIF @ST(S2) = T_Proc_Call
+	   THEN VAR < posn := @Posn, used := @Used(S1), assigned := @Assigned(S1) >:
+	        WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+		IF @ST(@I) = T_Where
+		  THEN used := @Used(@I); assigned := @Assigned(@I) FI;
+		@Goto(posn);
+		used := used \/ @Used(S2);
+		assigned := assigned \/ @Assigned(S2);
+		IF EMPTY?(@Used(S1) /\ assigned)
+		    AND EMPTY?(used /\ @Assigned(S1))
+                  THEN @Pass
+		  ELSE @Fail("Procedure might use variables in the statement") FI ENDVAR
+
+	 ELSIF @ST(S2) = T_Proc_Call OR @ST(S2) = T_MW_Proc_Call
+           THEN @Fail("Cannot move past statements with unknown side effects")
+	 ELSIF NOT EMPTY?(@Stat_Types(S2) /\ Bad_Types)
+	   THEN @Fail("Cannot move past statements which have unknown side effects")
+	 ELSIF @Gen_TVs(S1, @AS_Type) <> <0>
+	   THEN @Fail("The statement may not go on to execute the following statement.")
+	 ELSIF @Gen_TVs(S2, @AS_Type) <> <0>
+	   THEN @Fail("The second statement may cause a change in control flow.")
+
+	 ELSIF NOT @Elt_Clash_List?(@Elements(S1), @Elts_Assigned(S2))
+		 AND NOT @Elt_Clash_List?(@Elts_Assigned(S1), @Elements(S2))
+	   THEN C:" No statement clobbers the other's variables, ";
+		C:" so a simple swap is OK: ";
+		@Pass
+	 ELSIF @ST(S1) = T_Assignment
+		 AND NOT @Elt_Clash_List?(@Elts_Assigned(S1), @Elts_Assigned(S2))
+		 AND NOT @Elt_Clash_List?(@Elts_Used(S1), @Elts_Assigned(S2))
+		 AND NOT @Elt_Clash_List?(@Elts_Used(S2), @Elts_Assigned(S1))
+	   THEN IF @MR_Bad_Subexp?(@Lvalue_To_Expn(S1^1^1), S2)
+	          THEN @Fail("Assigned value has component(s) accessed")
+	          ELSE @Pass FI
+
+	 ELSIF @Elt_Clash_List?(@Elts_Used(S1), @Elts_Assigned(S1))
+		 AND @Elt_Clash_List?(@Elts_Used(S2), @Elts_Assigned(S2))
+		 AND @Elt_Clash_List?(@Elts_Used(S1), @Elts_Assigned(S2))
+		 AND @Elt_Clash_List?(@Elts_Used(S2), @Elts_Assigned(S1))
+           THEN @Fail("Each statment uses variables assigned in the other")
+
+	 ELSIF @ST(S1) = T_Assignment AND @Simple_Var_Assigns?(S1)
+		 AND NOT @Elt_Clash_List?(@Elts_Assigned(S1), @Elts_Assigned(S2))
+		 AND NOT @Elt_Clash_List?(@Elts_Used(S1), @Elts_Assigned(S2))
+	   THEN IF @MR_Bad_Subexp?(@Lvalue_To_Expn(S1^1^1), S2)
+	          THEN @Fail("Assigned value has component(s) accessed")
+	          ELSE @Pass FI
+
+	 ELSIF @ST(S2) = T_Assignment AND @Simple_Var_Assigns?(S2)
+		 AND NOT @Elt_Clash_List?(@Elts_Assigned(S1), @Elts_Assigned(S2))
+		 AND NOT @Elt_Clash_List?(@Elts_Used(S2), @Elts_Assigned(S1))
+		 AND @Invertible?(@Used(S1), @Cs(S2))
+	   THEN IF @MR_Bad_Subexp?(@Lvalue_To_Expn(S2^1^1), S1)
+	          THEN @Fail("Assigned value has component(s) accessed")
+	          ELSE @Pass FI
+
+	 ELSIF @ST(S1) = T_Assignment AND @Size(S1) = 1
+		 AND @ST(S2) = T_Assignment AND @Size(S2) = 1
+		 AND @ST(S1^1^1) = T_Var_Lvalue AND @ST(S2^1^1) = T_Var_Lvalue
+		 AND @V(S1^1^1) <> @V(S2^1^1)
+		 AND NOT EMPTY?(@Invert(@Lvalue_To_Expn(S2^1^1), @V(S1^1^1), S2^1^2))
+	   THEN IF @MR_Bad_Subexp?(@Lvalue_To_Expn(S1^1^1), S2)
+	          THEN @Fail("Assigned value has component(s) accessed")
+	          ELSE @Pass FI
+
+	   ELSE @Fail("Cannot swap two statement that change each other's variables.") FI
+     ELSE @Fail("It is not possible to move an item of the selected type.") FI ENDVAR .;
+
+
+MW_PROC @Move_To_Right_Code(Data) ==
+  VAR < S1 := < >, S2 := < >, B1 := < >, B2 := < >, B3 := < > >:
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  IF @GT(@I) = T_Guarded AND @ST(@Parent) = T_Cond
+    THEN B1 := @I^1; C:" first condition (in the guarded to be moved) ";
+	 @Cut; @Paste_After(@Buffer); @Down;
+	 B2 := @I; C:" original value of other condition ";
+	 B3 := @And(@I, @Not(B1)); C:" New value for other condition ";
+	 @Paste_Over(B3); @Up; @Right;
+	 IF @ST(B2) = T_True OR @Implies?(@Not(B3), B1)
+	   THEN @Down; @Paste_Over(@Make(T_True, < >, < >)); @Up FI
+  ELSIF @GT(@I) IN <T_Definition, T_Assign, T_Action, T_Guarded,
+		    T_Expression, T_Condition>
+    THEN @Cut; @Paste_After(@Buffer); @Right
+  ELSIF @GT(@I) = T_Statement 
+    THEN S1 := @I;
+	 @Cut;
+	 S2 := @I;
+	 IF @ST(S1) = T_Skip OR @ST(S1) = T_Comment
+	   THEN @Paste_After(@Buffer); @Right
+
+         ELSIF @ST(S1) = T_Assignment
+	         AND (@ST(S2) = T_Proc_Call OR @ST(S2) = T_MW_Proc_Call)
+           THEN @Down_To(2); C:" to expressions ";
+	        FOREACH Expression DO
+		  IF @LR_Equal?(@I, S1^1^1)
+		    THEN @Paste_Over(S1^1^2) FI OD;
+		@Up;
+                @Paste_After(@Buffer); @Right;
+	        
+	 ELSIF NOT @Elt_Clash_List?(@Elements(S1), @Elts_Assigned(S2))
+		 AND NOT @Elt_Clash_List?(@Elts_Assigned(S1), @Elements(S2))
+	   THEN C:" No statement clobbers the other's variables, ";
+		C:" so a simple swap is OK: ";
+		@Paste_After(@Buffer); @Right
+
+	 ELSIF @ST(S1) = T_Assignment
+		 AND NOT @Elt_Clash_List?(@Elts_Assigned(S1), @Elts_Assigned(S2))
+		 AND NOT @Elt_Clash_List?(@Elts_Used(S1), @Elts_Assigned(S2))
+		 AND NOT @Elt_Clash_List?(@Elts_Used(S2), @Elts_Assigned(S1))
+	   THEN @Move_Assignment_Right(S1, S2)
+
+	 ELSIF @ST(S1) = T_Assignment AND @Simple_Var_Assigns?(S1)
+		 AND NOT @Elt_Clash_List?(@Elts_Assigned(S1), @Elts_Assigned(S2))
+		 AND NOT @Elt_Clash_List?(@Elts_Used(S1), @Elts_Assigned(S2))
+	   THEN @Move_Assignment_Right(S1, S2)
+
+	 ELSIF @ST(S2) = T_Assignment AND @Simple_Var_Assigns?(S2)
+		 AND NOT @Elt_Clash_List?(@Elts_Assigned(S1), @Elts_Assigned(S2))
+		 AND NOT @Elt_Clash_List?(@Elts_Used(S2), @Elts_Assigned(S1))
+		 AND @Invertible?(@Used(S1), @Cs(S2))
+	   THEN @Move_Assignment_Left(S1, S2)
+
+	 ELSIF @ST(S1) = T_Assignment AND @Size(S1) = 1
+		 AND @ST(S2) = T_Assignment AND @Size(S2) = 1
+		 AND @ST(S1^1^1) = T_Var_Lvalue AND @ST(S2^1^1) = T_Var_Lvalue
+		 AND @V(S1^1^1) <> @V(S2^1^1)
+		 AND NOT EMPTY?(@Invert(@Lvalue_To_Expn(S2^1^1), @V(S1^1^1), S2^1^2))
+	   THEN @Swap_Assigns(S1, S2)
+
+
+	   ELSE ERROR("@Move_To_Right_Code: should never get here!") FI
+    ELSE ERROR("@Move_To_Right_Code: should never get here!") FI ENDVAR .;
+
+
+
+
+C:" S1 is the (deleted) assignment, currently S2 is selected: ";
+
+MW_PROC @Move_Assignment_Right(S1, S2) ==
+  VAR < assign := < > >:
+  C:" Replace the assigned vars by the values they will be assigned: ";
+  FOREACH Global Variable DO
+    FOR assign IN @Cs(S1) DO
+      IF @LR_Equal?(assign^1, @I)
+	THEN @Paste_Over(assign^2) FI OD OD ENDVAR;
+  @Paste_Over(@Simplify(@I, @Budget));
+  @Paste_After(S1); @Right .;
+
+
+C:" S1 is the (deleted) statement, S2 is the assignment ";
+C:" and is currently selected: ";
+
+MW_PROC @Move_Assignment_Left(S1, S2) ==
+  VAR < assign := < >, inverts := < >,
+	vars := @Used(S1), v := < > >:
+  @Paste_After(S1); @Right;
+  FOR assign IN @Cs(S2) DO
+    IF NOT EMPTY?(@Assigned(assign) /\ vars)
+      THEN inverts := <<@V(assign^1),
+			@Invert(@Lvalue_To_Expn(assign^1), @V(assign^1), assign^2)>>
+			 ++ inverts FI OD;
+  FOREACH Global Variable DO
+    IF @ST(@I) = T_Variable
+      THEN v := @V(@I);
+	   FOR assign IN inverts DO
+	     IF HEAD(assign) = v
+	       THEN @Paste_Over(assign[2]) FI OD FI OD;
+  @Paste_Over(@Simplify(@I, @Budget)) ENDVAR .;
+
+
+
+C:" Swap two single assignments which use each other's variables: ";
+C:" x := f(x, y); y := g(x)  -->  y := g(f(x, y)); x := g^{-1}_x(y) ";
+
+C:" S1 is the (deleted) assignment, currently S2 is selected: ";
+
+MW_PROC @Swap_Assigns(S1, S2) ==
+  VAR < x := S1^1^1, f := S1^1^2, y := S2^1^1, g := S2^1^2, new := < > >:
+  C:" First apply the deleted assignment S1 to S2 (currently selected): ";
+  FOREACH Global Variable DO
+    IF @LR_Equal?(x, @I)
+	THEN @Paste_Over(f) FI OD;
+  @Paste_Over(@Simplify(@I, @Budget));
+  C:" Now construct the inverse of g to recover and assign the x value: ";
+  C:" from the current y value: ";
+  new := <x, @Invert(@Make(T_Variable, @V(y), < >), @V(x), g)>;
+  @Paste_After(@Make(T_Assignment, < >, <@Make(T_Assign, < >, new)>));
+  @Paste_Over(@Simplify(@I, @Budget));
+  @Right ENDVAR .;
+    
+
+C:" Check if e appears in a struct, array ref, rel seg or sub seg in S ";
+
+MW_BFUNCT @MR_Bad_Subexp?(e, S) ==
+  VAR < bad := 0 >:
+  @Edit;
+  @New_Program(S);
+  FOREACH Expression DO
+    IF @ST(@I) = T_Struct AND @Equal?(@I^2, e)
+      THEN bad := 1
+    ELSIF @ST(@I) IN <T_Aref, T_Sub_Seg, T_Rel_Seg> AND @Equal?(@I^1, e)
+      THEN bad := 1 FI OD;
+  @Undo_Edit;
+  (bad = 1) .;
+
+C:" Check that assignments are all to simple variables ";
+
+MW_BFUNCT @Simple_Var_Assigns?(S) ==
+  VAR < OK := 1 >:
+  FOR assign IN @Cs(S) DO
+    IF @ST(assign^1) <> T_Var_Lvalue
+      THEN OK := 0 FI OD;
+  (OK = 1) .;
+
+
+
+C:" Special test case: moving a PUSH past a local procedure call ";
+C:" Find all variables used/assigned in the procedure (including called procedures) ";
+C:" Take out stacks which only appear as PUSH/POP pairs. ";
+
+MW_PROC @MR_Push_Call_Test() ==
+  VAR < OK := 1, posn := @Posn, used := < >, assigned := < >, stacks := < >,
+        notstacks := < >, types := < >, total := HASH_TABLE >:
+  WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+  IF @ST(@I) <> T_Where
+    THEN @Fail("Next statement has unknown side-effects")
+    ELSE used := @Used(@I); assigned := @Assigned(@I);
+         C:" Stacks only appear in PUSH/POP statements: never in an expression. ";
+	 notstacks := assigned \ used;
+	 FOREACH Expression DO
+	   IF @ST(@I) = T_Variable
+	     THEN notstacks := notstacks \/ <@V(@I)> FI OD;
+	 ATEACH Lvalue DO
+	   IF @ST(@I) = T_Var_Lvalue
+	     THEN IF @ST(@Parent) = T_Push AND @Posn_n = 1
+	            THEN stacks := stacks \/ <@V(@I)>
+                  ELSIF @ST(@Parent) = T_Pop AND @Posn_n = 2
+	            THEN stacks := stacks \/ <@V(@I)>
+                    ELSE notstacks := notstacks \/ <@V(@I)> FI FI OD;
+
+         stacks := stacks \ notstacks;
+
+         C:" Check that stack pushes and pops are balanced: ";
+	 FOR stack IN stacks DO total.(stack) := 0 OD;
+	 FOREACH Statements DO
+	   types := MAP("@ST", @Cs(@I));
+	   IF T_Push IN types OR T_Pop IN types
+	     THEN @Down;
+		  DO IF @ST(@I) = T_Push AND @ST(@I^1) = T_Var_Lvalue
+		          AND @V(@I^1) IN stacks
+                       THEN total.(@V(@I^1)) := total.(@V(@I^1)) + 1
+                     ELSIF @ST(@I) = T_Pop AND @ST(@I^2) = T_Var_Lvalue
+		          AND @V(@I^2) IN stacks
+                       THEN IF total.(@V(@I^2)) = 0
+		              THEN notstacks := notstacks \/ <@V(@I^2)>
+                              ELSE total.(@V(@I^2)) := total.(@V(@I^2)) - 1 FI FI;
+                     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+                  FOR stack IN stacks DO
+		    IF total.(stack) <> 0
+		      THEN notstacks := notstacks \/ <stack> FI OD FI OD;
+         stacks := stacks \ notstacks;
+	 @Goto(posn);
+
+         used := used \ stacks;
+	 assigned := assigned \ stacks;
+	 @Left; C:" to the PUSH ";
+
+         IF FALSE
+	   THEN PRINT("Balanced stacks = ", MAP("@N_String", stacks));
+	        PRINT("Call used     = ", MAP("@N_String", used));
+                PRINT("all assigned = ", MAP("@N_String", assigned));
+		PRINT("PUSH used     = ", MAP("@N_String", @Used(@I)));
+                PRINT("PUSH assigned = ", MAP("@N_String", @Assigned(@I)));
+		
+                @PP_Item(@I, 80, "") FI;
+
+	 C:" Now we know what variables are potentially modified in the call ";
+         IF EMPTY?(@Used(@I) /\ assigned) AND EMPTY?(@Assigned(@I) /\ used)
+	   THEN @Pass
+	   ELSE @Fail("The procedure call could affect the PUSH") FI FI ENDVAR .;
+
+
+
+C: "-----------------------------------------------------------------------"
+

@@ -1,0 +1,74 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2015 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Convert a proc to a function ";
+C:" Check that there is one VAR parameter. ";
+C:" If it is used before assigned, then convert it to a value parameter ";
+C:" Otherwise, keep the same value parameters. ";
+C:" Convert VAR parameter to a local variable in the assigns list. ";
+
+MW_PROC @Proc_To_Funct_Test() ==
+  IF @ST(@I) <> T_Proc
+    THEN @Fail("Current item is not a procedure definition")
+  ELSIF LENGTH(@Posn) < 2
+    THEN @Fail("Cannot move up from here to the WHERE clause")
+  ELSIF @Size(@I^3) <> 1
+    THEN @Fail("There must be exactly one VAR parameter in the definition")
+  ELSIF @ST(@I^3^1) <> T_Var_Lvalue
+    THEN @Fail("VAR parameter is not a simple variable")
+    ELSE @Pass FI .;
+
+
+MW_PROC @Proc_To_Funct_Code(Data) ==
+  VAR < name := @I^1, vals := @I^2, assigns := < >,
+        par := @I^3^1, body := @I^4, add_par := 0, posn := @Posn_n >:
+  IF @V(par) IN @UBA(body)
+    THEN C:"Par is also an input parameter";
+         add_par := 1;
+	 assigns := FILL Assigns ~?par := ~?par ENDFILL;
+         vals := @Make(T_Lvalues, < >, @Cs(vals) ++ <par>)
+    ELSE assigns := FILL Assigns ~?par := 0 ENDFILL FI;
+  @Paste_Over(@Make(T_Funct, < >, <name, vals, assigns, body, @Lvalue_To_Expn(par)>));
+
+  C:" Now fix all the calls: ";
+
+  @Up; @Up; C:" to WHERE ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_Proc_Call AND @V(@I^1) = @V(name)
+      THEN vals := @I^2;
+           par := @I^3^1;
+	   IF add_par = 1
+	     THEN vals := @Make(T_Expressions, < >,
+	                        @Cs(vals) ++ <@Lvalue_To_Expn(par)>) FI;
+           @Paste_Over(FILL Statement ~?par := 0 ENDFILL);
+	   @Down; @Down_Last;
+	   @Paste_Over(@Make(T_Funct_Call, < >, <name, vals>));
+	   @Up; @Up FI OD ENDVAR .;
+
+
+
+
+SKIP
+
+
+
+
+
+

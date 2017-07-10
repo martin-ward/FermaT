@@ -1,0 +1,105 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Double_To_Single_Loop_Test() ==
+  VAR < AS := @AS_Type >:
+  IF NOT(@ST(@I) = T_Floop AND @Size(@I^1) = 1 AND @ST(@I^1^1) = T_Floop)
+    THEN @Fail("Not a double loop")
+  ELSIF @Gen_Can_Reduce?(@I^1^1^1, AS)
+    THEN @Pass
+    ELSE @Fail("Body cannot be easily reduced") FI ENDVAR .;
+
+C:" Return TRUE if the given item can be reduced: ";
+MW_BFUNCT @Gen_Can_Reduce?(I, ASType) ==
+  VAR < N := 0, R := 1 >:
+  IF @Gen_Reducible?(I, ASType)
+    THEN R := 1
+    ELSE @Edit;
+	 @New_Program(I);
+	 ATEACH Statements DO
+	   IF Depth = 0 AND R = 1
+	     THEN @Down; C:" to first statement ";
+		  DO IF 1 IN @Gen_TVs(@I, ASType) AND @Right?
+		       THEN C:" If the next statement is an EXIT, then we are OK ";
+			    @Right;
+			    IF @ST(@I) = T_Exit AND @V(@I) > 0
+			      THEN N := -1
+			      ELSE N := 0 FI;
+			    @Left;
+			    IF N = 0
+			      THEN IF @ST(@I) = T_Cond THEN @GCR_Cond_Fix FI;
+			           ATEACH STS DO
+				     IF Depth IN @Gen_TVs(@I, ASType) 
+				       THEN N:=N+1 FI OD;
+				   IF N > 1
+				     THEN R := 0; EXIT(1) FI FI FI;
+		     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+		  @Up FI OD;
+	 @Undo_Edit FI;
+  (R = 1) .;
+
+
+MW_PROC @Double_To_Single_Loop_Code(Data) ==
+  IF @Trans?(TR_Remove_Dummy_Loop)
+    THEN @Trans(TR_Remove_Dummy_Loop, "")
+    ELSE VAR < AS := @AS_Type >:
+	 @Down; @Down; C:" to inner loop ";
+	 IF @Trans?(TR_Remove_Dummy_Loop)
+	   THEN @Trans(TR_Remove_Dummy_Loop, "")
+	   ELSE IF @Trans?(TR_Delete_Unreachable_Code)
+		  THEN @Trans(TR_Delete_Unreachable_Code, "") FI;
+		IF NOT @Gen_Reducible?(@I^1, AS)
+		  THEN PRINFLUSH(" Using absorption to reduce loop body...");
+		       ATEACH Statements DO
+			 C:" NB: Process the statements from left to right ";
+			 C:" so as to avoid absorbing in (and missing) ";
+			 C:" some statements which need processing. ";
+			 @Down_Last;
+			 DO IF Depth = 1 AND 1 IN @TVs AND @Trans?(TR_Fully_Absorb_Right)
+			      THEN PRINFLUSH("a");
+			           IF @ST(@I) = T_Cond THEN @GCR_Cond_Fix FI;
+			           @Trans(TR_Fully_Absorb_Right, "") FI;
+			    IF @Left? THEN @Left ELSE EXIT(1) FI OD OD;
+		       PRINT("") FI;
+		@Splice_Over(@Cs(@Increment(@I^1, AS, -1, 1)));
+		@Up; @Up FI ENDVAR FI .;
+
+
+C:" Fix a Cond statement to be more suitable for absorbing ";
+
+MW_PROC @GCR_Cond_Fix() ==
+  IF @ST(@I) = T_Cond AND @Size(@I) > 2
+       AND 1 IN @Gen_TVs(@I^1, ASType)
+       AND @Gen_Proper?(@I^2, ASType)
+       AND @Gen_Proper?(@I^3, ASType)
+    THEN IF @Right? AND @ST(@Parent^(@Posn_n+1)) = T_Exit AND @V(@Parent^(@Posn_n+1)) > 0
+           THEN SKIP
+	 ELSIF @Trans?(TR_Elsif_To_Else_If)
+           THEN C:" Combine the ELSIF clauses so that we can absorb ";
+	        @Trans(TR_Elsif_To_Else_If, "");
+                @Down_To(2); @Down_Last; @Down_Last;
+                @Paste_After(@Skip);
+                @Up; @Up; @Up FI FI .;
+			           
+
+SKIP
+
+

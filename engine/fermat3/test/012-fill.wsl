@@ -1,0 +1,326 @@
+
+VAR < file := "012-fill: ", fail := < >, n := "", a := < >, b := < >,
+      x := < >, y := < >, z := < >, x1 := < >, e := < >, d := < >, v := < >, v1 := < >,
+      step := < >, var := < >, final := < > >:
+
+PRINT("Testing ...");
+
+
+n := "001";
+
+x := FILL Condition TRUE ENDFILL;
+y := FILL Condition p = q ENDFILL;
+
+a := FILL Condition ~?(x) AND ~?(y) ENDFILL;
+b := FILL Condition TRUE AND p = q ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "002";
+
+x := FILL Expression q ENDFILL;
+y := FILL Expression r + 1 ENDFILL;
+
+a := FILL Condition ~?(x) = ~?(y) ENDFILL;
+b := FILL Condition q = r + 1  ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "003";
+
+x := FILL Statement foo := bar ENDFILL;
+
+a := FILL Statements ~?(x); ~?(x) ENDFILL;
+b := FILL Statements foo := bar; foo := bar ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "004";
+
+x := FILL Expression foo ENDFILL;
+
+a := FILL Statements ~?(x) := ~?(x) ENDFILL;
+b := FILL Statements foo := foo ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "005";
+
+a := FILL Statement ~?(x) := ~?(x) ENDFILL;
+b := FILL Statement foo := foo ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "006";
+
+a := FILL Assign ~?(x) := ~?(x) ENDFILL;
+b := FILL Assign foo := foo ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "007";
+
+x := FILL Assign p := q ENDFILL;
+
+a := FILL Assign ~?(x) ENDFILL;
+b := FILL Assign p := q ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "008";
+
+x := FILL Guarded p = q THEN EXIT(1) ENDFILL;
+
+a := FILL Guarded ~?(x) ENDFILL;
+b := FILL Guarded p = q  ->  EXIT(1) ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "009";
+
+x := FILL Condition p = q ENDFILL;
+y := FILL Statement EXIT(2) ENDFILL;
+
+a := FILL Guarded ~?(x) THEN ~?(y) ENDFILL;
+b := FILL Guarded p = q  ->  EXIT(2) ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "010";
+
+x := FILL Expression foo ENDFILL;
+y := FILL Expression bar ENDFILL;
+z := FILL Expression baz ENDFILL;
+
+a := FILL Guarded ~?(x) = ~?(y) THEN ~?(z) := 1 ENDFILL;
+b := FILL Guarded foo = bar  ->  baz := 1 ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+n := "011";
+
+x := FILL Condition p = q ENDFILL;
+y := FILL Statement EXIT(2) ENDFILL;
+z := <FILL Guarded r = s THEN EXIT(3) ENDFILL>;
+
+a := FILL Statement IF ~?(x) THEN ~?(y) ELSIF ~*z FI ENDFILL;
+b := FILL Statement IF p = q THEN EXIT(2) ELSIF r = s THEN EXIT(3) FI ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "012";
+
+x1 := FILL Condition r = q ENDFILL;
+
+a := FILL Statement IF ~?(x) AND ~?(x1) THEN ~?(y) ELSIF ~*z FI ENDFILL;
+b := FILL Statement IF p = q AND r = q
+                       THEN EXIT(2)
+                     ELSIF r = s
+                       THEN EXIT(3) FI ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "013";
+
+x := FILL Expression q ENDFILL;
+
+a := FILL Lvalue ~?(x).foo[bar] ENDFILL;
+b := FILL Lvalue q.foo[bar] ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE 
+
+PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "014";
+
+a := FILL Lvalue foo[~?(x).bar] ENDFILL;
+b := FILL Lvalue foo[q.bar] ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "015";
+
+x := @Name(@Make_Name("FOO"));
+y := <FILL Statement CALL BAR ENDFILL>;
+
+a := FILL Action ~?(x) == ~*(y) END ENDFILL;
+b := FILL Action FOO == CALL BAR END ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "016";
+
+x := FILL Action FOO == CALL BAR END ENDFILL;
+
+a := FILL Action ~?(x) ENDFILL;
+b := FILL Action FOO == CALL BAR END ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "017";
+
+e := <FILL Expression p ENDFILL>;
+v := <FILL Expression q ENDFILL>;
+y := @Cs(FILL Statements p := p + 1; q := q + 2 ENDFILL);
+
+a := FILL Definition PROC FOO(~*(e) VAR ~*(v)) == ~*(y) END ENDFILL;
+b := FILL Definition PROC FOO(p VAR q) == p := p + 1; q := q + 2 END ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "018";
+
+x := @Name(@Make_Name("FOO"));
+v1 := HEAD(v);
+
+a := FILL Definition PROC ~?x(~*e VAR ~?v1) == ~*y END ENDFILL;
+b := FILL Definition PROC FOO(p VAR q) == p := p + 1; q := q + 2 END ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "019";
+
+a := FILL Definition PROC ~?(x)(~*(e) VAR ~*(v)) == ~*(y) END ENDFILL;
+b := FILL Definition PROC FOO(p VAR q) == p := p + 1; q := q + 2 END ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "020";
+
+y := FILL Expression p + q ENDFILL;
+
+a := FILL Definition FUNCT ~?(x)(~*(e)) == : (~?(y)) END ENDFILL;
+b := FILL Definition FUNCT FOO(p) == VAR <  >: (p + q) END ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "021";
+
+y := FILL Condition p = q AND r = s ENDFILL;
+
+a := FILL Definition BFUNCT ~?(x)?(~*(e)) == : (~?(y)) END ENDFILL;
+b := FILL Definition BFUNCT FOO(p) == VAR <  >: (p = q AND r = s) END ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "022";
+
+a := FILL Definition BFUNCT ~?(x)(~*(e)) == : (~?(y^1)) END ENDFILL;
+b := FILL Definition BFUNCT FOO(p) == VAR <  >: (p = q) END ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "023";
+
+y := @Cs(FILL Statements p := p + 1; q := q + 2 ENDFILL);
+d := <FILL Definition PROC BAR(s) == s := s + 1 END ENDFILL>;
+
+a := FILL Definitions ~*(d) PROC FOO(~*(e) VAR ~*(v)) == ~*(y) END ENDFILL;
+b := FILL Definitions PROC BAR(s) == s := s + 1 END
+                       PROC FOO(p VAR q) == p := p + 1; q := q + 2 END ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+n := "024";
+
+step := @Make(T_Number, 1, < >);
+var := @Make(T_Variable, @Make_Name("vv"), < >);
+final := @Make(T_Number, 10, < >);
+
+a := FILL Condition
+	  ~?step > 0 AND ~?var <= ~?final OR ~?step < 0 AND ~?var >= ~?final ENDFILL;
+b := FILL Condition 1 > 0 AND vv <= 10 OR 1 < 0 AND vv >= 10 ENDFILL;
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+IF FALSE THEN
+
+n := "025";
+
+
+IF @Equal?(a, b)
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+SKIP FI;
+
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+

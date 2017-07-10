@@ -1,0 +1,251 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+MW_PROC @Merge_Calls_In_System_Test() ==
+  IF @ST(@I) <> T_A_S
+    THEN @Fail("Selected item is not an action system")
+    ELSE IF @System_Type(@I) <> "Reg"
+	   THEN @Fail("Action System is not regular")
+	 ELSIF @Size(@I^2) < 2
+	   THEN @Fail("Only one action in the system")
+	   ELSE @Pass FI FI .;
+
+
+C:" Use expansion to reduce the number of calls in an action system ";
+MW_PROC @Merge_Calls_In_System_Code(Data) ==
+  VAR < n := 0, Z := @Make_Name("Z"), P := < >, expansions := 0, loops := 0,
+	skip_st := FILL Statement SKIP ENDFILL, 
+	actions := @Cs(@I^2), action := < >, start := @V(@I^1), new := < >,
+	calls := < >, take_out := < >, ignore := < >, dispatch := @Make_Name("dispatch"),
+	rest := < >, call := < >, size := @Total_Size(@I), orig := @I >:
+  C:" Treat each action in turn ";
+  C:" (to avoid continually rebuilding the action list after each Take_Out_Right) ";
+  @Edit;
+  PRINFLUSH("Using Expansion to reduce calls... ");
+  FOR action IN actions DO
+    @New_Program(action^2);
+    loops := 0;
+    IF @V(action^1) <> dispatch
+      THEN DO expansions := 0;
+	      C:" Note we use ATEACH here because we want ";
+	      C:" to do the expansions from the top down: ";
+	      ATEACH Statements DO
+		rest := TAIL(@Cs(@I));
+		@Down;
+		DO C:" Find the next IF statement ";
+		   DO IF @ST(@I) = T_Cond AND @Size(@I) < Max_Cond_Size AND @Right?
+		        THEN EXIT(1) FI;
+		      IF NOT @Right? THEN EXIT(2) FI;
+		      rest := TAIL(rest); @Right OD;
+		   C:" Check that remaining statements in the sequence have multi-calls ";
+		   C:" and that a CALL in the IF also appears in the rest of the sequence ";
+		   IF NOT EMPTY?(@Multi_Calls(@Make(T_Statements, < >, <@I> ++ rest), 2) \ <Z>)
+			AND NOT EMPTY?((@Multi_Calls(@I, 1)
+					  /\ @Multi_Calls(@Make(T_Statements, < >, rest), 1))
+					\ <Z>)
+		     THEN C:" If only one arm is not improper then fully expand the cond. ";
+			  C:" If all arms are improper, then delete what follows. ";
+			  C:" If the next statement is a CALL, then expand anyway. ";
+			  n := 0;
+			  @Down; C:" to first arm ";
+			  DO @Down_To(2); C:" to statements ";
+			     IF NOT @Gen_Improper?(@I, "Reg") THEN n := n + 1 FI;
+			     @Up;
+			     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+			  @Up; C:" back to cond ";
+			  @Right; 
+			  IF @ST(@I) = T_Call THEN n := 0 FI;
+			  @Left;
+			  IF n <= 1 AND LENGTH(@Posn) >= 80
+			    THEN PRINFLUSH(" B1(", LENGTH(@Posn), ") ")
+			  ELSIF n <= 1 
+			    THEN PRINFLUSH("e"); expansions := expansions + 1;
+				 C:" Don't call Fully_Expand_Forwards here, since we ";
+				 C:" don't have access to the AS type at this point ";
+				 C:" -- hence code is duplicated! ";
+				 VAR < len := LENGTH(@Posn) + @Max_Pos_L(@I) >:
+				 DO IF NOT @Right? THEN EXIT(1) FI;
+				    @Right;
+				    IF len + @Max_Pos_L(@I) >= 80
+				      THEN PRINFLUSH(" B2(", len + @Max_Pos_L(@I), ") ");
+					   @Left;
+					   EXIT(1) FI;
+				    @Left;
+				    @Gen_Expand_Forward("Reg");
+				    len := LENGTH(@Posn) + @Max_Pos_L(@I) OD ENDVAR;
+				 EXIT(1) FI FI;
+		  IF @Right? THEN rest := TAIL(rest); @Right ELSE EXIT(1) FI OD;
+		@Up OD;
+	     loops := loops + 1;
+	     IF expansions = 0 OR loops > 10 THEN EXIT(1) FI OD FI;
+    new := <@Make(T_Action, < >, <action^1, @Program>)> ++ new OD;
+  PRINT("");
+  C:" New list of actions: ";
+  actions := REVERSE(new);
+
+  C:" Simplify the results: ";
+  PRINFLUSH("Deleting unreachable code... ");
+  new := < >;
+  FOR action IN actions DO
+    @New_Program(action^2);
+    IF @V(action^1) <> dispatch
+      THEN FOREACH Statements DO
+	     @Down;
+	     DO IF @Gen_Improper?(@I, "Reg") AND @Right?
+		  THEN @Delete_Rest; PRINFLUSH("x"); EXIT(1)
+		ELSIF @Right?
+		  THEN @Right
+		  ELSE EXIT(1) FI OD OD;
+	   P := @Posn;
+	   FOREACH Statement DO
+	     IF @ST(@I) = T_Cond AND @Size(@I) < Max_Cond_Size
+	       THEN IF @Trans?(TR_Simplify_Item)
+		      THEN @Trans(TR_Simplify_Item, ""); PRINFLUSH("s") FI FI OD FI;
+    new := <@Make(T_Action, < >, <action^1, @Program>)> ++ new OD;
+  C:" New list of actions: ";
+  actions := REVERSE(new);
+  PRINT("");
+
+  C:" Attempt to take out right any non-Z action calls ";
+  PRINFLUSH("Taking out calls... ");
+  C:" Don't take out Z or dispatch or any entry actions: ";
+  ignore := @Make_Set(<Z, dispatch> ++
+		      @MC_Entry_Actions(@Make(T_A_S, < >,
+					      <@Name(start),
+					       @Make(T_Actions, < >, actions)>),
+                                        1));
+  PRINT("Entry actions (not taken out) = ", MAP("@N_String", ignore[3..]));
+  loops := 0;
+  DO n := 0;
+     new := < >;
+     FOR action IN actions DO
+       @New_Program(action^2);
+       IF @V(action^1) <> dispatch
+	 THEN C:" Try to take out any action called more than once ";
+	      take_out := @Multi_Calls(@Program, 2) \ ignore;
+	      FOREACH Statement DO
+		IF @ST(@I) = T_Cond AND @Size(@I) < Max_Cond_Size
+		  THEN C:" See if there is a take_out call at the end of an arm ";
+		       C:" which can be safely taken out ";
+		       call := < >;
+		       @Down; C:" to first guarded ";
+		       DO @Down_Last; @Down_Last; C:" to last st. ";
+			  IF @ST(@I) = T_Call
+			    THEN IF EMPTY?(call) AND @V(@I) IN take_out
+				   THEN call := @I FI
+			  ELSIF NOT @Gen_Improper?(@I, "Reg")
+			    THEN call := < >; @Up; @Up; EXIT(1) FI;
+			  @Up; @Up; C:" back to guarded ";
+			  IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+		       @Up;
+		       IF NOT EMPTY?(call)
+			 THEN PRINFLUSH(@N_String(@V(call)), " ");
+			      n := n + 1;
+			      @Down; C:" to first guarded ";
+			      DO @Down_Last; @Down_Last; C:" to last st. ";
+				 IF @ST(@I) = T_Call AND @V(@I) = @V(call)
+				   THEN @Paste_Over(skip_st) FI;
+				 @Up; @Up; C:" back to guarded ";
+				 IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+			      @Up;
+			      @Paste_After(call) FI FI OD FI;
+       new := <@Make(T_Action, < >, <action^1, @Program>)> ++ new OD;
+     actions := REVERSE(new);
+     PRINT("");
+     loops := loops + 1;
+     IF loops > 100 THEN PRINT("ERROR: too many loops in Merge_Calls!!!"); EXIT(1) FI;
+     IF n = 0 THEN EXIT(1) FI OD;
+  @Undo_Edit;
+  @Paste_Over(@Make(T_A_S, < >, <@Name(start), @Make(T_Actions, < >, actions)>));
+  IF @Trans?(TR_Delete_All_Skips)
+    THEN @Trans(TR_Delete_All_Skips, "") FI;
+  IF @Total_Size(@I) > 20000 AND 2 * @Total_Size(@I) > 3 * size
+    THEN PRINT("Size has increased too much!");
+         @Paste_Over(orig) FI ENDVAR .;
+
+
+C:" Return list of actions which are called N or more times in the given item ";
+MW_FUNCT @Multi_Calls(I, N) ==
+  VAR < R := < >, calls := @Calls(I) >:
+  WHILE NOT EMPTY?(calls) DO
+    IF calls[1][2] >= N
+      THEN R := <calls[1][1]> ++ R FI;
+    calls := TAIL(calls) OD;
+  (@Make_Set(R)) .;
+
+
+
+MW_FUNCT @MC_Entry_Actions(I, push) ==
+  VAR < ignore := <@Make_Name("dispatch"), @Make_Name("Z"), @V(I^1)>, 
+	Codes := < >, code := < >, Code_Hash := HASH_TABLE,
+	Return_Regs := HASH_TABLE, Entry_Actions := < >, call := < >,
+        call_stack := @Make_Name("call_stack") >:
+  @Edit;
+  @New_Program(I);
+  C:" Absorb CALLs into IF statements before looking for subroutine calls: ";
+  FOREACH Statements DO
+    @Down;
+    DO IF NOT @Right? THEN EXIT(1) FI;
+       IF @ST(@I) = T_Cond
+         THEN @Right;
+              IF @ST(@I) = T_Call
+                THEN @Left; @Trans(TR_Absorb_Right, "") FI
+         ELSE @Right FI OD OD;
+  Codes := @Find_Dispatch_Codes(@Make_Name("dispatch"));
+  IF NOT EMPTY?(Codes)
+    THEN FOR code IN Codes DO
+	   IF code > 4 THEN Code_Hash.(code) := 1 FI OD;
+	 ATEACH Statement DO
+	   IF push = 1 AND @ST(@I) = T_Push
+	        AND @ST(@I^1) = T_Var_Lvalue AND @V(@I^1) = call_stack
+		AND @FD_Is_Code?(@I^2, Code_Hash)
+             THEN call := @FD_Find_Call(4, Code_Hash);
+	          IF NOT EMPTY?(call) AND call NOTIN ignore
+                    THEN Return_Regs.(call)
+                            := Return_Regs.(call) \/ <@V(@I^1)>;
+                         Entry_Actions := Entry_Actions \/ <call> FI
+	   ELSIF @ST(@I) = T_Assignment
+	     THEN @Down; C:" to first assign ";
+		  DO IF @ST(@I^1) = T_Var_Lvalue
+                          AND @FD_Is_Code?(@I^2, Code_Hash)
+			  AND NOT @Starts_With?(@V(@I^1), "HANDLE_")
+		       THEN call := @FD_Find_Call(4, Code_Hash);
+			    IF NOT EMPTY?(call) AND call NOTIN ignore
+			      THEN Return_Regs.(call)
+			              := Return_Regs.(call) \/ <@V(@I^1)>;
+				   Entry_Actions := Entry_Actions \/ <call> FI FI;
+		     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+		  @Up FI OD FI;
+  @Undo_Edit;
+  C:" A valid entry action must have exactly one Return_Regs entry: ";
+  FOR call IN Entry_Actions DO
+    IF LENGTH(Return_Regs.(call)) <> 1
+      THEN Entry_Actions := Entry_Actions \ <call> FI OD;
+  C:" An action with the name A_xxx is probably a fallthrough after L Rx,=A(...) ";
+  FOR call IN Entry_Actions DO
+    IF @Starts_With?(call, "A_")
+      THEN Entry_Actions := Entry_Actions \ <call> FI OD;
+  (Entry_Actions) .;
+
+
+
+SKIP
+
+

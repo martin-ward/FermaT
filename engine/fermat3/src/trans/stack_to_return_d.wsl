@@ -1,0 +1,30 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2015 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software FTo_Vaoundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+TR_Stack_To_Return:= @New_TR_Number;
+TRs_Name[TR_Stack_To_Return] := "Stack_To_Return";
+TRs_Proc_Name[TR_Stack_To_Return] := "Stack_To_Return";
+TRs_Test[TR_Stack_To_Return]:=!XF funct(@Stack_To_Return_Test);
+TRs_Code[TR_Stack_To_Return]:=!XF funct(@Stack_To_Return_Code);
+TRs_Keywords[TR_Stack_To_Return] := < "Simplify", "L_to_R", "R_to_L" >;
+TRs_Help[TR_Stack_To_Return] := "Convert stack references to a procedure return parameter"; 
+TRs_Prompt[TR_Stack_To_Return] := "";
+TRs_Data_Gen_Type[TR_Stack_To_Return] := "" 

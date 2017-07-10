@@ -1,0 +1,55 @@
+
+Formal Specification of the options file:
+
+The concise spec is given by the perl code which
+processes the options file:
+
+  while (<OPT>) {
+    next if (/^#/);
+    next unless (/^\s*(\w+)\s*=\s*(.*)$/);
+    $name = $1;
+    $value = $2;
+    $value =~ s/^\s*(.*?)\s*$/$1/;
+    die "Bad option value: $value\n"
+      unless (($value =~ /^\d+$/) || ($value =~ /^"[^"']*"$/));
+    $value =~ tr/"/'/;
+    eval qq(\$S_$name = $value);
+  }
+
+
+Translating this into English for the perl-challenged :-)
+
+(1) Any line which starts with a "#" is a comment and must be ignored;
+
+(2) Otherwise, a line consists of:
+
+<space> <keyword> <space> "=" <space> <value>
+
+where:
+
+<space> is zero or more space or tab characters,
+<keyword> is a sequence of alphanumerics and _ characters,
+<value> is either a number (non-negative integer -- ie a sequence of digits)
+	or a quoted string: "<zero or more non-" characters>"
+
+Note that <keyword> doesn't necessarily have to start with an a letter,
+(the value is assigned to perl identifier $S_<keyword>),
+but we may want to add this restriction.
+
+Perl note: although the string is double-quoted in the file, it is
+single-quoted in the assignment: ie no interpolation or interpretation
+of special characters is carried out. So there is no way at present
+to include the character " as part of a value.
+
+Currently, lines which don't start with:
+
+<space> <keyword> <space> "="
+
+are simply ignored -- we may want to flag an error for syntactically
+invalid lines.
+
+If the same keyword appears on more than one line, the last value
+takes effect (again, we may want to flag this as an error).
+
+
+			Martin

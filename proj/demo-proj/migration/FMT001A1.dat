@@ -1,0 +1,156 @@
+# Written on Sat May 31 01:14:03 2008
+
+Label_Locn fmt001a1 = 000000
+Op fmt001a1 = EXPORT
+Orig_Sequence fmt001a1 = 0
+Repeat fmt001a1 = 1
+Value fmt001a1 = 0
+
+Op CSECT001 = CSECT
+Orig_Sequence CSECT001 = 1
+Type CSECT001 = CSECT
+
+Init R0 = 0
+Label_Locn R0 = 00000
+Op R0 = EQU
+Orig_Sequence R0 = 2
+Value R0 = 0
+
+Init R1 = 1
+Label_Locn R1 = 00001
+Op R1 = EQU
+Orig_Sequence R1 = 3
+Value R1 = 1
+
+Init R2 = 2
+Label_Locn R2 = 00002
+Op R2 = EQU
+Orig_Sequence R2 = 4
+Value R2 = 2
+
+Init R3 = 3
+Label_Locn R3 = 00003
+Op R3 = EQU
+Orig_Sequence R3 = 5
+Value R3 = 3
+
+Init R4 = 4
+Label_Locn R4 = 00004
+Op R4 = EQU
+Orig_Sequence R4 = 6
+Value R4 = 4
+
+Init R5 = 5
+Label_Locn R5 = 00005
+Op R5 = EQU
+Orig_Sequence R5 = 7
+Value R5 = 5
+
+Init R6 = 6
+Label_Locn R6 = 00006
+Op R6 = EQU
+Orig_Sequence R6 = 8
+Value R6 = 6
+
+Init R7 = 7
+Label_Locn R7 = 00007
+Op R7 = EQU
+Orig_Sequence R7 = 9
+Value R7 = 7
+
+Init R8 = 8
+Label_Locn R8 = 00008
+Op R8 = EQU
+Orig_Sequence R8 = 10
+Value R8 = 8
+
+Init R9 = 9
+Label_Locn R9 = 00009
+Op R9 = EQU
+Orig_Sequence R9 = 11
+Value R9 = 9
+
+Init R10 = 10
+Label_Locn R10 = 0000A
+Op R10 = EQU
+Orig_Sequence R10 = 12
+Value R10 = A
+
+Init R11 = 11
+Label_Locn R11 = 0000B
+Op R11 = EQU
+Orig_Sequence R11 = 13
+Value R11 = B
+
+Init R12 = 12
+Label_Locn R12 = 0000C
+Op R12 = EQU
+Orig_Sequence R12 = 14
+Value R12 = C
+
+Init R13 = 13
+Label_Locn R13 = 0000D
+Op R13 = EQU
+Orig_Sequence R13 = 15
+Value R13 = D
+
+Init R14 = 14
+Label_Locn R14 = 0000E
+Op R14 = EQU
+Orig_Sequence R14 = 16
+Value R14 = E
+
+Init R15 = 15
+Label_Locn R15 = 0000F
+Op R15 = EQU
+Orig_Sequence R15 = 17
+Value R15 = F
+
+Label_Locn FMT001A1_ = 000000
+Op FMT001A1_ = CSECT
+Orig_Sequence FMT001A1_ = 18
+Type FMT001A1_ = CSECT
+Value FMT001A1_ = 0
+
+Comment WSAVE = "SAVE AREA"
+Full_Length WSAVE = 72
+Label_Locn WSAVE = 000114
+Op WSAVE = DS
+Orig_Parent WSAVE = CSECT001
+Orig_Sequence WSAVE = 19
+Repeat WSAVE = 18
+Type WSAVE = F
+Value WSAVE = 114
+
+Comment WREC = "INPUT RECORD AREA"
+Full_Length WREC = 80
+Init WREC = " "
+Label_Locn WREC = 00015C
+Op WREC = DC
+Orig_Parent WREC = CSECT001
+Orig_Sequence WREC = 20
+Repeat WREC = 1
+Type WREC = C
+Value WREC = 15C
+
+Comment WPRT = "OUTPUT PRINT AREA"
+Full_Length WPRT = 80
+Init WPRT = " "
+Label_Locn WPRT = 0001AC
+Op WPRT = DC
+Orig_Parent WPRT = CSECT001
+Orig_Sequence WPRT = 21
+Repeat WPRT = 1
+Type WPRT = C
+Value WPRT = 1AC
+
+Comment WLAST = "LAST ITEM"
+Full_Length WLAST = 20
+Init WLAST = " "
+Label_Locn WLAST = 0001FC
+Op WLAST = DC
+Orig_Parent WLAST = CSECT001
+Orig_Sequence WLAST = 22
+Repeat WLAST = 1
+Type WLAST = C
+Value WLAST = 1FC

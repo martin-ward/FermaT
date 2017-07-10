@@ -1,0 +1,100 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+C:" Convert an action system to a WHERE clause. ";
+C:" Use the variable exit_flag to indicate whether the Z action has been called. ";
+
+MW_PROC @Actions_To_Where_Test() ==
+  IF @Spec_Type(@Item) <> T_A_S
+    THEN @Fail("Not an action system.")
+    ELSE @Pass FI .; 
+
+
+MW_PROC @Actions_To_Where_Code(Data) ==
+  VAR < Z := @Make_Name("Z"), start := @V(@I^1),
+	emptyE := @Make(T_Expressions, < >, < >),
+	emptyL := @Make(T_Lvalues, < >, < >),
+	new := < >, action := < >, body := < > >:
+  IF NOT @Recursive_System?(@I)
+    THEN @AW_Make_Recursive FI;
+  C:" Convert action calls to proc calls: ";
+  FOREACH NAS DO
+    IF @ST(@I) = T_Call
+      THEN @Paste_Over(@Make(T_Proc_Call, < >, <@Name(@V(@I)), emptyE, emptyL>)) FI OD;
+  C:" Convert actions to procs: ";
+  FOR action IN @Cs(@I^2) DO
+    new := <@Make(T_Proc, < >, <@Name(@V(action^1)), emptyL, emptyL, action^2>)> ++ new OD;
+  body := @Make(T_Statements, < >, <@Make(T_Proc_Call, < >, <@Name(@V(@I^1)), emptyE, emptyL>)>);
+  @Paste_Over(@Make(T_Where, < >, <body, @Make(T_Definitions, < >, REVERSE(new))>));
+  SKIP ENDVAR .;
+
+
+
+
+C:" Convert the action system to a recursive action system ";
+C:" (ie eliminate CALL Z) by using exit_flag to indicate when Z was called ";
+C:" and interting protective IF statements where necessary. ";
+
+MW_PROC @AW_Make_Recursive() ==
+  VAR < exit_flag := @Make_Name("exit_flag"), Z := @Make_Name("Z"),
+	S := FILL Statement IF exit_flag = 0 THEN SKIP FI ENDFILL,
+	assign := FILL Statement exit_flag := 1 ENDFILL >:
+  @Down_To(2); C:" to list of actions ";
+  ATEACH NAS DO
+    IF Depth = 0 AND @Right? AND T_Call IN @Stat_Types(@I)
+      THEN C:" May need to protect the rest of the sequence ";
+	   IF @Zero_TV_Count(@I, "Rec") <= 1
+	     THEN @Trans(TR_Fully_Absorb_Right, "")
+	     ELSE @Right;
+		  IF @ST(@I) = T_Cond AND @ST(@I^1^1) = T_Equal
+		       AND @ST(@I^1^1^1) = T_Variable AND @V(@I^1^1^1) = exit_flag
+		    THEN C:" Already protected "
+		    ELSE @Left;
+			 @Cut_Rest;
+			 @Paste_After(S);
+			 @Right; @Down; @Down_To(2); C:" to statement sequence ";
+			 @Down;
+			 @Splice_Over(@Buffer);
+			 @Up; @Up FI FI FI OD;
+  C:" Replace all the CALL Zs and ensure that any calls will ";
+  C:" terminate any enclosing Floops: ";
+  FOREACH NAS DO
+    IF @ST(@I) = T_Call
+      THEN IF @V(@I) = Z
+	     THEN @Paste_Over(assign) FI;
+	   IF Depth > 0
+	     THEN @Paste_After(@Make(T_Exit, Depth, < >)) FI FI OD;
+  @Up; C:" Back to A_S ";
+  @Paste_Before(FILL Statement exit_flag := 0 ENDFILL);
+  @Right ENDVAR .;
+
+
+MW_FUNCT @Zero_TV_Count(I, ASType) ==
+  VAR < N := 0 >:
+  @Edit;
+  @New_Program(I);
+  ATEACH STS DO 
+    IF Depth IN @Gen_TVs(@I, ASType) THEN N := N + 1 FI OD;
+  @Undo_Edit;
+  (N) .;
+
+
+SKIP
+

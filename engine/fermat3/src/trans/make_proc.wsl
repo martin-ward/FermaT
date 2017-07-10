@@ -1,0 +1,359 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Make_Proc_Test() ==
+  VAR < calls := < >, tvs := < >, as := @AS_Type,
+	body := <@I>, span := @Span + 1 >:
+  IF @ST(@I) = T_Statements
+    THEN span := @Size(@I);
+         @Down;
+	 body := <@I> FI;
+  IF @ST(@I) = T_Action 
+  THEN IF @Size(@I^2) = 1 AND @ST(@I^2^1) = T_Call
+	 THEN @Fail("Cannot make an action call into a procedure call")
+       ELSIF as = "Rec" AND (EMPTY?(@Calls(@I)) OR HEAD(HEAD(@Calls(@I))) = @V(@I^1))
+         THEN @Pass
+       ELSIF as = "Reg" OR EMPTY?(@Calls(@I))
+	 THEN @Pass
+	 ELSE @Fail("The action system is not regular, or the action contains calls") FI
+  ELSIF @GT(@I) <> T_Statement
+    THEN @Fail("A procedure can only be made from an action or a list of statements")
+    ELSE C:" Test the suitability of the proposed body ";
+	 WHILE span > 1 DO
+	   @Right;
+	   body := <@I> ++ body;
+	   span := span - 1 OD;
+	 @Edit;
+	 @New_Program(@Make(T_Statements, < >, REVERSE(body)));
+	 calls := @Calls(@Program); tvs := @Gen_TVs(@Program, as);
+	 IF LENGTH(calls) > 1 
+	   THEN @Fail("The proc body calls two actions")
+	 ELSIF LENGTH(calls) = 1 
+	   THEN IF as = "Reg" AND @Regular?(@Program)
+		  THEN @Pass
+		  ELSE @Fail("The proc body has calls and is not regular") FI
+	 ELSIF tvs = <1> AND @Gen_Reducible?(@Program, as)
+	   THEN @Pass
+	 ELSIF tvs <> <0> AND NOT EMPTY?(tvs)
+	   THEN @Fail("The EXITs are unsuitable for taking out of the proposed body")
+	   ELSE @Pass FI;
+	 @Undo_Edit FI ENDVAR .;
+
+
+
+MW_PROC @Make_Proc_Code(Data) ==
+  VAR < span := @Span + 1 >:
+  IF @ST(@I) = T_Statements
+    THEN span := @Size(@I);
+         @Down FI;
+  @Make_Proc_Span(Data, span) ENDVAR .;
+
+
+MW_PROC @Make_Proc_Span(name, span) ==
+  VAR < body := <@I>, orig_posn := < >, base := "",
+	calls := < >, calls_z := < >, call := < >,
+	tvs := < >, as := @AS_Type, i := 0, tv := 0,
+	exit_flag := < >, Z := @Make_Name("Z"),
+	need_flag := 0, flag_posn := < >,
+	aname := < >, pos := < >, I := @I >:
+  IF STRING?(name) AND name <> "" THEN name := @Make_Name(name) FI;
+  IF name = "" 
+    THEN C:" Choose a suitable name for the proc: ";
+         IF @ST(@I) = T_Action
+	   THEN name := @V(@I^1)
+           ELSE name := @Make_Name("p") FI FI;
+
+  calls := @MP_Proc_Calls;
+  IF name IN calls OR name = @Make_Name("p")
+    THEN C:" Ensure that the name is unique: ";
+         i := 1;
+	 base := @N_String(name);
+         DO name := @Make_Name(base ++ "_" ++ @String(i));
+            IF name NOTIN calls THEN EXIT(1) FI;
+            i := i + 1 OD FI;
+
+  C:" Use a different exit_flag if we are in a sub action system. ";
+  WHILE @Up? AND @ST(@I) <> T_A_S DO
+    pos := <@Posn_n> ++ pos; @Up OD;
+  IF @ST(@I) <> T_A_S
+       OR @V(@I^1) = @Make_Name("_enter_")
+       OR @V(@I^1) = @Make_Name("_enter_1")
+       OR @V(@I^1) = @Make_Name("MAIN_1")
+    THEN C:" We are in the main action system: so use exit_flag ";
+         exit_flag := @Make(T_Variable, @Make_Name("exit_flag"), < >)
+
+    ELSE exit_flag := @Make(T_Variable,
+	                    @Make_Name("exit_flag_" ++ @N_String(name)),
+			    < >);
+         @Paste_Before(FILL Statement ~?exit_flag := 0 ENDFILL);
+	 flag_posn := @Posn;
+	 @Right FI;
+  WHILE NOT EMPTY?(pos) DO
+    @Down_To(HEAD(pos));
+    pos := TAIL(pos) OD;
+  orig_posn := @Posn;
+  IF @ST(@I) = T_Action AND as = "Rec"
+    THEN @Down_To(2);
+         span := @Size(@I);
+	 @Down;
+         orig_posn := @Posn;
+	 body := <@I>
+  ELSIF @ST(@I) = T_Action
+    THEN C:" Calculate how many statements can be included ";
+         C:" If the action is regular and contains calls to only one action, ";
+         C:" (plus Z perhaps) then the whole body can be used. ";
+         aname := @V(@I^1);
+         @Down_Last; C:" to statement sqce ";
+         calls := @Calls(@I);
+         calls_z := @MP_Remove_Z(calls);
+         IF LENGTH(calls) = 0 
+              OR (LENGTH(calls_z) = 0 AND @Regular?(@I))
+              OR (LENGTH(calls_z) = 1 AND calls_z[1][1] <> aname AND @Regular?(@I))
+           THEN span := @Size(@I); @Down; C:" to first statement ";
+                orig_posn := @Posn
+           ELSE @Down; C:" to first statement in body ";
+                orig_posn := @Posn;
+                span := 0;
+                DO calls := @Calls(@I);
+                   IF NOT EMPTY?(calls)
+                     THEN IF LENGTH(calls) = 1 AND @Regular?(@I)
+                            THEN span := span + 1 FI; 
+                          EXIT(1) FI;
+                   span := span + 1;
+                   IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+                @Goto(orig_posn) FI;
+         IF span = 0
+           THEN @Paste_Before(@Skip); 
+                C:" the skip is now selected ";
+                span := 1 FI;
+         body := <@I> FI;
+  C:" Check for calls in the proposed body. ";
+  C:" If necessary, merge several action calls by creating a loop ";
+  i := span;
+  WHILE i > 1 DO
+    @Right;
+    body := <@I> ++ body;
+    i := i - 1 OD;
+  @Edit;
+  @New_Program(@Make(T_Statements, < >, REVERSE(body)));
+  calls := @Calls(@Program); tvs := @Gen_TVs(@Program, as);
+  IF as = "Rec"
+    THEN tv := 0; @Undo_Edit
+  ELSIF tvs = <1> AND EMPTY?(calls)
+    THEN tv := 1; @Undo_Edit
+  ELSIF EMPTY?(calls) AND (tvs = <0> OR EMPTY?(tvs))
+    THEN tv := 0; @Undo_Edit
+  ELSIF LENGTH(@MP_Remove_Z(calls)) <= 1 AND (tvs = <Omega>)
+    THEN tv := 0;
+         IF LENGTH(calls) > 1 THEN need_flag := 1; calls := @MP_Remove_Z(calls) FI;
+         C:" Take out the call ";
+         C:" First check if the last statement in the span is the only call, ";
+         C:" if so, then we simply shorten the span ";
+         IF need_flag = 0 AND calls[1][2] = 1 AND @ST(HEAD(body)) = T_Call 
+           THEN span := span - 1; @Undo_Edit; @Goto(orig_posn)
+           ELSE C:" Update the body by creating a loop, ";
+                C:" then copy over the actual proposed body and update the span ";
+                @New_Program(@Make(T_Statements, < >,
+                                   <@Make(T_Floop, < >, <@Program>)>));
+                FOREACH Statement DO
+                  IF @ST(@I) = T_Call
+                    THEN IF need_flag = 1 AND @V(@I) = Z
+                           THEN @Paste_Before(FILL Statement
+                                                ~?exit_flag := 1 ENDFILL);
+                                @Right FI;
+                         @Paste_Over(@Make(T_Exit, Depth, < >)) FI OD;
+
+                FOREACH Statement DO
+                  IFMATCH Statement
+                      IF ~?(exit_flag) = 1 THEN ~?(exit_flag) := 1; ~*S ELSE ~*=S FI
+                    THEN @Splice_Over(S)
+                    ELSE SKIP ENDMATCH OD;
+
+                C:" Remove the newly-created loop if possible ";
+                @Down;
+                IF @Trans?(TR_Remove_Dummy_Loop)
+                  THEN @Trans(TR_Remove_Dummy_Loop, "") FI;
+                @Up;
+                call := @Make(T_Call, calls[1][1], < >);
+                IF need_flag = 1
+                  THEN call := FILL Statement
+                                 IF ~?exit_flag = 1
+                                   THEN CALL Z
+                                   ELSE ~?call FI ENDFILL FI;
+                body := @Cs(@Program) ++ <call>;
+                @Undo_Edit; @Goto(orig_posn);
+                C:" Delete all but one statement of the old body ";
+                C:" and splice over the new one ";
+                WHILE span > 1 DO
+                  @Delete; span := span - 1 OD;
+                @Splice_Over(body);
+                C:" The new span excludes the final call, of course ";
+                span := LENGTH(body) - 1 FI
+    ELSE PRINT("ERROR in Make_Proc_Code!!!");
+         PRINT("calls = ", calls, " tvs = ", tvs);
+         @PP_Item(@I, 80, "");
+         ERROR("Make_Proc_Code","Error","???") FI;
+  IF need_flag = 0 AND NOT EMPTY?(flag_posn)
+    THEN @Goto(flag_posn); @Paste_Over(@Skip) FI;
+  C:" Finally, make the procedure! ";
+  @Goto(orig_posn);
+  @Make_Proc(name, span, tv) ENDVAR .;
+
+
+C:" Make a procedure from the span statements starting at the current posn ";
+C:" If tv>0 then reduce the proc body by that amount and add an EXIT to the call ";
+
+MW_PROC @Make_Proc(name, span, tv) ==
+  PRINT("Creating procedure `", @N_String(name), "', size = ", span, ", tv = ", tv);
+  PRINT("  position = ", @Posn);
+  VAR < expns := @Make(T_Expressions, < >, < >),
+	lvalues := @Make(T_Lvalues, < >, < >),
+	orig_posn := @Posn,
+	body := <@I>, rbody := < >,
+	defn := < >, call := < >, n := 0, i := 0, where_posn := < > >:
+  IF EMPTY?(tv) THEN tv := 0 FI;
+  @Paste_Over(@Make(T_Proc_Call, < >, <@Name(name), expns, lvalues>));
+  IF tv > 0 
+    THEN @Paste_After(@Make(T_Exit, tv, < >)); @Right FI;
+  IF span > 1
+    THEN @Right; C:" to next statement in body ";
+	 i := span;
+	 WHILE i > 1 DO
+	   i := i - 1;
+	   body := <@I> ++ body;
+	   @Delete OD FI;
+  body := REVERSE(body);
+  C:" Decrement the body if required ";
+  rbody := @Make(T_Statements, < >, body);
+  IF tv > 0 THEN rbody := @Increment(rbody, as, -tv, 0) FI;
+  C:" Ensure that there is an enclosing WHERE ";
+  @MP_Ensure_Where(VAR n);
+  IF n >= 0 THEN orig_posn := orig_posn[1..n] ++ <1,1> ++ orig_posn[n+1..] FI;
+  where_posn := @Posn;
+  C:" Search for other occurrences of body, and replace by calls ";
+  PRINFLUSH("Searching for other copies of body: ");
+  FOREACH Statements DO
+    IF @Size(@I) >= LENGTH(body)
+      THEN VAR < b := body, c := @Cs(@I) >:
+	   @Down; C:" to first statement ";
+	   DO IF @Prefix_Equal?(b, c)
+		THEN C:" Found another proc body ";
+		     C:" Paste SKIPs over the body, to preserve orig_posn ";
+		     PRINFLUSH(".");
+		     @Paste_Over(@Make(T_Proc_Call, < >, <@Name(name), expns, lvalues>));
+		     i := span;
+		     IF tv > 0 AND span = 1
+		       THEN C:" Put the EXIT into an IF to preserve orig_posn ";
+			    @Paste_Cond(<@I, @Make(T_Exit, tv, < >)>)
+		     ELSIF tv > 0 
+		       THEN @Right; c := TAIL(c); i := i - 1;
+			    @Paste_Over(@Make(T_Exit, tv, < >)) FI;
+		     WHILE i > 1 DO
+		       i := i - 1;
+		       @Right; c := TAIL(c); @Paste_Over(@Skip) OD FI;
+	      IF @Right? THEN @Right; c := TAIL(c) ELSE EXIT(1) FI;
+	      IF LENGTH(c) < LENGTH(b) THEN EXIT(1) FI OD ENDVAR FI OD;
+  PRINT(" ");
+  @Goto(where_posn);
+  IF @ST(@I) <> T_Where THEN ERROR("ERROR_3 in @Make_Proc!!!") FI;
+  @Down_To(2); C:" to definitions ";
+  defn := @Make(T_Proc, < >, <@Name(name), lvalues, lvalues, rbody>);
+  IF @Size(@I) = 0 
+    THEN @Paste_Over(@Make(T_Definitions, < >, <defn>))
+    ELSE @Down_Last; @Paste_After(defn); @Right FI;
+  call := @Make(T_Proc_Call, < >, <@Name(name), expns, lvalues>);
+  FOREACH Statement DO
+    IF @ST(@I) = T_Call
+      THEN @Paste_Over(call) FI OD;
+  @Goto(orig_posn) ENDVAR .;
+
+
+MW_PROC @Paste_Cond(body) ==
+  @Paste_Over(FILL Statement IF TRUE THEN ~*body FI ENDFILL) .;
+
+
+MW_BFUNCT @Prefix_Equal?(A, B) == :
+  SKIP;
+  (EMPTY?(A) OR (NOT EMPTY?(B) AND @Equal?(HEAD(A), HEAD(B))
+		   AND @Prefix_Equal?(TAIL(A), TAIL(B)))) .;
+
+C:" Remove Z from the list of calls ";
+MW_FUNCT @MP_Remove_Z(calls) ==
+  VAR < Z := @Make_Name("Z"), R := < >, call := < > >:
+  FOR call IN calls DO
+    IF call[1] <> Z THEN R := <call> ++ R FI OD;
+  (REVERSE(R)) .;
+
+
+
+C:" Should be sitting on a statement, this proc moves to an enclosing WHERE. ";
+C:" It creates one if necessary and returns the depth at which the WHERE ";
+C:" was created in n. ";
+C:" Use n to fix a position: posn := posn[1..n] ++ <1,1> ++ posn[n..] ";
+
+MW_PROC @MP_Ensure_Where(VAR n) ==
+  VAR < orig_posn := @Posn, destination := @Make_Name("destination") >:
+  n := -1;
+  @Up; C:" to the sequence containing the call ";
+  DO IF NOT @Up? THEN EXIT(1) FI;
+     IF @ST(@I) = T_Where THEN EXIT(1) FI;
+     IF @ST(@I) = T_Var AND destination IN @Assigned(@I^1) THEN EXIT(1) FI;
+     @Up OD;
+  IF @ST(@I) = T_Var
+    THEN C:" Put the var body inside a new WHERE clause: ";
+	 @Down_To(2); C:" to the body ";
+	 n := LENGTH(@Posn);
+	 @Paste_Over(@Make(T_Statements, < >,
+			   <@Make(T_Where, < >,
+				  <@I, @Make(T_Definitions, < >, < >)>)>));
+	 @Down; C:"To the new WHERE clause "
+  ELSIF @ST(@I) <> T_Where
+    THEN C:" If the top level is a st sequence, then put it in a new where ";
+	 C:" otherwise, make a new where around the original sequence ";
+	 IF @ST(@I) <> T_Statements THEN @Goto(orig_posn); @Up FI;
+	 n := LENGTH(@Posn);
+	 IF @ST(@I) <> T_Statements THEN ERROR("ERROR_1 in @MP_Ensure_Where!!!") FI;
+	 @Paste_Over(@Make(T_Statements, < >,
+			   <@Make(T_Where, < >,
+				  <@I, @Make(T_Definitions, < >, < >)>)>));
+	 @Down; C:"To the new WHERE clause " FI;
+  IF @ST(@I) <> T_Where THEN ERROR("ERROR_2 in @MP_Ensure_Where!!!") FI ENDVAR .;
+
+
+C:" Return the set of proc calls and !P calls (to avoid name clashes): ";
+
+MW_FUNCT @MP_Proc_Calls() ==
+  VAR < calls := < >, posn := @Posn >:
+  WHILE @Up? AND @ST(@I) <> T_Where DO @Up OD;
+  calls := @Make_Set(MAP("HEAD", @Proc_Calls(@I)));
+  IF @ST(@I) = T_Where THEN calls := calls \/ @Make_Set(MAP("@V1", @Cs(@I^2))) FI;
+  @Goto(< >);
+  FOREACH Statement DO
+    IF @ST(@I) = T_A_Proc_Call
+      THEN calls := <@V(@I^1)> \/ calls FI OD;
+  @Goto(posn);
+  (calls) .;
+  
+
+
+SKIP
+
+

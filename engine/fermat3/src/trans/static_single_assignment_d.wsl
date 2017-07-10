@@ -1,0 +1,31 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+TR_Static_Single_Assignment:= @New_TR_Number;
+TRs_Name[TR_Static_Single_Assignment] := "Static_Single_Assignment";
+TRs_Proc_Name[TR_Static_Single_Assignment] := "Static_Single_Assignment";
+TRs_Test[TR_Static_Single_Assignment]:=!XF funct(@Static_Single_Assignment_Test);
+TRs_Code[TR_Static_Single_Assignment]:=!XF funct(@Static_Single_Assignment_Code);
+TRs_Keywords[TR_Static_Single_Assignment] := < "Rewrite" >;
+TRs_Help[TR_Static_Single_Assignment] := "Convert WSL code to Static Single Assignment form
+by renaming variables and adding phi function assignments."; 
+TRs_Prompt[TR_Static_Single_Assignment] := "";
+TRs_Data_Gen_Type[TR_Static_Single_Assignment] := "" 

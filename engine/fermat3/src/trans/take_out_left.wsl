@@ -1,0 +1,171 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Take_Out_Left_Test() ==
+   IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+   IF @GT(@I) <> T_Statement
+     THEN @Fail("The selected item is not a Statement.")
+   ELSIF @Left?
+     THEN @Fail("There is a statement to the left of this one.")
+   ELSIF LENGTH(@Posn) < 2
+     THEN @Fail("There is no structure out of which to take this item.")
+   ELSIF NOT EMPTY?(@Stat_Types(@I) /\ Ext_Call_Types_Set)
+     THEN @Fail("There are undetermined procedure or function calls in the selected item.")
+   ELSIF @ST(@GParent) NOTIN <T_For, T_Var, T_Where, T_While, T_Guarded, T_Floop>
+     THEN @Fail("The enclosing structure is not of a suitable type.")
+     ELSE VAR < S := @I >:
+	  @Save_State;
+	  @Delete;
+	  @Up; @Up; C:" to enclosing structure ";
+	  IF @ST(@I) = T_For
+	    THEN @Take_Out_Left_Test_For(S)
+	  ELSIF @ST(@I) = T_Var
+	    THEN @Take_Out_Left_Test_Var(S)
+	  ELSIF @ST(@I) = T_Where
+	    THEN @Take_Out_Left_Test_Where(S)
+	  ELSIF @ST(@I) = T_While
+	    THEN @Take_Out_Left_Test_While(S)
+	  ELSIF @GT(@I) = T_Guarded AND @Up? AND @ST(@Parent) <> T_D_Do
+	    THEN @Take_Out_Left_Test_Guarded(S)
+	  ELSIF @ST(@I) = T_Floop
+	    THEN @Take_Out_Left_Test_Floop(S)
+	    ELSE @Fail("The enclosing item is not of a suitable type.") FI;
+	  @Undo ENDVAR FI .;
+
+
+MW_PROC @Take_Out_Left_Test_For(S) ==
+  IF NOT EMPTY?(@Assigned(S) /\ @Used(S))
+    THEN @Fail("A statement cannot be taken out of a `For' if it could assign to variables it uses.")
+    ELSE C: "The thing being assigned is OK, but can it be taken from the loop?";
+	 VAR < L := @V(@I^1), E1 := @I^2, E2 := @I^3, E3 := @I^4, Body := @I^5,
+	       Assd := @Assigned(S) >:
+	 C: "Check that the loop doesn't use the same variables as the other statement...";
+	 C: "...and check that the loop will be executed at least once.";
+	 IF L IN @Variables(S)
+	   THEN @Fail("The statement uses the loop index.")
+	 ELSIF NOT EMPTY?(((@Used(E1) \/ @Used(E2)) \/ @Used(E3)) /\ Assd)
+	   THEN @Fail("The limits or step would be changed by the selected statement")
+	 ELSIF NOT EMPTY?(@Used(S) /\ @Assigned(Body))
+	   THEN @Fail("The statement uses variables which are changed by the loop body.")
+	 ELSIF NOT EMPTY?((Assd /\ @Assigned(Body)) /\ @Used(Body))
+	   THEN @Fail("Statement assigns to variables which are used in the loop body")
+	 ELSIF NOT ((@True?(FILL Condition ~?E3 > 0 ENDFILL) AND
+		     @True?(FILL Condition ~?E2 >= ~?E1 ENDFILL)) OR
+		    (@True?(FILL Condition ~?E3 < 0 ENDFILL) AND
+		     @True?(FILL Condition ~?E2 <= ~?E1 ENDFILL)))
+	   THEN @Fail("Cannot prove that the loop will be executed.")
+	   ELSE @Pass FI ENDVAR FI .;
+
+
+MW_PROC @Take_Out_Left_Test_Var(S) ==
+  C: "Check that the statement to be taken out doesn't use any of the local variables.";
+  VAR < Local := @Assigned(@I^1), U := @Variables(@I^1) >:
+  IF NOT EMPTY?(Local /\ @Variables(S))
+    THEN @Fail("The selected statement being uses some of the local variables.")
+  ELSIF NOT EMPTY?(U /\ @Assigned(S))
+    THEN @Fail("Some of the assigning variables are changed by the selected statement.")
+    ELSE @Pass FI ENDVAR .;
+
+
+MW_PROC @Take_Out_Left_Test_Where(S) ==
+  C: "Check that the statement to be taken out doesn't use any of the definitions.";
+  VAR < D := @Make_Set(MAP("@V1", @Cs(@I^2))) >:
+  IF NOT EMPTY?(D /\ @Make_Set(MAP("HEAD", @Proc_Calls(S)) ++ MAP("HEAD", @Funct_Calls(S))))
+    THEN @Fail("The statement being taken out uses some of the definitions.")
+    ELSE @Pass FI ENDVAR .;
+
+
+MW_PROC @Take_Out_Left_Test_While(S) ==
+  IF NOT EMPTY?(@Assigned(S) /\ @Used(S))
+    THEN @Fail("A statement cannot be taken out into a `While' if it could assign to variables it uses.")
+    ELSE C: "The thing being assigned is OK, but can it be taken from the loop?";
+	 VAR < B := @I^1 > :
+	 C: "Check that the loop doesn't use the same variables as the other statement.";
+	 C: "Now check that the loop will be executed at least once.";
+	 C: "This is done by looking for an assertion before the loop.";
+	 IF NOT EMPTY?(@Variables(S) /\ @Assigned(@I))
+	   THEN @Fail("The loop assigns to some variables used in the other statement.")
+	 ELSIF NOT @Left? OR @ST(@Parent^(@Posn_n - 1)) <> T_Assert
+	   THEN @Fail("There is no assertion before the loop.")
+	   ELSE @Left;
+		C: "The assertion my imply that the loop executes at least once.";
+		IF NOT @Implies?(@I^1, B)
+		  THEN @Fail("The assertion does not imply that the loop executes.")
+		ELSIF NOT EMPTY?(@Assigned(S) /\ @Variables(@I))
+		  THEN @Fail("The assertion could be changed by the statement being taken out.")
+		  ELSE @Pass FI FI ENDVAR FI .;
+
+
+MW_PROC @Take_Out_Left_Test_Guarded(S) ==
+  C: "This function is called with a guarded selected.";
+  VAR < P := @Posn_n, A := @Assigned(S) >:
+  IF NOT EMPTY?(@Variables(@I^1) /\ A)
+    THEN @Fail("The selected statement uses the same variables as one of the conditions.") FI;
+  WHILE NOT @Failed? AND @Left? DO
+    @Left;
+    IF NOT EMPTY?(@Variables(@I^1) /\ A)
+      THEN @Fail("The selected statement uses the same variables as one of the conditions.") FI;
+    IF NOT @Equal?(@I^2^1, S)
+      THEN @Fail("The selected statement does not begin each guard.") FI OD;
+	   @To(P);
+	   WHILE NOT @Failed? AND @Right? DO
+	     @Right;
+	     IF NOT EMPTY?(@Variables(@I^1) /\ A)
+	       THEN @Fail("The selected statement uses the same variables as one of the conditions.") FI;
+	     IF NOT @Equal?(@I^2^1, S)
+	       THEN @Fail("The selected statement does not begin each guard.") FI OD;
+    IF NOT @Failed? THEN @Pass FI ENDVAR .;
+
+
+MW_PROC @Take_Out_Left_Test_Floop(S) ==
+  IF @Gen_Proper?(S, @AS_Type)
+    THEN @Pass
+    ELSE @Fail("Statement is not a proper sequence") FI .;
+
+
+
+MW_PROC @Take_Out_Left_Code (Data) ==
+  IF @GT(@I) = T_Assign AND @Up? AND NOT @Left? AND NOT @Right? THEN @Up FI;
+  VAR < S := @I, P1 := < >, P2 := < >, P3 := < > >:
+  P1 := @Posn_n; @Up;
+  P2 := @Posn_n; @Up;
+  IF @GT(@I) = T_Guarded
+    THEN @Up;
+	 @Edit_Parent;
+	 @Down;
+	 DO @Down_Last; @Down; @Delete; @Up; @Up;
+	    IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	 @Up;
+	 @Paste_Before(S);
+	 @Right;
+	 @Fix_Cond;
+	 @End_Edit
+    ELSE @Edit_Parent;
+	 @Paste_Before(S);
+	 @Right;
+	 IF @ST(@I) = T_Floop
+	   THEN C:" Add a copy of S to the end of the loop body ";
+	        @Down; @Down_Last; @Paste_After(S); @Up; @Up FI;
+	 @Down_To(P2);
+	 @Down_To(P1);
+	 @Clever_Delete;
+	 @End_Edit FI ENDVAR .
+

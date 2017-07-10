@@ -1,0 +1,177 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans(" 1st test of `Apply To Right'",
+	    (FILL Statements {(X = 1)};
+			     IF X = 0
+				THEN A := 3
+			     ELSIF X = 1
+				THEN A := 4
+				ELSE A := 7 FI ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    (FILL Statements {(X = 1)}; A := 4 ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Apply To Right'",
+	    (FILL Statements X := 1;
+			     IF X = 0
+				THEN A := 3
+			     ELSIF X = 1
+				THEN A := 4
+				ELSE A := 7 FI ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    (FILL Statements X := 1; A := 4 ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Apply To Right'",
+	    (FILL Statements X := 1;
+			     WHILE X <> 1 DO
+				   X := X -1;
+				   Y := Y ** X OD ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    (FILL Statements X := 1; SKIP ENDFILL));
+
+
+@Test_Trans(" 4th test of `Apply To Right'",
+	    (FILL Statements X := 1;
+			     D_IF X=1  -> Y:=1
+			       [] X=2  -> Y:=2
+			       [] X=3  -> Y:=3
+			       [] X<10 -> Y:=5 FI ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    (FILL Statements X:=1;
+			     D_IF TRUE -> Y:=1
+			       [] TRUE -> Y:=5 FI ENDFILL));
+
+
+@Test_Trans(" 5th test of `Apply To Right'",
+	    (FILL Statements Y := 1;
+			     D_IF X=1  -> Y:=1
+			       [] X=2  -> Y:=2
+			       [] X=3  -> Y:=3
+			       [] X<10 -> Y:=5 FI ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans(" 6th test of `Apply To Right'",
+	    (FILL Statements X := 20;
+			     D_IF X=1  -> Y:=1
+			       [] X=2  -> Y:=2
+			       [] X=3  -> Y:=3
+			       [] X=10 -> Y:=5 FI ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    (FILL Statements X:=20; ABORT ENDFILL));
+
+
+@Test_Trans(" 7th test of `Apply To Right'",
+	    (FILL Statements X := 1;
+			     D_DO X=1  -> Y:=1
+			       [] X=2  -> Y:=2
+			       [] X=3  -> Y:=3
+			       [] X<10 -> Y:=5 OD ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    "Fail");
+
+@Test_Trans(" 8th test of `Apply To Right'",
+	    (FILL Statements X := 20;
+			     D_DO X=1  -> Y:=1
+			       [] X=2  -> Y:=2
+			       [] X=3  -> Y:=3
+			       [] X=10 -> Y:=5 OD ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    (FILL Statements X:=20; SKIP ENDFILL));
+
+
+@Test_Trans(" 9th test of `Apply To Right'",
+	    (FILL Statements WHILE X <> 20 DO X:=X+1 OD;
+			     D_DO X=1  -> Y:=1
+			       [] X=2  -> Y:=2
+			       [] X=3  -> Y:=3
+			       [] X=10 -> Y:=5 OD ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    (FILL Statements WHILE X <> 20 DO X:=X+1 OD; SKIP ENDFILL));
+
+@Test_Trans("10th test of `Apply To Right'",
+	    (FILL Statements WHILE X <> 1 DO X:=X-1 OD;
+			     D_DO X=1  -> Y:=1
+			       [] X=2  -> Y:=2
+			       [] X=3  -> Y:=3
+			       [] X<10 -> Y:=5 OD ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("11th test of `Apply To Right'",
+	    (FILL Statements IF Y=1 THEN Z:=2; EXIT(2)
+			     ELSIF Y=2 THEN Z:=3; {X=10}
+			     ELSIF Y=3 THEN Z:=4; {X>=10}
+			     ELSIF Y=4 THEN Z:=5; EXIT(1)
+			       ELSE {X=20} FI;
+			     D_DO X=1  -> Y:=1
+			       [] X=2  -> Y:=2
+			       [] X=3  -> Y:=3
+			       [] X=9  -> Y:=5 OD ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    (FILL Statements IF Y=1 THEN Z:=2; EXIT(2)
+			     ELSIF Y=2 THEN Z:=3; {X=10}
+			     ELSIF Y=3 THEN Z:=4; {X>=10}
+			     ELSIF Y=4 THEN Z:=5; EXIT(1)
+			       ELSE {X=20} FI; 
+			     SKIP ENDFILL));
+
+
+@Test_Trans("12th test of `Apply To Right'",
+	    (FILL Statements IF Y=1 THEN Z:=2; EXIT(2)
+			     ELSIF Y=2 THEN Z:=3; {X<10}
+			     ELSIF Y=3 THEN Z:=4; {X>=2}
+			     ELSIF Y=4 THEN Z:=5; EXIT(1)
+			       ELSE {X=20} FI;
+			     D_DO X=1  -> Y:=1
+			       [] X=2  -> Y:=2
+			       [] X=3  -> Y:=3
+			       [] X<10 -> Y:=5 OD ENDFILL),
+	    <1>,
+	    TR_Apply_To_Right,
+	    < >,
+	    "Fail")
+

@@ -1,0 +1,229 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans("First test of `Merge Left'",
+	    (FILL Statements J := 0; J := J + 1 ENDFILL),
+	    <1>,
+	    TR_Merge_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Second test of `Merge Left'",
+	    (FILL Statements J := 0; J := J + 1 ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    (FILL Statements J:=1 ENDFILL));
+
+
+@Test_Trans("Third test of `Merge Left'",
+	    (FILL Statements DO IF A = B
+				   THEN DO SKIP; EXIT(2) OD
+				   ELSE J := 4; EXIT(1) FI OD;
+			     J := J + 1 ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    (FILL Statements DO IF A = B
+				   THEN DO SKIP; J := J + 1; EXIT(2) OD
+				   ELSE J := 4; J := J + 1; EXIT(1) FI OD ENDFILL));
+
+
+@Test_Trans("Fourth test of `Merge Left'",
+	    (FILL Statements VAR <A := 0, B := C> :
+				 SKIP;
+				 A := A + B ENDVAR;
+			     X := A ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Fifth test of `Merge Left'",
+	    (FILL Statements VAR <A := 0, B := C> :
+				 SKIP;
+				 A := A + B ENDVAR;
+			     X := C ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    (FILL Statements VAR <A := 0, B := C> :
+				 SKIP;
+				 A := A + B;
+				 X := C ENDVAR ENDFILL));
+
+
+@Test_Trans("Sixth test of `Merge Left'",
+	    (FILL Statements BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y)
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END;
+			     IF A = 1 THEN John(2 VAR P) ELSE Mary(3 VAR Q) FI ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    (FILL Statements BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y);
+				   IF A = 1 THEN John(2 VAR P) ELSE Mary(3 VAR Q) FI
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END ENDFILL));
+
+
+@Test_Trans("Seventh test of `Merge Left'",
+	    (FILL Statements BEGIN Increment(1 VAR X);
+				   Decrement(2 VAR Y)
+			     WHERE PROC Increment(A VAR V) == V := V + A END,
+				   PROC Decrement(A VAR V) == V := V - A END
+			     END;
+			     IF A = 1 THEN John(2 VAR P) ELSE Increment(3 VAR Q) FI ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Eighth test of `Merge Left'",
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP OD;
+			     K := 1 ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP;
+				 K := 1 OD ENDFILL));
+
+
+@Test_Trans("Ninth test of `Merge Left'",
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP OD;
+			     K := K + 1 ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Tenth test of `Merge Left'",
+	    (FILL Statements FOR I := 0 TO 10 STEP 2 DO
+				 J := J + I;
+				 SKIP OD;
+			     K := I ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Eleventh test of `Merge Left'",
+	    (FILL Statements FOR I := 0 TO 10 STEP (A * B) DO
+				 J := J + I;
+				 SKIP OD;
+			     K := 1 ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Twelveth test of `Merge Left'",
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD;
+			     K := 1 ENDFILL),
+	    <3>,
+	    TR_Merge_Left,
+	    < >,
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP;
+				   K := 1 OD ENDFILL));
+
+
+@Test_Trans("Thirteenth test of `Merge Left'",
+	    (FILL Statements WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD;
+			     K := 1 ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Fourteenth test of `Merge Left'",
+	    (FILL Statements {(X <> 1)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD;
+			     K := 1 ENDFILL),
+	    <3>,
+	    TR_Merge_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Fifteenth test of `Merge Left'",
+	    (FILL Statements {(X <> 10)};
+			     WHILE X <> 10 DO
+				   X := X + A;
+				   SKIP OD;
+			     K := K + 1 ENDFILL),
+	    <3>,
+	    TR_Merge_Left,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Sixteenth test of `Merge Left'",
+	    (FILL Statements <X:=1, Y:=2>;
+			     <A:=3, B:=4> ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    (FILL Statements <A:=3, B:=4, Y:=2, X:=1> ENDFILL));
+
+
+@Test_Trans("Seventeenth test of `Merge Left'",
+	    (FILL Statements <X:=1, Y:=2>;
+			     <A:=3, Y:=J> ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    (FILL Statements <A:=3, Y:=J, X:=1> ENDFILL));
+
+
+@Test_Trans("Eighteenth test of `Merge Left'",
+	    (FILL Statements <X:=1, Y:=2>;
+			     <A:=3, J:=X> ENDFILL),
+	    <2>,
+	    TR_Merge_Left,
+	    < >,
+	    (FILL Statements <A:=3, J:=1, Y:=2, X:=1> ENDFILL))
+

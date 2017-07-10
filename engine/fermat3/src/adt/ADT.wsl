@@ -1,0 +1,520 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Functions which define the MetaWSL ADT ";
+
+C:" NOTE: these do _no_ syntax checking (for efficiency - when called by ";
+C:" a transformation, it is the transformation's responsibility to ";
+C:" ensure syntactic correctness). ";
+
+C:" TODO: Write some syntax-checking versions of the movement and selection ";
+C:" functions, which can be linked in for testing purposes ";
+
+C:" TODO: Compare the effect of storing adt_Posn and adt_Path_Items as shared lists, ";
+C:" unshared (destructively updated) lists and arrays. ";
+C:" Arrays would need to be rebuilt if they got too big! ";
+
+C:" It is the WSL to Lisp translators job to translate specified ";
+C:" WSL functions and procedures into Lisp macros. ";
+C:" Macros are: @Size, @Get_n, @Spec_Type, @ST, @Gen_Type, @GT, ";
+C:" @Value, @V, @Components, @Cs, @Components?, @Cs?, @Parent, @Posn, ";
+C:" @Posn_n, @Data, @Buffer, @Make, @Name, @Make_Name, ";
+C:" @Right?, @Right, @Left?, @Left, @Up?, @Up, @Down?, @Down, ";
+C:" @Down_To, @Down_Last, @To, @To_Last, ";
+C:" @Dtable_Get, @Dtable_Value_Part, @Dtable_Put ";
+
+C:" NB: The translator should also optimise the condition NOT EMPTY?(foo) ";
+C:" to FOO and EMPTY?(foo) to (NULL? FOO) ";
+C:" Functions which return the value of an internal variable should simply translate ";
+C:" to a direct access of the variable ";
+C:" @Make_Name(''xxx'') should be optimised at compile time -- replace by 'xxx ";
+C:" <elt> ++ list should be optimised to (cons elt list) ";
+
+C:" This has to be set here, rather than in date_find.wsl, ";
+C:" so that it doesn't get clobbered when date_find.src is dynamically loaded ";
+C:" into gambit.  It is set by the calling script when needed. ";
+
+Options_File := "options";
+
+C:" *** Internal data *** ";
+
+C:" The structure of a WSL item is either: ";
+C:" CONS(dtable, CONS(spec_type, value)) OR: ";
+C:" CONS(dtable, CONS(spec_type, component_list)) ";
+C:" NB only this file `knows' about this structure, if we change ";
+C:" the structure and change this file, then everything else should ";
+C:" still work (without even noticing!). ";
+C:" NB an item can have a value OR components, but not both. ";
+C:" In other words, only atoms have a value. ";
+
+adt_Program := < >;
+adt_Posn := < >; 		C:" TAIL(REVERSE(@Posn)) ";
+adt_Posn_n := 0;		C:" LAST(@Posn) (=0 if @Posn is empty) ";
+
+C:" Currently selected item: ";
+adt_Item := < >;	C:" @Get(@Program, @Posn) ";
+			C:" = @Program if @Posn = < > ";
+			C:" HEAD(adt_Path_Items)^HEAD(adt_Posn) otherwise ";
+
+C:" Ancestors of the selected item: <Parent, Grandparent, ...> 	";
+C:" These are the items encountered after each step on the path ";
+C:" from @Posn to the root: ";
+
+adt_Path_Items := < >;	C:" <@Get(@Program, BUTLAST(@Posn)), 		";
+			C:"  @Get(@Program, BUTLAST(BUTLAST(@Posn))), 	";
+			C:"  ...,					";
+			C:"  @Get(@Program, < >) >			";
+			C:" LAST(adt_Path_Items) = @Program		";
+			C:" LENGTH(adt_Path_Items) = LENGTH(@Posn)	";
+			C:" @Parent = HEAD(adt_Path_Items)		";
+
+C:" ??? Store the list of components to the right of adt_Item ??? ";
+C:" This makes moving @Right efficient, as well as the @Right? test! ";
+C:" Note that currently, the loop: DO ... IF @Right? THEN @Right ELSE EXIT(1) FI OD ";
+C:" is O(n^2) where n is the number of elements in the list. ";
+
+C:" If we want to make @Left efficient as well, then we need to keep a (reversed) ";
+C:" list of items to the left of adt_Item ";
+C:" @Cs(@Parent) = REVERSE(adt_Left) ++ <adt_Item> ++ adt_Right ";
+
+adt_Program_History 	:= < >;
+adt_Posn_History 	:= < >;
+adt_Command_History 	:= < >;
+adt_Program_Future 	:= < >;
+adt_Posn_Future		:= < >;
+adt_Command_Future	:= < >;
+adt_In_A_Trans		:= 0;
+adt_Data		:= < >;
+adt_Buffer		:= < >;
+adt_Edit_Program_Stack	:= < >;
+adt_Edit_Posn_Stack	:= < >;
+adt_Edit_To_Stack	:= < >;
+
+
+C:" *** Access Functions which are independent of internal data *** ";
+
+C:" See ADT2.wsl ";
+
+
+MW_FUNCT @V1(I) == : SKIP; (@V(I^1)) .;
+
+
+
+C:" *** Access Functions which use internal data *** ";
+
+MW_FUNCT @Program()  == : SKIP; (adt_Program) END;
+MW_FUNCT @Item()     == : SKIP; (adt_Item) END;
+MW_FUNCT @I()        == : SKIP; (adt_Item) END;
+
+MW_FUNCT @Parent()   == : SKIP; (HEAD(adt_Path_Items)) END;
+MW_FUNCT @GParent()  == : SKIP; (HEAD(TAIL(adt_Path_Items))) END;
+MW_FUNCT @GGParent() == : SKIP; (HEAD(TAIL(TAIL(adt_Path_Items)))) END;
+
+MW_FUNCT @Posn() == : SKIP;
+  (IF adt_Posn_n = 0 THEN < >
+		   ELSE REVERSE(<adt_Posn_n> ++ adt_Posn) FI) END;
+
+MW_FUNCT @Posn_n() == : SKIP; (adt_Posn_n) END;
+
+MW_FUNCT @Command_List() == : SKIP; (adt_Command_List) END;
+MW_FUNCT @Data()         == : SKIP; (adt_Data) END;
+MW_FUNCT @Buffer()       == : SKIP; (adt_Buffer) END;
+
+MW_FUNCT @Span()	 == : SKIP; (0) END;
+
+C:" *** Creation Functions *** ";
+
+C:"
+MW_FUNCT @Make(ST, value, comps) == : SKIP; (<< >, ST, value> ++ comps) END;
+";
+
+MW_FUNCT @Name(value) == : SKIP; (@Make(T_Name, value, < >)) END;
+
+C:" Convert a string to a symbol ";
+C:" @Make_Name -- see Macros.scm ";
+
+
+C:" *** Update Procedures *** ";
+
+C:" For the larger procedures there is a trade-off between: ";
+C:" macro definition - larger code size, avoids a function call; and ";
+C:" function definition - smaller code size, less efficient. ";
+
+MW_BFUNCT @Right?() == : SKIP; 
+  (adt_Posn_n > 0 AND adt_Posn_n < @Size(HEAD(adt_Path_Items))) END;
+
+MW_PROC @Right() == 
+  adt_Posn_n := adt_Posn_n + 1;
+  adt_Item := HEAD(adt_Path_Items)^adt_Posn_n END;
+
+MW_BFUNCT @Left?() == : SKIP; (adt_Posn_n > 1) END;
+
+MW_PROC @Left() ==
+  adt_Posn_n := adt_Posn_n - 1;
+  adt_Item := HEAD(adt_Path_Items)^adt_Posn_n END;
+
+MW_BFUNCT @Up?() == : SKIP; (adt_Posn_n > 0) END;
+
+MW_PROC @Up() ==
+  IF NOT EMPTY?(adt_Posn)
+    THEN adt_Posn_n := HEAD(adt_Posn); adt_Posn := TAIL(adt_Posn)
+    ELSE adt_Posn_n := 0 FI;
+  C:" The new @Item is the old parent: ";
+  adt_Item := HEAD(adt_Path_Items);
+  adt_Path_Items := TAIL(adt_Path_Items) END;
+
+MW_PROC @Up_To_Statement() == 
+  WHILE @Up? AND @GT(adt_Item) <> T_Statement DO @Up OD END;
+
+C:" We can move down if the current item has components: ";
+MW_BFUNCT @Down?() == : SKIP; (@Cs?(adt_Item)) END;
+
+MW_PROC @Down()	     == @Down_To(1) END;
+MW_PROC @Down_Last() == @Down_To(@Size(adt_Item)) END;
+MW_PROC @To(n)       == @Up; @Down_To(n) END;
+MW_PROC @To_Last()   == @Up; @Down_Last END;
+
+MW_PROC @Down_To(n) ==
+  IF adt_Posn_n > 0 THEN adt_Posn := <adt_Posn_n> ++ adt_Posn FI;
+  adt_Posn_n := n;
+  adt_Path_Items := <adt_Item> ++ adt_Path_Items;
+  adt_Item := adt_Item^n END;
+
+MW_PROC @Goto(posn) == 
+  adt_Posn := < >; 
+  adt_Path_Items := < >;
+  C:" Walk down from the root, rebuilding adt_Path_Items from adt_Program ";
+  adt_Item := adt_Program;
+  WHILE NOT EMPTY?(posn) AND @Cs?(adt_Item) DO
+    adt_Posn := <HEAD(posn)> ++ adt_Posn;
+    adt_Path_Items := <adt_Item> ++ adt_Path_Items;
+    adt_Item := adt_Item^HEAD(posn);
+    posn := TAIL(posn) OD;
+  IF NOT EMPTY?(adt_Posn)
+    THEN adt_Posn_n := HEAD(adt_Posn); adt_Posn := TAIL(adt_Posn)
+    ELSE adt_Posn_n := 0 FI END;
+
+
+MW_BFUNCT @Valid_Posn?(I, posn) == : SKIP;
+  (EMPTY?(posn) 
+    OR @Size(I) >= HEAD(posn) AND @Valid_Posn?(I^HEAD(posn), TAIL(posn))) END;
+
+
+C:" *** Editing Procedures *** ";
+
+C:" These will `cons up' a new program structure, built out of fragments ";
+C:" of the old one, plus possibly a new component. ";
+
+C:" @Cut and @Delete preserve adt_Posn even if the result is invalid. ";
+
+MW_PROC @Cut() == adt_Buffer := adt_Item; @Delete END;
+
+MW_PROC @Delete() ==
+  IF adt_Posn_n > 0
+    THEN C:" Build a new adt_Path_Items list (in reverse) and a new adt_Program ";
+	 VAR < parent := HEAD(adt_Path_Items) >:
+	 parent := @Make(@ST(parent), < >,
+			 @Delete_nth(@Cs(parent), adt_Posn_n));
+	 @Restore_Path_Items(parent) ENDVAR
+    ELSE C:" Delete everything: ";
+	 adt_Program := < >;
+	 adt_Item := < > FI END;
+
+
+MW_PROC @Restore_Path_Items(parent) ==
+  VAR < posn := adt_Posn, new_path := < > >:
+  DO new_path := <parent> ++ new_path;
+     adt_Path_Items := TAIL(adt_Path_Items);
+     adt_Program := parent;
+     IF EMPTY?(posn) THEN EXIT(1) FI;
+     parent := HEAD(adt_Path_Items);
+     parent := @Make(@ST(parent), < >, 
+		     @Replace_nth(@Cs(parent), HEAD(posn), adt_Program));
+     posn := TAIL(posn) OD;
+  adt_Path_Items := REVERSE(new_path);
+  IF adt_Posn_n <= @Size(HEAD(adt_Path_Items))
+    THEN adt_Item := HEAD(adt_Path_Items)^adt_Posn_n
+    ELSE adt_Item := < > FI  ENDVAR .;
+
+
+C:" NB: Check if @Delete_nth/@Replace_nth are available in Scheme. ";
+
+C:" Return a new list with the nth element of the given list removed: ";
+C:" (may assume list is not empty and n >= 1) ";
+MW_FUNCT @Delete_nth(L, n) == : SKIP;
+  (IF n = 1 THEN TAIL(L) ELSE <HEAD(L)> ++ @Delete_nth(TAIL(L), n - 1) FI) END;
+
+C:" Return a new list with the nth element of the given list replaced: ";
+C:" (may assume list is not empty and n >= 1) ";
+MW_FUNCT @Replace_nth(L, n, v) == : SKIP;
+  (IF n = 1 THEN <v> ++ TAIL(L) ELSE <HEAD(L)> ++ @Replace_nth(TAIL(L), n - 1, v) FI) END;
+
+C:" Return a new list with the nth element of the given list replaced by a list: ";
+C:" (may assume list is not empty and n >= 1) ";
+MW_FUNCT @Splice_nth(L, n, Lv) == : SKIP;
+  (IF n = 1 THEN Lv ++ TAIL(L) ELSE <HEAD(L)> ++ @Splice_nth(TAIL(L), n - 1, Lv) FI) END;
+
+C:" Return a new list with the value inserted before the nth element: ";
+MW_FUNCT @Paste_Before_nth(L, n, v) == : SKIP;
+  (IF n = 1 THEN <v> ++ L ELSE <HEAD(L)> ++ @Paste_Before_nth(TAIL(L), n - 1, v) FI) END;
+
+C:" Return a new list with the values inserted before the nth element: ";
+MW_FUNCT @Splice_Before_nth(L, n, Lv) == : SKIP;
+  (IF n = 1 THEN Lv ++ L ELSE <HEAD(L)> ++ @Splice_Before_nth(TAIL(L), n - 1, Lv) FI) END;
+
+
+C:" @Cut_Rest deletes everything to the right of the selected item, ";
+C:" preserving the selected item and the current position. ";
+C:" The sequence of deleted items is stored in adt_Buffer ";
+
+MW_PROC @Cut_Rest() ==
+  adt_Buffer := !XF nthcdr(@Posn_n, @Cs(@Parent));
+  @Delete_Rest END;
+
+C:" @Delete_Rest deletes everything to the right of the current item, ";
+C:" preserving the selected item and the current position. ";
+
+MW_PROC @Delete_Rest() ==
+  IF adt_Posn_n > 0
+    THEN C:" Build a new adt_Path_Items list (in reverse) and a new adt_Program ";
+	 VAR < parent := HEAD(adt_Path_Items) >:
+	 parent := @Make(@ST(parent), < >, 
+			 !XF firstn(adt_Posn_n, @Cs(parent)));
+	 @Restore_Path_Items(parent) ENDVAR
+    ELSE C:" Delete everything: ";
+	 adt_Program := < >;
+	 adt_Item := < > FI END;
+
+C:" @Paste_Over replaces the selected item with the given item: ";
+
+MW_PROC @Paste_Over(new) ==
+  IF EMPTY?(new) THEN ERROR("@Paste_Over called with empty item") FI;
+  IF !XC eq?(new, adt_Item)
+    THEN SKIP
+  ELSIF adt_Posn_n > 0
+    THEN C:" Build a new adt_Path_Items list (in reverse) and a new adt_Program ";
+	 VAR < parent := HEAD(adt_Path_Items) >:
+	 parent := @Make(@ST(parent), < >, 
+			 @Replace_nth(@Cs(parent), adt_Posn_n, new));
+	 @Restore_Path_Items(parent) ENDVAR
+    ELSE C:" Replace whole program ";
+	 adt_Program := new;
+	 adt_Item := new FI END;
+
+C:" @Splice_Over replaces the selected item with the given list of items: ";
+
+MW_PROC @Splice_Over(new) ==
+  IF adt_Posn_n > 0
+    THEN C:" Build a new adt_Path_Items list (in reverse) and a new adt_Program ";
+	 VAR < parent := HEAD(adt_Path_Items) >:
+	 parent := @Make(@ST(parent), < >, 
+			 @Splice_nth(@Cs(parent), adt_Posn_n, new));
+	 @Restore_Path_Items(parent) ENDVAR
+    ELSE C:" Replace whole program ";
+	 adt_Program := new;
+	 adt_Item := new FI END;
+
+
+C:" @Paste_Before inserts the given item before the selected item. ";
+C:" We may assume adt_Posn is non null. ";
+
+MW_PROC @Paste_Before(new) ==
+  IF EMPTY?(new) THEN ERROR("@Paste_Before called with empty item") FI;
+  VAR < parent := HEAD(adt_Path_Items) >:
+  parent := @Make(@ST(parent), < >, 
+		  @Paste_Before_nth(@Cs(parent), adt_Posn_n, new));
+  @Restore_Path_Items(parent) ENDVAR END;
+
+
+MW_PROC @Paste_After(new) ==
+  IF EMPTY?(new) THEN ERROR("@Paste_After called with empty item") FI;
+  VAR < parent := HEAD(adt_Path_Items) >:
+  parent := @Make(@ST(parent), < >, 
+		  @Paste_Before_nth(@Cs(parent), adt_Posn_n + 1, new));
+  @Restore_Path_Items(parent) ENDVAR END;
+
+
+MW_PROC @Splice_Before(new) ==
+  VAR < parent := HEAD(adt_Path_Items) >:
+  parent := @Make(@ST(parent), < >, 
+		  @Splice_Before_nth(@Cs(parent), adt_Posn_n, new));
+  @Restore_Path_Items(parent) ENDVAR END;
+
+MW_PROC @Splice_After(new) ==
+  VAR < parent := HEAD(adt_Path_Items) >:
+  parent := @Make(@ST(parent), < >, 
+		  @Splice_Before_nth(@Cs(parent), adt_Posn_n + 1, new));
+  @Restore_Path_Items(parent) ENDVAR END;
+
+
+
+C:" *** History and future procedures *** ";
+
+MW_PROC @Clear_State() ==
+  adt_Program_History := < >;
+  adt_Posn_History := < >;
+  adt_Command_History := < >;
+  adt_Program_Future := < >;
+  adt_Command_List := < > END;
+
+MW_PROC @Save_State() ==
+  adt_Program_Future := < >;
+  adt_Program_History := <adt_Program> ++ adt_Program_History;
+  adt_Command_History := <adt_Command_List> ++ adt_Command_History;
+  adt_Posn_History := IF adt_Posn_n > 0
+			THEN <<adt_Posn_n> ++ adt_Posn> ++ adt_Posn_History
+			ELSE << >> ++ adt_Posn_History FI END;
+
+MW_PROC @Undo() ==
+  IF NOT EMPTY?(adt_Program_History)
+    THEN adt_Program_Future := <adt_Program> ++ adt_Program_Future;
+	 adt_Posn_Future := IF adt_Posn_n > 0
+			      THEN <<adt_Posn_n> ++ adt_Posn> ++ adt_Posn_Future
+			      ELSE << >> ++ adt_Posn_Future FI;
+	 adt_Command_Future := <adt_Command_List> ++ adt_Command_Future;
+	 adt_Program := HEAD(adt_Program_History);
+	 C:" @Goto will update the related variables: ";
+	 @Goto(REVERSE(HEAD(adt_Posn_History)));
+	 adt_Command_List := HEAD(adt_Command_History);
+	 adt_Program_History := TAIL(adt_Program_History);
+	 adt_Posn_History := TAIL(adt_Posn_History);
+	 adt_Command_History := TAIL(adt_Command_History) FI END;
+	 
+
+
+MW_BFUNCT @Undoable?() == : SKIP;
+  (NOT EMPTY?(adt_Program_History)) END;
+
+
+MW_PROC @Redo() ==
+  IF NOT EMPTY?(adt_Program_Future)
+    THEN adt_Program_History := <adt_Program> ++ adt_Program_History;
+	 adt_Posn_History := IF adt_Posn_n > 0
+			     THEN <<adt_Posn_n> ++ adt_Posn> ++ adt_Posn_History
+			     ELSE << >> ++ adt_Posn_History FI;
+	 adt_Command_History := <@Command_List> ++ adt_Command_History;
+	 adt_Program := HEAD(adt_Program_Future);
+	 C:" @Goto will update the related variables: ";
+	 @Goto(HEAD(adt_Posn_Future));
+	 adt_Command_List := HEAD(adt_Command_Future);
+	 adt_Program_Future := TAIL(adt_Program_Future);
+	 adt_Posn_Future := TAIL(adt_Posn_Future);
+	 adt_Command_Future := TAIL(adt_Command_Future) FI END;
+	
+
+MW_BFUNCT @Redoable?() == : SKIP;
+  (NOT EMPTY?(adt_Program_Future)) END;
+
+
+MW_PROC @Save_Command(c) ==
+  adt_Command_List := <c> ++ adt_Command_List END;
+
+MW_PROC @Pop_Command() ==
+  adt_Command_List := TAIL(adt_Command_List) END;
+
+MW_PROC @Initialise_ADT() ==
+  adt_Program_History := < >;
+  adt_Posn_History := < >;
+  adt_Command_History := < >;
+  adt_Program_Future := < >;
+  adt_Posn_Future := < >;
+  adt_Command_Future := < >;
+  adt_Command_List := < >;
+  adt_Data := < >;
+  adt_Buffer := < >;
+  adt_Program := @Make(T_Statements, < >, <@Make(T_Stat_Pat_One, < >, < >)>);
+  @Goto(< >) END;
+
+
+MW_PROC @New_Program(I) ==
+  adt_Program := I;
+  @Goto(< >) END;
+
+MW_FUNCT @Original_Program() == : SKIP;
+  (IF NOT EMPTY?(adt_Program_History)
+     THEN LAST(adt_Program_History)
+     ELSE adt_Program FI) END;
+
+
+
+C:" *** Dtable access and update *** ";
+
+
+C:" Access Functions: ";
+C:" Get the dotted pair stored under the given name in the dtable of the given item ";
+
+MW_FUNCT @Dtable_Get(I, name) == : SKIP;
+  (@Assoc(name, HEAD(I))) END;
+
+C:" A function to return the value part of the result returned by @Dtable_Get: ";
+
+MW_FUNCT @Dtable_Value_Part(result) == : SKIP;
+  (TAIL(result)) END;
+
+C:" Update Procedures ";
+C:" Add the name value pair to the dtable of the given item. ";
+C:" This should not be called if a value is already stored under ";
+C:" that name (it is never necessary to update a value in a dtable: ";
+C:" if the item is edited, a new item is constructed with an empty dtable) ";
+
+MW_PROC @Dtable_Put(I, name, value) ==
+  !XP set_car(I, <<name> ++ value> ++ HEAD(I)) END;
+
+MW_PROC @prpr() ==
+  @Print_WSL(@Program, "") END;
+
+MW_PROC @prit() ==
+  @Print_WSL(@Item, "") END;
+
+MW_PROC @Print_WSL(I, indent) ==
+  IF @Has_Value_Type?(@ST(I))
+    THEN PRINT(indent, @Type_Name(@ST(I)), " ", @Value_String(I))
+    ELSE PRINT(indent, @Type_Name(@ST(I)));
+	 VAR < c := @Cs(I) >:
+	 WHILE NOT EMPTY?(c) DO
+	   @Print_WSL(HEAD(c), indent ++ IF @GT(I) = T_Statement THEN ":  " ELSE "   " FI);
+	   c := TAIL(c) OD ENDVAR FI END;
+
+
+
+C:" Write a WSL item in raw Scheme format (suitable for an argument to @Match): ";
+
+MW_PROC @Write_Raw_Item(I, port) ==
+  VAR < comp := < > >:
+  @Write("(() ", port); @Write(@ST(I), port);
+  IF @Has_Value_Type?(@ST(I))
+    THEN IF NOT EMPTY?(@V(I))
+	   THEN @Write(" . ", port);
+	        IF @ST(I) = T_String OR @ST(I) = T_Comment
+		  THEN @Write(Quote ++ @V(I) ++ Quote, port)
+		ELSIF @ST(I) = T_Number OR @ST(I) = T_Exit
+		  THEN @Write(@V(I), port)
+		  ELSE @Write(",(@Make_Name "
+			      ++ Quote ++ @N_String(@V(I)) ++ Quote ++ ")", port) FI FI
+    ELSE FOR comp IN @Cs(I) DO
+	   @Write(" ", port);
+	   @Write_Raw_Item(comp, port) OD FI;
+  @Write(")", port) ENDVAR .;
+
+
+
+C:" ============================================================================== "
+
+

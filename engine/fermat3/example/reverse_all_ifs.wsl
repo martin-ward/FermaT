@@ -1,0 +1,15 @@
+
+
+MW_PROC @Reverse_All_Ifs_Test() ==
+  @Pass .;
+
+
+MW_PROC @Reverse_All_Ifs_Code(Data) == 
+  FOREACH Statement DO
+    IF @Trans?(TR_Reverse_If)
+      THEN @Trans(TR_Reverse_If, "") FI OD.;
+
+SKIP
+
+
+

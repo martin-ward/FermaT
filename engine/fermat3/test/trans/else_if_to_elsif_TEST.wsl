@@ -1,0 +1,108 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+VAR <Test_Prog := (FILL Statements IF X = 0
+				      THEN X := 5
+				      ELSE IF X = 1
+					      THEN X := 6
+					   ELSIF X = 2
+					      THEN X := 0
+					      ELSE X := 3 FI FI ENDFILL)> :
+
+
+    @Test_Trans(" 1st test of `Else If To Elsif' - the whole `If' statement selected.",
+		Test_Prog,
+		<1>,
+		TR_Else_If_To_Elsif,
+		< >,
+		(FILL Statements IF X = 0
+				    THEN X := 5
+				 ELSIF X = 1
+				    THEN X := 6
+				 ELSIF X = 2
+				    THEN X := 0
+				    ELSE X := 3 FI ENDFILL));
+
+
+    @Test_Trans(" 2nd test of `Else If To Elsif' - a guard selected.",
+		Test_Prog,
+		<1, 2>,
+		TR_Else_If_To_Elsif,
+		< >,
+		(FILL Statements IF X = 0
+				    THEN X := 5
+				 ELSIF X = 1
+				    THEN X := 6
+				 ELSIF X = 2
+				    THEN X := 0
+				    ELSE X := 3 FI ENDFILL));
+
+
+    @Test_Trans(" 3rd test of `Else If To Elsif' - the `Else' has no `If' statement.",
+		(FILL Statements IF X = 0 THEN Y := 0 ELSE Y := 1 FI ENDFILL),
+		<1>,
+		TR_Else_If_To_Elsif,
+		< >,
+		"Fail");
+
+
+    @Test_Trans(" 4th test of `Else If To Elsif' - shouldn't work on the first guard.",
+		Test_Prog,
+		<1, 1>,
+		TR_Else_If_To_Elsif,
+		< >,
+		"Fail") ENDVAR;
+
+
+
+    @Test_Trans(" 5th test of `Else If To Elsif' - comments added.",
+		FILL Statements
+
+IF X = 0
+  THEN X := 5
+  ELSE C:" before ";
+       IF X = 1
+	 THEN X := 6
+       ELSIF X = 2
+	 THEN X := 0
+	 ELSE X := 3 FI;
+       C:" after " FI
+
+		ENDFILL,
+		<1, 2>,
+		TR_Else_If_To_Elsif,
+		< >,
+		FILL Statements
+
+IF X = 0
+  THEN X := 5
+ELSIF X = 1
+  THEN C:" before ";  C:" after "; X := 6
+ELSIF X = 2
+  THEN X := 0
+  ELSE X := 3 FI
+
+ENDFILL);
+
+
+SKIP
+
+
+

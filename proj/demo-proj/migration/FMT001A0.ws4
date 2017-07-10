@@ -1,0 +1,87 @@
+C:" <ENTRY POINT> ";
+C:" <NAME=FMT001A0> ";
+r1 := __r1_init__;
+r2 := __r2_init__;
+r3 := __r3_init__;
+r4 := __r4_init__;
+r5 := __r5_init__;
+r6 := __r6_init__;
+r7 := __r7_init__;
+r8 := __r8_init__;
+r9 := __r9_init__;
+r10 := __r10_init__;
+r11 := __r11_init__;
+r12 := __r12_init__;
+r13 := __r13_init__;
+r14 := __r14_init__;
+C:"*********************************************************************";
+C:"<FermaT> 00000035 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+!P push_regs(r0,
+              r1,
+              r2,
+              r3,
+              r4,
+              r5,
+              r6,
+              r7,
+              r8,
+              r9,
+              r10,
+              r11,
+              r12,
+              r13,
+              r14
+  VAR reg_stack);
+!P chain_reg( VAR r13, os);
+C:"<FermaT> 00000036 r3 r15";
+r3 := r15;
+C:"<FermaT> 00000038 WSAVE WSAVE[5] WSAVE[6] WSAVE[7] WSAVE[8] r3 r13";
+C:"<FermaT> 00000039 WSAVE r14 r3";
+r14 := !XF address_of(WSAVE);
+C:"<FermaT> 00000040 r13 r14";
+C:"<FermaT> 00000041 WSAVE r13 r3";
+r13 := !XF address_of(WSAVE);
+C:"*";
+C:"<FermaT> 00000043 WTOTAL r3";
+!P zap(!XF p_dec("hex 0x0C", "0") VAR WTOTAL);
+C:"<FermaT> 00000044 WCT r3";
+!P ap(!XF p_dec("hex 0x1C", "1") VAR WCT);
+C:"<FermaT> 00000045 WNUM r3";
+!P ap(!XF p_dec("hex 0x1C", "1") VAR WNUM);
+C:"*";
+C:"<FermaT> 00000047 r15";
+result_code := NOT_USED;
+!P FMT001A1( VAR call_macro, result_code, os);
+!P dummy( VAR regs, os);
+r15 := result_code;
+C:"<FermaT> 00000054 r15";
+result_code := NOT_USED;
+!P FMT001A2( VAR call_macro, result_code, os);
+!P dummy( VAR regs, os);
+r15 := result_code;
+C:"<FermaT> 00000061 r15";
+result_code := NOT_USED;
+!P FMT001A3( VAR call_macro, result_code, os);
+!P dummy( VAR regs, os);
+C:"*";
+C:"<FermaT> 00000072 WSAVE WSAVE[5] WSAVE[6] WSAVE[7] WSAVE[8] r13 r3";
+C:"<FermaT> 00000073 r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14";
+!P pop_regs(
+  VAR r0, r1,
+    r2,
+    r3,
+    r4,
+    r5,
+    r6,
+    r7,
+    r8,
+    r9,
+    r10,
+    r11,
+    r12,
+    r13,
+    r14,
+    reg_stack);
+C:"<FermaT> 00000074 r15";
+r15 := 0;
+C:"<FermaT> 00000075 r14"

@@ -1,0 +1,240 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Refine a specification statement. ";
+
+
+MW_PROC @Refine_Spec_Test() ==
+  IF @ST(@I) <> T_Spec
+    THEN @Fail("Not a specification statement")
+    ELSE @Pass FI .;
+
+
+
+MW_PROC @Refine_Spec_Code(Data) ==
+  C:" Things to look for: ";
+  C:" Assertion: SPEC <x>: Q AND R ENDSPEC where x' does not appear in Q ";
+  C:" Simple IF statement: SPEC <x>: (Q AND P1) OR (NOT Q AND P2) ENDSPEC ";
+  C:"   becomes: IF Q THEN SPEC <x>: P1 ENDSPEC ELSE SPEC <x>: P2 ENDSPEC ";
+  C:"   provided x' does not occur in Q ";
+  C:" Simple assignment: SPEC <x>: x' = e ENDSPEC where x' does not appear in e ";
+  C:"   Also check for parallel simple assignments ";
+
+  VAR < Budget := @String_To_Num(Data), new := < > >:
+  C:" Need at least 11 budget for @Simplify_Using: ";
+  IF Budget <= 0 THEN Budget := 30 FI;
+
+  C:" Apply Align_Nested_Statements to any cond statements generated: ";
+  @Edit;
+  @New_Program(@Make(T_Statements, < >, @Refine_Spec(@Cs(@I^1), @I^2, Budget)));
+  FOREACH Statement DO
+    IF @ST(@I) = T_Cond
+      THEN @Down;
+           DO IF @Trans?(TR_Align_Nested_Statements)
+                THEN @Trans(TR_Align_Nested_Statements, "") FI;
+              IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+           @Up FI OD;
+  @Trans(TR_Delete_All_Skips, "");
+  new := @Cs(@Program);
+  @Undo_Edit;
+  IF @GT(@I) = T_Statement AND EMPTY?(@Posn)
+    THEN @Paste_Over(@Make(T_Statements, < >, new))
+    ELSE @Splice_Over(new) FI ENDVAR .;
+
+
+C:" Takes the list of assigned vars and the condition for a spec ";
+C:" and returns the refined result as a sequence of statements ";
+
+MW_FUNCT @Refine_Spec(v, cond, Budget) ==
+  VAR < R := < >, vars := @Variables(@Make(T_Lvalues, < >, v)),
+        assert := < >, new := < > >:
+  C:" First, factor out any assertion: ";
+  IF @ST(cond) = T_And
+    THEN FOR comp IN @Cs(cond) DO
+           IF EMPTY?(vars /\ @Primed_Vars(comp))
+	     THEN assert := <comp> ++ assert
+	     ELSE new := <comp> ++ new FI OD;
+	 IF EMPTY?(assert)
+	   THEN R := @Refine_Spec_Sub1(v, @Simplify(cond, Budget), Budget)
+	   ELSE assert := @Simplify(@Make(T_And, < >, assert), Budget);
+	        R := <@Make(T_Assert, < >, <assert>)>
+		        ++ @Refine_Spec_Sub1(v,
+			                     @Simplify(@Make(T_And, < >, new), Budget),
+				             Budget) FI
+    ELSE R := @Refine_Spec_Sub1(v, @Simplify(cond, Budget), Budget) FI;
+  IF EMPTY?(R) THEN R := <@Skip> FI;
+  (R) .;
+
+
+C:" Check for refinement to an IF statement: ";
+C:" Look for Q OR (P AND B) where B doesn't contain x' ";
+C:" Check that the resulting spec statements are strictly smaller ";
+C:" Pick the candidate B which gives the smallest result ";
+
+MW_FUNCT @Refine_Spec_Sub1(v, cond, Budget) ==
+  VAR < R := < >, P := < >, Q := < >, B := < >, size := 0,
+        min_P := < >, min_Q := < >, min_B := < >, min_size := 0,
+	S1 := < >, S2 := < >, vars := @Variables(@Make(T_Lvalues, < >, v)) >:
+  IF @ST(cond) = T_Or
+    THEN FOR comp IN @Cs(cond) DO
+	   IF @ST(comp) = T_And
+             THEN FOR sub IN @Cs(comp) DO
+                    IF EMPTY?(vars /\ @Primed_Vars(sub))
+                      THEN B := <sub> ++ B FI OD FI OD;
+         FOR comp IN @Mth_Sort(B) DO
+	   P := @Simplify_Using(cond, comp, Budget);
+           Q := @Simplify_Using(cond, @Not(comp), Budget);
+	   size := @Total_Size(P) + @Total_Size(Q);
+	   IF min_size = 0 OR @Total_Size(P) + @Total_Size(Q) < min_size
+	     THEN min_B := comp; min_P := P; min_Q := Q
+	   ELSIF size = min_size AND @ST(B) = T_Equal AND @ST(min_B) <> T_Equal
+	     THEN min_B := comp; min_P := P; min_Q := Q FI OD;
+         IF NOT EMPTY?(min_B)
+	   THEN IF @Total_Size(min_P) < @Total_Size(cond)
+		     AND @Total_Size(min_Q) < @Total_Size(cond)
+                  THEN IF @ST(min_B) = T_Not_Equal
+		         THEN min_B := @Not(min_B);
+			      <min_P := min_Q, min_Q := min_P> FI;
+                       S1 := @Refine_Spec(v, @Simplify(min_P, Budget), Budget);
+		       S2 := @Refine_Spec(v, @Simplify(min_Q, Budget), Budget);
+		       R := <FILL Statement
+		             IF ~?min_B THEN ~*S1 ELSE ~*S2 FI ENDFILL>
+                  ELSE R := @Refine_Spec_Sub2(v, cond, Budget) FI
+           ELSE R := @Refine_Spec_Sub2(v, cond, Budget) FI
+    ELSE R := @Refine_Spec_Sub2(v, cond, Budget) FI;
+  (R) .;
+
+
+C:" Check for extracting a simple assignment statement. ";
+C:" After factoring out an assignment to x, remove the x var and replace x' ";
+C:" by the value we just assigned to x (since this is the only possible value) ";
+
+C:" Eg: SPEC <x>: x' = A AND (x' = B AND p > q OR r > s) ENDSPEC ";
+C:" becomes: ";
+C:" {A = B AND p > q OR r > s}; x := A ";
+
+C:" ALSO TODO: update Mth_Simplify_Using to simplify A using B OR C ";
+C:" to check if (A using B) OR (A using C) is simpler than A ";
+C:" (Do this if Budget > 10 and pass Budget DIV 2 to each half) ";
+C:" See z1.wsl ";
+
+C:" Eg: tax' = small AND income > 30000 OR income > 36075) AND tax' = big ";
+C:" Using: income <= 3000 OR income > 36075 ";
+C:" Gives: tax' = big ";
+
+MW_FUNCT @Refine_Spec_Sub2(v, cond, Budget) ==
+  VAR < R := < >, vars := @Variables(@Make(T_Lvalues, < >, v)),
+        value := HASH_TABLE, orig := cond, done := < >, new := < > >:
+
+  @Edit;
+  @New_Program(cond);
+  IF @ST(@I) = T_And THEN @Down FI;
+  DO IF @ST(@I) = T_Equal AND @ST(@I^1) = T_Primed_Var
+          AND EMPTY?(value.(@V(@I^1)))
+          AND @V(@I^1) IN vars AND EMPTY?(@Primed_Vars(@I^2) /\ vars)
+       THEN new := <@Make(T_Assign, < >, <@Make(T_Var_Lvalue, @V(@I^1), < >),
+                                          @I^2>)> ++ new;
+            done := <@V(@I^1)> \/ done;
+            value.(@V(@I^1)) := @I^2;
+            @Paste_Over(@Make(T_True, < >, < >)) FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Goto(< >);
+  IF NOT EMPTY?(new)
+    THEN C:" If there is any of the condition left, ";
+         C:" then replace any primed assigned variables by their new values ";
+         C:" and check that there are no remaining assigned vars ";
+         C:" (i.e. the result is an assertion or spec ";
+	 C:" which can preceed the assignment) ";
+         @Paste_Over(@Simplify(@I, Budget));
+         FOREACH Expression DO
+           IF @ST(@I) = T_Primed_Var AND NOT EMPTY?(value.(@V(@I)))
+             THEN @Paste_Over(value.(@V(@I))) FI OD;
+         IF NOT EMPTY?(@Primed_Vars(@I) /\ done)
+           THEN C:" Don't extract this assignment ";
+                new := < > FI FI;
+  IF NOT EMPTY?(new)
+    THEN cond := @Simplify(@Program, Budget) FI;
+  @Undo_Edit;
+
+  C:" Delete redundant assignments: ";
+  VAR < tmp := new >:
+    new := < >;
+    FOR assign IN tmp DO
+      IF NOT @LR_Equal?(assign^1, assign^2)
+        THEN new := <assign> ++ new FI OD ENDVAR;
+  IF NOT EMPTY?(new)
+    THEN R := <@Make(T_Assignment, < >, new)> FI;
+  IF @ST(cond) = T_True
+    THEN SKIP
+  ELSIF NOT EMPTY?(vars /\ @Primed_Vars(cond))
+    THEN IF NOT EMPTY?(new) OR @Total_Size(cond) < @Total_Size(orig)
+	   THEN C:" Refine the new (smaller) spec ";
+	        R := @Refine_Spec(@RS_Filter(v, cond), cond, Budget) ++ R
+           ELSE R := @Refine_Spec_Sub3(@RS_Filter(v, cond), cond, Budget) ++ R FI
+    ELSE R := <@Make(T_Assert, < >, <cond>)> ++ R FI;
+  (R) .;
+
+
+C:" Check if the spec can be decomposed to a sequence of two specs: ";
+
+MW_FUNCT @Refine_Spec_Sub3(v, cond, Budget) ==
+  VAR < R := < >, assigned := < >, used := < >, tmp := < >, OK := 1, v1 := < > >:
+  IF @ST(cond) = T_And
+    THEN assigned := @Primed_Vars(cond^1);
+         used := @Variables(cond^1);
+         tmp := TAIL(@Cs(cond));
+	 WHILE OK = 1 AND NOT EMPTY?(tmp) DO
+	   IF NOT EMPTY?(assigned /\ @Variables(HEAD(tmp)))
+	     THEN OK := 0
+	   ELSIF NOT EMPTY?(used /\ @Primed_Vars(HEAD(tmp)))
+	     THEN OK := 0
+	     ELSE tmp := TAIL(tmp) FI OD;
+         IF OK = 1
+	   THEN R := @Refine_Spec(@RS_Filter(v, cond^1), cond^1, Budget);
+		cond := @Simplify(@Make(T_And, < >, TAIL(@Cs(cond))), Budget);
+	        R := R ++ @Refine_Spec(@RS_Filter(v, cond), cond, Budget)
+           ELSE R := @Refine_Spec_Sub4(v, cond, Budget) FI
+    ELSE R := @Refine_Spec_Sub4(v, cond, Budget) FI;
+  (R) .;
+
+
+C:" For future expansion... ";
+
+MW_FUNCT @Refine_Spec_Sub4(v, cond, Budget) ==
+  VAR < R := < > >:
+  R := <FILL Statement SPEC < ~*v >: ~?cond ENDSPEC ENDFILL>;
+  (R) .;
+
+
+C:" Filter the given var list to return only the variables which appear primed ";
+C:" in the given condition ";
+
+MW_FUNCT @RS_Filter(v, cond) ==
+  VAR < new := < >, vars := @Primed_Vars(cond) >:
+  FOR var IN v DO
+    IF @V(var) IN vars
+      THEN new := <var> ++ new FI OD;
+  (REVERSE(new)) .;
+
+
+
+
+SKIP
+

@@ -1,0 +1,439 @@
+# Written on Sat May 31 01:14:52 2008
+# Data reorganised on Sat May 31 01:14:52 2008
+# Written on Sat May 31 01:14:52 2008
+
+Full_Length filler_WDS2_0003 = 4
+Off_Dec filler_WDS2_0003 = 21
+Op filler_WDS2_0003 = FILLER
+Parent filler_WDS2_0003 = WDS2
+Repeat filler_WDS2_0003 = 1
+Sibling filler_WDS2_0003 = WDS2F4
+Type filler_WDS2_0003 = C
+
+Full_Length filler_FMT001A5__0002 = 8
+Off_Dec filler_FMT001A5__0002 = 112
+Op filler_FMT001A5__0002 = FILLER
+Parent filler_FMT001A5__0002 = FMT001A5_
+Repeat filler_FMT001A5__0002 = 1
+Sibling filler_FMT001A5__0002 = star__0001
+Type filler_FMT001A5__0002 = C
+
+Full_Length filler_WDS2_0001 = 4
+Off_Dec filler_WDS2_0001 = 4
+Op filler_WDS2_0001 = FILLER
+Parent filler_WDS2_0001 = WDS2
+Repeat filler_WDS2_0001 = 1
+Sibling filler_WDS2_0001 = WDS2F2
+Type filler_WDS2_0001 = C
+
+Full_Length filler_FMT001A5__0003 = 8
+Off_Dec filler_FMT001A5__0003 = 124
+Op filler_FMT001A5__0003 = FILLER
+Parent filler_FMT001A5__0003 = FMT001A5_
+Repeat filler_FMT001A5__0003 = 1
+Sibling filler_FMT001A5__0003 = unnamed__0003
+Type filler_FMT001A5__0003 = C
+
+Full_Length filler_FMT001A5__0004 = 12
+Off_Dec filler_FMT001A5__0004 = 136
+Op filler_FMT001A5__0004 = FILLER
+Parent filler_FMT001A5__0004 = FMT001A5_
+Repeat filler_FMT001A5__0004 = 1
+Sibling filler_FMT001A5__0004 = WREC2
+Type filler_FMT001A5__0004 = C
+
+Full_Length filler_FMT001A5__0001 = 104
+Off_Dec filler_FMT001A5__0001 = 0
+Op filler_FMT001A5__0001 = FILLER
+Parent filler_FMT001A5__0001 = FMT001A5_
+Repeat filler_FMT001A5__0001 = 1
+Sibling filler_FMT001A5__0001 = B0007
+Type filler_FMT001A5__0001 = C
+
+Full_Length filler_WDS1_0001 = "-1"
+Off_Dec filler_WDS1_0001 = 17
+Op filler_WDS1_0001 = FILLER
+Parent filler_WDS1_0001 = WDS1
+Repeat filler_WDS1_0001 = 1
+Type filler_WDS1_0001 = C
+
+Full_Length filler_WDS2_0002 = 4
+Off_Dec filler_WDS2_0002 = 14
+Op filler_WDS2_0002 = FILLER
+Parent filler_WDS2_0002 = WDS2
+Repeat filler_WDS2_0002 = 1
+Sibling filler_WDS2_0002 = WDS2F3
+Type filler_WDS2_0002 = C
+
+Child FMT001A5_ = filler_FMT001A5__0001
+Full_Length FMT001A5_ = 309
+Label_Locn FMT001A5_ = 000000
+Off_Dec FMT001A5_ = 0
+Op FMT001A5_ = CSECT
+Orig_Sequence FMT001A5_ = 1
+Type FMT001A5_ = CSECT
+Value FMT001A5_ = 0
+
+Init R0 = 0
+Label_Locn R0 = 000000
+Op R0 = EQU
+Orig_Sequence R0 = 2
+Value R0 = 0
+
+Init R1 = 1
+Label_Locn R1 = 000000
+Op R1 = EQU
+Orig_Sequence R1 = 3
+Value R1 = 1
+
+Init R3 = 3
+Label_Locn R3 = 000000
+Op R3 = EQU
+Orig_Sequence R3 = 4
+Value R3 = 3
+
+Init R5 = 5
+Label_Locn R5 = 000000
+Op R5 = EQU
+Orig_Sequence R5 = 5
+Value R5 = 5
+
+Init R6 = 6
+Label_Locn R6 = 000000
+Op R6 = EQU
+Orig_Sequence R6 = 6
+Value R6 = 6
+
+Init R11 = 11
+Label_Locn R11 = 000000
+Op R11 = EQU
+Orig_Sequence R11 = 7
+Value R11 = B
+
+Init R14 = 14
+Label_Locn R14 = 000000
+Op R14 = EQU
+Orig_Sequence R14 = 8
+Value R14 = E
+
+Init R15 = 15
+Label_Locn R15 = 000000
+Op R15 = EQU
+Orig_Sequence R15 = 9
+Value R15 = F
+
+Full_Length B0007 = 4
+Init B0007 = YES
+Label_Locn B0007 = 000068
+Off_Dec B0007 = 104
+Op B0007 = DC
+Orig_Parent B0007 = FMT001A5_
+Orig_Sequence B0007 = 10
+Parent B0007 = FMT001A5_
+Repeat B0007 = 1
+Sibling B0007 = unnamed__0001
+Type B0007 = C
+Value B0007 = 68
+
+Full_Length unnamed__0001 = 4
+Init unnamed__0001 = 0
+Label_Locn unnamed__0001 = 00006C
+Off_Dec unnamed__0001 = 108
+Op unnamed__0001 = DC
+Orig_Parent unnamed__0001 = FMT001A5_
+Orig_Sequence unnamed__0001 = 11
+Parent unnamed__0001 = FMT001A5_
+Repeat unnamed__0001 = 1
+Sibling unnamed__0001 = filler_FMT001A5__0002
+Type unnamed__0001 = A
+
+Full_Length star__0001 = 4
+Init star__0001 = B0007
+Label_Locn star__0001 = 000078
+Off_Dec star__0001 = 120
+Op star__0001 = DC
+Orig_Parent star__0001 = FMT001A5_
+Orig_Sequence star__0001 = 12
+Parent star__0001 = FMT001A5_
+Repeat star__0001 = 1
+Sibling star__0001 = filler_FMT001A5__0003
+Type star__0001 = A
+Value star__0001 = 000078
+
+Init MFI0008 = star__0001
+Label_Locn MFI0008 = 000078
+Op MFI0008 = EQU
+Orig_Sequence MFI0008 = 13
+Value MFI0008 = 78
+
+Full_Length unnamed__0003 = 4
+Init unnamed__0003 = FMT200
+Label_Locn unnamed__0003 = 000084
+Off_Dec unnamed__0003 = 132
+Op unnamed__0003 = DC
+Orig_Parent unnamed__0003 = FMT001A5_
+Orig_Sequence unnamed__0003 = 15
+Parent unnamed__0003 = FMT001A5_
+Repeat unnamed__0003 = 1
+Sibling unnamed__0003 = filler_FMT001A5__0004
+Type unnamed__0003 = V
+
+Full_Length WREC2 = 80
+Init WREC2 = " "
+Label_Locn WREC2 = 000094
+Off_Dec WREC2 = 148
+Op WREC2 = DC
+Orig_Parent WREC2 = FMT001A5_
+Orig_Sequence WREC2 = 16
+Parent WREC2 = FMT001A5_
+Repeat WREC2 = 1
+Sibling WREC2 = WTAB1
+Type WREC2 = C
+Value WREC2 = 94
+
+Full_Length WTAB1 = 16
+Init WTAB1 = AAAA123456BBBCCC
+Label_Locn WTAB1 = 0000E4
+Off_Dec WTAB1 = 228
+Op WTAB1 = DC
+Orig_Parent WTAB1 = FMT001A5_
+Orig_Sequence WTAB1 = 17
+Parent WTAB1 = FMT001A5_
+Repeat WTAB1 = 1
+Sibling WTAB1 = unnamed__0004
+Type WTAB1 = C
+Value WTAB1 = E4
+
+Full_Length unnamed__0004 = 16
+Init unnamed__0004 = BBBB123456XXXDDD
+Label_Locn unnamed__0004 = 0000F4
+Off_Dec unnamed__0004 = 244
+Op unnamed__0004 = DC
+Orig_Parent unnamed__0004 = FMT001A5_
+Orig_Sequence unnamed__0004 = 18
+Parent unnamed__0004 = FMT001A5_
+Repeat unnamed__0004 = 1
+Sibling unnamed__0004 = unnamed__0005
+Type unnamed__0004 = C
+
+Full_Length unnamed__0005 = 16
+Init unnamed__0005 = CCCC123456XXXDDD
+Label_Locn unnamed__0005 = 000104
+Off_Dec unnamed__0005 = 260
+Op unnamed__0005 = DC
+Orig_Parent unnamed__0005 = FMT001A5_
+Orig_Sequence unnamed__0005 = 19
+Parent unnamed__0005 = FMT001A5_
+Repeat unnamed__0005 = 1
+Sibling unnamed__0005 = unnamed__0006
+Type unnamed__0005 = C
+
+Full_Length unnamed__0006 = 16
+Init unnamed__0006 = DDDD123456XXXDDD
+Label_Locn unnamed__0006 = 000114
+Off_Dec unnamed__0006 = 276
+Op unnamed__0006 = DC
+Orig_Parent unnamed__0006 = FMT001A5_
+Orig_Sequence unnamed__0006 = 20
+Parent unnamed__0006 = FMT001A5_
+Repeat unnamed__0006 = 1
+Sibling unnamed__0006 = unnamed__0007
+Type unnamed__0006 = C
+
+Full_Length unnamed__0007 = 16
+Init unnamed__0007 = EEEE123456XXXDDD
+Label_Locn unnamed__0007 = 000124
+Off_Dec unnamed__0007 = 292
+Op unnamed__0007 = DC
+Orig_Parent unnamed__0007 = FMT001A5_
+Orig_Sequence unnamed__0007 = 21
+Parent unnamed__0007 = FMT001A5_
+Repeat unnamed__0007 = 1
+Sibling unnamed__0007 = unnamed__0008
+Type unnamed__0007 = C
+
+Full_Length unnamed__0008 = 1
+Init unnamed__0008 = FF
+Label_Locn unnamed__0008 = 000134
+Off_Dec unnamed__0008 = 308
+Op unnamed__0008 = DC
+Orig_Parent unnamed__0008 = FMT001A5_
+Orig_Sequence unnamed__0008 = 22
+Parent unnamed__0008 = FMT001A5_
+Repeat unnamed__0008 = 1
+Type unnamed__0008 = X
+
+Child WDS1 = WDS1F1
+Full_Length WDS1 = 16
+Label_Locn WDS1 = 000000
+Off_Dec WDS1 = 0
+Op WDS1 = DSECT
+Orig_Sequence WDS1 = 23
+Type WDS1 = DSECT
+Value WDS1 = 0
+
+Full_Length WDS1F1 = 4
+Label_Locn WDS1F1 = 000000
+Off_Dec WDS1F1 = 0
+Op WDS1F1 = DS
+Orig_Parent WDS1F1 = WDS1
+Orig_Sequence WDS1F1 = 24
+Parent WDS1F1 = WDS1
+Repeat WDS1F1 = 1
+Sibling WDS1F1 = WDS1F2
+Type WDS1F1 = C
+Value WDS1F1 = 0
+
+Full_Length WDS1F2 = 6
+Label_Locn WDS1F2 = 000004
+Off_Dec WDS1F2 = 4
+Op WDS1F2 = DS
+Orig_Parent WDS1F2 = WDS1
+Orig_Sequence WDS1F2 = 25
+Parent WDS1F2 = WDS1
+Repeat WDS1F2 = 1
+Sibling WDS1F2 = WDS1F3
+Type WDS1F2 = C
+Value WDS1F2 = 4
+
+Full_Length WDS1F3 = 3
+Label_Locn WDS1F3 = 00000A
+Off_Dec WDS1F3 = 10
+Op WDS1F3 = DS
+Orig_Parent WDS1F3 = WDS1
+Orig_Sequence WDS1F3 = 26
+Parent WDS1F3 = WDS1
+Repeat WDS1F3 = 1
+Sibling WDS1F3 = WDS1F4
+Type WDS1F3 = C
+Value WDS1F3 = A
+
+Full_Length WDS1F4 = 3
+Label_Locn WDS1F4 = 00000D
+Off_Dec WDS1F4 = 13
+Op WDS1F4 = DS
+Orig_Parent WDS1F4 = WDS1
+Orig_Sequence WDS1F4 = 27
+Parent WDS1F4 = WDS1
+Repeat WDS1F4 = 1
+Sibling WDS1F4 = star__0002
+Type WDS1F4 = C
+Value WDS1F4 = D
+
+Full_Length star__0002 = 1
+Label_Locn star__0002 = 000010
+Off_Dec star__0002 = 16
+Op star__0002 = DC
+Orig_Parent star__0002 = WDS1
+Orig_Sequence star__0002 = 28
+Parent star__0002 = WDS1
+Repeat star__0002 = 1
+Sibling star__0002 = filler_WDS1_0001
+Type star__0002 = C
+Value star__0002 = 000010
+
+Init WDS1L = "star__0002-WDS1F1"
+Label_Locn WDS1L = 000010
+Op WDS1L = EQU
+Orig_Sequence WDS1L = 29
+Value WDS1L = 10
+
+Child WDS2 = WDS2F1
+Full_Length WDS2 = 28
+Label_Locn WDS2 = 000000
+Off_Dec WDS2 = 0
+Op WDS2 = DSECT
+Orig_Sequence WDS2 = 30
+Type WDS2 = DSECT
+Value WDS2 = 0
+
+Full_Length WDS2F1 = 4
+Label_Locn WDS2F1 = 000000
+Off_Dec WDS2F1 = 0
+Op WDS2F1 = DS
+Orig_Parent WDS2F1 = WDS2
+Orig_Sequence WDS2F1 = 31
+Parent WDS2F1 = WDS2
+Repeat WDS2F1 = 1
+Sibling WDS2F1 = filler_WDS2_0001
+Type WDS2F1 = C
+Value WDS2F1 = 0
+
+Full_Length WDS2F2 = 6
+Label_Locn WDS2F2 = 000008
+Off_Dec WDS2F2 = 8
+Op WDS2F2 = DS
+Orig_Parent WDS2F2 = WDS2
+Orig_Sequence WDS2F2 = 32
+Parent WDS2F2 = WDS2
+Repeat WDS2F2 = 1
+Sibling WDS2F2 = filler_WDS2_0002
+Type WDS2F2 = C
+Value WDS2F2 = 8
+
+Full_Length WDS2F3 = 3
+Label_Locn WDS2F3 = 000012
+Off_Dec WDS2F3 = 18
+Op WDS2F3 = DS
+Orig_Parent WDS2F3 = WDS2
+Orig_Sequence WDS2F3 = 33
+Parent WDS2F3 = WDS2
+Repeat WDS2F3 = 1
+Sibling WDS2F3 = filler_WDS2_0003
+Type WDS2F3 = C
+Value WDS2F3 = 12
+
+Full_Length WDS2F4 = 3
+Label_Locn WDS2F4 = 000019
+Off_Dec WDS2F4 = 25
+Op WDS2F4 = DS
+Orig_Parent WDS2F4 = WDS2
+Orig_Sequence WDS2F4 = 34
+Parent WDS2F4 = WDS2
+Repeat WDS2F4 = 1
+Type WDS2F4 = C
+Value WDS2F4 = 19
+
+Child MODSTORE = AMOD113
+Full_Length MODSTORE = 12
+Label_Locn MODSTORE = 000000
+Off_Dec MODSTORE = 0
+Op MODSTORE = DSECT
+Orig_Sequence MODSTORE = 35
+Type MODSTORE = DSECT
+Value MODSTORE = 0
+
+Full_Length AMOD113 = 4
+Label_Locn AMOD113 = 000000
+Off_Dec AMOD113 = 0
+Op AMOD113 = DS
+Orig_Parent AMOD113 = MODSTORE
+Orig_Sequence AMOD113 = 36
+Parent AMOD113 = MODSTORE
+Repeat AMOD113 = 1
+Sibling AMOD113 = AMOD114
+Type AMOD113 = F
+Value AMOD113 = 0
+
+Full_Length AMOD114 = 4
+Label_Locn AMOD114 = 000004
+Off_Dec AMOD114 = 4
+Op AMOD114 = DS
+Orig_Parent AMOD114 = MODSTORE
+Orig_Sequence AMOD114 = 37
+Parent AMOD114 = MODSTORE
+Repeat AMOD114 = 1
+Sibling AMOD114 = AMOD115
+Type AMOD114 = F
+Value AMOD114 = 4
+
+Full_Length AMOD115 = 4
+Label_Locn AMOD115 = 000008
+Off_Dec AMOD115 = 8
+Op AMOD115 = DS
+Orig_Parent AMOD115 = MODSTORE
+Orig_Sequence AMOD115 = 38
+Parent AMOD115 = MODSTORE
+Repeat AMOD115 = 1
+Type AMOD115 = F
+Value AMOD115 = 8

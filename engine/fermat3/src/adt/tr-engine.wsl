@@ -1,0 +1,143 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C:" Variables and functions for storing transformations. ";
+
+TRs_Name 	  := ARRAY(200, < >);
+TRs_Proc_Name 	  := ARRAY(200, < >);
+TRs_Test 	  := ARRAY(200, < >);
+TRs_Code 	  := ARRAY(200, < >);
+TRs_Keywords	  := ARRAY(200, < >);
+TRs_Help 	  := ARRAY(200, < >);
+TRs_Prompt 	  := ARRAY(200, < >);
+TRs_Data_Gen_Type := ARRAY(200, < >);
+
+adt_TR_Next_Number := 0;
+
+MW_FUNCT @New_TR_Number() == :
+  adt_TR_Next_Number := adt_TR_Next_Number + 1;
+  (adt_TR_Next_Number) .;
+
+
+C:" Variables and functions for controlling the transformation process. ";
+
+adt_Trans_Tests := 1;
+
+adt_Passed := -1;
+
+adt_Fail_Message := "";
+
+adt_TR_Start_P := < >;
+
+adt_TR_Start_Span := < >;
+
+MW_PROC @Use_Trans_Tests() ==
+  adt_Trans_Tests := 1 .;
+
+MW_PROC @No_Trans_Tests() ==
+  adt_Trans_Tests := 0 .;
+
+MW_BFUNCT @Trans_Tests_Status?() == : SKIP;
+  (adt_Trans_Tests = 1) .;
+
+MW_PROC @Reset_Pass_Status() ==
+  IF adt_In_A_Trans = 1 THEN adt_Fail_Message := "" FI;
+  adt_Passed := -1 END;
+
+MW_PROC @Pass() ==
+  IF adt_In_A_Trans = 1 THEN adt_Fail_Message := "" FI;
+  adt_Passed := 1 END;
+  
+MW_PROC @Fail(Reason) ==
+  IF adt_In_A_Trans = 1 THEN adt_Fail_Message := Reason FI;
+  adt_Passed := 0 END;
+  
+MW_PROC @Notice(Message) ==
+  IF adt_In_A_Trans = 1 THEN adt_Fail_Message := Message FI .;
+
+MW_FUNCT @Fail_Message() == : SKIP; (adt_Fail_Message) .;
+
+MW_BFUNCT @Passed?() == : SKIP; (adt_Passed = 1) .;
+
+MW_BFUNCT @Failed?() == : SKIP; (adt_Passed = 0) .;
+
+MW_BFUNCT @Trans?(trans) ==
+  VAR < R := 0, Name := IF NUMBER?(trans) THEN TRs_Proc_Name[trans] ELSE < > FI >:
+  IF EMPTY?(Name)
+    THEN PRINT("No such transformation number:", trans)
+    ELSE adt_TR_Start_P := <@Posn> ++ adt_TR_Start_P;
+	 adt_In_A_Trans := adt_In_A_Trans + 1;
+	 adt_Fail_Message := "";
+	 adt_Passed := -1;
+	 !XP apply(TRs_Test[trans], < >);
+	 R := adt_Passed;
+	 adt_Passed := -1;
+	 @Goto(HEAD(adt_TR_Start_P));
+	 adt_TR_Start_P := TAIL(adt_TR_Start_P);
+	 adt_In_A_Trans := adt_In_A_Trans - 1;
+	 IF R <> 1 AND R <> 0
+	   THEN PRINT("Neither `Passed' nor `Failed' in transformation: ", Name) FI FI;
+  (R = 1) .;
+
+
+MW_FUNCT @What_Trans(Words) ==
+  VAR < i := adt_TR_Next_Number, List := < > >:
+  WHILE i <> 1 DO
+    i := i - 1;
+    IF SUBSET?(Words, @Make_Set(TRs_Keywords[i]))
+	 AND "Hidden" NOTIN TRs_Keywords[i]
+	 AND (adt_Trans_Tests = 0 OR @Trans?(i))
+      THEN List := <i> ++ List FI OD;
+   (List) .;
+
+TR_No_Change := @Make_Name("TR_No_Change");
+
+adt_Trans_Count := 0;
+
+MW_PROC @Trans(trans, Data) ==
+  VAR < Name := IF NUMBER?(trans) THEN TRs_Proc_Name[trans] ELSE < > FI,
+	Program_Type := @ST(@Program) >:
+  IF EMPTY?(Name)
+    THEN PRINT("No such transformation number: ", trans)
+  ELSIF adt_In_A_Trans > 0 OR adt_Trans_Tests = 1 OR @Trans?(trans)
+    THEN IF adt_In_A_Trans = 0
+	   THEN @Save_State;
+		@Dtable_Put(@Program, TR_No_Change, 1) FI;
+	 C:" Indicate that we are now in a transformation ";
+	 adt_TR_Start_P := <@Posn> ++ adt_TR_Start_P;
+	 adt_In_A_Trans := adt_In_A_Trans + 1;
+	 adt_Fail_Message := "";
+	 adt_Passed := -1;
+	 adt_Trans_Count := adt_Trans_Count + 1;
+	 !XP apply(TRs_Code[trans], <Data>);
+	 adt_Passed := -1;
+	 adt_TR_Start_P := TAIL(adt_TR_Start_P);
+	 adt_In_A_Trans := adt_In_A_Trans - 1;
+	 C:" We have now finished a transformation; set a message ";
+	 C:" if nothing has happened and there is no message set. ";
+	 IF adt_In_A_Trans = 0 AND adt_Fail_Message = ""
+	      AND NOT EMPTY?(@Dtable_Get(@Program, TR_No_Change))
+	   THEN adt_Fail_Message := TRs_Name[trans] ++ " did not change the program." FI;
+	 @Fixup;
+	 IF EMPTY?(@Program) AND adt_In_A_Trans = 0 AND Program_Type = T_Statements
+	   THEN @New_Program(@Skips) FI FI ENDVAR .;
+
+
+SKIP

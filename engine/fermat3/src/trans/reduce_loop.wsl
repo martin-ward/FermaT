@@ -1,0 +1,51 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+ 
+MW_PROC @Reduce_Loop_Test() ==
+  IF @ST(@I) <> T_Floop 
+    THEN @Fail("Selected item is not a DO...OD loop.")
+  ELSIF @Gen_Reducible?(@I^1, @AS_Type)
+    THEN @Fail("Loop body is already reducible.")
+    ELSE @Pass FI .;
+
+MW_PROC @Reduce_Loop_Code(Data) ==
+  VAR < as := @AS_Type, posn := @Posn, calls := @MP_Proc_Calls, call_n := 1,
+        orig := @Program >:
+  @Down; C:" to statement sequence ";
+  @MR_Process(as VAR calls, call_n);
+  @Up;
+  C:" If the loop body is now reducible, then remove or convert the loop ";
+  IF @Gen_Reducible?(@I^1, as)
+    THEN IF @Gen_Improper?(@I^1, as)
+	   THEN @Trans(TR_Remove_Dummy_Loop, "") 
+	 ELSIF SUBSET?(@Gen_TVs(@I, as), <0>)
+	   THEN C:" Loop is equivalent to ABORT! "
+	   ELSE PRINT("The loop is neither proper nor improper.") FI;
+	 IF @Trans?(TR_Delete_All_Skips) THEN @Trans(TR_Delete_All_Skips, "") FI
+    ELSE PRINT("Unable to reduce the loop, sorry.");
+         @New_Program(orig);
+	 @Goto(posn) FI ENDVAR .;
+
+
+
+
+SKIP
+

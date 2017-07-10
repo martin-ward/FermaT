@@ -1,0 +1,40 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+TR_Substitute_And_Delete_List:=@New_TR_Number;
+
+TRs_Proc_Name[TR_Substitute_And_Delete_List]:="Substitute_And_Delete_List";
+TRs_Test[TR_Substitute_And_Delete_List]:=!XF funct(@Substitute_And_Delete_List_Test);
+TRs_Code[TR_Substitute_And_Delete_List]:=!XF funct(@Substitute_And_Delete_List_Code);
+
+TRs_Name[TR_Substitute_And_Delete_List]:="Substitute and Delete List";
+
+TRs_Keywords[TR_Substitute_And_Delete_List]:=<"Hidden", "Rewrite">;
+
+TRs_Help[TR_Substitute_And_Delete_List]:=
+    "Substitute and Delete List will replace all calls to any action
+within the selected list of actions with the corresponding definition
+and delete the definition. Actions which are called more than  once
+will not be affected.";
+
+TRs_Prompt[TR_Substitute_And_Delete_List]:="";
+
+TRs_Data_Gen_Type[TR_Substitute_And_Delete_List]:=""
+

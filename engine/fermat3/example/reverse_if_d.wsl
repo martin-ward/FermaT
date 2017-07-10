@@ -1,0 +1,17 @@
+
+IF EMPTY?(TR_Reverse_If ) THEN TR_Reverse_If := @New_TR_Number()  FI;
+
+TRs_Proc_Name[TR_Reverse_If] := "Reverse_If" ;
+TRs_Test[TR_Reverse_If]:=!XF funct(@Reverse_If_Test);
+TRs_Code[TR_Reverse_If]:=!XF funct(@Reverse_If_Code);
+
+TRs_Name[TR_Reverse_If] := "Reverse If";
+
+TRs_Keywords[TR_Reverse_If] := < "Simplify" > ;
+
+TRs_Help[TR_Reverse_If] := "Reverse If will reverse the two arms of a simple IF statement.";
+
+TRs_Prompt[TR_Reverse_If] := ""; 
+
+TRs_Data_Gen_Type[TR_Reverse_If] := "" 
+ 

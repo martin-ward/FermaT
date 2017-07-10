@@ -1,0 +1,106 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+ 
+MW_PROC @Substitute_And_Delete_Test() ==
+  VAR < N := < > >:
+  IF @ST(@I) = T_Action
+    THEN N := @V(@I^1);
+	 IF @V(@GParent^1) = N
+	   THEN @Fail("It is invalid to delete the starting action.")
+	   ELSE IF @Called?(N, @I)
+		  THEN @Fail("The action is recursive.") 
+		  ELSE @Pass FI FI
+  ELSIF @ST(@I) = T_Proc
+    THEN N := @V(@I^1);
+	 IF @Proc_Called?(N, @I)
+	   THEN @Fail("Procedure is recursive")
+	   ELSE @Pass FI
+  ELSIF @ST(@I) = T_Funct
+    THEN N := @V(@I^1);
+	 IF @Funct_Called?(N,@I)
+	   THEN @Fail("Function is recursive")
+         ELSIF @Size(@I^4) > 1 OR @ST(@I^4^1) <> T_Skip
+	   THEN @Fail("Function definition includes statements")
+	   ELSE @Pass FI
+    ELSE @Fail("Not an action, function or proc definition") FI;
+  @Goto(Orig_Pos) ENDVAR .;
+
+
+
+MW_PROC @Substitute_And_Delete_Code(Data) == 
+  VAR < Orig_Pos := @Posn_n, N := @V(@I^1), S:=< > >:
+  IF @ST(@I) = T_Action
+    THEN S := @Cs(@I^2);
+	 @Up;
+	 FOREACH Statement DO
+	   IF @ST(@I) = T_Call AND @V(@I) = N
+	     THEN @Splice_Over(S) FI OD;
+	 @Down_To(Orig_Pos);
+	 @Clever_Delete
+	   
+  ELSIF @ST(@I) = T_Proc 
+    THEN @Up; @Up; 
+	 @Edit; @Expand_Proc_Calls(N); @End_Edit;
+	 @Down_Last; @Down_To(Orig_Pos);
+	 @Clever_Delete
+
+  ELSIF @ST(@I) = T_Funct
+    THEN @Up; @Up; 
+	 @Edit; @Expand_Funct_Calls(N); @End_Edit;
+	 FOREACH Expression DO
+	   IF @Cs?(@I)
+	     THEN @Paste_Over(@Simplify_Expn(@I)) FI OD;
+	 @Down_Last; @Down_To(Orig_Pos);
+	 @Clever_Delete FI ENDVAR .;
+
+
+MW_PROC @Expand_Proc_Calls(N) ==
+  IF @ST(@I) = T_Proc_Call AND @V(@I^1) = N
+    THEN @Trans(TR_Expand_Call,"")
+  ELSIF @Cs?(@I) AND @Has_Statements_Type?(@GT(@I))
+    THEN @Down;
+	 DO VAR <OK:=1>:
+	    IF @ST(@I) = T_Where
+	      THEN @Down_Last; @Down;
+		   WHILE @V(@I^1) <> N AND @Right? DO @Right OD;
+		   IF @V(@I^1) = N THEN OK := 0 FI;
+		   @Up; @Up FI;
+	    IF OK = 1 THEN @Expand_Proc_Calls(N) FI ENDVAR;
+	    IF @Right? THEN @Right ELSE @Up; EXIT(1) FI OD FI .;
+
+
+MW_PROC @Expand_Funct_Calls(N) ==
+  IF @ST(@I) = T_Funct_Call AND @V(@I^1) = N
+    THEN @Trans(TR_Expand_Call,"") FI;
+  IF @Cs?(@I)
+    THEN @Down;
+	 DO VAR < OK := 1 >:
+	    IF @ST(@I) = T_Where
+	      THEN @Down_Last; @Down;
+		   WHILE @V(@I^1) <> N AND @Right? DO @Right OD;
+		   IF @V(@I^1) = N THEN OK := 0 FI;
+		   @Up; @Up FI;
+	    IF OK = 1 THEN @Expand_Funct_Calls(N) FI ENDVAR;
+	    IF @Right? THEN @Right ELSE @Up; EXIT(1) FI OD FI .;
+
+SKIP
+

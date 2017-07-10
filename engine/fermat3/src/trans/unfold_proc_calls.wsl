@@ -1,0 +1,235 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+ 
+MW_PROC @Unfold_Proc_Calls_Test() ==
+  IF @ST(@I) <> T_Where
+    THEN @Fail("Not a WHERE clause.")
+    ELSE VAR < calls := @Qry_Call_Join(@Proc_Calls(@I^1), @Proc_Calls(@I^2)),
+	       local := HASH_TABLE, defn := < >, pair := < >, locals := 0 >:
+	 FOR defn IN @Cs(@I^2) DO
+	   IF @ST(defn) = T_Proc
+	     THEN locals := locals + 1; local.(@V(defn^1)) := 1;
+		  IF @Stat_Count_NC(defn^4) < 4 AND @Stat_Count(defn^4) < 12
+		    THEN @Pass FI FI OD;
+	 IF @Passed?
+	   THEN C:" There is a small proc to unfold "
+	 ELSIF locals = 0
+	   THEN @Fail("No local procedures in the WHERE clause.")
+	   ELSE FOR pair IN calls DO
+                  IF @Ends_With?(pair[1], "_ACTION")
+		    THEN C:" Don't unfold name_ACTION procs "
+		  ELSIF (NOT EMPTY?(local.(pair[1]))) AND (pair[2] <= 1)
+		    THEN @Pass FI OD;
+		IF NOT @Passed?
+		  THEN @Fail("Everything is called more than once.") FI FI ENDVAR FI .;
+
+
+MW_PROC @Unfold_Proc_Calls_Code(Data) ==
+  VAR < calls := @Qry_Call_Join(@Proc_Calls(@I^1), @Proc_Calls(@I^2)),
+	local := HASH_TABLE, defn := < >, pair := < >, new_defns := < >, body := < >,
+	unfold := HASH_TABLE, bodies := HASH_TABLE, done := HASH_TABLE,
+	dispatch := @Make_Name("dispatch"), dispatch_call := HASH_TABLE >:
+  @Edit;
+  C:" (1) Calculate the list of calls to unfold ";
+  C:" (2) Unfold the calls ";
+  C:" (3) Delete the definitions of unfolded procs ";
+  C:" Note that this will delete procs which have one recursive call ";
+  C:" and no external calls. ";
+  C:" A proc body can be unfolded either if there is only a single call ";
+  C:" to the proc or if the body is `small', ie if there are ";
+  C:" less than 3 non-comment statements and no calls to unfolded procs in the body. ";
+  C:" Consider the case where A contains only a call to B and B is huge. ";
+  C:" If there are many calls to A but no other calls to B, ";
+  C:" then both A and B will be unfolded: resulting in a huge duplication! ";
+  C:" Don't unfold anything which is called in dispatch (in case it is dead code ";
+  C:" which we want to keep even when dispatch is eliminated) ";
+  FOREACH Statement DO
+    IF @ST(@I) = T_A_S
+      THEN FOR action IN @Cs(@I^2) DO
+             IF @V(action^1) = dispatch
+	       THEN FOR pair IN @Proc_Calls(action^2) DO
+	              dispatch_call.(pair[1]) := 1 OD FI OD FI OD;
+  FOR defn IN @Cs(@I^2) DO
+    IF @ST(defn) = T_Proc
+      THEN local.(@V(defn^1)) := 1;
+	   bodies.(@V(defn^1)) := defn
+      ELSE new_defns := <defn> ++ new_defns FI OD;
+  FOR pair IN calls DO
+    IF NOT EMPTY?(local.(pair[1]))
+      THEN body := bodies.(pair[1])^4;
+           IF pair[2] = 0 AND @Is_Entry_Point?(body)
+             THEN C:" Don't delete an uncalled proc with an <ENTRY POINT> comment "
+	   ELSIF @Ends_With?(pair[1], "_ACTION")
+             THEN C:" Don't unfold name_ACTION procs "
+	   ELSIF NOT EMPTY?(dispatch_call.(pair[1]))
+	     THEN C:" Don't delete something called in dispatch "
+           ELSIF @Stat_Count_NC(body) < 4 AND @Stat_Count(body) < 12
+	           OR pair[2] <= 1
+	     THEN unfold.(pair[1]) := 1 FI FI OD;
+
+  C:" Don't unfold a proc whose body contains calls to procs which will be unfolded ";
+  FOR defn IN REVERSE(@Cs(@I^2)) DO
+    name := @V(defn^1);
+    IF NOT EMPTY?(unfold.(name))
+      THEN FOR pair IN @Proc_Calls(bodies.(name)^4) DO
+             IF NOT EMPTY?(unfold.(pair[1]))
+               THEN unfold.(name) := < > FI OD FI OD;
+
+  C:" First we need to do all the unfolding in proc bodies ";
+  C:" (before unfolding call, unfold everything in ITS body). ";
+  FOR defn IN @Cs(@I^2) DO
+    IF @ST(defn) = T_Proc AND EMPTY?(done.(@V(defn^1)))
+      THEN done.(@V(defn^1)) := 1; @UPC_Unfold(@V(defn^1)) FI OD;
+  C:" Then process the main program. ";
+  @Down;
+  FOREACH Statement DO
+    IF @ST(@I) = T_Proc_Call AND NOT EMPTY?(unfold.(@V(@I^1)))
+      THEN @Unfold_Proc_Call(bodies.(@V(@I^1))) FI OD;
+  @Up;
+  C:" Compute the new defns list: ";
+  FOR defn IN @Cs(@I^2) DO
+    IF @ST(defn) <> T_Proc
+      THEN new_defns := <defn> ++ new_defns
+    ELSIF EMPTY?(unfold.(@V(defn^1)))
+      THEN new_defns := <bodies.(@V(defn^1))> ++ new_defns FI OD;
+  C:" Build a new WHERE clause (if there are any defns left): ";
+  PRINT("new_defns = ", LENGTH(new_defns));
+  IF EMPTY?(new_defns)
+    THEN @Paste_Over(@I^1)
+    ELSE @Paste_Over(@Make(T_Where, < >,
+			   <@I^1, @Make(T_Definitions, < >,
+					REVERSE(new_defns))>)) FI;
+  @End_Edit ENDVAR .;
+
+
+C:" Unfold all the required proc calls in the given body. ";
+C:" Before unfolding each call, unfold all the calls in ITS body. ";
+MW_PROC @UPC_Unfold(name) ==
+  PRINT("@UPC_Unfold: ", @N_String(name));
+  @Edit;
+  @New_Program(bodies.(name));
+  FOREACH Statement DO
+    IF @ST(@I) = T_Proc_Call AND NOT EMPTY?(unfold.(@V(@I^1)))
+      THEN IF EMPTY?(done.(@V(@I^1)))
+	     THEN done.(@V(@I^1)) := 1; @UPC_Unfold(@V(@I^1)) FI;
+	   @Unfold_Proc_Call(bodies.(@V(@I^1))) FI OD;
+  bodies.(name) := @Program;
+  @Undo_Edit .;
+
+
+C:" Unfold the (selected) proc call, given the definition: ";
+MW_PROC @Unfold_Proc_Call(defn) ==
+  PRINT("Unfolding Proc_Call ", @N_String(@V(defn^1)), " at ", @Posn);
+  IF @Size(@I^2) = 0 AND @Size(@I^3) = 0
+    THEN @Splice_Over(@Cs(defn^4))
+  ELSIF @Size(@I^2) <> @Size(defn^2) OR @Size(@I^3) <> @Size(defn^3)
+    THEN PRINT("ERROR: Proc call does not match body:");
+	 @Print_WSL(@I, "")
+    ELSE VAR < actual_vals := @Cs(@I^2), actual_vars := @Cs(@I^3),
+	       formal_vals := @Cs(defn^2), formal_vars := @Cs(defn^3),
+	       tmp := < >, tmp_v := < >, tmp_e := < >,
+	       var := < >, n := 1, used := @Used(defn),
+	       empty := @Make(T_Number, 0, < >),
+	       a1 := < >, a2 := < >, a3 := < >, a4 := < > >:
+	 a2 := @Make_Assigns(formal_vals ++ formal_vars, actual_vals ++ actual_vars);
+	 C:" We need to create a list of `new' temporary variable names ";
+	 C:" with the same length as formal_vars: ";
+	 FOR var IN formal_vars DO
+	   tmp := @Make_Name(@N_String(@V(var)) ++ "_tmp");
+	   IF tmp IN used
+	     THEN DO tmp :=  @Make_Name(@N_String(@V(var)) ++ "_tmp_" ++ @String(n));
+		     IF tmp NOTIN used THEN EXIT(1) FI;
+		     n := n + 1 OD FI;
+	   tmp_v := @Make(T_Var_Lvalue, tmp, < >);
+	   tmp_e := @Make(T_Variable, tmp, < >);
+	   a1 := <@Make(T_Assign, < >, <tmp_v, empty>)> ++ a1;
+	   a3 := <@Make(T_Assign, < >, <tmp_v, @Lvalue_To_Expn(var)>)> ++ a3;
+	   a4 := <@Make(T_Assign, < >, <HEAD(actual_vars), tmp_e>)> ++ a4;
+	   actual_vars := TAIL(actual_vars) OD;
+	 a1 := @Make(T_Assigns, < >, REVERSE(a1));
+	 a3 := @Make(T_Assignment, < >, REVERSE(a3));
+	 a4 := @Make(T_Assignment, < >, REVERSE(a4));
+	 @Paste_Over(@Make(T_Var, < >,
+			   <a1, @Make(T_Statements, < >,
+				      <@Make(T_Var, < >,
+					     <a2, @Make(T_Statements, < >,
+							@Cs(defn^4) ++ <a3>)>),
+				       a4>)>));
+	 C:" Simplify the resulting VAR clauses ";
+	 @Down_To(2); C:" to outer VARs statements ";
+	 @Down; C:" to inner VAR ";
+	 IF @Trans?(TR_Remove_Redundant_Vars)
+	   THEN @Trans(TR_Remove_Redundant_Vars, "") FI;
+	 @Up; @Up;
+	 IF @Trans?(TR_Remove_Redundant_Vars)
+	   THEN @Trans(TR_Remove_Redundant_Vars, "") FI ENDVAR FI .;
+
+
+MW_FUNCT @Make_Assigns(vars, expns) ==
+  VAR < assigns := < > >:
+  WHILE NOT EMPTY?(vars) DO
+    assigns := <@Make(T_Assign, < >,
+		      <@Expn_To_Lvalue(vars[1]),
+		       @Lvalue_To_Expn(expns[1])>)> ++ assigns;
+    vars := TAIL(vars);
+    expns := TAIL(expns) OD;
+  (@Make(T_Assigns, < >, REVERSE(assigns))) .;
+
+
+
+C:" Search for an <ENTRY POINT> comment: ";
+MW_BFUNCT @Is_Entry_Point?(I) ==
+  VAR < OK := 0 >:
+  @Edit;
+  @New_Program(I);
+  FOREACH Statement DO
+    IF @ST(@I) = T_Comment AND @V(@I) = " <ENTRY POINT> "
+      THEN OK := 1 FI OD;
+  @Undo_Edit;
+  (OK = 1) .;
+
+
+
+
+C:"
+
+Unfolding a proc with parameters:
+
+Call: name(e1, e2 VAR var1, var2)
+
+Defn: name(v1, v2 VAR v3, v4)
+
+-->
+
+VAR < tmp1 := < >, tmp2 := < > >:
+  VAR < v1 := e1, v2 := e2, v3 := var1, v4 := var2 >:
+    body;
+    tmp1 := v3; tmp2 := v4 ENDVAR;
+  var1 := tmp1; var2 := tmp2 ENDVAR
+
+the `tmps' are needed because var1 might be the same as v3 etc.
+
+Apply Remove_Redundant_Vars after the transformation.
+
+";
+
+
+SKIP

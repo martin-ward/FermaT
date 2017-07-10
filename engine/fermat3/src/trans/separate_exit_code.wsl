@@ -1,0 +1,177 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+MW_PROC @Separate_Exit_Code_Test() ==
+  IF @ST(@I) <> T_Floop
+    THEN @Fail("Selected item is not an Floop")
+  ELSIF @Trans?(TR_Separate_Right)
+    THEN @Pass
+  ELSIF @SEC_Simple?
+    THEN @Pass
+    ELSE FOREACH Statements DO
+           IF Depth = 1 AND @Gen_TVs(@I, AS_Type) = <1> AND @Stat_Types(@I) <> <T_Exit>
+	     THEN IF NOT @Failed? AND @Gen_Reducible?(@I, AS_Type)
+	            THEN @Pass
+		    ELSE @Fail("Some of the exit code is not reducible") FI FI OD;
+         IF NOT @Passed? AND NOT @Failed?
+	   THEN @Fail("No suitable statements to take out") FI FI .;
+           
+
+
+MW_PROC @Separate_Exit_Code_Code(Data) ==
+  IF @Trans?(TR_Separate_Right)
+    THEN @Trans(TR_Separate_Right, "")
+  ELSIF @SEC_Simple?
+    THEN VAR < OK := 0 >: @SEC_Simple(1 VAR OK) ENDVAR
+    ELSE @Separate_Exit_Code_Sub(Data) FI .;
+
+
+MW_PROC @Separate_Exit_Code_Sub(Data) ==
+  VAR < flag := < >, count := 0, skips := @Make_Set(<T_Skip, T_Comment, T_Exit>),
+        Flags := MAP("@Make_Name",
+		     <"fl_flag1",  "fl_flag2", "fl_flag3", "fl_flag4", "fl_flag5",
+		      "fl_flag6", "fl_flag7", "fl_flag8", "fl_flag9", "fl_flagX" >),
+	max := 10, guards := < >, n := @Make(T_Number, 0, < >), body := < >,
+        S1 := < >, S2 := < > >:
+  C:" Choose a suitable flag variable: ";
+  IF @String(Data) <> ""
+    THEN name := @Make_Name(@String(Data))
+    ELSE WHILE EMPTY?(name) DO
+           IF MEMBER?(HEAD(Flags), @Variables(@I))
+             THEN Flags := TAIL(Flags)
+             ELSE name := HEAD(Flags) FI;
+           IF EMPTY?(Flags)
+             THEN max := max + 1;
+                  name := @Make_Name("fl_flag" ++ @String(max)) FI OD FI;
+  flag := @Make(T_Variable, name, < >);
+
+  C:" Work top-down so that we can take out bigger chunks of code ";
+  C:" First a trial run to see if the flag is needed: ";
+  @Edit;
+  ATEACH Statements DO
+    IF Depth = 1 AND LENGTH(@Gen_TVs(@I, AS_Type)) = 1
+         AND HEAD(@Gen_TVs(@I, AS_Type)) > 0
+      THEN n := @Make(T_Number, @V(n) + 1, < >);
+           body := @I;
+           count := count + 1;
+           @Paste_Over(FILL Statements EXIT(1) ENDFILL) FI OD;
+  IF count = 0
+    THEN ERROR("@Separate_Exit_Code_Sub: no exit code found!")
+  ELSIF count = 1
+    THEN @End_Edit;
+         @Splice_After(@Cs(@Increment(body, @AS_Type, -1, 1)))
+    ELSE @Undo_Edit;
+         n := @Make(T_Number, 0, < >);
+         guards := <FILL Guarded ~?flag = 0 -> SKIP ENDFILL>;
+         ATEACH Statements DO
+           IF Depth = 1 AND LENGTH(@Gen_TVs(@I, AS_Type)) = 1
+                AND HEAD(@Gen_TVs(@I, AS_Type)) > 0
+             THEN IF SUBSET?(@Stat_Types(@I), skips)
+		    THEN C:" No actual code to take out "
+		    ELSE body := @Cs(@I);
+		         n := @Make(T_Number, @V(n) + 1, < >);
+                         guards := <FILL Guarded ~?flag = ~?n -> ~*body ENDFILL>
+		                      ++ guards;
+                         @Paste_Over(FILL Statements ~?flag := ~?n; EXIT(1) ENDFILL) FI
+           ELSIF Depth = 1 AND LENGTH(@Gen_TVs(@I, AS_Type)) > 1
+	           AND @ST(@I^@Size(@I)) = T_Exit AND @V(@I^@Size(@I)) = 1
+	     THEN @SEC_Split(@Cs(@I) VAR S1, S2);
+                  IF SUBSET?(@Stat_Types(S2), skips)
+		    THEN C:" No actual code to take out "
+                    ELSE body := @Cs(S2);
+                         n := @Make(T_Number, @V(n) + 1, < >);
+                         guards := <FILL Guarded ~?flag = ~?n -> ~*body ENDFILL>
+		                      ++ guards;
+                         @Paste_Over(FILL Statements ~?flag := ~?n; EXIT(1) ENDFILL);
+                         @Down;
+                         @Splice_Before(@Cs(S1));
+			 @Up FI FI OD;
+         @Paste_Before(FILL Statement ~?flag := 0 ENDFILL);
+         @Right;
+         @Paste_After(@Make(T_Cond, < >, REVERSE(guards)));
+         @Right; @Down_Last; @Down; C:" to last condition ";
+         @Paste_Over(@Make(T_True, < >, < >));
+         @Up; @Up; C:" Back to cond ";
+         C:" Decrement the exit code: ";
+         @Splice_Over(@Increment(@I, @AS_Type, -1, 1));
+         @Left FI ENDVAR .;
+
+
+MW_BFUNCT @SEC_Simple?() ==
+  VAR < OK := 0 >:
+  @SEC_Simple(0 VAR OK);
+  (OK = 1) .;
+
+
+MW_PROC @SEC_Simple(doit VAR OK) ==
+  VAR < S := < >, e2 := < > >:
+  OK := 0;
+  IFMATCH Statement DO ~*S1;
+                        IF ~?B1
+                          THEN ~*S2
+                          ELSE ~*S3;
+                               IF ~?v = ~?e1
+                                 THEN ~*S4 FI FI OD
+  THEN S2 := @Make(T_Statements, < >, S2);
+       S4 := @Make(T_Statements, < >, S4);
+       IF @Gen_Proper?(@Make(T_Statements, < >, S1 ++ S3), @AS_Type)
+            AND @Gen_TVs(S2, @AS_Type) = <1> AND @Gen_TVs(S4, @AS_Type) = <1>
+	    AND @Gen_Reducible?(S2, @AS_Type) AND @Gen_Reducible?(S4, @AS_Type)
+            AND @ST(v) IN <T_Variable, T_Struct>
+            AND SUBSET?(@Stat_Types(@Make(T_Statements, < >, S1)), <T_Comment>)
+	    AND @ST(e1) = T_Number
+         THEN C:" Check that v is initially different from the exit test: ";
+	      @Paste_Before(@Skip);
+	      e2 := @Find_Value(@Struct_Elts(v));
+	      @Delete;
+	      IF NOT EMPTY?(e2) AND @ST(e2) = T_Number AND @V(e2) <> @V(e1)
+	        THEN OK := 1;
+		     IF doit = 1
+		       THEN S2 := @Cs(S2);
+		            S4 := @Cs(S4);
+		            S := FILL Statement
+		                   IF ~?v = ~?e1 THEN ~*S4 ELSE ~*S2 FI ENDFILL;
+ 	                    @Splice_Over(<FILL Statement
+                                            DO ~*S1;
+                                               IF ~?B1
+                                                 THEN EXIT(1)
+                                                 ELSE ~*S3;
+                                                      IF ~?v = ~?e1
+                                                        THEN EXIT(1) FI FI OD ENDFILL>
+                                           ++ @Increment(S, @AS_Type, -1, 1));
+                            C:" done " FI FI FI ENDMATCH ENDVAR .;
+  
+
+C:" Split a list of statements into two statement sequences ";
+C:" List ends in EXIT(1) and has other EXITs before. ";
+C:" Second statement sequence includes all preceding proper sequences. ";
+
+MW_PROC @SEC_Split(L VAR S1, S2) ==
+  VAR < L1 := TAIL(REVERSE(L)), L2 := <LAST(L)> >:
+  WHILE @Gen_Proper?(HEAD(L1), @AS_Type) DO
+    L2 := <HEAD(L1)> ++ L2;
+    L1 := TAIL(L1) OD;
+  S1 := @Make(T_Statements, < >, REVERSE(L1));
+  S2 := @Make(T_Statements, < >, L2) ENDVAR .;
+
+
+SKIP

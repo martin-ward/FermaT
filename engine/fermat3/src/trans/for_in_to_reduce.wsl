@@ -1,0 +1,131 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+MW_PROC @For_In_To_Reduce_Test() ==
+  IF @ST(@I) <> T_For_In
+    THEN @Fail("Current item is not a FOR x IN y loop")
+    ELSE IFMATCH Statement
+	          FOR ~?i IN ~?L DO
+                    ~*S;
+                    ~?v := ~?e OD
+           THEN IF NOT SUBSET?(REDUCE("\\/", MAP("@Stat_Types", S)), <T_Assert>)
+                  THEN @Fail("Loop body is not in a suitable form")
+                ELSIF EMPTY?(@FR_Reduce_Pars(v, e, i, L))
+                  THEN @Fail("Cannot determine the parameters for the REDUCE")
+                  ELSE @Pass FI
+           ELSE @Fail("FOR loop is not in a suitable form") ENDMATCH FI .;
+
+
+MW_PROC @For_In_To_Reduce_Code (Data) ==
+  VAR < pars := < >, e1 := < >, e2 := < >, e3 := < >, new := < > >:
+  IFMATCH Statement
+           FOR ~?i IN ~?L DO
+             ~*S;
+             ~?v := ~?e OD
+    THEN pars := @FR_Reduce_Pars(v, e, i, L);
+         IF LENGTH(pars) = 1
+	   THEN e3 := pars[1]
+	   ELSE C:" Replace i in the assertion by the whole sequence, ie L ";
+                e1 := pars[2];
+                new := < >;
+                FOR S1 IN S DO
+                  new := <@Replace(S1, L, @Lvalue_To_Expn(i))> ++ new OD;
+                IF NOT EMPTY?(new)
+                  THEN @Paste_Before(@Make(T_Assert, < >,
+                                           <@Simplify_Cond(@Make(T_And, < >, new))>));
+                       @Right FI;
+                e3 := @Make(T_Reduce, < >, pars[1..2]);
+                IF @ST(e) IN <T_Funct_Call, T_X_Funct_Call, T_MW_Funct_Call>
+                  THEN e3 := @Make(@ST(e), < >, <e^1, @Make(T_Expressions, < >,
+                                                            <@Lvalue_To_Expn(v), e3>)>)
+                  ELSE e3 := @Make(@ST(e), < >, <@Lvalue_To_Expn(v), e3>) FI FI;
+	 @Paste_Over(FILL Statement ~?v := ~?e3 ENDFILL);
+
+         SKIP ENDMATCH ENDVAR .;
+
+
+C:" Try to work out the parameters for the REDUCE operation: ";
+
+MW_FUNCT @FR_Reduce_Pars(vv, e, i, L) ==
+  VAR < v := @Lvalue_To_Expn(vv), name := < >,  R := < > >:
+
+  IF @Size(e) = 2 AND @ST(e) IN Comm_Ops AND @Equal?(v, e^2)
+    THEN e := @Make(@ST(e), < >, <e^2, e^1>) FI;
+
+  IF FALSE
+    THEN PRINT("v = "); @Print_WSL(v, "");
+         PRINT("e = "); @Print_WSL(e, "");
+         PRINT("i = "); @Print_WSL(i, "") FI;
+
+  IF @ST(e) IN <T_Funct_Call, T_X_Funct_Call, T_MW_Funct_Call>
+       AND @Size(e^2) = 2 AND @Equal?(v, e^2^1)
+    THEN R := @FR_Reduce_Par2(e^1, v, e^2^2, i, L)
+  ELSIF @ST(e) IN <T_Plus, T_Minus, T_Times, T_Divide, T_Union, T_Intersection, T_Concat,
+                   T_Max, T_Min, T_Exponent>
+          AND @Size(e) = 2 AND @Equal?(v, e^1)
+    THEN IF @ST(e) = T_Plus
+           THEN name := @Name(@Make_Name("+"))
+	 ELSIF @ST(e) = T_Minus
+	   THEN name := @Name(@Make_Name("-"))
+	 ELSIF @ST(e) = T_Times
+	   THEN name := @Name(@Make_Name("*"))
+	 ELSIF @ST(e) = T_Divide
+	   THEN name := @Name(@Make_Name("/"))
+	 ELSIF @ST(e) = T_Union
+	   THEN name := @Name(@Make_Name("\\/"))
+	 ELSIF @ST(e) = T_Intersection
+	   THEN name := @Name(@Make_Name("/\\"))
+	 ELSIF @ST(e) = T_Concat
+	   THEN name := @Name(@Make_Name("++"))
+	 ELSIF @ST(e) = T_Exponent
+	   THEN name := @Name(@Make_Name("**"))
+	   ELSE name := @Name(@Make_Name(@Type_Name(@ST(e)))) FI;
+         R := @FR_Reduce_Par2(name, v, e^2, i, L) FI;
+
+  (R) .;
+
+
+C:" Compute the second parameter (the list of elements) for the REDUCE ";
+
+MW_FUNCT @FR_Reduce_Par2(par1, v, e, i, L) ==
+  VAR < R := < > >:
+
+  IF FALSE
+    THEN PRINT("v = "); @Print_WSL(v, "");
+         PRINT("e = "); @Print_WSL(e, "");
+         PRINT("i = "); @Print_WSL(i, "");
+         PRINT("L = "); @Print_WSL(L, "") FI;
+
+  IF @LR_Equal?(e, i)
+    THEN R := <par1, L>
+  ELSIF @ST(e) = T_Number
+    THEN R := <@Simplify_Expn(FILL Expression ~?e * LENGTH(~?L) ENDFILL)> FI;
+  (R) .;
+
+
+
+SKIP
+
+
+
+
+
+

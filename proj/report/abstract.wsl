@@ -1,0 +1,14 @@
+VAR < i := 0, last := "", record := "", changed := 0 >:
+!P write("Management Report... " VAR sys);
+last := record; i := i + 1; record := records[i];
+WHILE i <= LENGTH(records) DO 
+  total := 0;
+  DO total := total + record.number;
+     last := record; i := i + 1; record := records[i];
+     IF i > LENGTH(records) OR last.name <> record.name
+       THEN EXIT(1) FI OD;
+  IF total <> 0
+    THEN !P write(last.name, total);
+         changed := changed + 1 FI OD;
+!P write("Changed items:", changed VAR sys) ENDVAR
+

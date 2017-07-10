@@ -1,0 +1,98 @@
+
+VAR < file := "011-vars: ", fail := < >, n := "", a := < >, b := < >,
+      procs := HASH_TABLE >:
+
+PRINT("Testing query functions...");
+
+C:" @Full_UBA and @Full_Redefined ";
+
+n := "001";
+procs.(@Make_Name("FOO")) := FILL Definition PROC FOO() == r2 := r0 END ENDFILL;
+
+a := @Full_UBA(FILL Statements
+
+	IF x = 1
+	  THEN r0 := 123; FOO()
+	  ELSE r1 := 456; FOO() FI
+	
+	ENDFILL, procs, HASH_TABLE);
+
+b := @Make_Set(<@Make_Name("x"), @Make_Name("r0")>);
+
+IF a = b
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "002";
+
+a := @UBA(FILL Statements
+
+	IF x = 1
+	  THEN r0 := 123; FOO()
+	  ELSE r1 := 456; FOO() FI
+	
+	ENDFILL);
+
+b := @Make_Set(<@Make_Name("x")>);
+
+IF a = b
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+n := "003";
+procs.(@Make_Name("FOO")) := FILL Definition PROC FOO() == r2 := r0 END ENDFILL;
+
+a := @Full_Redefined(FILL Statements
+
+	IF x = 1
+	  THEN r0 := 123; FOO()
+        ELSIF y = 1 THEN r2 := r2 + 1; r2 := 0
+	  ELSE r1 := 456; FOO() FI
+	
+	ENDFILL, procs, HASH_TABLE);
+
+b := @Make_Set(<@Make_Name("r2")>);
+
+IF a = b
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+
+
+n := "004";
+procs.(@Make_Name("FOO")) := FILL Definition PROC FOO() == r2 := z END ENDFILL;
+
+a := @Full_Variables(FILL Statements
+
+	IF x = 1
+	  THEN r0 := 123; FOO()
+        ELSIF y = 1 THEN r2 := r2 + 1; r2 := 0
+	  ELSE r1 := 456; FOO() FI
+	
+	ENDFILL, procs, HASH_TABLE);
+
+b := @Make_Set(MAP("@Make_Name", <"r0", "r1", "r2", "x", "y", "z">));
+
+IF a = b
+  THEN PRINT(file, n, " ok")
+  ELSE PRINT(file, n, " FAILED!"); fail := fail ++ <n> FI;
+
+
+
+
+
+
+C:" *** End of tests *** ";
+
+IF EMPTY?(fail)
+  THEN PRINT(file, "All tests passed!")
+  ELSE PRINT(file, "The following tests failed: ", fail) FI;
+
+SKIP ENDVAR
+

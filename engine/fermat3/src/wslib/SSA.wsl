@@ -1,0 +1,572 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" Convert a WSL program to Static Single Assignment form ";
+C:" given a file of information generated from bbtossa ";
+
+C:" NB: Statements of the form !P foo(VAR x) cause problems converted since ";
+C:" the *input* x name is different from the *output* x name. ";
+C:" Our solution is to ensure that x also appears in the value pars list: ";
+C:" !P foo(x VAR x). Then the renaming gives, eg !P foo(x__0 VAR x__1) ";
+
+
+C:" The file is a list of basic blocks in the form:
+
+Node: N posn:(...) len: L --> (succs list...)
+[node type]
+[NNNNNNNN var var:var ...]
+[...]
+0: <control vars...>
+  v1 := phi(v11, v12, ...)
+  ...
+  w1 := <w11, w12, ...>
+
+Blocks are separated by blank lines.
+The file ends with the line:
+
+Entry node is: N
+";
+
+
+C:" Note: we need to rename all the variables in the statements ";
+C:" in the block (the vars in the conditions for an IF block) ";
+C:" and also insert extra statements for the phi functions. ";
+C:" To insert the phi functions without disturbing position numbers, ";
+C:" we put them in the dbase table first and then insert from the tables ";
+C:" in a top-down fashion. ";
+
+C:" The first job is to parse the basic blocks file produced by bbtossa. ";
+C:" @Parse_Basic_Blocks returns a list of the form <entry, node, ...> ";
+C:" where a node is: <node, posn, len, succs, type, control, phi, assigns> ";
+C:" phi and assigns are lists of lists of strings. ";
+C:" NB We have to convert the strings to names before renaming etc. ";
+
+Alpha_Num := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.[]";
+
+MW_FUNCT @Parse_Basic_Blocks(file) ==
+  VAR < R := < >, port := @Open_Input_File(file),
+	entry := 0, tmp := < >, word := < >, line := "",
+	node := 0, posn := < >, len := 0, succs := < >, type := "", control := < >,
+	phi := < >, assigns := < >, list := < >, p := 0, n := 0, v := "", e := "" >:
+  PRINT("Reading basic blocks file: ", file);
+  DO C:" Skip to the next node (if any) ";
+     DO line := @Read_Line(port);
+	IF @EOF?(line) THEN EXIT(2) FI;
+	IF @Starts_With?(line, "Entry node is: ")
+	  THEN entry := @String_To_Num(SUBSTR(line, 15)) FI;
+	IF @Starts_With?(line, "Node:") THEN EXIT(1) FI OD;
+     C:" Parse the line Node: n posn:(...) len: l --> (...) ";
+     p := 5;
+     @Parse_Num(line VAR p, node);
+     @Skip_Spaces(line VAR p);
+     IF NOT @Str_Match?(line, p, "posn:(")
+       THEN PRINT("ERROR: no posn keyword:");
+	    PRINT(line);
+	    EXIT(1) FI;
+     p := p + 6;
+     C:" Read a space separated list of numbers into posn: ";
+     posn := < >;
+     @Parse_Nums(line VAR p, posn);
+     IF NOT @Str_Match?(line, p, ") len: ")
+       THEN PRINT("ERROR: no len keyword in bb file:");
+	    PRINT(line);
+	    EXIT(1) FI;
+     p := p + 7;
+     @Parse_Num(line VAR p, len);
+     IF NOT @Str_Match?(line, p, " --> (")
+       THEN PRINT("ERROR: no --> in bb file:");
+	    PRINT(line);
+	    EXIT(1) FI;
+     C:" We don't need the list of successors, but parse it for debugging: ";
+     p := p + 6;
+     succs := < >;
+     @Parse_Nums(line VAR p, succs);
+     line := @Read_Line(port);
+     IF @EOF?(line)
+       THEN PRINT("ERROR: EOF reading type or control in bb file.");
+	    EXIT(1) FI;
+     type := "";
+     IF SLENGTH(line) > 0 AND NOT @Digit?(SUBSTR(line, 0, 1))
+       THEN type := line; line := @Read_Line(port) FI;
+     IF @EOF?(line)
+       THEN PRINT("ERROR: EOF reading control or links in bb file.");
+	    EXIT(1) FI;     
+     links := < >;
+     WHILE NOT @EOF?(line) AND SLENGTH(line) > 8 AND @Digits?(SUBSTR(line, 0, 8)) DO
+       links := <line> ++ links;
+       line := @Read_Line(port) OD;
+     links := REVERSE(links);
+     IF @EOF?(line)
+       THEN PRINT("ERROR: EOF reading control in bb file.");
+	    EXIT(1) FI;     
+     p := 0;
+     IF @EOF?(line) OR (NOT @Str_Match?(line, p, "0: <")
+                         AND NOT @Str_Match?(line, p, "1: <"))
+       THEN PRINT("ERROR1: badly formatted control line in bb file:");
+	    IF NOT @EOF?(line) THEN PRINT(line) FI;
+	    EXIT(1) FI;
+     p := 4;
+     control := < >;
+     @Parse_Words(line VAR p, control);
+     C:" Read phi functions and assignments until a blank line is reached ";
+     phi := < >;
+     assigns := < >;
+     DO line := @Read_Line(port);
+	IF @EOF?(line) THEN EXIT(1) FI;
+	IF line = "" THEN EXIT(1) FI;
+	IF NOT @Starts_With?(line, "   ")
+	  THEN PRINT("ERROR2: badly formatted assign/phi line in bb file:");
+	       PRINT(line);
+	       EXIT(1) FI;
+	p := 3;
+	@Parse_Word(line VAR p, v);
+	list := <@Split_On(v, ".")>;
+	IF @Str_Match?(line, p, " := phi(")
+	  THEN C:" Read the phi function ";
+	       p := p + 8;
+	       @Parse_Words(line VAR p, list);
+	       phi := <list> ++ phi
+	ELSIF @Str_Match?(line, p, " := <")
+	  THEN C:" Read the assignment ";
+	       p := p + 5;
+	       @Parse_Words(line VAR p, list);
+	       assigns := <list> ++ assigns
+	  ELSE PRINT("ERROR3: badly formatted assign/phi line in bb file:");
+               PRINT(SUBSTR(line, p));
+	       PRINT(line);
+	       EXIT(1) FI OD;
+     phi := REVERSE(phi);
+     assigns := REVERSE(assigns);
+
+     R := <<node, posn, len, succs, type, links, control, phi, assigns>> ++ R;
+
+     IF @EOF?(line) THEN EXIT(1) FI OD;
+  @Close_Input_Port(port);
+  (<entry> ++ REVERSE(R)) .;
+
+
+
+C:" Read the word starting at position p1 in str ";
+
+MW_PROC @Parse_Word(str VAR p1, word) ==
+  VAR < p2 := 0 >:
+  @Skip_Spaces(str VAR p1);
+  p2 := p1;
+  WHILE @Char_In_Str?(str, p2, Alpha_Num) DO p2 := p2 + 1 OD;
+  word := SUBSTR(str, p1, p2 - p1);
+  p1 := p2 ENDVAR .;
+
+
+
+C:" Read the number starting at position p1 in str: ";
+
+MW_PROC @Parse_Num(str VAR p1, n) ==
+  VAR < p2 := 0 >:
+  @Skip_Spaces(str VAR p1);
+  p2 := p1;
+  WHILE @Char_In_Str?(str, p2, "0123456789") DO p2 := p2 + 1 OD;
+  IF p2 = p1 THEN ERROR("Number not found where expected: " ++ str) FI;
+  n := @String_To_Num(SUBSTR(str, p1, p2 - p1));
+  p1 := p2  ENDVAR .;
+
+
+C:" Read a space separated list of numbers and append to list ";
+
+MW_PROC @Parse_Nums(str VAR p, list) ==
+  VAR < n := 0, L := < > >:
+  WHILE SLENGTH(str) > p AND NOT @Char_In_Str?(str, p, ")>") DO
+    @Parse_Num(str VAR p, n);
+    L := <n> ++ L;
+    @Skip_Spaces(str VAR p) OD;
+  list := list ++ REVERSE(L) ENDVAR .;
+
+
+MW_PROC @Skip_Spaces(str VAR p) ==
+  VAR < l := SLENGTH(str) >:
+  WHILE p < l AND (SUBSTR(str, p, 1) = " " OR SUBSTR(str, p, 1) = ",") DO
+    p := p + 1 OD ENDVAR .;
+
+
+C:" Check that the string at posn p matches the given string: ";
+
+MW_BFUNCT @Str_Match?(line, p, str) == : SKIP;
+  (SLENGTH(line) >= p + SLENGTH(str) AND SUBSTR(line, p, SLENGTH(str)) = str) .;
+
+
+C:" Split a string into a list of words with the given separator ";
+MW_FUNCT @Split_On(str, sep) ==
+  VAR < R := < >, p := 0, q := INDEX(sep, str, 0) >:
+  WHILE q >= 0 DO
+    R := <SUBSTR(str, p, q - p)> ++ R;
+    p := q + 1;
+    q := INDEX(sep, str, q + 1) OD;
+  IF p < SLENGTH(str) THEN R := <SUBSTR(str, p)> ++ R FI;
+  (REVERSE(R)) .;
+
+
+C:" Parse a space/comma separated list of words and append to given list ";
+
+MW_PROC @Parse_Words(line VAR p, list) ==
+  VAR < word := "", L := < > >:
+  WHILE SLENGTH(line) > p AND NOT @Char_In_Str?(line, p, ")>") DO
+    @Parse_Word(line VAR p, word);
+    IF word = ""
+      THEN PRINT("ERROR: badly formatted word list in bb file:");
+	   PRINT(line);
+	   p := SLENGTH(line)
+      ELSE L := <@Split_On(word, ".")> ++ L;
+	   @Skip_Spaces(line VAR p) FI OD;
+  list := list ++ REVERSE(L) ENDVAR .;
+
+
+C:" Print a list of elements, comma separated: ";
+
+MW_PROC @Print_Elt_List(list) ==
+  WHILE NOT EMPTY?(list) DO
+    @Print_Elt(HEAD(list));
+    list := TAIL(list);
+    IF NOT EMPTY?(list) THEN PRINFLUSH(", ") FI OD .;
+
+C:" Print a single element, dot separated: ";
+
+MW_PROC @Print_Elt(elt) ==
+  WHILE NOT EMPTY?(elt) DO
+    PRINFLUSH(@String(HEAD(elt)));
+    elt := TAIL(elt);
+    IF NOT EMPTY?(elt) THEN PRINFLUSH(".") FI OD .;
+
+
+MW_PROC @Print_Basic_Blocks(blocks) ==
+  VAR < entry := HEAD(blocks), block := < >,
+	node := 0, posn := < >, len := 0, succs := < >, type := "",
+	links := < >, control := < >,
+	phi := < >, assigns := < > >:
+  blocks := TAIL(blocks);
+  FOR block IN blocks DO
+    node := block[1];
+    posn := block[2];
+    len := block[3];
+    succs := block[4];
+    type := block[5];
+    links := block[6];
+    control := block[7];
+    phi := block[8];
+    assigns := block[9];
+	 
+    PRINFLUSH("Node: ", node, " posn:", posn, " len: ", len, " --> (");
+    tmp := succs;
+    WHILE NOT EMPTY?(tmp) DO
+      PRINFLUSH(HEAD(tmp));
+      tmp := TAIL(tmp);
+      IF NOT EMPTY?(tmp) THEN PRINFLUSH(" ") FI OD;
+    PRINT(")");
+    IF type <> "" THEN PRINT(type) FI;
+    FOR line IN links DO
+      PRINT(line) OD;
+    PRINFLUSH("0: <"); @Print_Elt_List(control); PRINT(">");
+    FOR list IN phi DO
+      PRINFLUSH("   "); @Print_Elt(HEAD(list)); PRINFLUSH(" := phi(");
+      @Print_Elt_List(TAIL(list)); PRINT(")") OD;
+    FOR list IN assigns DO
+      PRINFLUSH("   "); @Print_Elt(HEAD(list)); PRINFLUSH(" := <");
+      @Print_Elt_List(TAIL(list)); PRINT(">") OD;
+    PRINT("") OD;
+
+  PRINT("Entry node is: ", entry) ENDVAR .;
+
+
+
+C:" Convert the given item to SSA form using the given blocks ";
+C:" At each statement which starts a block we have a table of renames ";
+C:" for lvalue variables (actually, elements) and another table ";
+C:" for expression variables. ";
+C:" If elts is non-empty, then only rename the given elements ";
+C:" (in this case, the result is only valid SSA form for these elements). ";
+
+MW_FUNCT @WSL_To_SSA(I, blocks, only) ==
+  VAR < R := < >, entry := HEAD(blocks), block := < >, a_name := @Make_Name("a"),
+	rename_exp := HASH_TABLE, rename_lvalue := HASH_TABLE,
+	assign := < >, elt := < >, len := 0, elts := < >, v := < >,
+	phi_tab := HASH_TABLE, count := 0 >:
+  @Edit;
+  @New_Program(I);
+  blocks := TAIL(blocks);
+  FOR block IN blocks DO
+    IF block[5] = "FLOOP Header"
+      THEN C:" Floop header nodes don't have associated code to rename ";
+      ELSE rename_exp := HASH_TABLE;
+	   rename_lvalue := HASH_TABLE;
+	   C:" Process control vars ";
+	   FOR elt IN block[7] DO
+	     rename_exp.(@SSA_Orig_Elt(elt)) := @SSA_Convert_Elt(elt, T_Expression) OD;
+	   C:" Process phi functions and other assignments: ";
+	   FOR assign IN block[9] DO
+	     elt := HEAD(assign);
+	     rename_lvalue.(@SSA_Orig_Elt(elt)) := @SSA_Convert_Elt(elt, T_Lvalue);
+	     FOR elt IN TAIL(assign) DO
+	       rename_exp.(@SSA_Orig_Elt(elt)) := @SSA_Convert_Elt(elt, T_Expression) OD OD;
+	   IF NOT @Valid_Posn?(@Program, block[2])
+	     THEN PRINT(block[2]);
+                  @Checkpoint("SSA_ERROR.wsl");
+		  ERROR("@WSL_To_SSA: not a valid position!") FI;
+	   @Goto(block[2]);
+	   elts := < >;
+	   len := block[3];
+	   DO IF len = 1 AND block[5] = "IF"
+		THEN C:" Process the conditions only: ";
+		     @Down; C:" to first Guarded ";
+		     DO @Down; C:" to condition ";
+			@SSA_Rename(rename_exp, rename_lvalue, only);
+			@Up;
+			IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+		     @Up
+	      ELSIF len = 1 AND block[5] = "WHILE Header"
+		THEN C:" Process the condition only: ";
+		     @Down; C:" to the condition ";
+		     @SSA_Rename(rename_exp, rename_lvalue, only);
+		     @Up
+	      ELSIF len = 1 AND @Starts_With?(block[5], "ACTION ")
+		THEN C:" No renaming needed in the action header node "
+	      ELSIF len = 1 AND @Starts_With?(block[5], "PROC Return ")
+		THEN C:" A return node has var := var assignments ";
+		     C:" Use the expressions to rename the var parameters: ";
+		     @SSA_Rename(rename_exp, rename_exp, only)
+	      ELSIF @Starts_With?(block[5], "PROC Header")
+	        THEN C:" Process parameters only ";
+		     @Down_To(2);
+		     @SSA_Rename(rename_exp, rename_lvalue, only);
+		     @Right;
+		     @SSA_Rename(rename_exp, rename_lvalue, only);
+		     @Up
+	      ELSIF block[5] = "WHERE Header"
+	        THEN C:" Nothing to do here "
+		ELSE elts := @Elts_Assigned(@I);
+                     @SSA_Rename(rename_exp, rename_lvalue, only) FI;
+	      IF len = 1 THEN EXIT(1) FI;
+	      C:" If a variable has been assigned in this statement ";
+	      C:" then subsequent expressions use the name from this assignment: ";
+	      FOR v IN elts DO
+		IF NOT EMPTY?(rename_lvalue.(v))
+		  THEN rename_exp.(v) := @Lvalue_To_Expn(rename_lvalue.(v)) FI OD;
+	      @Right;
+	      len := len - 1 OD FI OD;
+
+  C:" Insert SKIP at the end of each proc body as a placeholder ";
+  C:" for phi functions (this doesn't affect any posns) ";
+  @Goto(< >);
+  FOREACH Statement DO
+    IF @ST(@I) = T_Where
+      THEN @Down_Last; @Down; C:" to first defn ";
+	   DO IF @ST(@I) = T_Proc
+		THEN @Down_To(4);
+		     @Down_Last;
+		     IF @ST(@I) <> T_Skip THEN @Paste_After(@Skip) FI;
+		     @Up; @Up FI;
+	      IF @Right? THEN @Right ELSE EXIT(1) FI OD FI OD;
+
+  C:" Now insert phi functions in two passes. ";
+  C:" The first pass puts the functions in a hash table indexed on ";
+  C:" the position of the actual statement before which the function will appear. ";
+  C:" The second pass inserts the phi functions via a top-down recursive ";
+  C:" procedure which keeps track of the *original* position of the statements. ";
+
+  FOR block IN blocks DO
+    @Goto(block[2]);
+    IF NOT EMPTY?(block[8])
+      THEN count := count + LENGTH(block[8]);
+	   IF @Starts_With?(block[5], "ACTION ")
+	     THEN @Down_Last; @Down FI;
+	   IF @Starts_With?(block[5], "PROC Return ")
+	     THEN C:" Insert phi functions at the *end* of the proc body ";
+		  @To(4); @Down_Last;
+		  IF @ST(@I) <> T_Skip THEN ERROR("No SKIP at end of proc!!!") FI FI;
+	   IF @GT(@I) <> T_Statement
+	     THEN @Print_WSL(@I, "");
+		  PRINT("posn = ", @Posn);
+		  ERROR("Trying to insert phi functions on a non-statement!!!") FI;
+	   phi_tab.(REVERSE(@Posn)) := phi_tab.(REVERSE(@Posn)) ++ block[8] FI OD;
+
+  @Goto(< >);
+  @SSA_Phi_Insert(< >, phi_tab, only VAR count);
+
+  IF count <> 0 THEN
+    ERROR(@String(count) ++ " phi function(s) inserted but not processed!") FI; 
+
+  @Trans(TR_Delete_All_Skips, "");
+  R := @Program;
+  @Undo_Edit;
+
+  (R) .;
+
+
+C:" Insert phi functions in a bottom-up fashion, keeping track of ";
+C:" the original (reversed) position in rposn: ";
+
+MW_PROC @SSA_Phi_Insert(rposn, phi_tab, only VAR count) ==
+  IF NOT @Has_Statements_Type?(@GT(@I))
+    THEN SKIP
+  ELSIF @Cs?(@I)
+    THEN VAR < phi := < >, n := 1, up := 0 >:
+	 @Down;
+	 DO C:" Convert in bottom-up order: ";
+	    @SSA_Phi_Insert(<n> ++ rposn, phi_tab, only VAR count);
+	    phi := phi_tab.(<n> ++ rposn);
+	    IF NOT EMPTY?(phi)
+	      THEN IF @ST(@I) = T_Floop
+		     THEN @Down; @Down; up := 2
+		   ELSIF @ST(@I) = T_While
+		     THEN C:" Convert the WHILE to a FLOOP ";
+			  C:" and insert the phi functions at the top of the loop body. ";
+			  C:" (this is because they have to come BEFORE the test) ";
+			  @Trans(TR_While_To_Floop, "");
+			  @Down; @Down; up := 2
+		   ELSIF @ST(@I) = T_D_Do
+		     THEN C:" Convert the D_DO to a FLOOP plus D_IF ";
+			  C:" and insert at the top of the loop body. ";
+			  @Trans(TR_D_Do_To_Floop, "");
+			  @Down; @Down; up := 2
+		     ELSE up := 0 FI;
+		   FOR assign IN REVERSE(phi) DO
+		     count := count - 1;
+                     IF EMPTY?(only) OR @SSA_Orig_Elt(HEAD(assign)) IN only
+		       THEN @Paste_Before(@SSA_Make_Phi(assign))
+		       ELSE @Paste_Before(@Skip) FI OD;
+		   FOR i := 1 TO LENGTH(phi) STEP 1 DO
+		     @Right OD;
+		   WHILE up > 0 DO
+		     up := up - 1; @Up OD FI;
+	    IF @Right?
+	      THEN n := n + 1; @Right
+	      ELSE EXIT(1) FI OD;
+	 @Up ENDVAR FI .;
+
+
+C:" Convert an SSA element (list of strings) ";
+C:" to either an expression or Lvalue: ";
+
+MW_FUNCT @SSA_Convert_Elt(elt, type) == : SKIP;
+  (IF type = T_Expression
+     THEN @Elt_To_Expn(MAP("@SSA_Make_Name", elt))
+     ELSE @Elt_To_Lvalue(MAP("@SSA_Make_Name", elt)) FI) .;
+
+
+C:" Convert strings to names and negate numbers. ";
+C:" This converts an SSA element to a normal element ";
+
+MW_FUNCT @SSA_Make_Name(x) == : SKIP;
+  (IF NUMBER?(x) THEN -x ELSE @Make_Name(x) FI) .;
+
+
+C:" Deduce the original name for the given SSA element ";
+C:" by chopping off the __num from the last element. ";
+C:" Also chop off [n] if present: ";
+
+MW_FUNCT @SSA_Orig_Elt(elt) ==
+  VAR < str := LAST(elt), p := -1 >:
+  C:" Find the last occurrence of __ in the string ";
+  WHILE INDEX("__", str, p + 1) >= 0 DO
+    p := INDEX("__", str, p + 1) OD;
+  IF p < 0 THEN ERROR("@SSA_Orig_Elt: no __ found in " ++ str) FI;
+  C:" Check for [ in the string ";
+  IF INDEX("[", str, 0) >= 0 THEN p := INDEX("[", str, 0) FI;
+  (MAP("@SSA_Make_Name", BUTLAST(elt) ++ <SUBSTR(str, 0, p)>)) .;
+
+
+C:" Deduce the original name for the given variable or Lvalue ";
+C:" by chopping off the __num from the last element: ";
+
+MW_FUNCT @SSA_Orig_Var(I) ==
+  VAR < R := < > >:
+  IF @ST(I) = T_Struct
+    THEN R := @Make(T_Struct, < >, <@SSA_Orig_Name(I^1), I^2>)
+  ELSIF @ST(I) = T_Struct_Lvalue
+    THEN R := @Make(T_Struct_Lvalue, < >, <@SSA_Orig_Name(I^1), I^2>)
+  ELSIF @ST(I) = T_Variable OR @ST(I) = T_Var_Lvalue 
+    THEN R := @SSA_Orig_Name(I)
+  ELSIF @ST(I) = T_Aref AND @ST(I^1) = T_Variable
+	  OR @ST(I) = T_Aref_Lvalue AND @ST(I^1) = T_Var_Lvalue
+    THEN R := @Make(@ST(I), < >,
+		    <I^1, @Make(T_Expressions, < >,
+				<@SSA_Orig_Var(I^2^1)> ++ TAIL(@Cs(I^2)))>)
+    ELSE @Print_WSL(I, "");
+	 ERROR("@SSA_Orig_Var: unexpected type!") FI;
+  (R) .;
+
+
+
+C:" Convert the value of the given item to the original name. ";
+C:" (type can be T_Name, T_Variable or T_Var_Lvalue  ";
+
+MW_FUNCT @SSA_Orig_Name(I) ==
+  VAR < str := @N_String(@V(I)), p := -1 >:
+  C:" Find the last occurrence of __ in the string ";
+  WHILE INDEX("__", str, p + 1) >= 0 DO
+    p := INDEX("__", str, p + 1) OD;
+  (@Make(@ST(I), @Make_Name(SUBSTR(str, 0, p)), < >)) .;
+
+
+C:" Make a phi function assignment ";
+
+MW_FUNCT @SSA_Make_Phi(assign) ==
+  VAR < v := @SSA_Convert_Elt(HEAD(assign), T_Lvalue),
+	e := < >, elt := < > >:
+  FOR elt IN TAIL(assign) DO
+    e := <@SSA_Convert_Elt(elt, T_Expression)> ++ e OD;
+  e := REVERSE(e);
+  (FILL Statement ~?v := phi(~*e) ENDFILL) .;
+
+
+C:" Do the renaming on the currently selected item ";
+C:" using the given hash tables: ";
+
+MW_PROC @SSA_Rename(rename_exp, rename_lvalue, only) ==
+  IF @ST(@I) = T_A_Proc_Call THEN @SSA_Fix_A_Proc_Call FI;
+  VAR < old := < >, new := < > >:
+  FOREACH Expression DO
+    IF @ST(@I) = T_Variable OR @ST(@I) = T_Struct OR @ST(@I) = T_Aref
+      THEN old := @Struct_Elts(@I);
+           IF EMPTY?(only) OR old IN only
+	     THEN new := rename_exp.(old);
+	          IF NOT EMPTY?(new) THEN @Paste_Over(new) FI FI FI OD;
+  FOREACH Lvalue DO
+    IF @ST(@I) = T_Var_Lvalue OR @ST(@I) = T_Struct_Lvalue OR @ST(@I) = T_Aref_Lvalue
+      THEN old := @Struct_Elts(@I);
+           IF EMPTY?(only) OR old IN only
+	     THEN new := rename_lvalue.(old);
+	          IF NOT EMPTY?(new)
+                    THEN IF @GT(new) = T_Lvalue
+                           THEN @Paste_Over(new)
+                           ELSE @Paste_Over(@Expn_To_Lvalue(new)) FI FI FI FI OD ENDVAR .;
+
+
+MW_PROC @SSA_Fix_A_Proc_Call() ==
+  VAR < val := @Elements(@I^2), var := @Elements(@I^3), extra := < > >:
+  extra := @Mth_Sort(MAP("@Elt_To_Expn", var \ val));
+  IF NOT EMPTY?(extra)
+    THEN @Down_To(2);
+	 @Paste_Over(@Make(T_Expressions, < >, @Cs(@I) ++ extra));
+	 @Up FI ENDVAR .;
+
+
+
+C:" ----------------------------------------------------------------------- "
+
+

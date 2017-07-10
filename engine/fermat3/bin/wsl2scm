@@ -1,0 +1,63 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+##########
+##########   wsl2scm file.wsl [file.scm]
+##########
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g;
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+
+($myname = $0) =~ s|(.*/)*||;   # strip path component from name
+$Usage = "Usage: $myname [-my] file.wsl [file.scm]\n";
+
+# Check one or two arguments:
+die $Usage if (($#ARGV < 0) || ($#ARGV > 1));
+
+&parse_args();
+
+($base = $input) =~ s|(.*/)*||;
+$base =~ s/\.wsl$//;
+$output = "$base.scm" if ($output eq "$base.out");
+
+$cmds = <<END_OF_INPUT;
+  (if (file-exists? "patch.scm")
+      (load "patch.scm"))
+  (\@New_Program (\@Parse_File "$input" //T_/Statements))
+  (define tr-runtime (get-internal-run-time))
+  (\@WSL_To_Scheme (\@Item) "$output" "$base")
+  (display-list "Translation time: " (- (get-internal-run-time) tr-runtime))
+  (display-list "Result is in: $output")
+END_OF_INPUT
+
+&fermat($cmds);
+
+# Check for and delete empty macros file:
+unlink("$base-mac.scm") if ((-f "$base-mac.scm") && (!-s "$base-mac.scm"));
+unlink("$output-mac.scm") if ((-f "$output-mac.scm") && (!-s "$output-mac.scm"));
+
+exit(0);

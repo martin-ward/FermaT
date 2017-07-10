@@ -1,0 +1,183 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+MW_PROC @Actions_To_Procs_Test () ==
+  IF @Spec_Type(@I) <> T_A_S
+    THEN @Fail("Not an action system.") 
+    ELSE VAR < start := @V(@I^1) >:
+	 @Down_Last; @Down; C:" to first action ";
+	 VAR < as := @AS_Type >:
+	 DO IF @V(@I^1) <> start
+	      THEN IF @ATP_PROCable?(as, @Calls(@I), @V(@I^1))
+		     THEN @Pass; EXIT(1) FI FI;
+	    IF @Right? 
+	      THEN @Right 
+	      ELSE @Fail("No suitable actions."); 
+		   EXIT(1) FI OD ENDVAR ENDVAR FI .; 
+
+
+MW_PROC @Actions_To_Procs_Code(Data) ==
+  C:" First, convert actions which only call Z ";
+  VAR < Z := @Make_Name("Z"), start := @V(@I^1),
+	calls := < >, dispatch := @Make_Name("dispatch"),
+	Leave_Alone := @Make_Set(@Parse_String(Data)),
+	dispatch_calls := @ATP_Dispatch_Calls(@I),
+	as := @AS_Type, change := 0, found := 0, orig := < >>:
+PRINT("Actions_To_Procs Leave_Alone = ", Data);
+  IF @Regular_System?(@I)
+    THEN ATEACH Statements DO
+	   @Down;
+	   DO IF @Is_Improper?
+		THEN IF @Right? THEN @Delete_Rest FI;
+		     EXIT(1) FI;
+	      IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	   @Up OD FI;
+  DO as := @AS_Type;
+     found := 0;
+     orig := @I;
+     @Down_Last; @Down;
+     C:" First deal with the actions which only call Z ";
+     C:" NB: removing some actions may make others suitable, hence the outer loop ";
+     PRINT("Finding actions which only call Z...");
+     DO change := 0;
+        @To(1);
+        DO IF @V(@I^1) = start OR @V(@I^1) = dispatch OR @V(@I^1) IN dispatch_calls 
+             THEN IF @Right? THEN @Right ELSE EXIT(1) FI
+             ELSE calls := @Calls(@I);
+                  IF LENGTH(calls) = 1 AND calls[1][1] = Z AND @Stat_Count(@I) <= 2 
+                    THEN @ATP_SAD(VAR change)
+                  ELSIF LENGTH(calls) = 1 AND calls[1][1] = Z AND @Trans?(TR_Make_Proc) 
+                    THEN @Trans(TR_Make_Proc, "");
+                         @ATP_SAD(VAR change)    
+                  ELSIF LENGTH(calls) = 1 AND calls[1][1] = @V(@I^1)
+		          AND @Trans?(TR_Make_Proc) 
+                    THEN @Trans(TR_Make_Proc, "");
+                         @ATP_SAD(VAR change)    
+                    ELSE IF @Right? THEN @Right ELSE EXIT(1) FI FI FI OD;
+        IF change = 0 THEN EXIT(1) ELSE found := 1 FI OD;
+     C:" Next, actions which call one other action, also in a loop: ";
+     C:" Only do this if there were no actions which only call Z ";
+     IF found = 0
+       THEN PRINT("Finding actions which call one other action...");
+            DO change := 0;
+               @To(1);
+               DO calls := @Calls(@I);
+                  IF @V(@I^1) <> start AND @V(@I^1) NOTIN Leave_Alone
+                      AND LENGTH(calls) = 1
+                      AND EMPTY?(@Make_Set(MAP("HEAD", calls)) /\ Leave_Alone)
+                      AND @ATP_PROCable?(as, calls, @V(@I^1))
+                      AND @Trans?(TR_Make_Proc)
+                   THEN PRINT("Action ", @N_String(@V(@I^1)), " only calls ",
+                              @N_String(calls[1][1]));
+                        IF @ST(@I^2^1) = T_Comment AND @ST(@I^2^2) = T_Call
+			  THEN C:" Don't make a proc from a single comment "
+			  ELSE @Trans(TR_Make_Proc, "") FI;
+                        @ATP_SAD(VAR change) FI;
+                  IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+               IF change = 0 THEN EXIT(1) ELSE found := 1 FI OD FI;
+     IF found = 0
+       THEN DO change := 0;
+               @To(1);
+               DO calls := @Calls(@I);
+                  IF @V(@I^1) <> start AND @V(@I^1) NOTIN Leave_Alone
+                      AND EMPTY?(@Make_Set(MAP("HEAD", calls)) /\ Leave_Alone)
+                      AND @ATP_PROCable?(as, calls, @V(@I^1))
+                      AND @Trans?(TR_Make_Proc)
+                    THEN IF LENGTH(calls) = 0
+                           THEN PRINT("Action ", @N_String(@V(@I^1)), " has no calls.")
+                         ELSIF LENGTH(calls) = 2
+                           THEN PRINT("Action ", @N_String(@V(@I^1)), " only calls ",
+                                      @N_String(calls[1][1]), " and ",
+                                      @N_String(calls[2][1]))
+                           ELSE PRINT("Error in ATP_PROCable!!!") FI;
+                         @Trans(TR_Make_Proc, "");
+                         @ATP_SAD(VAR change) FI;
+                  IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+               IF change = 0 THEN EXIT(1) FI OD FI;
+     WHILE @Up? AND @ST(@I) <> T_A_S DO @Up OD;
+     IF @Equal?(orig, @I) THEN EXIT(1) FI OD;
+  PRINT(" ") ENDVAR .;
+
+
+C:" Substitute and delete current action, if possible, and set change := 1 ";
+MW_PROC @ATP_SAD(VAR change) ==
+  WHILE @Spec_Type(@I) <> T_Action AND @Up? DO @Up OD;
+  IF @Spec_Type(@I) <> T_Action
+    THEN ERROR("ERROR in Actions_To_Proc -- can't get back to the action!")
+  ELSIF @Trans?(TR_Substitute_And_Delete)
+    THEN @Trans(TR_Substitute_And_Delete, "");
+	 change := 1
+    ELSE @PP_Item(@I, 80, "");
+         PRINT("Cannot Substitute_And_Delete: ", @N_String(@V(@I^1)));
+         ERROR("ERROR in Actions_To_Proc -- ");
+	 @Right FI .;
+
+
+C:" An action is PROCable if: ";
+C:" (1) It calls no other actions, OR ";
+C:" (2) It calls Z and one other action, and the system is regular, OR ";
+C:" (3) It calls one other action, and the system is regular, OR ";
+C:" (4) It calls one other action, the action is regular, and ";
+C:"       all the calls to the other action are in terminal positions, OR ";
+C:" (5) It only calls itself and the system is recursive. ";
+
+MW_BFUNCT @ATP_PROCable?(as, calls, name) ==
+  VAR < OK := 0, Z := @Make_Name("Z") >:
+  IF LENGTH(calls) = 0
+    THEN OK := 1
+  ELSIF LENGTH(calls) = 2 AND as = "Reg"
+    THEN IF (calls[1][1] = Z AND calls[2][1] <> name)
+	      OR (calls[2][1] = Z AND calls[1][1] <> name)
+	   THEN OK := 1
+	   ELSE OK := 0 FI
+  ELSIF LENGTH(calls) > 1
+    THEN OK := 0
+  ELSIF as = "Rec" AND LENGTH(calls) = 1 AND @V(@I^1) = calls[1][1]
+    THEN OK := 1
+  ELSIF calls[1][1] = name
+    THEN OK := 0
+  ELSIF as = "Reg"
+    THEN OK := 1
+  ELSIF @Regular?(@I) AND @SAS_Calls_Terminal?(calls[1][1], as)
+    THEN OK := 1
+  ELSIF @Regular?(@I) AND @SAS_Calls_Terminal?(calls[1][1], as)
+    THEN OK := 1
+    ELSE OK := 0 FI;
+  (OK = 1) .;
+
+
+C:" Return the list of actions called from the dispatch action: ";
+MW_FUNCT @ATP_Dispatch_Calls(I) ==
+  VAR < R := < >, dispatch := @Make_Name("dispatch") >:
+  @Edit;
+  @New_Program(I);
+  @Down_Last; @Down_Last; C:" to last action ";
+  DO IF @ST(@I) = dispatch
+       THEN R := MAP("HEAD", @Calls(@I)); EXIT(1) FI;
+     IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+  @Undo_Edit;
+  (R) .;
+
+
+
+SKIP
+
+

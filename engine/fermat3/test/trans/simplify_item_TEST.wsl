@@ -1,0 +1,227 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+@Test_Trans("First test of `Simplify Item'",
+	    (FILL Statements X := A + A + B + A + B + B ENDFILL),
+	    <1, 1, 2>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements X := 3 * (A + B) ENDFILL));
+
+
+@Test_Trans("Second test of `Simplify Item'",
+	    (FILL Statements {(A < 1) OR (A > 1)} ENDFILL),
+	    <1, 1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements {(A <> 1)} ENDFILL));
+
+
+@Test_Trans("Third test of `Simplify Item'",
+	    (FILL Statements {(A * A) < 0} ENDFILL),
+	    <1, 1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements {FALSE} ENDFILL));
+
+
+@Test_Trans("Fourth test of `Simplify Item'",
+	    (FILL Statements IF FALSE
+				THEN X := 1
+			     ELSIF A = B
+				THEN X := 2
+			     ELSIF FALSE
+				THEN X := 3
+			     ELSIF A < B
+				THEN X := 4
+				ELSE X := 5 FI ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements IF A = B
+				THEN X := 2
+			     ELSIF A < B
+				THEN X := 4
+				ELSE X := 5 FI ENDFILL));
+
+
+@Test_Trans("Fifth test of `Simplify Item'",
+	    (FILL Statements IF A = 9
+				THEN X := 1
+			     ELSIF A = B
+				THEN X := 2
+			     ELSIF B > 9
+				THEN X := 3
+			     ELSIF A < B
+				THEN X := 4
+				ELSE X := 5 FI ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Sixth test of `Simplify Item'",
+	    (FILL Statements WHILE X = 1 DO
+				   A := A + 1;
+				   SKIP OD ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Seventh test of `Simplify Item'",
+	    (FILL Statements WHILE X = 1 DO
+				   X := X + 1;
+				   SKIP OD ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Eighth test of `Simplify Item'",
+	    (FILL Statements WHILE TRUE DO
+				   A := A + 1;
+				   SKIP OD ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements ABORT ENDFILL));
+
+
+@Test_Trans("Ninth test of `Simplify Item'",
+	    (FILL Statements WHILE X = 1 DO
+				   X := X - 1;
+				   !XP update ();
+				   SKIP;
+				   {(X = 1)} OD ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements IF X = 1 THEN ABORT FI ENDFILL));
+
+
+@Test_Trans("Tenth test of `Simplify Item'",
+	    (FILL Statements WHILE X < 10 DO
+				   X := X - 1;
+				   !XP update ();
+				   SKIP;
+				   {(X = 1)} OD ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements IF X < 10 THEN ABORT FI ENDFILL));
+
+
+@Test_Trans("Eleventh test of `Simplify Item'",
+	    (FILL Statements DO A := A + 1;
+				DO EXIT(1) OD;
+				SKIP OD ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements ABORT ENDFILL));
+
+
+@Test_Trans("Twelveth test of `Simplify Item'",
+	    (FILL Statements DO A := A + 1;
+				IF A = B THEN EXIT(1) FI;
+				SKIP;
+				A := A + 1;
+				IF A = B THEN EXIT(1) FI;
+				SKIP OD ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements DO A := A + 1;
+				IF A = B THEN EXIT(1) FI;
+				SKIP OD ENDFILL));
+
+
+@Test_Trans("Thirteenth test of `Simplify Item'",
+	    (FILL Statements DO A := A + 1;
+				DO EXIT(2) OD;
+				SKIP OD ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements A := A + 1; DO EXIT(1) OD ENDFILL));
+
+
+C: "I have omitted a test here while Eddy fixes one of his transformations :-) ";
+
+
+@Test_Trans("Fifteenth test of `Simplify Item'",
+	    (FILL Statements VAR <X := 1, Y := 2> :
+				 A := B + C;
+				 SKIP ENDVAR ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements A := B + C; SKIP ENDFILL));
+
+
+@Test_Trans("Sixteenth test of `Simplify Item'",
+	    (FILL Statements VAR <X := 1, Y := 2> :
+				 A := X + C;
+				 SKIP ENDVAR ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    "Fail");
+
+
+@Test_Trans("Seventeenth test of `Simplify Item'",
+	    (FILL Statements BEGIN A := 3;
+				   SKIP;
+				   B := 4
+			     WHERE PROC P (X VAR Y) == Y := Y + X END
+			     END ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements A := 3; SKIP; B := 4 ENDFILL));
+
+
+
+@Test_Trans("Eighteenth test of `Simplify Item'",
+	    (FILL Statements DO x := x + 1;
+				IF x = 10 THEN EXIT(1) FI;
+				x := x + 1;
+				IF x = 10 THEN EXIT(1) FI OD ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    (FILL Statements DO x := x + 1;
+				IF x = 10 THEN EXIT(1) FI OD ENDFILL));
+
+
+@Test_Trans("Nineteenth test of `Simplify Item'",
+	    (FILL Statements DO x := x + 1;
+				IF x = 10 THEN EXIT(1) FI;
+				x := x + 1;
+				IF x = 11 THEN EXIT(1) FI OD ENDFILL),
+	    <1>,
+	    TR_Simplify_Item,
+	    < >,
+	    "Fail")
+

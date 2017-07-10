@@ -1,0 +1,38 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+
+
+TR_Collapse_Action_System := @New_TR_Number();
+
+TRs_Proc_Name[TR_Collapse_Action_System] := "Collapse_Action_System";
+TRs_Test[TR_Collapse_Action_System]:=!XF funct(@Collapse_Action_System_Test);
+TRs_Code[TR_Collapse_Action_System]:=!XF funct(@Collapse_Action_System_Code);
+
+TRs_Name[TR_Collapse_Action_System] := "Collapse Action System";
+
+TRs_Keywords[TR_Collapse_Action_System] := < "Rewrite" >;
+
+TRs_Help[TR_Collapse_Action_System] := "Collapse action system will use simplifications and substitution to transform an action system into a sequence of statements, possibly inside a DO loop.";
+
+TRs_Prompt[TR_Collapse_Action_System] := ""; 
+
+TRs_Data_Gen_Type[TR_Collapse_Action_System] := "" 
+

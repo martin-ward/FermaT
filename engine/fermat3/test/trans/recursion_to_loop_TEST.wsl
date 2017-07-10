@@ -1,0 +1,795 @@
+
+@Test_Trans(" 1st test of `Recursion_To_Loop'",
+	    (FILL Statements
+
+ACTIONS a14:
+  a14 ==
+    mjvm_mstack := <mjvm_locals> ++ mjvm_mstack;
+    CALL a37 END
+  a37 ==
+    mjvm_estack
+      := <mjvm_statics[3]> ++ <mjvm_statics[2]> ++ mjvm_estack;
+    VAR < tempa := 0, tempb := 0 >:
+    tempa := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    tempb := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    IF tempa <= tempb
+      THEN mjvm_flag_jump := 1
+      ELSE mjvm_flag_jump := 0 FI ENDVAR;
+    IF mjvm_flag_jump = 1
+      THEN mjvm_estack := <0> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a75
+      ELSE mjvm_estack
+             := <mjvm_statics[3] - mjvm_statics[2]>
+                  ++ <mjvm_statics[2]> ++ <mjvm_statics[1]> ++ mjvm_estack;
+           VAR < tempa := 0, tempb := 0, tempres := 0 >:
+           tempres := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempa := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempb := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           mjvm_arrays[tempb][tempa + 1] := tempres ENDVAR;
+           mjvm_estack := <mjvm_statics[2] + 1> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a37 FI END
+  a75 ==
+    mjvm_estack
+      := <LENGTH(mjvm_arrays[mjvm_statics[1]])>
+           ++ <mjvm_statics[2]> ++ mjvm_estack;
+    VAR < tempa := 0, tempb := 0 >:
+    tempa := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    tempb := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    IF tempa <= tempb
+      THEN mjvm_flag_jump := 1
+      ELSE mjvm_flag_jump := 0 FI ENDVAR;
+    IF mjvm_flag_jump = 1
+      THEN mjvm_locals := HEAD(mjvm_mstack);
+           mjvm_mstack := TAIL(mjvm_mstack)
+      ELSE mjvm_estack
+             := <3>
+                  ++ <mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]>
+                       ++ mjvm_estack;
+           VAR < tempa := 0, tempb := 0 >:
+           tempa := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempb := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           IF tempa > 1
+             THEN FOR i := 2 TO tempa STEP 1 DO PRINFLUSH(" ") OD FI;
+           PRINFLUSH(tempb) ENDVAR;
+           mjvm_estack := <mjvm_statics[2] + 1> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a75 FI END ENDACTIONS
+
+ENDFILL),
+	    <1, 2, 2>,
+	    TR_Recursion_To_Loop,
+	    < >,
+	    (FILL Statements
+
+ACTIONS a14:
+  a14 ==
+    mjvm_mstack := <mjvm_locals> ++ mjvm_mstack; CALL a37
+  END
+  a37 ==
+    DO mjvm_estack
+         := <mjvm_statics[3]> ++ <mjvm_statics[2]> ++ mjvm_estack;
+       VAR < tempa := 0, tempb := 0 >:
+       tempa := HEAD(mjvm_estack);
+       mjvm_estack := TAIL(mjvm_estack);
+       tempb := HEAD(mjvm_estack);
+       mjvm_estack := TAIL(mjvm_estack);
+       IF tempa <= tempb
+         THEN mjvm_flag_jump := 1
+         ELSE mjvm_flag_jump := 0 FI ENDVAR;
+       IF mjvm_flag_jump = 1
+         THEN EXIT(1)
+         ELSE mjvm_estack
+                := <mjvm_statics[3] - mjvm_statics[2]>
+    ++ <mjvm_statics[2]>
+                          ++ <mjvm_statics[1]>
+                     ++ mjvm_estack;
+              VAR < tempa := 0, tempb := 0, tempres := 0 >:
+              tempres := HEAD(mjvm_estack);
+              mjvm_estack := TAIL(mjvm_estack);
+              tempa := HEAD(mjvm_estack);
+              mjvm_estack := TAIL(mjvm_estack);
+              tempb := HEAD(mjvm_estack);
+              mjvm_estack := TAIL(mjvm_estack);
+              mjvm_arrays[tempb][tempa + 1] := tempres ENDVAR;
+              mjvm_estack := <mjvm_statics[2] + 1> ++ mjvm_estack;
+              mjvm_statics[2] := HEAD(mjvm_estack);
+              mjvm_estack := TAIL(mjvm_estack) FI OD;
+    mjvm_estack := <0> ++ mjvm_estack;
+    mjvm_statics[2] := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    CALL a75 END
+  a75 ==
+    mjvm_estack
+      := <LENGTH(mjvm_arrays[mjvm_statics[1]])>
+                ++ <mjvm_statics[2]>
+           ++ mjvm_estack;
+    VAR < tempa := 0, tempb := 0 >:
+    tempa := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    tempb := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    IF tempa <= tempb
+      THEN mjvm_flag_jump := 1
+      ELSE mjvm_flag_jump := 0 FI ENDVAR;
+    IF mjvm_flag_jump = 1
+      THEN mjvm_locals := HEAD(mjvm_mstack);
+           mjvm_mstack := TAIL(mjvm_mstack)
+      ELSE mjvm_estack
+             := <3>
+                       ++ <mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]>
+                  ++ mjvm_estack;
+           VAR < tempa := 0, tempb := 0 >:
+           tempa := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempb := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           IF tempa > 1
+             THEN FOR i := 2 TO tempa STEP 1 DO PRINFLUSH(" ") OD FI;
+           PRINFLUSH(tempb) ENDVAR;
+           mjvm_estack := <mjvm_statics[2] + 1> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a75 FI END ENDACTIONS
+
+ENDFILL));
+
+
+@Test_Trans(" 2nd test of `Recursion_To_Loop'",
+	    (FILL Statements
+
+ACTIONS a14:
+  a14 ==
+    mjvm_mstack := <mjvm_locals> ++ mjvm_mstack;
+    CALL a37 END
+  a37 ==
+    mjvm_estack
+      := <mjvm_statics[3]> ++ <mjvm_statics[2]> ++ mjvm_estack;
+    VAR < tempa := 0, tempb := 0 >:
+    tempa := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    tempb := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    IF tempa <= tempb
+      THEN mjvm_flag_jump := 1
+      ELSE mjvm_flag_jump := 0 FI ENDVAR;
+    IF mjvm_flag_jump = 1
+      THEN mjvm_estack := <0> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a75
+      ELSE mjvm_estack
+             := <mjvm_statics[3] - mjvm_statics[2]>
+                  ++ <mjvm_statics[2]> ++ <mjvm_statics[1]> ++ mjvm_estack;
+           VAR < tempa := 0, tempb := 0, tempres := 0 >:
+           tempres := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempa := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempb := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           mjvm_arrays[tempb][tempa + 1] := tempres ENDVAR;
+           mjvm_estack := <mjvm_statics[2] + 1> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a37 FI END
+  a75 ==
+    mjvm_estack
+      := <LENGTH(mjvm_arrays[mjvm_statics[1]])>
+           ++ <mjvm_statics[2]> ++ mjvm_estack;
+    VAR < tempa := 0, tempb := 0 >:
+    tempa := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    tempb := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    IF tempa <= tempb
+      THEN mjvm_flag_jump := 1
+      ELSE mjvm_flag_jump := 0 FI ENDVAR;
+    IF mjvm_flag_jump = 1
+      THEN mjvm_locals := HEAD(mjvm_mstack);
+           mjvm_mstack := TAIL(mjvm_mstack)
+      ELSE mjvm_estack
+             := <3>
+                  ++ <mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]>
+                       ++ mjvm_estack;
+           VAR < tempa := 0, tempb := 0 >:
+           tempa := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempb := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           IF tempa > 1
+             THEN FOR i := 2 TO tempa STEP 1 DO PRINFLUSH(" ") OD FI;
+           PRINFLUSH(tempb) ENDVAR;
+           mjvm_estack := <mjvm_statics[2] + 1> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a75 FI END ENDACTIONS
+
+ENDFILL),
+	    <1, 2, 3>,
+	    TR_Recursion_To_Loop,
+	    < >,
+	    (FILL Statements
+
+ACTIONS a14:
+  a14 ==
+    mjvm_mstack := <mjvm_locals> ++ mjvm_mstack; CALL a37
+  END
+  a37 ==
+    mjvm_estack
+      := <mjvm_statics[3]> ++ <mjvm_statics[2]> ++ mjvm_estack;
+    VAR < tempa := 0, tempb := 0 >:
+    tempa := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    tempb := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    IF tempa <= tempb
+      THEN mjvm_flag_jump := 1
+      ELSE mjvm_flag_jump := 0 FI ENDVAR;
+    IF mjvm_flag_jump = 1
+      THEN mjvm_estack := <0> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a75
+      ELSE mjvm_estack
+             := <mjvm_statics[3] - mjvm_statics[2]>
+ ++ <mjvm_statics[2]>
+                       ++ <mjvm_statics[1]>
+                  ++ mjvm_estack;
+           VAR < tempa := 0, tempb := 0, tempres := 0 >:
+           tempres := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempa := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempb := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           mjvm_arrays[tempb][tempa + 1] := tempres ENDVAR;
+           mjvm_estack := <mjvm_statics[2] + 1> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a37 FI END
+  a75 ==
+    DO mjvm_estack
+         := <LENGTH(mjvm_arrays[mjvm_statics[1]])>
+                   ++ <mjvm_statics[2]>
+              ++ mjvm_estack;
+       VAR < tempa := 0, tempb := 0 >:
+       tempa := HEAD(mjvm_estack);
+       mjvm_estack := TAIL(mjvm_estack);
+       tempb := HEAD(mjvm_estack);
+       mjvm_estack := TAIL(mjvm_estack);
+       IF tempa <= tempb
+         THEN mjvm_flag_jump := 1
+         ELSE mjvm_flag_jump := 0 FI ENDVAR;
+       IF mjvm_flag_jump = 1
+         THEN EXIT(1)
+         ELSE mjvm_estack
+                := <3>
+                          ++ <mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]>
+                     ++ mjvm_estack;
+              VAR < tempa := 0, tempb := 0 >:
+              tempa := HEAD(mjvm_estack);
+              mjvm_estack := TAIL(mjvm_estack);
+              tempb := HEAD(mjvm_estack);
+              mjvm_estack := TAIL(mjvm_estack);
+              IF tempa > 1
+                THEN FOR i := 2 TO tempa STEP 1 DO PRINFLUSH(" ") OD FI;
+              PRINFLUSH(tempb) ENDVAR;
+              mjvm_estack := <mjvm_statics[2] + 1> ++ mjvm_estack;
+              mjvm_statics[2] := HEAD(mjvm_estack);
+              mjvm_estack := TAIL(mjvm_estack) FI OD;
+    mjvm_locals := HEAD(mjvm_mstack);
+    mjvm_mstack := TAIL(mjvm_mstack) END ENDACTIONS
+
+ENDFILL));
+
+
+@Test_Trans(" 3rd test of `Recursion_To_Loop'",
+	    (FILL Statements
+
+ACTIONS a14:
+  a14 ==
+    mjvm_mstack := <mjvm_locals> ++ mjvm_mstack;
+    CALL a37 END
+  a37 ==
+    mjvm_estack
+      := <mjvm_statics[3]> ++ <mjvm_statics[2]> ++ mjvm_estack;
+    VAR < tempa := 0, tempb := 0 >:
+    tempa := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    tempb := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    IF tempa <= tempb
+      THEN mjvm_flag_jump := 1
+      ELSE mjvm_flag_jump := 0 FI ENDVAR;
+    IF mjvm_flag_jump = 1
+      THEN mjvm_estack := <0> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a75
+      ELSE mjvm_estack
+             := <mjvm_statics[3] - mjvm_statics[2]>
+                  ++ <mjvm_statics[2]> ++ <mjvm_statics[1]> ++ mjvm_estack;
+           VAR < tempa := 0, tempb := 0, tempres := 0 >:
+           tempres := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempa := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempb := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           mjvm_arrays[tempb][tempa + 1] := tempres ENDVAR;
+           mjvm_estack := <mjvm_statics[2] + 1> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a37;
+	   not_terminal := 1 FI END
+  a75 ==
+    mjvm_estack
+      := <LENGTH(mjvm_arrays[mjvm_statics[1]])>
+           ++ <mjvm_statics[2]> ++ mjvm_estack;
+    VAR < tempa := 0, tempb := 0 >:
+    tempa := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    tempb := HEAD(mjvm_estack);
+    mjvm_estack := TAIL(mjvm_estack);
+    IF tempa <= tempb
+      THEN mjvm_flag_jump := 1
+      ELSE mjvm_flag_jump := 0 FI ENDVAR;
+    IF mjvm_flag_jump = 1
+      THEN mjvm_locals := HEAD(mjvm_mstack);
+           mjvm_mstack := TAIL(mjvm_mstack)
+      ELSE mjvm_estack
+             := <3>
+                  ++ <mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]>
+                       ++ mjvm_estack;
+           VAR < tempa := 0, tempb := 0 >:
+           tempa := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           tempb := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           IF tempa > 1
+             THEN FOR i := 2 TO tempa STEP 1 DO PRINFLUSH(" ") OD FI;
+           PRINFLUSH(tempb) ENDVAR;
+           mjvm_estack := <mjvm_statics[2] + 1> ++ mjvm_estack;
+           mjvm_statics[2] := HEAD(mjvm_estack);
+           mjvm_estack := TAIL(mjvm_estack);
+           CALL a75 FI END ENDACTIONS
+
+ENDFILL),
+	    <1, 2, 2>,
+	    TR_Recursion_To_Loop,
+	    < >,
+	    "Fail");
+
+
+
+@Test_Trans(" 4th test of `Recursion_To_Loop'",
+	    (FILL Statements
+VAR < mjvm_statics := ARRAY(3, 0),
+      mjvm_arrays := < >,
+      mjvm_mstack := < > >:
+BEGIN
+  PUSH(mjvm_mstack, ARRAY(1, 0));
+  mjvm_statics[3] := 10;
+  mjvm_arrays := mjvm_arrays ++ <ARRAY(10, 0)>;
+  mjvm_statics[1] := LENGTH(mjvm_arrays);
+  mjvm_statics[2] := 0;
+  a37()
+WHERE
+  PROC a75() ==
+    IF LENGTH(mjvm_arrays[mjvm_statics[1]])
+         <= mjvm_statics[2]
+      THEN POP(__DUMMY__, mjvm_mstack)
+      ELSE FOR i := 2 TO 3 STEP 1 DO PRINFLUSH(" ") OD;
+           PRINFLUSH(
+             mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]);
+           mjvm_statics[2] := mjvm_statics[2] + 1;
+           a75() FI END
+  PROC a37() ==
+    IF mjvm_statics[2] >= mjvm_statics[3]
+      THEN mjvm_statics[2] := 0; a75()
+      ELSE mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]
+             := mjvm_statics[3] - mjvm_statics[2];
+           mjvm_statics[2] := mjvm_statics[2] + 1;
+           a37() FI END
+END ENDVAR
+
+ENDFILL),
+	    <1, 2, 1, 2, 1>,
+	    TR_Recursion_To_Loop,
+	    < >,
+	    (FILL Statements
+
+VAR < mjvm_statics := ARRAY(3, 0),
+      mjvm_arrays := < >,
+      mjvm_mstack := < > >:
+BEGIN
+  PUSH(mjvm_mstack, ARRAY(1, 0));
+  mjvm_statics[3] := 10;
+  mjvm_arrays := mjvm_arrays ++ <ARRAY(10, 0)>;
+  mjvm_statics[1] := LENGTH(mjvm_arrays);
+  mjvm_statics[2] := 0;
+  a37()
+WHERE
+  PROC a75() ==
+    DO IF LENGTH(mjvm_arrays[mjvm_statics[1]])
+            <= mjvm_statics[2]
+         THEN EXIT(1)
+         ELSE FOR i := 2 TO 3 STEP 1 DO PRINFLUSH(" ") OD;
+              PRINFLUSH(
+                mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]);
+              mjvm_statics[2] := mjvm_statics[2] + 1 FI OD;
+    POP(__DUMMY__, mjvm_mstack) END
+  PROC a37() ==
+    IF mjvm_statics[2] >= mjvm_statics[3]
+      THEN mjvm_statics[2] := 0; a75()
+      ELSE mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]
+             := mjvm_statics[3] - mjvm_statics[2];
+           mjvm_statics[2] := mjvm_statics[2] + 1;
+           a37() FI END
+END ENDVAR
+
+ENDFILL));
+
+
+
+
+@Test_Trans(" 5th test of `Recursion_To_Loop'",
+	    (FILL Statements
+VAR < mjvm_statics := ARRAY(3, 0),
+      mjvm_arrays := < >,
+      mjvm_mstack := < > >:
+BEGIN
+  PUSH(mjvm_mstack, ARRAY(1, 0));
+  mjvm_statics[3] := 10;
+  mjvm_arrays := mjvm_arrays ++ <ARRAY(10, 0)>;
+  mjvm_statics[1] := LENGTH(mjvm_arrays);
+  mjvm_statics[2] := 0;
+  a37()
+WHERE
+  PROC a75() ==
+    IF LENGTH(mjvm_arrays[mjvm_statics[1]])
+         <= mjvm_statics[2]
+      THEN POP(__DUMMY__, mjvm_mstack)
+      ELSE FOR i := 2 TO 3 STEP 1 DO PRINFLUSH(" ") OD;
+           PRINFLUSH(
+             mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]);
+           mjvm_statics[2] := mjvm_statics[2] + 1;
+           a75() FI END
+  PROC a37() ==
+    IF mjvm_statics[2] >= mjvm_statics[3]
+      THEN mjvm_statics[2] := 0; a75()
+      ELSE mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]
+             := mjvm_statics[3] - mjvm_statics[2];
+           mjvm_statics[2] := mjvm_statics[2] + 1;
+           a37() FI END
+END ENDVAR
+
+ENDFILL),
+	    <1, 2, 1, 2, 2>,
+	    TR_Recursion_To_Loop,
+	    < >,
+	    (FILL Statements
+
+VAR < mjvm_statics := ARRAY(3, 0),
+      mjvm_arrays := < >,
+      mjvm_mstack := < > >:
+BEGIN
+  PUSH(mjvm_mstack, ARRAY(1, 0));
+  mjvm_statics[3] := 10;
+  mjvm_arrays := mjvm_arrays ++ <ARRAY(10, 0)>;
+  mjvm_statics[1] := LENGTH(mjvm_arrays);
+  mjvm_statics[2] := 0;
+  a37()
+WHERE
+  PROC a75() ==
+    IF LENGTH(mjvm_arrays[mjvm_statics[1]])
+         <= mjvm_statics[2]
+      THEN POP(__DUMMY__, mjvm_mstack)
+      ELSE FOR i := 2 TO 3 STEP 1 DO PRINFLUSH(" ") OD;
+           PRINFLUSH(
+             mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]);
+           mjvm_statics[2] := mjvm_statics[2] + 1;
+           a75() FI END
+  PROC a37() ==
+    DO IF mjvm_statics[2] >= mjvm_statics[3]
+         THEN EXIT(1)
+         ELSE mjvm_arrays[mjvm_statics[1]][mjvm_statics[2] + 1]
+                := mjvm_statics[3] - mjvm_statics[2];
+              mjvm_statics[2] := mjvm_statics[2] + 1 FI OD;
+    mjvm_statics[2] := 0;
+    a75() END
+END ENDVAR
+
+ENDFILL));
+
+
+
+
+@Test_Trans(" 6th test of `Recursion_To_Loop'",
+	    (FILL Statements
+
+VAR < mjvm_locals := ARRAY(1, 0),
+      mjvm_arrays := < >,
+      mjvm_estack := < >,
+      mjvm_mstack := < > >:
+BEGIN
+  PUSH(mjvm_mstack, mjvm_locals);
+  mjvm_locals := ARRAY(1, 0);
+  mjvm_locals[1] := 5;
+  PUSH(mjvm_mstack, mjvm_locals);
+  mjvm_locals := ARRAY(4, 0);
+  mjvm_locals[1] := 5;
+  mjvm_arrays := mjvm_arrays ++ <ARRAY(5, 0)>;
+  mjvm_locals[2] := LENGTH(mjvm_arrays);
+  mjvm_locals[3] := 0;
+  mjvm_locals[4] := 1;
+  a30();
+  POP(mjvm_locals, mjvm_mstack)
+WHERE
+  PROC Print_MJ(val, format) ==
+    IF format > 1
+      THEN FOR i := 2 TO format STEP 1 DO PRINFLUSH(" ") OD FI;
+    PRINFLUSH(val) END
+  PROC a30() ==
+    IF mjvm_locals[1] <= mjvm_locals[3]
+      THEN PUSH(mjvm_estack, mjvm_locals[1] - 1);
+           PUSH(mjvm_mstack, mjvm_locals);
+           mjvm_locals := ARRAY(4, 0);
+           POP(mjvm_locals[1], mjvm_estack);
+           IF mjvm_locals[1] <= 1
+             THEN POP(mjvm_locals, mjvm_mstack)
+             ELSE mjvm_arrays
+                    := mjvm_arrays ++ <ARRAY(mjvm_locals[1], 0)>;
+                  mjvm_locals[2] := LENGTH(mjvm_arrays);
+                  mjvm_locals[3] := 0;
+                  mjvm_locals[4] := 1;
+                  a30() FI;
+           mjvm_locals[3] := 0;
+           WHILE mjvm_locals[1] > mjvm_locals[3] DO
+             VAR < tempa := 0, tempb := 0 >:
+             tempa := 3;
+             tempb
+               := mjvm_arrays[mjvm_locals[2]][mjvm_locals[3] + 1];
+             Print_MJ(tempb, tempa) ENDVAR;
+             mjvm_locals[3] := mjvm_locals[3] + 1 OD;
+           VAR < tempa := 0, tempb := 0 >:
+           tempa := 5; Print_MJ(tempb, tempa) ENDVAR;
+           POP(mjvm_locals, mjvm_mstack)
+      ELSE mjvm_arrays[mjvm_locals[2]][mjvm_locals[3] + 1]
+             := mjvm_locals[4];
+           mjvm_locals[3] := mjvm_locals[3] + 1;
+           mjvm_locals[4] := mjvm_locals[1] * mjvm_locals[4];
+           a30() FI END
+END ENDVAR
+
+ENDFILL),
+	    <1, 2, 1, 2, 2>,
+	    TR_Recursion_To_Loop,
+	    < >,
+	    (FILL Statements
+
+VAR < mjvm_locals := ARRAY(1, 0),
+      mjvm_arrays := < >,
+      mjvm_estack := < >,
+      mjvm_mstack := < > >:
+BEGIN
+  PUSH(mjvm_mstack, mjvm_locals);
+  mjvm_locals := ARRAY(1, 0);
+  mjvm_locals[1] := 5;
+  PUSH(mjvm_mstack, mjvm_locals);
+  mjvm_locals := ARRAY(4, 0);
+  mjvm_locals[1] := 5;
+  mjvm_arrays := mjvm_arrays ++ <ARRAY(5, 0)>;
+  mjvm_locals[2] := LENGTH(mjvm_arrays);
+  mjvm_locals[3] := 0;
+  mjvm_locals[4] := 1;
+  a30();
+  POP(mjvm_locals, mjvm_mstack)
+WHERE
+  PROC Print_MJ(val, format) ==
+    IF format > 1
+      THEN FOR i := 2 TO format STEP 1 DO PRINFLUSH(" ") OD FI;
+    PRINFLUSH(val) END
+  PROC a30() ==
+    DO IF mjvm_locals[1] <= mjvm_locals[3]
+         THEN EXIT(1)
+         ELSE mjvm_arrays[mjvm_locals[2]][mjvm_locals[3] + 1]
+                := mjvm_locals[4];
+              mjvm_locals[3] := mjvm_locals[3] + 1;
+              mjvm_locals[4] := mjvm_locals[1] * mjvm_locals[4]
+       FI OD;
+    PUSH(mjvm_estack, mjvm_locals[1] - 1);
+    PUSH(mjvm_mstack, mjvm_locals);
+    mjvm_locals := ARRAY(4, 0);
+    POP(mjvm_locals[1], mjvm_estack);
+    IF mjvm_locals[1] <= 1
+      THEN POP(mjvm_locals, mjvm_mstack)
+      ELSE mjvm_arrays
+             := mjvm_arrays ++ <ARRAY(mjvm_locals[1], 0)>;
+           mjvm_locals[2] := LENGTH(mjvm_arrays);
+           mjvm_locals[3] := 0;
+           mjvm_locals[4] := 1;
+           a30() FI;
+    mjvm_locals[3] := 0;
+    WHILE mjvm_locals[1] > mjvm_locals[3] DO
+      VAR < tempa := 0, tempb := 0 >:
+      tempa := 3;
+      tempb
+        := mjvm_arrays[mjvm_locals[2]][mjvm_locals[3] + 1];
+      Print_MJ(tempb, tempa) ENDVAR;
+      mjvm_locals[3] := mjvm_locals[3] + 1 OD;
+    VAR < tempa := 0, tempb := 0 >:
+    tempa := 5; Print_MJ(tempb, tempa) ENDVAR;
+    POP(mjvm_locals, mjvm_mstack) END
+END ENDVAR
+
+
+ENDFILL));
+
+
+
+@Test_Trans(" 7th test of `Recursion_To_Loop'",
+	    (FILL Statements
+
+BEGIN
+  VAR < F_LAB140 := 0 >:
+  ACTIONS _enter_:
+    _enter_ ==
+      r3 := r15;
+      !P OPEN(DDIN, "INPUT" VAR result_code, os);
+      r15 := result_code;
+      !P OPEN(RDSOUT, "OUTPUT" VAR result_code, os);
+      r15 := result_code;
+      !P GET_FIXED(DDIN VAR WREC, r0, r1, result_code, os);
+      r15 := DDIN_STATUS;
+      IF !XC end_of_file?(DDIN)
+        THEN !P CLOSE(DDIN VAR result_code, os);
+             r15 := result_code;
+             !P CLOSE(RDSOUT VAR result_code, os);
+             r15 := result_code;
+             r13 := WSAVE[5..8];
+             r15 := 0;
+             CALL Z;
+             CALL Z FI;
+      r15 := 168;
+      r15 := 0;
+      WPRT.PWORD := WREC.WORD;
+      WORKP := WREC.NUM;
+      TOTAL := WORKP;
+      WLAST := WREC.WORD;
+      DO !P GET_FIXED(DDIN VAR WREC, r0, r1, result_code, os);
+         r15 := DDIN_STATUS;
+         IF !XC end_of_file?(DDIN)
+           THEN F_LAB140 := 1; CALL LAB170; CALL Z FI;
+         IF WLAST = WREC.WORD
+           THEN WORKP := WREC.NUM; TOTAL := TOTAL + WORKP
+           ELSE CALL LAB170 FI OD END
+    LAB170 ==
+      LAB170();
+      IF F_LAB140 = 1
+        THEN !P CLOSE(DDIN VAR result_code, os);
+             r15 := result_code;
+             !P CLOSE(RDSOUT VAR result_code, os);
+             r15 := result_code;
+             r13 := WSAVE[5..8];
+             r15 := 0;
+             CALL Z FI;
+      WPRT.PWORD := WREC.WORD;
+      WORKP := WREC.NUM;
+      TOTAL := WORKP;
+      WLAST := WREC.WORD;
+      DO !P GET_FIXED(DDIN VAR WREC, r0, r1, result_code, os);
+         r15 := DDIN_STATUS;
+         IF !XC end_of_file?(DDIN)
+           THEN F_LAB140 := 1; CALL LAB170; CALL Z FI;
+         IF WLAST = WREC.WORD
+           THEN WORKP := WREC.NUM; TOTAL := TOTAL + WORKP
+           ELSE CALL LAB170 FI OD END ENDACTIONS ENDVAR
+WHERE
+  PROC LAB170() ==
+    r10 := 92;
+    !P ed(TOTAL, "hex 0x402020202020202020202120"
+      VAR WPRT.PNUM, cc1, wedit_addr);
+    !P PUT_FIXED(RDSOUT, WPRT VAR result_code, os);
+    r15 := RDSOUT_STATUS;
+    WPRT[1] := !XF mvi(" ");
+    !P fill(WPRT[1] VAR WPRT[2..80]);
+    r15 := 0 END
+END
+
+ENDFILL),
+	    <1, 1, 1, 2, 1, 2, 2>,
+	    TR_Recursion_To_Loop,
+	    < >,
+	    (FILL Statements
+
+BEGIN
+  VAR < F_LAB140 := 0 >:
+  ACTIONS _enter_:
+    _enter_ ==
+      r3 := r15;
+      !P OPEN(DDIN, "INPUT" VAR result_code, os);
+      r15 := result_code;
+      !P OPEN(RDSOUT, "OUTPUT" VAR result_code, os);
+      r15 := result_code;
+      !P GET_FIXED(DDIN VAR WREC, r0, r1, result_code, os);
+      r15 := DDIN_STATUS;
+      IF !XC end_of_file?(DDIN)
+        THEN !P CLOSE(DDIN VAR result_code, os);
+             r15 := result_code;
+             !P CLOSE(RDSOUT VAR result_code, os);
+             r15 := result_code;
+             r13 := WSAVE[5..8];
+             r15 := 0;
+             CALL Z;
+             CALL Z FI;
+      r15 := 168;
+      r15 := 0;
+      WPRT.PWORD := WREC.WORD;
+      WORKP := WREC.NUM;
+      TOTAL := WORKP;
+      WLAST := WREC.WORD;
+      DO !P GET_FIXED(DDIN VAR WREC, r0, r1, result_code, os);
+         r15 := DDIN_STATUS;
+         IF !XC end_of_file?(DDIN)
+           THEN F_LAB140 := 1; CALL LAB170; CALL Z FI;
+         IF WLAST = WREC.WORD
+           THEN WORKP := WREC.NUM; TOTAL := TOTAL + WORKP
+           ELSE CALL LAB170 FI OD END
+    LAB170 ==
+      DO LAB170();
+         IF F_LAB140 = 1 THEN EXIT(1) FI;
+         WPRT.PWORD := WREC.WORD;
+         WORKP := WREC.NUM;
+         TOTAL := WORKP;
+         WLAST := WREC.WORD;
+         DO !P GET_FIXED(DDIN VAR WREC, r0, r1, result_code, os);
+            r15 := DDIN_STATUS;
+            IF !XC end_of_file?(DDIN)
+              THEN F_LAB140 := 1; EXIT(1) FI;
+            IF WLAST = WREC.WORD
+              THEN WORKP := WREC.NUM; TOTAL := TOTAL + WORKP
+              ELSE EXIT(1) FI OD OD;
+      !P CLOSE(DDIN VAR result_code, os);
+      r15 := result_code;
+      !P CLOSE(RDSOUT VAR result_code, os);
+      r15 := result_code;
+      r13 := WSAVE[5..8];
+      r15 := 0;
+      CALL Z END ENDACTIONS ENDVAR
+WHERE
+  PROC LAB170() ==
+    r10 := 92;
+    !P ed(TOTAL, "hex 0x402020202020202020202120"
+      VAR WPRT.PNUM, cc1, wedit_addr);
+    !P PUT_FIXED(RDSOUT, WPRT VAR result_code, os);
+    r15 := RDSOUT_STATUS;
+    WPRT[1] := !XF mvi(" ");
+    !P fill(WPRT[1] VAR WPRT[2..80]);
+    r15 := 0 END
+END
+
+ENDFILL));
+
+
+
+
+
+SKIP
+
+
+

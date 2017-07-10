@@ -1,0 +1,241 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+C: " ----------------------------------------------------------------------- ";
+C: " The following functions are used to generate random programs and to     ";
+C: " apply random transformations to them at random positions.               ";
+C: " ----------------------------------------------------------------------- ";
+
+
+C:"
+       @New_Program(@CRP_Item(T_Statements, 5, 0));
+       @Clear_State;
+ ";      
+
+
+MW_FUNCT @CRP_Item(Type, Dep, In_A_S) ==
+  VAR <Result := < >, S := 0, Seq := < >, Syn := < >, Val := < >> :
+  IF Type = T_Statement
+    THEN Result := @CRP_Stat(Dep, In_A_S)
+  ELSIF Type = T_Lvalue
+    THEN Result := @CRP_Lvalue(Dep)
+  ELSIF Type = T_Expression
+    THEN Result := @CRP_Expn(3)
+  ELSIF Type = T_Condition
+    THEN Result := @CRP_Cond(3)
+    ELSE Syn := @Syntax(Type);
+	 IF @List_Type?(Type)
+	   THEN S := @Random(5) + 1;
+		FOR I := 1 TO S STEP 1 DO
+		  Seq := <@CRP_Item(HEAD(Syn), Dep-1, In_A_S)> ++ Seq OD
+	   ELSE WHILE NOT EMPTY?(Syn) DO
+		  Seq := Seq ++ <@CRP_Item(HEAD(Syn), Dep-1, In_A_S)>;
+		  Syn := TAIL(Syn) OD FI;
+	 Result := @Make(Type, < >, Seq) FI;
+  (Result) .;
+
+
+MW_FUNCT @CRP_Stat(Dep, In_A_S) ==
+  VAR <Result := < >, R := @Random(IF Dep > 0 THEN 20 ELSE 8 FI),
+  S := 0, Seq := < >, Temp := < >> :
+  IF R = 1
+    THEN Result := @Make(T_Skip, < >, < >)
+  ELSIF R = 2
+    THEN Result := @Make(T_Exit, @Random(4), < >)
+  ELSIF R = 3
+    THEN IF In_A_S = 1
+	   THEN Result := @Make(T_Call, @Make(T_Name, @CRP_Name(Dep), < >), < >)
+	   ELSE Result := @Make(T_Skip, < >, < >) FI
+  ELSIF R <= 8
+    THEN Result := @CRP_Item(@Pick(<T_Abort, T_Assert, T_Assignment, T_Pop, T_Push>),
+			     Dep-1, In_A_S)
+  ELSIF R <= 14
+    THEN Result := @CRP_Item(@Pick(<T_Cond, T_Cond, T_Floop, T_Var, T_While>),
+			     Dep-1, In_A_S)
+  ELSIF R = 15
+    THEN Result := @Make(T_Comment, "comment...", < >)
+  ELSIF R = 16
+    THEN Result := @Make(T_For, < >,
+			 <@Make(T_Var_Lvalue, @CRP_Name(Dep), < >),
+			  @CRP_Expn(Dep), @CRP_Expn(Dep), @CRP_Expn(Dep),
+			  @CRP_Item(T_Statements, Dep-1, In_A_S)>)
+  ELSIF R = 17
+    THEN Result := @Make(@Pick(<T_Proc_Call, T_A_Proc_Call>), < >,
+			 <@Make(T_Name, @CRP_Name(Dep), < >),
+			  @Make(T_Expressions, < >, @CRP_Expns(Dep-1, 0, 4)),
+			  @Make(T_Lvalues, < >, @CRP_Lvalues(Dep-1, 0, 4))>)
+  ELSIF R = 18
+    THEN Result := @Make(T_X_Proc_Call, < >,
+			 <@Make(T_Name, @CRP_Name(Dep), < >),
+			  @Make(T_Expressions, < >, @CRP_Expns(Dep-1, 0, 4))>)
+  ELSIF R = 19
+    THEN VAR <names := <"A1", "B2", "C3", "D4", "E5", "F6">, body := < >, S := @Random(6) >:
+	 FOR I := 1 TO S STEP 1 DO
+	   body := <@Make(T_Action, < >,
+			 			 <@Make(T_Name, @Make_Name(HEAD(names)), < >),
+			   @CRP_Item(T_Statements, Dep-1, 1)>)> ++ body;
+	   names := TAIL(names) OD;
+	 Result := @Make(T_A_S, < >,
+			 <@Make(T_Name, @Make_Name("A1"), < >),
+			  @Make(T_Actions, < >, body)>) ENDVAR
+  ELSIF R = 20
+    THEN VAR <names := <"A1", "B2", "C3", "D4", "E5", "F6">, body := < >, S := @Random(6) >:
+	 FOR I := 1 TO S STEP 1 DO
+	   body := <@Make(T_Proc, < >,
+			  <@Make(T_Name, @Make_Name(HEAD(names)), < >),
+			   @Make(T_Lvalues, < >, @CRP_Lvalues(Dep-1, 0, 4)),
+			   @Make(T_Lvalues, < >, @CRP_Lvalues(Dep-1, 0, 4)),
+			   @CRP_Item(T_Statements, Dep-1, In_A_S)>)> ++ body;
+	   names := TAIL(names) OD;
+	 Result := @Make(T_Where, < >,
+			 <@CRP_Item(T_Statements, Dep-1, In_A_S),
+			  @Make(T_Definitions, < >, body)>) ENDVAR FI;
+  (Result) .;
+
+
+MW_FUNCT @CRP_Name(Dep) == : SKIP;
+  (@Make_Name(@Pick(<"A1", "B2", "C3", "D4", "E5", "F6">))) .;
+
+
+MW_FUNCT @CRP_Lvalue(Dep) ==
+  VAR < Result := < >, R := @Random(IF Dep < 0 THEN 5 ELSE 10 FI) >:
+  IF R <= 5
+    THEN Result := @CRP_Var(T_Var_Lvalue)
+  ELSIF R <= 7
+    THEN Result := @Make(T_Aref_Lvalue, < >,
+			 <@CRP_Var(T_Var_Lvalue),
+			  @Make(T_Expressions, < >, @CRP_Expns(Dep-1, 1, 3))>)
+  ELSIF R = 8
+    THEN Result := @Make(T_Struct_Lvalue, @CRP_Name(Dep-1), <@CRP_Var(T_Var_Lvalue)>)
+  ELSIF R = 9
+    THEN Result := @Make(T_Sub_Seg_Lvalue, < >,
+			 <@CRP_Var(T_Var_Lvalue),
+			  @CRP_Expn(Dep-1), @CRP_Expn(Dep-1)>)
+    ELSE Result := @Make(T_Rel_Seg_Lvalue, < >,
+			 <@CRP_Var(T_Var_Lvalue),
+			  @CRP_Expn(Dep-1), @CRP_Expn(Dep-1)>) FI;
+  (Result) .;
+
+
+C:" Generate an array or structure reference, or a MOD: ";
+
+MW_FUNCT @CRP_Array(Dep) ==
+  VAR < Result := < >, R := @Random(7) >:
+  IF R <= 2
+    THEN Result := @Make(T_Aref, < >,
+			 <@CRP_Var(T_Variable),
+			  @Make(T_Expressions, < >, @CRP_Expns(Dep-1, 1, 3))>)
+  ELSIF R <= 4
+    THEN Result := @Make(T_Struct, < >,
+			 <@Make(T_Name, @CRP_Name(Dep-1), < >),
+			  @CRP_Var(T_Variable)>)
+  ELSIF R = 5
+    THEN Result := @Make(T_Sub_Seg, < >,
+			 <@CRP_Var(T_Variable),
+			  @CRP_Expn(Dep-1), @CRP_Expn(Dep-1)>)
+  ELSIF R = 6
+    THEN Result := @Make(T_Mod, < >,
+			 <@CRP_Expn(Dep-1), @CRP_Expn(Dep-1)>)
+    ELSE Result := @Make(T_Rel_Seg, < >,
+			 <@CRP_Var(T_Variable),
+			  @CRP_Expn(Dep-1), @CRP_Expn(Dep-1)>) FI;
+  (Result) .;
+
+C:" Possibly empty sequences of items: ";
+
+MW_FUNCT @CRP_Expns(Dep, from, to) ==
+  VAR <R := from + @Random(to - from + 1) - 1, Result := < > >:
+  WHILE R > 0 DO
+    Result := <@CRP_Expn(Dep)> ++ Result;
+    R := R - 1 OD;
+  (Result) .;
+
+MW_FUNCT @CRP_Lvalues(Dep, from, to) ==
+  VAR <R := from + @Random(to - from + 1) - 1, Result := < > >:
+  WHILE R > 0 DO
+    Result := <@CRP_Lvalue(Dep)> ++ Result;
+    R := R - 1 OD;
+  (Result) .;
+
+MW_FUNCT @CRP_Conds(Dep, from, to) ==
+  VAR <R := from + @Random(to - from + 1) - 1, Result := < > >:
+  WHILE R > 0 DO
+    Result := <@CRP_Cond(Dep)> ++ Result;
+    R := R - 1 OD;
+  (Result) .;
+
+
+MW_FUNCT @CRP_Var(type) == : SKIP;
+  (@Make(type, @Make_Name(@Pick(<"A", "B", "C", "I", "J", "X", "Y">)), < >)) .;
+
+
+MW_FUNCT @CRP_Expn(Dep) ==
+  VAR <Result := < >, R := @Random(IF Dep > 0 THEN 8 ELSE 3 FI), Temp := < >> :
+  IF R = 1
+    THEN Result := @CRP_Var(T_Variable)
+  ELSIF R = 2
+    THEN Result := @Make(T_Number, @Pick(<0, 1, 2, 3, 4, 5, 10, 20, 50, 100>), < >)
+  ELSIF R = 3
+    THEN Result := @Make(T_String, @Pick(<"foo", "bar", "baz">), < >)
+  ELSIF R = 4
+    THEN Result := @Make(@Pick(<T_Plus, T_Minus, T_Times, T_Divide,
+				T_Max, T_Min, T_Exponent>),
+			 < >, @CRP_Expns(Dep, 2, 5))
+  ELSIF R = 5
+    THEN Result := @Make(@Pick(<T_Abs, T_Sgn, T_Int, T_Frac, T_Negate, T_Invert>),
+			 < >,
+			 <@CRP_Expn(Dep-1)>)
+  ELSIF R = 6
+    THEN Result := @Make(@Pick(<T_X_Funct_Call, T_Funct_Call>), < >,
+			 <@Make(T_Name, @CRP_Name(Dep), < >),
+			  @Make(T_Expressions, < >, @CRP_Expns(Dep-1, 0, 4))>)
+  ELSIF R = 7
+    THEN Result := @Make(T_Sequence, < >,
+			 <@Make(T_Expressions, < >, @CRP_Expns(Dep-1, 0, 4))>)
+    ELSE Result := @CRP_Array(Dep) FI;
+  (Result) .;
+
+
+MW_FUNCT @CRP_Cond(Dep) ==
+  VAR < Result := < >, R := @Random(IF Dep > 0 THEN 12 ELSE 6 FI) >:
+  IF R <= 6
+    THEN Result := @Make(@Pick(<T_Equal, T_Not_Equal, T_Less, T_Greater,
+				T_Less_Eq, T_Greater_Eq>),
+			 < >, <@CRP_Expn(Dep-1), @CRP_Expn(Dep-1)>)
+  ELSIF R <= 7
+    THEN Result := @Make(T_Not, < >, <@CRP_Cond(Dep-1)>)
+  ELSIF R <= 9
+    THEN Result := @Make(@Pick(<T_And, T_Or>), < >,
+			 @CRP_Conds(Dep-1, 2, 5))
+  ELSIF R <= 11
+    THEN Result := @Make(@Pick(<T_X_BFunct_Call, T_BFunct_Call>), < >,
+			 <@Make(T_Name, @CRP_Name(Dep), < >),
+			  @Make(T_Expressions, < >, @CRP_Expns(Dep-1, 0, 4))>)
+    ELSE Result := @Make(@Pick(<T_True, T_False>), < >, < >) FI;
+  (Result) .;
+
+
+C:" Pick a random element from the given sequence: ";
+MW_FUNCT @Pick(seq) == : SKIP;
+  (seq[@Random(LENGTH(seq))]) END;
+
+
+
+C: " ----------------------------------------------------------------------- "

@@ -1,0 +1,68 @@
+#!/usr/bin/perl
+#############################################################################
+## FermaT Transformation System
+## Copyright (C) 2001 Software Migrations Limited.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+##########
+##########   dotrans file.wsl [out.wsl] [TR_name]
+##########
+#
+
+BEGIN {
+  $FermaT = $ENV{'FermaT'} || "/usr/local/fermat2";
+  $FermaT =~ s/"//g; #"
+  $ds = "/"; $ds = "\\" if ($^O eq "MSWin32");
+  unshift(@INC, "$FermaT${ds}config");
+}
+
+use fermat;
+
+($myname = $0) =~ s|(.*/)*||;   # strip path component from name
+$Usage = "Usage: $myname file.wsl [out.wsl] [TR_name] [Data]\n";
+
+# Check one to six arguments:
+die $Usage if (($#ARGV < 0) || ($#ARGV > 5));
+
+&parse_args();
+$options = &find_file("options");
+$options = "$FermaT${ds}config${ds}options"
+  if (!$options && -f "$FermaT${ds}config${ds}options");
+
+$cmds = <<END_OF_INPUT;
+  (\@New_Program (\@Parse_File "$input" //T_/Statements))
+  (if (file-exists? "patch.scm")
+      (load "patch.scm")
+      (if (file-exists? "patch.tr")
+	  (load "patch.tr")))
+  (set! //Options_/File "$options")
+  (define tr-runtime (get-internal-run-time))
+  (set! /adt_/Trans_/Count 0)
+  $extra
+  (if (\@Trans? $trans)
+      (\@Trans $trans "$data")
+      (display-list "Transformation invalid: " (\@Fail_Message)))
+  (newline)
+  (display-list "Transformation time: " (- (get-internal-run-time) tr-runtime))
+  (display-list "Transformation Count: " /adt_/Trans_/Count)
+  (\@PP_Item (\@Program) 80 "$output")
+  (display-list "Result is in: $output")
+END_OF_INPUT
+
+&fermat($cmds);
+
+exit(0);

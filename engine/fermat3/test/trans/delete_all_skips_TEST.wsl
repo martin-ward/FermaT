@@ -1,0 +1,65 @@
+@Test_Trans(" 1st test of `Delete All Skips'",
+            (FILL Statements IF x=y THEN SKIP ELSE PRINT("Hello world") FI 
+ENDFILL),
+            < >,
+            TR_Delete_All_Skips,
+            < >,
+            (FILL Statements IF x<>y THEN PRINT("Hello world") FI ENDFILL));
+
+@Test_Trans(" 2nd test of `Delete All Skips'",
+            (FILL Statements SKIP; SKIP; SKIP ENDFILL),
+            < >,
+            TR_Delete_All_Skips,
+            < >,
+            (FILL Statements SKIP ENDFILL));
+            
+@Test_Trans(" 3rd test of `Delete All Skips'",
+            (FILL Statements C:"This program does not contain a SKIP statement" 
+ENDFILL),
+            < >,
+            TR_Delete_All_Skips,
+            < >,
+            "Fail");
+            
+@Test_Trans(" 4th test of `Delete All Skips'",
+            (FILL Statements I:=FILL Statement SKIP ENDFILL ENDFILL),
+            < >,
+            TR_Delete_All_Skips,
+            < >,
+            "Fail");
+            
+@Test_Trans(" 5th test of `Delete All Skips'",
+            (FILL Statements IF x=y THEN SKIP ELSE SKIP FI ENDFILL),
+            < >,
+            TR_Delete_All_Skips,
+            < >,
+            (FILL Statements SKIP ENDFILL));
+            
+@Test_Trans(" 6th test of `Delete All Skips'",
+            (FILL Statements C:"Hello world"; SKIP ENDFILL),
+            < >,
+            TR_Delete_All_Skips,
+            < >,
+            (FILL Statements C:"Hello world" ENDFILL));
+            
+@Test_Trans(" 7th test of `Delete All Skips'",
+            (FILL Statements FOR n:=1 TO 10 STEP 1 DO SKIP OD ENDFILL),
+            < >,
+            TR_Delete_All_Skips,
+            < >,
+            (FILL Statements SKIP ENDFILL));        
+
+@Test_Trans(" 8th test of `Delete All Skips'",
+            (FILL Statements n:=5; WHILE n<>10 DO n:=n+1; SKIP OD ENDFILL),
+            < >,
+            TR_Delete_All_Skips,
+            < >,
+            (FILL Statements n:=5; WHILE n<>10 DO n:=n+1 OD ENDFILL));
+            
+@Test_Trans(" 9th test of `Delete All Skips'",
+            (FILL Statements n:=5; WHILE n<>10 DO SKIP OD ENDFILL),
+            < >,
+            TR_Delete_All_Skips,
+            < >,
+            (FILL Statements n := 5; {n = 10} ENDFILL))
+            

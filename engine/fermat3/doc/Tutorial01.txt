@@ -1,0 +1,156 @@
+
+MetaWSL Programming Techniques.
+
+Tutorial No. 1: Moving Around a WSL Program.
+
+This is the first in a series of occasional tutorials in MetaWSL programming.
+Today we will look at moving around within the WSL parse tree.
+
+Suppose we are currently sitting on the following IF statement:
+
+IF x = 0 THEN y := 1 ELSE y := 2 FI
+
+This is stored internally as a parse tree, something like this:
+
+				      T_Cond,<>
+				        / \
+   	               +---------------/   \---------------+
+		       |	      	                   |
+		  T_Guarded,<>                      T_Guarded,<>
+	              / \	                          / \
+             +-------/   \-------+		  +----- /   \----+
+	     |                   |                |               |
+         T_Equal,<>        T_Statements,<>    T_True,<>     T_Statements,<> 
+            / \                  |                                |   
+      +----/   \----+      T_Assignment,<>                  T_Assignment,<>
+      |             |            |				  |
+T_Variable,x   T_Number,0    T_Assign,<>                      T_Assign,<>
+                                / \                              / \
+                          +----/   \----+                  +----/   \----+
+                          |             |                  |             |
+                    T_Variable,y   T_Number,1        T_Variable,y   T_Number,2
+
+
+Each node in the tree records the specific type of the node, the value stored
+at that node (<> represents the null or empty value), and the sequence of
+components of the node.
+
+An IF statement (whose type is T_Cond) can have any positive number of
+components, each of type T_Guarded. A T_Guarded must have two components: a
+condition and a statement sequence. A statement sequence can have any
+positive number of components of generic type T_Statement. In this case, the
+two statement sequences each have a single component (an assigment
+statement). It is important to be aware of the  distinction between a
+statement sequence (a single item of type T_Statements) and a sequence of
+statements (a list of items of type T_Statememt). The sequence of statements
+SS can be used to construct a statement sequence by the @Make function: 
+
+	ST := @Make(T_Statements, < >, SS)
+
+sets ST to a statement sequence. The sequence of statements composing 
+a statement sequence can be computed via the @Components function
+(abbreviated @Cs). So after the assignment, @Cs(ST) will return SS.
+
+The basic movement commands are:
+
+@Left		Move to the previous component at the current level
+@Right	    	Move to the next component at the current level
+@Up             Move up the tree to the parent item
+@Down           Move down to the first component of the current item
+@To(n)          Move to the nth component at the current level
+@Down_To(n)     Same as: @Down; @To(n)
+@To_Last        Move to the last component at the current level
+@Down_Last      Same as: @Down; @To_Last
+
+Note: @Left, @Right etc. can only move within the components of the parent
+to the current item. The Boolean functions @Left?, @Right?, @Up?, @Down?
+are TRUE whenever the corresponding movement is possible. @Size(I) returns
+the number of components in item I. The current item is accessed via @Item
+(or @I) and the parent is accessed as @Parent. The last component of @Posn
+(ie the current position within @Parent) is given by @Posn_n. @Right?
+is true whenever @Posn_n < @Size(@Parent), and so on.
+
+The @Posn function returns your current position in the tree as a sequence
+of integers, starting from the root and working down the tree. @Goto(posn)
+moves to the given position, so for example the effect of @Goto(<1, 2, 3>) is
+equivalent to starting at the root and executing:
+
+@Down_To(1); @Down_To(2); @Down_To(3)
+
+
+AN EXAMPLE
+==========
+
+Now suppose that we are currently sitting on the IF statement in our example,
+and want to move to the statement y := 1. We can achieve this by:
+
+@Down; @Down; @Right; @Down
+
+or equivalently:
+
+@Down; @Down_Last; @Down
+
+However, there is something important missing from these lists of commands!
+When you read a list of movement commands it can be quite difficult to
+work out exactly where you will end up: therefore it is essential to
+include a comment after every movement of more than one step:
+
+@Down; @Down_Last; @Down; C:" to first statement of first guarded "
+
+This lets the reader know where you are moving to (and he can more easily
+spot an error in the sequence of commands!)
+
+To go back to the IF statement you can either do:
+
+@Up; @Up; @Up
+
+or, if you have previously stored the position of the IF statement (via an
+assignment such as pos := @Posn):
+
+@Goto(pos)
+
+To move from y := 1 to y := 2 we need to do:
+
+@Up; @Up; C:" to first guarded ";
+@Right; @Down_Last; @Down; C:" to first statement in second guarded "
+
+
+SOME COMMON IDIOMS
+==================
+
+To move up from a component to the enclosing statement:
+
+WHILE @Up? AND @ST(@I) <> T_Statement DO
+  @Up OD
+  
+This will do nothing if the current item is already a statement.
+Note the test @Up? -- the movement commands will give an error if the requested
+movement is not possible.
+
+To iterate over the components of an item (for example, the statements in a
+statement sequence):
+
+@Down; C:" to first statement ";
+DO ... process one statement ...;
+   IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+@Up; C:" back to statement sequence "
+   
+Note that every statement sequence must contain at least one statement,
+every T_Cond must contain at least one T_Guarded, and every action system
+must contain at least one T_Action.
+
+An example from Date_Find, here we start on a T_Cond statement:
+
+  @Down; C:" to first guarded ";
+  DO ...process a guarded...;
+     IF NOT @Right? THEN EXIT(1) FI;
+     C:" Ignore the rest of the guards after a TRUE guard in a Cond ";
+     IF @ST(@I^1) = T_True THEN EXIT(1) FI;
+     @Right;
+     ... OD;
+  @Up; C:" back to Cond "
+
+This loop has an extra EXIT when the current guard has a TRUE condition,
+since in that case, no later guards will be executed.
+
+

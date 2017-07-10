@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path=""/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="lib/ave.jar"/>
+	<classpathentry kind="lib" path="lib/dynamic_typed_wsl.jar"/>
+	<classpathentry kind="lib" path="lib/jcommon-1.0.12.jar"/>
+	<classpathentry kind="lib" path="lib/jfreechart-1.0.9.jar"/>
+	<classpathentry kind="lib" path="lib/oo_typed_wsl.jar"/>
+	<classpathentry kind="lib" path="lib/simple_typed_wsl.jar"/>
+	<classpathentry kind="lib" path="lib/stringsearch.jar"/>
+	<classpathentry kind="lib" path="lib/strong_safe_typed_wsl.jar"/>
+	<classpathentry kind="lib" path="lib/strong_unsafe_typed_wsl.jar"/>
+	<classpathentry kind="lib" path="lib/sve.jar"/>
+	<classpathentry kind="lib" path="lib/weak_unsafe_typed_wsl.jar"/>
+	<classpathentry kind="lib" path="lib/xercesImpl.jar"/>
+	<classpathentry kind="lib" path="lib/xmlParserAPIs.jar"/>
+	<classpathentry kind="lib" path="lib/zvtm.jar"/>
+	<classpathentry kind="lib" path="lib/toniclf.jar"/>
+	<classpathentry kind="output" path=""/>
+</classpath>

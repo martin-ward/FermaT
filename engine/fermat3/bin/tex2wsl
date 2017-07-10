@@ -1,0 +1,69 @@
+#!/usr/bin/perl
+#############################################################################
+## Copyright (C) 2008 Martin Ward.
+## Email: martin@gkc.org.uk
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#############################################################################
+#
+# Convert a WSL LaTeX file to ASCII format (cf wsl2tex)
+#
+
+use strict;
+use warnings;
+
+while (<>) {
+  s/\\(begin|end)\{program\}//;
+  s/\\EQ/==/g;
+  s/\\fullstop/./g;
+  s/\\mybox\{(.*?)\}/$1/g;
+  s/~/ /g;
+  s/\\ell\s*/LENGTH/g;
+  s/\\leqslant/<=/g;
+  s/\\neq/<>/g;
+  s/\\quad/ /g;
+  s/\`\`/\"/g;
+  s/\'\'/\"/g;
+  1 while s/(\S)(:=|\+|\-|\*|\/|<>|<=|>=|=|<|>)(\S)/$1 $2 $3/g;
+  s/< >/<>/g;
+  s/< =/<=/g;
+  s/> =/>=/g;
+  s/\\langle/</g;
+  s/\\rangle/>/g;
+  s/\\geqslant/>=/g;
+  s/\\leqslant/<=/g;
+  s/\\dots/.../g;
+  s/\\colon/:/g;
+  s/\\var\{\}/VAR/g;
+  s/\\aeq/==/g;
+  s/\\concat/ \+\+/g;
+  s/\|//g;
+  s/\\(PROC|VAR|IF|THEN|ELSE|ELSIF|FI|WHILE|DO|OD|END|AND|OR|EXIT|CALL|ACTIONS|ENDACTIONS)\b/$1/g;
+  s/EXIT(\s|;)/EXIT\(1\)$1/g;
+  s/\s+;/;/g;
+  s/(\S)  +(\S)/$1 $2/g;
+  s/\\{/{/g;
+  s/\\}/}/g;
+  s/\\mapsto/|->/g;
+  s/\\tab//g;
+  s/\\ABORT/ABORT/g;
+  s/\\Lambda/NIL/g;
+  s/\\hat\s+/hat/g;
+  s/(\S+)\s+\\pop\s+Avail/\@Pop_Avail(VAR $1)/g;
+  s/_(\d+)/$1/g;
+  s/\\var/VAR/g;
+  s/\\ENDVAR/ENDVAR/g;
+  print;
+}
+

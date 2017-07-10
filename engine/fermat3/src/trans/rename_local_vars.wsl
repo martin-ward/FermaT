@@ -1,0 +1,87 @@
+
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+
+
+C:" TODO: We have deleted the @Check_Globals_In_Defns? check. ";
+C:" We need to check for proc calls in the VAR body. ";
+
+MW_PROC @Rename_Local_Vars_Test() ==
+  IF T_Var NOTIN @Stat_Types(@I)                    
+    THEN @Fail("No VAR clauses in selected item")
+    ELSE @Pass FI.;
+
+MW_PROC @Rename_Local_Vars_Code(Data) ==
+  VAR < prefix := @String(Data), var := < >, vars := < >, count := 0 >:
+  IF prefix = "" THEN prefix := "var" FI;
+  FOREACH Statement DO
+    IF @ST(@I) = T_Var
+      THEN count := count + 1;
+	   vars := @Assigned(@I^1);
+	   VAR < new := HASH_TABLE >:
+	   FOR var IN vars DO
+	     new.(var) := @Make_Name(prefix ++ "_" ++ @String(count)
+				       ++ "__" ++ @N_String(var)) OD;
+	   @Down; @Down; C:" to first assign ";
+	   DO @Down;
+	      @Paste_Over(@Make(T_Var_Lvalue, new.(@V(@I)), < >));
+	      @Up;
+	      IF @Right? THEN @Right ELSE EXIT(1) FI OD;
+	   @Up; @Right; C:" to body ";
+	   FOREACH Global Variable DO
+	     IF NOT EMPTY?(new.(@V(@I)))
+	       THEN @Paste_Over(@Make(@ST(@I), new.(@V(@I)), < >)) FI OD ENDVAR;
+	   @Up; C:" back to VAR ";
+	   C:" Now convert the VAR clause to assignments plus the body ";
+	   FOR assign IN @Cs(@I^1) DO
+	     @Paste_Before(@Make(T_Assignment, < >, <assign>));
+	     @Right OD;
+	   @Splice_Over(@Cs(@I^2)) FI OD;
+
+  SKIP ENDVAR .;
+
+
+
+C:" Check if any local variables are referenced as globals in a proc body. ";
+C:" Note: this test is more conservative than it could be, but the problem ";
+C:" can be fixed anyway by converting globals to parameters. ";
+C:" Also checks FOR loops (since these are converted to VARS by the ";
+C:" Static_Single_Assignment transformation) ";
+
+MW_BFUNCT @Check_Globals_In_Defns?() ==
+  VAR < locals := < >, globals := < > >:
+  FOREACH Statement DO
+    IF @ST(@I) = T_Var
+      THEN locals := @Assigned(@I^1) \/ locals
+    ELSIF @ST(@I) = T_For
+      THEN locals := @Assigned(@I^1) \/ locals
+    ELSIF @ST(@I) = T_Where
+      THEN globals := globals \/ REDUCE("\\/", MAP("@Globals_In_Defn", @Cs(@I^2))) FI OD;
+  (EMPTY?(locals /\ globals)) .;
+
+
+C:" Get the list of global variables in the given definition: ";
+
+MW_FUNCT @Globals_In_Defn(defn) == : SKIP;
+  (@Variables(defn^4) \ @Assigned(defn^2) \ @Assigned(defn^3)) .;
+  
+
+
+SKIP

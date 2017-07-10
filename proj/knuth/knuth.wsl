@@ -1,0 +1,68 @@
+
+MW_PROC @Knuth_Add(P, Q) ==
+ACTIONS ADD:
+  ADD == 
+    IF D[P]=NIL
+      THEN WHILE D[Q] <> NIL DO Q := D[Q] OD; CALL A3
+      ELSE IF D[Q] = NIL OR @String_Less?(C[Q], C[P])
+             THEN CALL A2
+           ELSIF C[Q] = C[P]
+	     THEN <P:=D[P], Q:=D[Q]>; CALL ADD
+             ELSE Q:=D[Q]; CALL ADD FI FI END
+  A2 == 
+    @Pop_Avail(VAR R1);
+    S := D[Q];
+    IF S <> NIL
+      THEN DO U[S] := R1; S := R[S]; IF E[S] = 0 THEN EXIT(1) FI OD FI;
+    <U[R1] := Q, D[R1] := D[Q], L[R1] := R1, R[R1] := R1, C[R1] := C[Q], E[R1] := 0>;
+    <C[Q] := C[P], D[Q] := R1>;
+    CALL ADD END
+  A3 == 
+    C[Q] := C[Q] + C[P];
+    IF C[Q] = 0 AND E[Q] <> 0 THEN CALL A8 FI;
+    IF E[Q] = 0 THEN CALL A7 FI;
+    CALL A4 END
+  A4 == 
+    P := L[P];
+    IF E[P] = 0 THEN CALL A6
+       ELSE DO Q := L[Q]; IF E[Q] <= E[P] THEN EXIT(1) FI OD;
+            IF E[P] = E[Q] THEN CALL ADD FI FI;
+    CALL A5 END
+  A5 == 
+    @Pop_Avail(VAR R1);
+    <U[R1] := U[Q], D[R1] := NIL, L[R1] := Q, R[R1] := R[Q]>;
+    L[R[R1]] := R1;
+    R[Q] := R1;
+    <E[R1] := E[P], C[R1] := 0>;
+    Q := R1;
+    CALL ADD END
+  A6 == 
+    P := U[P]; CALL A7 END
+  A7 == 
+    IF U[P] = NIL
+      THEN CALL A11
+      ELSE WHILE C[U[Q]] <> C[U[P]] DO Q := U[Q] OD;
+           CALL A4 FI END
+  A8 == 
+    R1 := Q;
+    Q := R[R1];
+    S := L[R1];
+    R[S] := Q;
+    L[Q] := S;
+    Avail := <R1> ++ Avail;
+    IF E[L[P]] = 0 AND Q = S THEN CALL A9 ELSE CALL A4 FI END
+  A9 == 
+    R1 := Q;
+    Q := U[Q];
+    <D[Q] := D[R1], C[Q] := C[R1]>;
+    Avail := <R1> ++ Avail;
+    S := D[Q];
+    IF S <> NIL THEN DO U[S] := Q; S := R[S]; IF E[S] = 0 THEN EXIT(1) FI OD FI;
+    CALL A10 END
+  A10 == 
+    IF D[Q] = NIL AND C[Q] = 0 AND E[Q] <> 0
+      THEN P := U[P]; CALL A8 ELSE CALL A6 FI END
+  A11 == 
+    WHILE U[Q] <> NIL DO Q := U[Q] OD; CALL Z END ENDACTIONS .
+
+

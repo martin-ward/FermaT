@@ -1,0 +1,43 @@
+C:"
+==========================================================================
+FermaT Transformation System
+Copyright (C) 2001 Software Migrations Limited.
+Email: martin@gkc.org.uk
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+==========================================================================";
+ 
+ 
+MW_PROC @Expand_Forward_Test() ==
+    IF NOT(MEMBER?(@Spec_Type(@Item),<T_Cond,T_D_If>)) THEN @Fail("Not an IF statement")
+    ELSIF NOT(@Right?) THEN @Fail("There is no statement after this one")
+    ELSE  @Pass FI.;
+
+MW_PROC @Expand_Forward_Code(Data)==
+   VAR AS_Type:=@AS_Type:
+   @Gen_Expand_Forward(AS_Type) ENDVAR.;
+
+MW_PROC @Gen_Expand_Forward(ASType)==
+   VAR <S:=< >, P:=@Posn>:
+      @Right; S:=@Item; @Left;
+      @Down;
+      DO @Down_Last; @Down_Last;
+	 IF NOT(@Gen_Improper?(@Parent,ASType)) THEN
+	    IF @Spec_Type(@Item)=T_Skip THEN @Paste_Over(S)
+	    ELSE  @Paste_After(S) FI FI;
+	 @Up; @Up;
+	 IF @Right? THEN @Right ELSE @Up; EXIT(1) FI OD;
+      @Right; @Delete; @Goto(P) ENDVAR.
+    
+
