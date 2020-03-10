@@ -1,0 +1,120 @@
+
+			The FermaT Transformation System
+
+
+		       Detailed Installation Instructions
+
+
+The FermaT Transformation System is a powerful industrial-strength
+program transformation system based on the WSL language.
+
+Web site: http://www.gkc.org.uk/fermat.html
+
+
+
+Unix Installation Instructions
+
+
+
+(1) Ensure you have perl 5.6.1 or later (perl -v will tell you
+which version of perl is installed). See http://www.cpan.org
+
+(2) Install the perl modules Bit::Vector and Set::IntRange:
+
+% perl -MCPAN -e shell
+cpan> install Bit::Vector
+...
+cpan> install Set::IntRange
+...
+cpan> quit
+
+Or see http://search.cpan.org/search?module=Bit::Vector
+and http://search.cpan.org/search?module=Set::IntRange
+
+(3) Ensure you have gcc installed (gcc -v will tell you the version)
+See http://www.gnu.org/software/gcc/gcc.html
+
+(4) Download the gzipped tar file from:
+
+http://www.gkc.org.uk/fermat3.tar.gz
+
+(5) Unpack the archive:
+
+% tar zxvf fermat3.tar.gz
+
+This creates a directory called fermat3
+
+(6) Change to the fermat3 directory and source the appropriate DOIT script
+(DOIT.sh, DOIT.csh or DOIT.bash) into your shell:
+
+% cd fermat3
+% source DOIT.csh
+
+(7) Type
+
+% make test
+
+to compile, install and test FermaT
+
+You should (eventually) see the message "All files passed!"
+
+Each time you log in to use FermaT you need to source the appropriate
+DOIT file, unless you have added the appropriate lines to your
+.profile or .cshrc file.
+
+
+
+
+Windows Installation Instructions
+
+
+You need a version of the GNU C compiler (gcc) and a version of perl
+installed in order to build FermaT.
+
+To install perl and the modules from ActiveState and
+the MinGW (Minimalist GNU for Windows):
+
+(1) Download ActivePerl from http://www.activestate.com/ActivePerl
+
+(2) Reboot...
+
+(3) Connect to the Internet, open a DOS box and run "ppm". At
+the prompt, type:
+
+ppm: install Bit::Vector
+ppm: install Set::IntRange
+ppm: quit
+
+to install two perl packages needed by FermaT.
+
+(4) Download MinGW from http://www.mingw.org/ and double click
+on it to install gcc etc.
+
+(5) Reboot...
+
+
+To install FermaT on Windows:
+
+
+(6) Download the gzipped tar file:
+
+http://www.gkc.org.uk/fermat3.tar.gz
+
+(7) Unpack the archive with a suitable utility.
+PowerArchiver (https://www.powerarchiver.com/) and Winzip
+http://www.winzip.com can both unpack tar.gz files.
+This creates a directory called fermat3.
+
+(8) Open a Windows DOS box, change to the fermat3 directory and run
+the DOIT.bat batch file
+
+(9) cd to the src directory and run the commands to
+compile and test FermaT:
+
+cd src
+make-fermat -install
+test-fermat
+test-trans
+
+You should (eventually) see the message "All files passed!"
+
